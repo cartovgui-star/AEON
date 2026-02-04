@@ -179,8 +179,8 @@ class AeonBotAPITester:
         )
         
         if success and data:
-            # Verify MEXC data structure
-            expected_symbols = ['BTC/USDT', 'ETH/USDT', 'SOL/USDT']
+            # Verify MEXC data structure - updated for correct symbol format
+            expected_symbols = ['BTC', 'ETH', 'SOL']  # API returns just coin names, not pairs
             if 'error' in data:
                 print(f"   ⚠️  MEXC API Error: {data['error']}")
                 self.log_test("MEXC Data Structure", False, f"API returned error: {data['error']}")
@@ -192,20 +192,23 @@ class AeonBotAPITester:
                 if missing_symbols:
                     self.log_test("MEXC Data Structure", False, f"Missing symbols: {missing_symbols}")
                 else:
-                    # Verify data structure for each symbol
+                    # Verify data structure for each symbol including orderbook fields
                     valid_structure = True
                     for symbol, info in data.items():
-                        required_fields = ['price', 'change', 'volume', 'high_24h', 'low_24h']
+                        required_fields = ['price', 'change', 'volume', 'high_24h', 'low_24h', 'bid_depth', 'ask_depth', 'imbalance']
                         missing_fields = [f for f in required_fields if f not in info]
                         if missing_fields:
                             print(f"   ⚠️  {symbol} missing fields: {missing_fields}")
                             valid_structure = False
+                        else:
+                            # Verify orderbook specific fields
+                            print(f"   📊 {symbol}: Bids={info['bid_depth']}, Asks={info['ask_depth']}, Imbalance={info['imbalance']}")
                     
                     if valid_structure:
-                        self.log_test("MEXC Data Structure", True, f"All symbols present with valid structure")
-                        print(f"   📊 Found data for: {', '.join(found_symbols)}")
+                        self.log_test("MEXC Orderbook Data Structure", True, f"All symbols present with orderbook fields")
+                        print(f"   📊 Found orderbook data for: {', '.join(found_symbols)}")
                     else:
-                        self.log_test("MEXC Data Structure", False, "Invalid data structure")
+                        self.log_test("MEXC Orderbook Data Structure", False, "Invalid orderbook data structure")
 
     def test_bot_test_mexc_connection(self):
         """Test bot test endpoint specifically for MEXC connection"""
