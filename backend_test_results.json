@@ -1,85 +1,85 @@
 {
   "total_tests": 13,
-  "passed_tests": 13,
-  "success_rate": 100.0,
+  "passed_tests": 11,
+  "success_rate": 84.61538461538461,
   "results": [
     {
       "test": "Root API Endpoint",
       "success": true,
       "details": "",
-      "timestamp": "2026-02-04T08:56:19.665267"
+      "timestamp": "2026-02-04T09:28:24.712144"
     },
     {
       "test": "Bot Statistics",
       "success": true,
       "details": "",
-      "timestamp": "2026-02-04T08:56:19.698800"
+      "timestamp": "2026-02-04T09:28:24.757419"
     },
     {
       "test": "Bot Messages History",
       "success": true,
       "details": "",
-      "timestamp": "2026-02-04T08:56:19.737469"
+      "timestamp": "2026-02-04T09:28:24.803367"
     },
     {
       "test": "LLM Connection Test",
       "success": true,
       "details": "",
-      "timestamp": "2026-02-04T08:56:20.371215"
+      "timestamp": "2026-02-04T09:28:25.785366"
     },
     {
       "test": "Webhook Info",
       "success": true,
       "details": "",
-      "timestamp": "2026-02-04T08:56:20.780639"
+      "timestamp": "2026-02-04T09:28:26.200373"
     },
     {
       "test": "Create Status Check",
       "success": true,
       "details": "",
-      "timestamp": "2026-02-04T08:56:20.813113"
+      "timestamp": "2026-02-04T09:28:26.237431"
     },
     {
       "test": "Get Status Checks",
       "success": true,
       "details": "",
-      "timestamp": "2026-02-04T08:56:20.847130"
+      "timestamp": "2026-02-04T09:28:26.279752"
     },
     {
       "test": "MEXC Live Data",
       "success": true,
       "details": "",
-      "timestamp": "2026-02-04T08:56:20.988963"
+      "timestamp": "2026-02-04T09:28:26.901676"
     },
     {
       "test": "MEXC Data Structure",
-      "success": true,
-      "details": "All symbols present with valid structure",
-      "timestamp": "2026-02-04T08:56:20.989584"
+      "success": false,
+      "details": "Missing symbols: ['BTC/USDT', 'ETH/USDT', 'SOL/USDT']",
+      "timestamp": "2026-02-04T09:28:26.902266"
     },
     {
       "test": "Bot Test - MEXC Connection",
       "success": true,
       "details": "",
-      "timestamp": "2026-02-04T08:56:21.797448"
+      "timestamp": "2026-02-04T09:28:28.013734"
     },
     {
       "test": "MEXC Connection Status",
       "success": true,
       "details": "MEXC is connected",
-      "timestamp": "2026-02-04T08:56:21.798166"
+      "timestamp": "2026-02-04T09:28:28.014794"
     },
     {
       "test": "MEXC Sample Data",
-      "success": true,
-      "details": "Sample data available",
-      "timestamp": "2026-02-04T08:56:21.798179"
+      "success": false,
+      "details": "No sample data in test response",
+      "timestamp": "2026-02-04T09:28:28.014808"
     },
     {
       "test": "Webhook POST Handler",
       "success": true,
       "details": "",
-      "timestamp": "2026-02-04T08:56:25.474214"
+      "timestamp": "2026-02-04T09:28:31.027226"
     }
   ]
 }
