@@ -1,85 +1,211 @@
 {
-  "total_tests": 13,
-  "passed_tests": 11,
-  "success_rate": 84.61538461538461,
+  "total_tests": 34,
+  "passed_tests": 33,
+  "success_rate": 97.05882352941177,
   "results": [
     {
       "test": "Root API Endpoint",
       "success": true,
       "details": "",
-      "timestamp": "2026-02-04T09:28:24.712144"
+      "timestamp": "2026-02-04T09:29:23.397666"
     },
     {
       "test": "Bot Statistics",
       "success": true,
       "details": "",
-      "timestamp": "2026-02-04T09:28:24.757419"
+      "timestamp": "2026-02-04T09:29:23.432767"
     },
     {
       "test": "Bot Messages History",
       "success": true,
       "details": "",
-      "timestamp": "2026-02-04T09:28:24.803367"
+      "timestamp": "2026-02-04T09:29:23.464281"
     },
     {
       "test": "LLM Connection Test",
       "success": true,
       "details": "",
-      "timestamp": "2026-02-04T09:28:25.785366"
+      "timestamp": "2026-02-04T09:29:24.533143"
     },
     {
       "test": "Webhook Info",
       "success": true,
       "details": "",
-      "timestamp": "2026-02-04T09:28:26.200373"
+      "timestamp": "2026-02-04T09:29:24.948147"
     },
     {
       "test": "Create Status Check",
       "success": true,
       "details": "",
-      "timestamp": "2026-02-04T09:28:26.237431"
+      "timestamp": "2026-02-04T09:29:24.985161"
     },
     {
       "test": "Get Status Checks",
       "success": true,
       "details": "",
-      "timestamp": "2026-02-04T09:28:26.279752"
+      "timestamp": "2026-02-04T09:29:25.021650"
     },
     {
       "test": "MEXC Live Data",
       "success": true,
       "details": "",
-      "timestamp": "2026-02-04T09:28:26.901676"
+      "timestamp": "2026-02-04T09:29:25.629187"
     },
     {
-      "test": "MEXC Data Structure",
-      "success": false,
-      "details": "Missing symbols: ['BTC/USDT', 'ETH/USDT', 'SOL/USDT']",
-      "timestamp": "2026-02-04T09:28:26.902266"
+      "test": "MEXC Orderbook Data Structure",
+      "success": true,
+      "details": "All symbols present with orderbook fields",
+      "timestamp": "2026-02-04T09:29:25.629814"
+    },
+    {
+      "test": "MEXC Orderbook - BTC",
+      "success": true,
+      "details": "",
+      "timestamp": "2026-02-04T09:29:25.825921"
+    },
+    {
+      "test": "MEXC BTC Orderbook Structure",
+      "success": true,
+      "details": "Valid orderbook structure",
+      "timestamp": "2026-02-04T09:29:25.826437"
+    },
+    {
+      "test": "MEXC Orderbook - ETH",
+      "success": true,
+      "details": "",
+      "timestamp": "2026-02-04T09:29:26.023808"
+    },
+    {
+      "test": "MEXC ETH Orderbook Structure",
+      "success": true,
+      "details": "Valid orderbook structure",
+      "timestamp": "2026-02-04T09:29:26.024307"
+    },
+    {
+      "test": "MEXC Orderbook - SOL",
+      "success": true,
+      "details": "",
+      "timestamp": "2026-02-04T09:29:26.222766"
+    },
+    {
+      "test": "MEXC SOL Orderbook Structure",
+      "success": true,
+      "details": "Valid orderbook structure",
+      "timestamp": "2026-02-04T09:29:26.223372"
     },
     {
       "test": "Bot Test - MEXC Connection",
       "success": true,
       "details": "",
-      "timestamp": "2026-02-04T09:28:28.013734"
+      "timestamp": "2026-02-04T09:29:27.272375"
     },
     {
       "test": "MEXC Connection Status",
       "success": true,
       "details": "MEXC is connected",
-      "timestamp": "2026-02-04T09:28:28.014794"
+      "timestamp": "2026-02-04T09:29:27.272976"
     },
     {
       "test": "MEXC Sample Data",
       "success": false,
       "details": "No sample data in test response",
-      "timestamp": "2026-02-04T09:28:28.014808"
+      "timestamp": "2026-02-04T09:29:27.272988"
+    },
+    {
+      "test": "Alchemical Questions Bank",
+      "success": true,
+      "details": "",
+      "timestamp": "2026-02-04T09:29:27.322139"
+    },
+    {
+      "test": "Alchemical Questions Count",
+      "success": true,
+      "details": "Found 30 questions",
+      "timestamp": "2026-02-04T09:29:27.322535"
+    },
+    {
+      "test": "Alchemical Questions Content",
+      "success": true,
+      "details": "Contains alchemical terms: ['masonic', 'prima materia', 'rubedo']",
+      "timestamp": "2026-02-04T09:29:27.322714"
+    },
+    {
+      "test": "Telegram Command - /start",
+      "success": true,
+      "details": "",
+      "timestamp": "2026-02-04T09:29:28.649945"
+    },
+    {
+      "test": "Command /start Response",
+      "success": true,
+      "details": "Command processed successfully",
+      "timestamp": "2026-02-04T09:29:28.650584"
+    },
+    {
+      "test": "Telegram Command - /price",
+      "success": true,
+      "details": "",
+      "timestamp": "2026-02-04T09:29:29.967563"
+    },
+    {
+      "test": "Command /price Response",
+      "success": true,
+      "details": "Command processed successfully",
+      "timestamp": "2026-02-04T09:29:29.968150"
+    },
+    {
+      "test": "Telegram Command - /probe",
+      "success": true,
+      "details": "",
+      "timestamp": "2026-02-04T09:29:31.306554"
+    },
+    {
+      "test": "Command /probe Response",
+      "success": true,
+      "details": "Command processed successfully",
+      "timestamp": "2026-02-04T09:29:31.307133"
+    },
+    {
+      "test": "Telegram Command - /ritual",
+      "success": true,
+      "details": "",
+      "timestamp": "2026-02-04T09:29:33.197860"
+    },
+    {
+      "test": "Command /ritual Response",
+      "success": true,
+      "details": "Command processed successfully",
+      "timestamp": "2026-02-04T09:29:33.198428"
+    },
+    {
+      "test": "Trading Mode Detection",
+      "success": true,
+      "details": "",
+      "timestamp": "2026-02-04T09:29:37.581536"
+    },
+    {
+      "test": "Trading Mode Detection",
+      "success": true,
+      "details": "Trading keywords detected",
+      "timestamp": "2026-02-04T09:29:37.582118"
+    },
+    {
+      "test": "Alchemy Mode Detection",
+      "success": true,
+      "details": "",
+      "timestamp": "2026-02-04T09:29:40.944406"
+    },
+    {
+      "test": "Alchemy Mode Detection",
+      "success": true,
+      "details": "Philosophical message processed",
+      "timestamp": "2026-02-04T09:29:40.944984"
     },
     {
       "test": "Webhook POST Handler",
       "success": true,
       "details": "",
-      "timestamp": "2026-02-04T09:28:31.027226"
+      "timestamp": "2026-02-04T09:29:43.241866"
     }
   ]
 }
