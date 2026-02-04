@@ -268,7 +268,13 @@ class AeonBotAPITester:
         # NEW: Test MEXC-specific endpoints
         print("\n🔥 Testing MEXC Integration...")
         self.test_mexc_live_endpoint()
+        self.test_mexc_orderbook_endpoint()
         self.test_bot_test_mexc_connection()
+        
+        # NEW: Test Aeon-specific endpoints
+        print("\n🔮 Testing Aeon Quartet Features...")
+        self.test_alchemical_questions()
+        self.test_telegram_commands()
         
         self.test_webhook_post()
         
