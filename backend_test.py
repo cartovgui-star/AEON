@@ -169,6 +169,86 @@ class AeonBotAPITester:
                 200
             )
 
+    def test_mexc_live_endpoint(self):
+        """Test MEXC live data endpoint"""
+        success, data = self.run_test(
+            "MEXC Live Data",
+            "GET",
+            "mexc/live",
+            200
+        )
+        
+        if success and data:
+            # Verify MEXC data structure
+            expected_symbols = ['BTC/USDT', 'ETH/USDT', 'SOL/USDT']
+            if 'error' in data:
+                print(f"   ⚠️  MEXC API Error: {data['error']}")
+                self.log_test("MEXC Data Structure", False, f"API returned error: {data['error']}")
+            else:
+                # Check if we have the expected crypto pairs
+                found_symbols = list(data.keys())
+                missing_symbols = [s for s in expected_symbols if s not in found_symbols]
+                
+                if missing_symbols:
+                    self.log_test("MEXC Data Structure", False, f"Missing symbols: {missing_symbols}")
+                else:
+                    # Verify data structure for each symbol
+                    valid_structure = True
+                    for symbol, info in data.items():
+                        required_fields = ['price', 'change', 'volume', 'high_24h', 'low_24h']
+                        missing_fields = [f for f in required_fields if f not in info]
+                        if missing_fields:
+                            print(f"   ⚠️  {symbol} missing fields: {missing_fields}")
+                            valid_structure = False
+                    
+                    if valid_structure:
+                        self.log_test("MEXC Data Structure", True, f"All symbols present with valid structure")
+                        print(f"   📊 Found data for: {', '.join(found_symbols)}")
+                    else:
+                        self.log_test("MEXC Data Structure", False, "Invalid data structure")
+
+    def test_bot_test_mexc_connection(self):
+        """Test bot test endpoint specifically for MEXC connection"""
+        success, data = self.run_test(
+            "Bot Test - MEXC Connection",
+            "GET",
+            "bot/test",
+            200
+        )
+        
+        if success and data:
+            # Check MEXC connection status
+            mexc_connected = data.get('mexc_connected', False)
+            if mexc_connected:
+                self.log_test("MEXC Connection Status", True, "MEXC is connected")
+                print(f"   ✅ MEXC Connected: {mexc_connected}")
+                
+                # Check if sample MEXC data is present
+                if 'mexc_sample' in data and data['mexc_sample']:
+                    self.log_test("MEXC Sample Data", True, "Sample data available")
+                    print(f"   📊 Sample MEXC data present")
+                else:
+                    self.log_test("MEXC Sample Data", False, "No sample data in test response")
+            else:
+                self.log_test("MEXC Connection Status", False, "MEXC is not connected")
+                print(f"   ❌ MEXC Connected: {mexc_connected}")
+                
+                # Check for error details
+                if 'error' in data:
+                    print(f"   Error details: {data['error']}")
+            
+            # Also verify other connections
+            llm_connected = data.get('llm_connected', False)
+            telegram_token_set = data.get('telegram_token_set', False)
+            
+            print(f"   🤖 LLM Connected: {llm_connected}")
+            print(f"   📱 Telegram Token Set: {telegram_token_set}")
+            
+            if data.get('sample_response'):
+                print(f"   💬 Sample Response: {data['sample_response'][:100]}...")
+        
+        return success, data
+
     def run_all_tests(self):
         """Run all API tests"""
         print("🚀 Starting Aeon Bot API Tests")
