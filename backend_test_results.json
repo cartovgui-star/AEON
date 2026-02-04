@@ -1,0 +1,55 @@
+{
+  "total_tests": 8,
+  "passed_tests": 8,
+  "success_rate": 100.0,
+  "results": [
+    {
+      "test": "Root API Endpoint",
+      "success": true,
+      "details": "",
+      "timestamp": "2026-02-04T08:49:08.783300"
+    },
+    {
+      "test": "Bot Statistics",
+      "success": true,
+      "details": "",
+      "timestamp": "2026-02-04T08:49:08.817616"
+    },
+    {
+      "test": "Bot Messages History",
+      "success": true,
+      "details": "",
+      "timestamp": "2026-02-04T08:49:08.848482"
+    },
+    {
+      "test": "LLM Connection Test",
+      "success": true,
+      "details": "",
+      "timestamp": "2026-02-04T08:49:09.318439"
+    },
+    {
+      "test": "Webhook Info",
+      "success": true,
+      "details": "",
+      "timestamp": "2026-02-04T08:49:10.084774"
+    },
+    {
+      "test": "Create Status Check",
+      "success": true,
+      "details": "",
+      "timestamp": "2026-02-04T08:49:10.130804"
+    },
+    {
+      "test": "Get Status Checks",
+      "success": true,
+      "details": "",
+      "timestamp": "2026-02-04T08:49:10.164619"
+    },
+    {
+      "test": "Webhook POST Handler",
+      "success": true,
+      "details": "",
+      "timestamp": "2026-02-04T08:49:11.689707"
+    }
+  ]
+}
