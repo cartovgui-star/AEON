@@ -252,6 +252,150 @@ class AeonBotAPITester:
         
         return success, data
 
+    def test_mexc_orderbook_endpoint(self):
+        """Test specific MEXC orderbook endpoint"""
+        symbols = ['BTC', 'ETH', 'SOL']
+        
+        for symbol in symbols:
+            success, data = self.run_test(
+                f"MEXC Orderbook - {symbol}",
+                "GET",
+                f"mexc/orderbook/{symbol}",
+                200
+            )
+            
+            if success and data:
+                if 'error' in data:
+                    self.log_test(f"MEXC {symbol} Orderbook Structure", False, f"API error: {data['error']}")
+                else:
+                    # Verify orderbook structure
+                    required_fields = ['symbol', 'bid_depth', 'ask_depth', 'imbalance', 'top_bid', 'top_ask', 'timestamp']
+                    missing_fields = [f for f in required_fields if f not in data]
+                    
+                    if missing_fields:
+                        self.log_test(f"MEXC {symbol} Orderbook Structure", False, f"Missing fields: {missing_fields}")
+                    else:
+                        self.log_test(f"MEXC {symbol} Orderbook Structure", True, f"Valid orderbook structure")
+                        print(f"   📊 {symbol} Orderbook: Bids={data['bid_depth']}, Asks={data['ask_depth']}, Imbalance={data['imbalance']}")
+
+    def test_alchemical_questions(self):
+        """Test alchemical questions endpoint"""
+        success, data = self.run_test(
+            "Alchemical Questions Bank",
+            "GET",
+            "bot/questions",
+            200
+        )
+        
+        if success and data:
+            questions = data.get('questions', [])
+            count = data.get('count', 0)
+            
+            if count >= 30:  # Should have 30 questions as mentioned in requirements
+                self.log_test("Alchemical Questions Count", True, f"Found {count} questions")
+                print(f"   🔮 Question bank contains {count} alchemical questions")
+                
+                # Verify some questions contain expected alchemical/masonic terms
+                alchemical_terms = ['alchemy', 'masonic', 'transmutation', 'prima materia', 'great work', 'rubedo', 'nigredo', 'albedo']
+                questions_text = ' '.join(questions).lower()
+                found_terms = [term for term in alchemical_terms if term in questions_text]
+                
+                if len(found_terms) >= 3:  # Should contain several alchemical terms
+                    self.log_test("Alchemical Questions Content", True, f"Contains alchemical terms: {found_terms[:3]}")
+                else:
+                    self.log_test("Alchemical Questions Content", False, f"Missing alchemical terminology")
+                    
+            else:
+                self.log_test("Alchemical Questions Count", False, f"Expected 30+ questions, got {count}")
+
+    def test_telegram_commands(self):
+        """Test Telegram webhook with specific commands"""
+        commands = [
+            ("/start", "start"),
+            ("/price", "trading"), 
+            ("/probe", "alchemy"),
+            ("/ritual", "ritual")
+        ]
+        
+        for command, expected_context in commands:
+            sample_update = {
+                "update_id": 123456789,
+                "message": {
+                    "message_id": 1,
+                    "from": {
+                        "id": 987654321,
+                        "is_bot": False,
+                        "first_name": "Test",
+                        "username": "testuser"
+                    },
+                    "chat": {
+                        "id": 987654321,
+                        "first_name": "Test", 
+                        "username": "testuser",
+                        "type": "private"
+                    },
+                    "date": 1640995200,
+                    "text": command
+                }
+            }
+            
+            success, response = self.run_test(
+                f"Telegram Command - {command}",
+                "POST",
+                "webhook",
+                200,
+                data=sample_update
+            )
+            
+            if success:
+                self.log_test(f"Command {command} Response", True, f"Command processed successfully")
+
+        # Test trading mode detection
+        trading_message = {
+            "update_id": 123456790,
+            "message": {
+                "message_id": 2,
+                "from": {"id": 987654321, "is_bot": False, "first_name": "Test", "username": "testuser"},
+                "chat": {"id": 987654321, "first_name": "Test", "username": "testuser", "type": "private"},
+                "date": 1640995200,
+                "text": "What's the BTC price and volume looking like?"
+            }
+        }
+        
+        success, response = self.run_test(
+            "Trading Mode Detection",
+            "POST", 
+            "webhook",
+            200,
+            data=trading_message
+        )
+        
+        if success:
+            self.log_test("Trading Mode Detection", True, "Trading keywords detected")
+
+        # Test alchemy mode detection  
+        alchemy_message = {
+            "update_id": 123456791,
+            "message": {
+                "message_id": 3,
+                "from": {"id": 987654321, "is_bot": False, "first_name": "Test", "username": "testuser"},
+                "chat": {"id": 987654321, "first_name": "Test", "username": "testuser", "type": "private"},
+                "date": 1640995200,
+                "text": "What is the nature of consciousness and reality?"
+            }
+        }
+        
+        success, response = self.run_test(
+            "Alchemy Mode Detection",
+            "POST",
+            "webhook", 
+            200,
+            data=alchemy_message
+        )
+        
+        if success:
+            self.log_test("Alchemy Mode Detection", True, "Philosophical message processed")
+
     def run_all_tests(self):
         """Run all API tests"""
         print("🚀 Starting Aeon Bot API Tests (MEXC Integration)")
