@@ -26,6 +26,15 @@ Build a Telegram chatbot "Aeon" that integrates with OpenAI - a business partner
 - [x] Recent conversations display
 - [x] Telegram link button
 
+## MEXC Integration (Feb 2026)
+- [x] Live MEXC crypto data via ccxt library
+- [x] Real-time BTC/USDT, ETH/USDT, SOL/USDT prices
+- [x] `/api/mexc/live` endpoint for market data
+- [x] `/price` command for quick market snapshot
+- [x] MEXC data injected into every Aeon response
+- [x] Dashboard shows live prices with trend indicators
+- [x] MEXC Live badge in status bar
+
 ## Technical Architecture
 - **Backend**: FastAPI + MongoDB + Emergent integrations
 - **Frontend**: React + TailwindCSS + shadcn/ui
