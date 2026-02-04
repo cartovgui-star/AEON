@@ -251,7 +251,7 @@ class AeonBotAPITester:
 
     def run_all_tests(self):
         """Run all API tests"""
-        print("🚀 Starting Aeon Bot API Tests")
+        print("🚀 Starting Aeon Bot API Tests (MEXC Integration)")
         print("=" * 50)
         
         # Test all endpoints
@@ -261,6 +261,12 @@ class AeonBotAPITester:
         self.test_bot_test_llm()
         self.test_webhook_info()
         self.test_status_endpoints()
+        
+        # NEW: Test MEXC-specific endpoints
+        print("\n🔥 Testing MEXC Integration...")
+        self.test_mexc_live_endpoint()
+        self.test_bot_test_mexc_connection()
+        
         self.test_webhook_post()
         
         # Print summary
