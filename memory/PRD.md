@@ -35,6 +35,18 @@ Build a Telegram chatbot "Aeon" that integrates with OpenAI - a business partner
 - [x] Dashboard shows live prices with trend indicators
 - [x] MEXC Live badge in status bar
 
+## Aeon Quartet Upgrade (Feb 2026)
+- [x] Full orderbook analysis (bid/ask depth, imbalance %)
+- [x] Dual mode detection (Trading vs Alchemy keywords)
+- [x] 30 alchemical interview questions bank
+- [x] Scheduled rituals (6AM crypto, 8:45AM stocks CST)
+- [x] Background ritual runner with asyncio
+- [x] Obsidian vault integration (webhook ready)
+- [x] New commands: /probe, /ritual
+- [x] Conversation context tracking (trading/alchemy/ritual)
+- [x] Frontend filter tabs by conversation type
+- [x] Orderbook imbalance visualization bars
+
 ## Technical Architecture
 - **Backend**: FastAPI + MongoDB + Emergent integrations
 - **Frontend**: React + TailwindCSS + shadcn/ui
