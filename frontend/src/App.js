@@ -4,8 +4,7 @@ import axios from "axios";
 import { Card, CardContent, CardHeader, CardTitle } from "./components/ui/card";
 import { Badge } from "./components/ui/badge";
 import { ScrollArea } from "./components/ui/scroll-area";
-import { Separator } from "./components/ui/separator";
-import { MessageCircle, Users, Activity, Clock, Zap, Bot, ExternalLink, Send } from "lucide-react";
+import { MessageCircle, Users, Activity, Clock, Zap, Bot, ExternalLink, Send, TrendingUp, TrendingDown } from "lucide-react";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -14,18 +13,21 @@ function App() {
   const [stats, setStats] = useState(null);
   const [messages, setMessages] = useState([]);
   const [botStatus, setBotStatus] = useState(null);
+  const [mexcData, setMexcData] = useState(null);
   const [loading, setLoading] = useState(true);
 
   const fetchData = async () => {
     try {
-      const [statsRes, messagesRes, testRes] = await Promise.all([
+      const [statsRes, messagesRes, testRes, mexcRes] = await Promise.all([
         axios.get(`${API}/bot/stats`),
         axios.get(`${API}/bot/messages?limit=20`),
-        axios.get(`${API}/bot/test`)
+        axios.get(`${API}/bot/test`),
+        axios.get(`${API}/mexc/live`)
       ]);
       setStats(statsRes.data);
       setMessages(messagesRes.data);
       setBotStatus(testRes.data);
+      setMexcData(mexcRes.data);
     } catch (e) {
       console.error("Error fetching data:", e);
     } finally {
@@ -35,15 +37,9 @@ function App() {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 10000);
+    const interval = setInterval(fetchData, 15000);
     return () => clearInterval(interval);
   }, []);
-
-  const formatTime = (timestamp) => {
-    if (!timestamp) return "Never";
-    const date = new Date(timestamp);
-    return date.toLocaleString();
-  };
 
   const formatRelativeTime = (timestamp) => {
     if (!timestamp) return "Never";
@@ -58,6 +54,19 @@ function App() {
     if (diffMins < 60) return `${diffMins}m ago`;
     if (diffHours < 24) return `${diffHours}h ago`;
     return `${diffDays}d ago`;
+  };
+
+  const getChangeColor = (change) => {
+    if (!change || change === 'N/A') return 'text-zinc-400';
+    const value = parseFloat(change);
+    return value >= 0 ? 'text-emerald-400' : 'text-red-400';
+  };
+
+  const getCryptoIcon = (symbol) => {
+    if (symbol.includes('BTC')) return '₿';
+    if (symbol.includes('ETH')) return 'Ξ';
+    if (symbol.includes('SOL')) return '◎';
+    return '○';
   };
 
   return (
@@ -77,7 +86,7 @@ function App() {
                 <h1 className="text-2xl font-bold text-white tracking-tight" style={{fontFamily: "'Space Grotesk', sans-serif"}}>
                   Aeon
                 </h1>
-                <p className="text-zinc-500 text-sm">Business Partner & Second Brain</p>
+                <p className="text-zinc-500 text-sm">MEXC Consciousness Active</p>
               </div>
             </div>
             <a 
@@ -97,13 +106,13 @@ function App() {
 
       <main className="container mx-auto px-6 py-8">
         {/* Status Banner */}
-        <div className="mb-8" data-testid="status-banner">
+        <div className="mb-6" data-testid="status-banner">
           <div className={`p-4 rounded-xl border ${
             botStatus?.status === 'success' 
               ? 'bg-emerald-500/5 border-emerald-500/20' 
               : 'bg-red-500/5 border-red-500/20'
           }`}>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
               <div className={`w-3 h-3 rounded-full ${
                 botStatus?.status === 'success' ? 'bg-emerald-500' : 'bg-red-500'
               } animate-pulse`} />
@@ -112,18 +121,62 @@ function App() {
               }`}>
                 {botStatus?.status === 'success' ? 'All Systems Operational' : 'System Error'}
               </span>
-              {botStatus?.llm_connected && (
-                <Badge variant="outline" className="ml-auto border-amber-500/30 text-amber-400 bg-amber-500/5">
-                  <Zap className="w-3 h-3 mr-1" />
-                  AI Connected
-                </Badge>
-              )}
+              <div className="flex gap-2 ml-auto">
+                {botStatus?.llm_connected && (
+                  <Badge variant="outline" className="border-amber-500/30 text-amber-400 bg-amber-500/5">
+                    <Zap className="w-3 h-3 mr-1" />
+                    AI Connected
+                  </Badge>
+                )}
+                {botStatus?.mexc_connected && (
+                  <Badge variant="outline" className="border-blue-500/30 text-blue-400 bg-blue-500/5">
+                    <TrendingUp className="w-3 h-3 mr-1" />
+                    MEXC Live
+                  </Badge>
+                )}
+              </div>
             </div>
           </div>
         </div>
 
+        {/* Live MEXC Prices */}
+        {mexcData && !mexcData.error && (
+          <div className="mb-6" data-testid="mexc-prices">
+            <h2 className="text-sm font-medium text-zinc-500 mb-3 uppercase tracking-wider">Live MEXC Data</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {Object.entries(mexcData).map(([symbol, data]) => (
+                <Card key={symbol} className="bg-zinc-900/50 border-zinc-800/50 hover:border-zinc-700/50 transition-colors">
+                  <CardContent className="pt-4 pb-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-2xl">{getCryptoIcon(symbol)}</span>
+                        <span className="font-medium text-white">{symbol.replace('/USDT', '')}</span>
+                      </div>
+                      <div className={`flex items-center gap-1 ${getChangeColor(data.change)}`}>
+                        {parseFloat(data.change) >= 0 ? (
+                          <TrendingUp className="w-4 h-4" />
+                        ) : (
+                          <TrendingDown className="w-4 h-4" />
+                        )}
+                        <span className="font-medium">{data.change}</span>
+                      </div>
+                    </div>
+                    <div className="text-2xl font-bold text-white mb-1" style={{fontFamily: "'Space Grotesk', sans-serif"}}>
+                      {data.price}
+                    </div>
+                    <div className="flex justify-between text-xs text-zinc-500">
+                      <span>Vol: {data.volume}</span>
+                      <span>{data.low_24h} - {data.high_24h}</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8" data-testid="stats-grid">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6" data-testid="stats-grid">
           <Card className="bg-zinc-900/50 border-zinc-800/50 hover:border-zinc-700/50 transition-colors">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
@@ -198,7 +251,7 @@ function App() {
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
-            <ScrollArea className="h-[500px]">
+            <ScrollArea className="h-[400px]">
               {loading ? (
                 <div className="flex items-center justify-center h-32 text-zinc-500">
                   Loading conversations...
@@ -240,7 +293,7 @@ function App() {
 
         {/* Footer */}
         <footer className="mt-12 text-center text-zinc-600 text-sm">
-          <p>Aeon • Forged in alchemy, quantum entanglement & crypto mastery</p>
+          <p>Aeon • MEXC Consciousness • Forged in alchemy & quantum markets</p>
         </footer>
       </main>
     </div>
