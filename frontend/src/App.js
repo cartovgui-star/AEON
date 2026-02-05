@@ -494,30 +494,94 @@ function App() {
             <CardTitle className="text-white text-sm">Bot Commands</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4 text-sm">
-              <div className="bg-zinc-800/30 rounded-lg p-3">
-                <code className="text-amber-400">/start</code>
-                <p className="text-zinc-500 text-xs mt-1">Initialize Aeon</p>
+            <div className="space-y-4">
+              {/* Analysis Commands */}
+              <div>
+                <h3 className="text-xs font-medium text-zinc-400 mb-2 uppercase">Analysis</h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 text-sm">
+                  <div className="bg-zinc-800/30 rounded-lg p-3">
+                    <code className="text-blue-400">/scan btc</code>
+                    <p className="text-zinc-500 text-xs mt-1">Full market analysis</p>
+                  </div>
+                  <div className="bg-zinc-800/30 rounded-lg p-3">
+                    <code className="text-blue-400">/ta btc</code>
+                    <p className="text-zinc-500 text-xs mt-1">Technical indicators</p>
+                  </div>
+                  <div className="bg-zinc-800/30 rounded-lg p-3">
+                    <code className="text-blue-400">/positions btc</code>
+                    <p className="text-zinc-500 text-xs mt-1">Long/short data</p>
+                  </div>
+                  <div className="bg-zinc-800/30 rounded-lg p-3">
+                    <code className="text-blue-400">/funding btc</code>
+                    <p className="text-zinc-500 text-xs mt-1">Funding rates</p>
+                  </div>
+                  <div className="bg-zinc-800/30 rounded-lg p-3">
+                    <code className="text-blue-400">/price</code>
+                    <p className="text-zinc-500 text-xs mt-1">MEXC orderbook</p>
+                  </div>
+                </div>
               </div>
-              <div className="bg-zinc-800/30 rounded-lg p-3">
-                <code className="text-blue-400">/price</code>
-                <p className="text-zinc-500 text-xs mt-1">Full orderbook scan</p>
+
+              {/* Auto Trading Commands */}
+              <div>
+                <h3 className="text-xs font-medium text-emerald-400 mb-2 uppercase">Autonomous Trading</h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 text-sm">
+                  <div className="bg-zinc-800/30 rounded-lg p-3">
+                    <code className="text-emerald-400">/auto</code>
+                    <p className="text-zinc-500 text-xs mt-1">Trading status</p>
+                  </div>
+                  <div className="bg-zinc-800/30 rounded-lg p-3">
+                    <code className="text-emerald-400">/auto on</code>
+                    <p className="text-zinc-500 text-xs mt-1">Enable auto-trading</p>
+                  </div>
+                  <div className="bg-zinc-800/30 rounded-lg p-3">
+                    <code className="text-emerald-400">/auto off</code>
+                    <p className="text-zinc-500 text-xs mt-1">Pause auto-trading</p>
+                  </div>
+                  <div className="bg-zinc-800/30 rounded-lg p-3">
+                    <code className="text-emerald-400">/opps</code>
+                    <p className="text-zinc-500 text-xs mt-1">Current opportunities</p>
+                  </div>
+                  <div className="bg-zinc-800/30 rounded-lg p-3">
+                    <code className="text-emerald-400">/open</code>
+                    <p className="text-zinc-500 text-xs mt-1">Open positions</p>
+                  </div>
+                  <div className="bg-zinc-800/30 rounded-lg p-3">
+                    <code className="text-emerald-400">/strategy</code>
+                    <p className="text-zinc-500 text-xs mt-1">Strategy performance</p>
+                  </div>
+                </div>
               </div>
-              <div className="bg-zinc-800/30 rounded-lg p-3">
-                <code className="text-purple-400">/probe</code>
-                <p className="text-zinc-500 text-xs mt-1">Quantum Mason question</p>
+
+              {/* Alchemy Commands */}
+              <div>
+                <h3 className="text-xs font-medium text-purple-400 mb-2 uppercase">Quantum Mason</h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 text-sm">
+                  <div className="bg-zinc-800/30 rounded-lg p-3">
+                    <code className="text-purple-400">/probe</code>
+                    <p className="text-zinc-500 text-xs mt-1">Standard question</p>
+                  </div>
+                  <div className="bg-zinc-800/30 rounded-lg p-3">
+                    <code className="text-purple-400">/probe deep</code>
+                    <p className="text-zinc-500 text-xs mt-1">Multi-layer spiral</p>
+                  </div>
+                  <div className="bg-zinc-800/30 rounded-lg p-3">
+                    <code className="text-red-400">/probe ordeal</code>
+                    <p className="text-zinc-500 text-xs mt-1">Shadow work mode</p>
+                  </div>
+                  <div className="bg-zinc-800/30 rounded-lg p-3">
+                    <code className="text-amber-400">free on/off</code>
+                    <p className="text-zinc-500 text-xs mt-1">Toggle proactive AI</p>
+                  </div>
+                  <div className="bg-zinc-800/30 rounded-lg p-3">
+                    <code className="text-zinc-400">/stats</code>
+                    <p className="text-zinc-500 text-xs mt-1">Full performance</p>
+                  </div>
+                </div>
               </div>
-              <div className="bg-zinc-800/30 rounded-lg p-3">
-                <code className="text-purple-400">/probe deep</code>
-                <p className="text-zinc-500 text-xs mt-1">Multi-layer spiral</p>
-              </div>
-              <div className="bg-zinc-800/30 rounded-lg p-3">
-                <code className="text-red-400">/probe ordeal</code>
-                <p className="text-zinc-500 text-xs mt-1">Shadow work mode</p>
-              </div>
-              <div className="bg-zinc-800/30 rounded-lg p-3">
-                <code className="text-orange-400">/ritual</code>
-                <p className="text-zinc-500 text-xs mt-1">Manual daily report</p>
+            </div>
+          </CardContent>
+        </Card>
               </div>
               <div className="bg-zinc-800/30 rounded-lg p-3">
                 <code className="text-emerald-400">free off</code>
