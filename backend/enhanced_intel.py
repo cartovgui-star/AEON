@@ -251,8 +251,8 @@ class EnhancedMarketIntel:
         """Get comprehensive market intelligence for a symbol"""
         try:
             # Fetch all data concurrently
-            funding_task = self.get_bybit_funding_rate(symbol)
-            oi_task = self.get_bybit_open_interest(symbol)
+            funding_task = self.get_funding_rate(symbol)
+            oi_task = self.get_open_interest_estimate(symbol)
             fng_task = self.get_fear_greed_index()
             global_task = self.get_global_market_data()
             
