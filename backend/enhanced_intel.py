@@ -69,10 +69,15 @@ class EnhancedMarketIntel:
     # ═══════════════════════════════════════════════════════════════════════════
     
     async def get_mexc_prices(self) -> List[Dict]:
-        """Get prices from MEXC as fallback when CoinGecko rate limits"""
+        """Get prices from MEXC for top coins"""
         try:
-            # Fetch a smaller set to avoid timeout
-            primary_symbols = ["BTC/USDT", "ETH/USDT", "SOL/USDT", "XRP/USDT", "DOGE/USDT", "ADA/USDT", "AVAX/USDT"]
+            # Top 20 for quick loading (full 44 would be slow)
+            primary_symbols = [
+                "BTC/USDT", "ETH/USDT", "BNB/USDT", "SOL/USDT", "XRP/USDT",
+                "DOGE/USDT", "ADA/USDT", "AVAX/USDT", "DOT/USDT", "LINK/USDT",
+                "TRX/USDT", "LTC/USDT", "NEAR/USDT", "UNI/USDT", "APT/USDT",
+                "ATOM/USDT", "ARB/USDT", "OP/USDT", "INJ/USDT", "AAVE/USDT"
+            ]
             tickers = self.mexc.fetch_tickers(primary_symbols)
             
             results = []
