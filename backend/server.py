@@ -151,11 +151,12 @@ async def send_telegram_message(chat_id: int, text: str):
 
 
 def get_mexc_orderbook() -> Dict[str, Any]:
-    """Get MEXC orderbook data (existing functionality)"""
+    """Get MEXC orderbook data for all tracked symbols"""
     try:
-        tickers = mexc.fetch_tickers(['BTC/USDT', 'ETH/USDT', 'SOL/USDT'])
+        symbols = ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'DOGE/USDT', 'XRP/USDT', 'AVAX/USDT']
+        tickers = mexc.fetch_tickers(symbols)
         markets = {}
-        for symbol in ['BTC/USDT', 'ETH/USDT', 'SOL/USDT']:
+        for symbol in symbols:
             try:
                 book = mexc.fetch_order_book(symbol, limit=20)
                 bid_depth = sum([b[1] for b in book['bids'][:10]])
@@ -164,7 +165,7 @@ def get_mexc_orderbook() -> Dict[str, Any]:
                 ticker = tickers[symbol]
                 coin = symbol.split('/')[0]
                 markets[coin] = {
-                    'price': f"${ticker['last']:,.2f}",
+                    'price': f"${ticker['last']:,.2f}" if ticker['last'] >= 1 else f"${ticker['last']:.4f}",
                     'change': f"{ticker['percentage']:+.2f}%",
                     'bid_depth': f"{bid_depth:,.0f}",
                     'ask_depth': f"{ask_depth:,.0f}",
