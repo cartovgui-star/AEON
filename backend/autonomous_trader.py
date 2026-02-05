@@ -482,10 +482,11 @@ class AutonomousTrader:
                     current = ticker["price"]
                     direction = pred.get("prediction")
                     
-                    if direction == "LONG":
-                        open_pnl += ((current - entry) / entry) * 100
-                    elif direction == "SHORT":
-                        open_pnl += ((entry - current) / entry) * 100
+                    if entry > 0:  # Avoid division by zero
+                        if direction == "LONG":
+                            open_pnl += ((current - entry) / entry) * 100
+                        elif direction == "SHORT":
+                            open_pnl += ((entry - current) / entry) * 100
         
         return {
             "closed_stats": stats,
