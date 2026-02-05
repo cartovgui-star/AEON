@@ -107,6 +107,7 @@ Build a Telegram chatbot "Aeon" that integrates with OpenAI - a business partner
 - `/ta btc` - Technical indicators
 - `/positions btc` - Long/short data
 - `/funding btc` - Funding rates
+- `/liqs btc` - Liquidation data
 - `/price` - MEXC orderbook
 
 ### Autonomous Trading
