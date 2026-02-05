@@ -290,14 +290,16 @@ class EnhancedMarketIntel:
     async def get_market_summary(self) -> str:
         """Generate a human-readable market summary"""
         try:
-            # Get all data
+            # Get all data from working APIs
             fng = await self.get_fear_greed_index()
             global_data = await self.get_global_market_data()
-            tickers = await self.get_bybit_tickers(["BTCUSDT", "ETHUSDT", "SOLUSDT"])
+            top_coins = await self.get_top_100_coins()
             trending = await self.get_trending_coins()
             
-            btc = tickers.get("BTCUSDT", {})
-            eth = tickers.get("ETHUSDT", {})
+            # Extract BTC and ETH from top 100
+            btc = next((c for c in top_coins if c.get("symbol") == "btc"), {})
+            eth = next((c for c in top_coins if c.get("symbol") == "eth"), {})
+            sol = next((c for c in top_coins if c.get("symbol") == "sol"), {})
             
             summary = f"""📊 MARKET INTELLIGENCE REPORT
 
@@ -312,12 +314,9 @@ BTC Dominance: {global_data.get('btc_dominance', 0):.1f}%
 Market Cap Change 24h: {global_data.get('market_cap_change_24h', 0):+.2f}%
 
 💰 KEY PRICES
-BTC: ${btc.get('price', 0):,.2f} ({btc.get('change_24h', 0):+.2f}%)
-ETH: ${eth.get('price', 0):,.2f} ({eth.get('change_24h', 0):+.2f}%)
-
-📊 BTC DERIVATIVES
-Funding: {btc.get('funding_rate', 0)*100:.4f}%
-Open Interest: ${btc.get('open_interest', 0):,.0f}
+BTC: ${btc.get('current_price', 0):,.2f} ({btc.get('price_change_percentage_24h', 0) or 0:+.2f}%)
+ETH: ${eth.get('current_price', 0):,.2f} ({eth.get('price_change_percentage_24h', 0) or 0:+.2f}%)
+SOL: ${sol.get('current_price', 0):,.2f} ({sol.get('price_change_percentage_24h', 0) or 0:+.2f}%)
 """
             
             if trending:
