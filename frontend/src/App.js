@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "./components/ui/card";
 import { Badge } from "./components/ui/badge";
 import { ScrollArea } from "./components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./components/ui/tabs";
-import { MessageCircle, Users, Activity, Clock, Zap, Bot, ExternalLink, Send, TrendingUp, TrendingDown, BookOpen, Flame, BarChart3 } from "lucide-react";
+import { MessageCircle, Users, Activity, Clock, Zap, Bot, ExternalLink, Send, TrendingUp, TrendingDown, BookOpen, Flame, BarChart3, Brain, Target, Trophy } from "lucide-react";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -15,21 +15,24 @@ function App() {
   const [messages, setMessages] = useState([]);
   const [botStatus, setBotStatus] = useState(null);
   const [mexcData, setMexcData] = useState(null);
+  const [tradingStats, setTradingStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("all");
 
   const fetchData = async () => {
     try {
-      const [statsRes, messagesRes, testRes, mexcRes] = await Promise.all([
+      const [statsRes, messagesRes, testRes, mexcRes, tradingRes] = await Promise.all([
         axios.get(`${API}/bot/stats`),
         axios.get(`${API}/bot/messages?limit=30`),
         axios.get(`${API}/bot/test`),
-        axios.get(`${API}/mexc/live`)
+        axios.get(`${API}/mexc/live`),
+        axios.get(`${API}/trading/summary`)
       ]);
       setStats(statsRes.data);
       setMessages(messagesRes.data);
       setBotStatus(testRes.data);
       setMexcData(mexcRes.data);
+      setTradingStats(tradingRes.data);
     } catch (e) {
       console.error("Error fetching data:", e);
     } finally {
