@@ -1176,6 +1176,44 @@ Mode: {'Alchemy ⚗️' if current_mode == 'alchemy' else 'Casual'} | Auto: {'�
 What's up?"""
             context = "start"
             
+        elif text_lower == '/freewill' or text_lower == '/fw':
+            stats = await free_will.get_stats()
+            
+            response = f"""🧠 FREE WILL ENGINE
+
+Status: {'🟢 ACTIVE' if stats['active'] else '🔴 OFF'}
+Min Confidence: {stats['min_confidence']}%
+
+📊 MONITORING
+Pairs: {stats['pairs_monitored']}
+Timeframes: {stats['timeframes_monitored']}
+Alerts Sent: {stats['total_alerts_sent']}
+
+📈 PERFORMANCE
+Feedback: {stats['feedback_received']}
+Wins: {stats['wins']} | Losses: {stats['losses']}
+Win Rate: {stats['win_rate']}%
+
+Commands:
+free on/off - Toggle alerts
+/fwconf 70 - Set min confidence
+
+Scanning every 30s. Alerts sent when conf >70%"""
+            context = "settings"
+            
+        elif text_lower.startswith('/fwconf'):
+            parts = text_lower.split()
+            if len(parts) > 1:
+                try:
+                    conf = int(parts[1])
+                    free_will.min_confidence = max(50, min(95, conf))
+                    response = f"✅ Free Will min confidence set to {free_will.min_confidence}%"
+                except:
+                    response = "Usage: /fwconf 70 (sets 70% minimum)"
+            else:
+                response = f"Current: {free_will.min_confidence}%\nUsage: /fwconf 70"
+            context = "settings"
+            
         elif text_lower.startswith('/scan'):
             parts = text_lower.split()
             symbol = parts[1].upper() if len(parts) > 1 else "BTC"
