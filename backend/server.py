@@ -787,6 +787,129 @@ Recent:
             response = await learning_system.generate_learning_summary()
             context = "stats"
             
+        elif text_lower == '/auto' or text_lower == '/autotrade':
+            summary = await autonomous_trader.get_trading_summary()
+            stats = summary.get("closed_stats", {})
+            
+            response = f"""🤖 AEON AUTONOMOUS TRADING
+
+Status: {'🟢 ACTIVE' if autonomous_trader.active else '🔴 PAUSED'}
+Min Confidence: {autonomous_trader.min_confidence}%
+
+📊 PAPER TRADING STATS
+Total Trades: {stats.get('total_predictions', 0)}
+Win Rate: {stats.get('win_rate', 0)}%
+Total PnL: {stats.get('total_pnl_pct', 0):+.2f}%
+
+Open Positions: {summary.get('open_positions', 0)}
+Open PnL: {summary.get('open_pnl_pct', 0):+.2f}%
+
+Commands:
+/auto on - Enable auto-trading
+/auto off - Pause auto-trading
+/opps - View current opportunities
+/strategy - View strategy performance
+
+👁️ «The algorithm learns. The pattern emerges.»"""
+            context = "trading"
+            
+        elif text_lower == '/auto on':
+            autonomous_trader.active = True
+            response = """🟢 AUTONOMOUS TRADING ENABLED
+
+Aeon will now:
+• Scan markets every 5 minutes
+• Take paper trades on high-confidence setups
+• Evaluate and learn from outcomes
+• Alert you on significant trades
+
+👁️ «The machine awakens. Let the Great Work begin.»"""
+            context = "settings"
+            
+        elif text_lower == '/auto off':
+            autonomous_trader.active = False
+            response = """🔴 AUTONOMOUS TRADING PAUSED
+
+Aeon will no longer take autonomous trades.
+Existing positions will still be monitored.
+
+Use /auto on to resume.
+
+👁️ «The algorithm sleeps. But it remembers.»"""
+            context = "settings"
+            
+        elif text_lower == '/opps' or text_lower == '/opportunities':
+            opps = await autonomous_trader.scan_all_markets()
+            
+            if not opps:
+                response = """📊 NO HIGH-CONFIDENCE SETUPS
+
+All markets show neutral or low-confidence signals.
+Aeon waits for confluence.
+
+👁️ «Patience is the highest form of trading.»"""
+            else:
+                response = "📊 CURRENT OPPORTUNITIES\n\n"
+                for opp in opps[:5]:
+                    emoji = "🟢" if opp["signal"] == "LONG" else "🔴" if opp["signal"] == "SHORT" else "⚖️"
+                    response += f"""{emoji} {opp['symbol']}
+{opp['signal']} | Conf: {opp['confidence']}%
+Price: ${opp['price']:,.2f}
+Score: {opp['score']:+.2f}
+
+"""
+                response += "👁️ «The quantum field reveals its hand.»"
+            context = "trading"
+            
+        elif text_lower == '/strategy':
+            report = await autonomous_trader.get_strategy_report()
+            
+            response = f"""{report}
+Commands:
+/auto - Trading status
+/opps - Current opportunities
+/stats - Full performance
+
+👁️ «Each signal teaches. The weights adjust.»"""
+            context = "trading"
+            
+        elif text_lower.startswith('/openpos') or text_lower == '/open':
+            open_preds = await learning_system.get_open_predictions()
+            
+            if not open_preds:
+                response = """📊 NO OPEN POSITIONS
+
+Aeon has no active predictions.
+Use /opps to see current opportunities.
+
+👁️ «The slate is clean. What will you inscribe?»"""
+            else:
+                response = "📊 OPEN POSITIONS\n\n"
+                for pred in open_preds[:10]:
+                    # Get current price for PnL calc
+                    ticker = await market_intel.get_ticker(pred.get("symbol", ""))
+                    current = ticker.get("price", 0) if "error" not in ticker else 0
+                    entry = pred.get("entry_price", 0)
+                    direction = pred.get("prediction", "")
+                    
+                    pnl = 0
+                    if entry and current:
+                        if direction == "LONG":
+                            pnl = ((current - entry) / entry) * 100
+                        elif direction == "SHORT":
+                            pnl = ((entry - current) / entry) * 100
+                    
+                    emoji = "🟢" if pnl > 0 else "🔴" if pnl < 0 else "⚪"
+                    response += f"""{emoji} {pred.get('symbol')}
+{direction} @ ${entry:,.2f}
+Current: ${current:,.2f} ({pnl:+.2f}%)
+Target: ${pred.get('target_price', 0):,.2f}
+Stop: ${pred.get('stop_loss', 0):,.2f}
+
+"""
+                response += "👁️ «The positions speak. Listen.»"
+            context = "trading"
+            
         elif text_lower == '/price':
             orderbook = get_mexc_orderbook()
             if "error" not in orderbook:
