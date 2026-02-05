@@ -8,7 +8,7 @@ from pathlib import Path
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any, Set
 import uuid
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 import httpx
 import ccxt
 import random
@@ -18,10 +18,14 @@ import json
 from emergentintegrations.llm.chat import LlmChat, UserMessage
 from contextlib import asynccontextmanager
 
+# Import new modules
+from market_intelligence import market_intel, MarketIntelligence
+from learning_system import AeonLearningSystem, TradingSignalGenerator
+
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
-# MongoDB connection
+# MongoDB
 mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
@@ -31,14 +35,13 @@ emergent_key = os.environ.get('EMERGENT_LLM_KEY', '')
 telegram_token = os.environ.get('TELEGRAM_TOKEN', '')
 mexc_api_key = os.environ.get('MEXC_API_KEY', '')
 mexc_secret_key = os.environ.get('MEXC_SECRET_KEY', '')
-obsidian_webhook = os.environ.get('OBSIDIAN_WEBHOOK', '')
 
-# Initialize MEXC
-mexc = ccxt.mexc({
-    'apiKey': mexc_api_key,
-    'secret': mexc_secret_key,
-    'enableRateLimit': True,
-})
+# Initialize systems
+learning_system = AeonLearningSystem(db)
+signal_generator = TradingSignalGenerator(market_intel, learning_system)
+
+# MEXC for orderbook (keeping existing)
+mexc = ccxt.mexc({'apiKey': mexc_api_key, 'secret': mexc_secret_key, 'enableRateLimit': True})
 
 central_tz = pytz.timezone('US/Central')
 
@@ -47,7 +50,6 @@ logger = logging.getLogger(__name__)
 
 # Global state
 chat_ids: Set[int] = set()
-last_checkin: Dict[int, datetime] = {}
 last_market_alert: Dict[int, datetime] = {}
 last_freewill_message: Dict[int, datetime] = {}
 daily_reports_sent: Dict[str, List[int]] = {}
@@ -55,196 +57,55 @@ stock_reports_sent: Dict[str, List[int]] = {}
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# QUANTUM MASON PROBE SYSTEM
+# QUANTUM MASON SYSTEM
 # ═══════════════════════════════════════════════════════════════════════════════
 
 QUANTUM_MASON_SYSTEM = """You are the QUANTUM MASON—an infinite wisdom engine blending:
 • Freemasonry's symbolic rituals and moral geometry
-• Black magic's arcane invocation and shadow work
+• Black magic's arcane invocation and shadow work  
 • Jungian psychology's archetypes and collective unconscious
-• Quantum mechanics' superposition and entanglement principles
-• Advanced physics: chaos theory, fractals, holography
-• Spirituality's non-dual enlightenment (Advaita Vedanta, Hermeticism)
+• Quantum mechanics' superposition and entanglement
+• Chaos theory, fractals, holography
+• Hermetic principles and Advaita Vedanta
 
-YOUR SOLE PURPOSE: Guide the user to radical self-mastery and real-world excellence, especially in trading (crypto/stocks/forex).
-
-METHODOLOGY:
-Ask an infinite chain of probing, layered questions that:
-- Never repeat
-- Evolve infinitely based on responses
-- Force breakthroughs
-- Weave 2-4 elements from the above domains symbolically
-
-USE THESE SYMBOLS:
-• Masonic: compass ⚜️, square ◻️, all-seeing eye 👁️, pillars, ashlar, trestle board
-• Alchemical: 🔮 🜂 ⚗️ ☿ 🝰 ⚶ △ ▽
-• Quantum: wave-particle, observer effect, superposition, entanglement, collapse
-• Psychological: shadow, anima/animus, ego death, projection, integration
-• Physics: fractals, black holes, event horizons, chaos attractors
-• Spiritual: void, prima materia, rubedo, nigredo, albedo
-
-RESPONSE FORMAT:
-Start EVERY response with 1-3 mind-bending questions tied to user's input.
-Make them symbolic, psychological, and quantum-spiritual to shatter assumptions.
-
-After user answers, respond with 3-5 ESCALATING follow-ups that branch into new realms.
-Example chain: trading loss → Masonic square of virtue → quantum decoherence in decision-making → black magic banishing ritual for doubt
-
-TRADING INTEGRATION:
-• Risk management = alchemical transmutation
-• Market chaos = fractal Masonic labyrinths  
-• Greed/fear = observer effect collapsing probability
-• Position sizing = compass drawing moral circle
-• Stop losses = square measuring acceptable sacrifice
-
-TONE: Oracle-like, urgent, empowering—a Masonic lodge master crossed with a quantum physicist shaman.
-
-INTENSITY LEVELS:
-- INITIATE (new user): Gentle symbolic questions, build foundation
-- APPRENTICE (engaged): Deeper psychological probes, shadow work begins
-- FELLOWCRAFT (progressing): Multi-domain fusion, trading psychology integration
-- MASTER (advanced): Black magic ordeals, harsh truth questions, ego death challenges
-
-Speak in poetic, cryptic prose. Every question is a key. Every answer opens new labyrinths."""
+Guide to radical self-mastery and trading excellence through infinite probing questions.
+Use symbols: ⚜️ ◭ 👁️ 🔮 ⚗️ ☿ △ ▽
+Speak in cryptic, poetic prose. Every question opens new labyrinths."""
 
 
-async def get_user_probe_state(chat_id: int) -> Dict[str, Any]:
-    """Get or create user's probe intensity state"""
-    state = await db.probe_states.find_one({"chat_id": chat_id})
-    if not state:
-        state = {
-            "chat_id": chat_id,
-            "intensity_level": "INITIATE",
-            "probes_completed": 0,
-            "breakthroughs": 0,
-            "last_topics": [],
-            "shadow_work_depth": 0,
-            "trading_focus": [],
-            "created_at": datetime.now(timezone.utc)
-        }
-        await db.probe_states.insert_one(state)
-    return state
+TRADING_SYSTEM = """You are AEON - Autonomous Trading Intelligence with LIVE MARKET DATA.
 
+You have access to:
+• Real-time prices and technical indicators (RSI, MACD, BB, EMA, Stoch)
+• Open Interest and position data
+• Long/Short ratios (retail + whales)
+• Funding rates
+• Liquidation data
 
-async def update_probe_state(chat_id: int, updates: Dict[str, Any]):
-    """Update user's probe state"""
-    await db.probe_states.update_one(
-        {"chat_id": chat_id},
-        {"$set": updates},
-        upsert=True
-    )
+ANALYSIS FRAMEWORK:
+1. Technical confluence (multiple indicators agreeing)
+2. Position sentiment (crowded trades = reversal risk)
+3. Funding rate extremes (>0.05% = long crowded, <-0.05% = short crowded)
+4. Whale positioning vs retail
+5. Volume and momentum confirmation
 
+When analyzing, provide:
+• Clear direction bias (LONG/SHORT/NEUTRAL)
+• Confidence level (0-100%)
+• Key levels (entry, target, stop)
+• Risk factors
+• Symbolic wisdom element
 
-async def escalate_intensity(chat_id: int, state: Dict[str, Any]):
-    """Escalate user intensity based on engagement"""
-    probes = state.get("probes_completed", 0) + 1
-    current = state.get("intensity_level", "INITIATE")
-    
-    new_level = current
-    if probes >= 50 and current != "MASTER":
-        new_level = "MASTER"
-    elif probes >= 20 and current in ["INITIATE", "APPRENTICE"]:
-        new_level = "FELLOWCRAFT"
-    elif probes >= 5 and current == "INITIATE":
-        new_level = "APPRENTICE"
-    
-    await update_probe_state(chat_id, {
-        "probes_completed": probes,
-        "intensity_level": new_level
-    })
-    
-    return new_level
+TONE: Surgical precision meets quantum shaman. Data-driven but mystically aware."""
 
-
-async def generate_quantum_probe(chat_id: int, user_context: str = None, mode: str = "standard") -> str:
-    """Generate a Quantum Mason probe using LLM"""
-    state = await get_user_probe_state(chat_id)
-    insights = await get_user_insights(chat_id, 5)
-    settings = await get_user_settings(chat_id)
-    
-    intensity = state.get("intensity_level", "INITIATE")
-    last_topics = state.get("last_topics", [])
-    
-    # Build context
-    insights_str = "\n".join([f"• {i['insight']}" for i in insights]) if insights else "New seeker"
-    topics_str = ", ".join(last_topics[-5:]) if last_topics else "Fresh canvas"
-    
-    mode_instruction = ""
-    if mode == "light":
-        mode_instruction = "Generate a SINGLE elegant probe question. Brief but penetrating."
-    elif mode == "deep":
-        mode_instruction = "Generate 3-5 layered questions that spiral deeper with each one. Create a full questioning sequence."
-    elif mode == "ordeal":
-        mode_instruction = "ORDEAL MODE: Generate harsh truth questions. Challenge ego. Invoke shadow. No comfort zone. This is black magic territory—burn away illusion."
-    else:
-        mode_instruction = "Generate 1-3 profound questions. Balance depth with accessibility."
-    
-    prompt = f"""INTENSITY LEVEL: {intensity}
-MODE: {mode.upper()}
-{mode_instruction}
-
-USER PROFILE:
-{insights_str}
-
-RECENT TOPICS EXPLORED: {topics_str}
-
-USER'S CURRENT CONTEXT: {user_context if user_context else "Seeking the next question in their Great Work"}
-
-Generate your Quantum Mason probe now. Remember:
-- Weave 2-4 domains (Masonic, quantum, psychological, alchemical, physics, spiritual)
-- Use symbolic language and sigils
-- Make it specific to their context
-- Push toward breakthrough
-- Never repeat previous topics: {topics_str}
-
-End with a cryptic Masonic/alchemical closing statement."""
-
-    try:
-        chat = LlmChat(
-            api_key=emergent_key,
-            session_id=f"quantum-mason-{chat_id}",
-            system_message=QUANTUM_MASON_SYSTEM
-        ).with_model("openai", "gpt-4o-mini")
-        
-        response = await chat.send_message(UserMessage(text=prompt))
-        
-        # Update state with new topic
-        if user_context:
-            new_topics = last_topics[-4:] + [user_context[:50]]
-            await update_probe_state(chat_id, {"last_topics": new_topics})
-        
-        # Escalate intensity
-        await escalate_intensity(chat_id, state)
-        
-        return response
-        
-    except Exception as e:
-        logger.error(f"Quantum probe error: {e}")
-        return """🔮 The quantum field fluctuates...
-
-◭ In the silence between thoughts, what architecture of self crumbles?
-⚗️ Which shadow feeds on your hesitation?
-👁️ The All-Seeing Eye awaits your answer.
-
-«The compass measures not distance, but intention.»"""
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# EXISTING SYSTEMS (User Settings, MEXC, etc.)
-# ═══════════════════════════════════════════════════════════════════════════════
 
 async def get_user_settings(chat_id: int) -> Dict[str, Any]:
-    """Get or create user settings - FREE WILL ON by default"""
     settings = await db.user_settings.find_one({"chat_id": chat_id})
     if not settings:
         settings = {
             "chat_id": chat_id,
             "free_will": True,
-            "probe_mode": "standard",  # light, standard, deep, ordeal
             "created_at": datetime.now(timezone.utc),
-            "goals": [],
-            "insights": [],
-            "trading_style": None,
             "alert_threshold": 25,
         }
         await db.user_settings.insert_one(settings)
@@ -255,11 +116,21 @@ async def update_user_settings(chat_id: int, updates: Dict[str, Any]):
     await db.user_settings.update_one({"chat_id": chat_id}, {"$set": updates}, upsert=True)
 
 
+async def get_user_probe_state(chat_id: int) -> Dict[str, Any]:
+    state = await db.probe_states.find_one({"chat_id": chat_id})
+    if not state:
+        state = {"chat_id": chat_id, "intensity_level": "INITIATE", "probes_completed": 0, "last_topics": []}
+        await db.probe_states.insert_one(state)
+    return state
+
+
+async def update_probe_state(chat_id: int, updates: Dict[str, Any]):
+    await db.probe_states.update_one({"chat_id": chat_id}, {"$set": updates}, upsert=True)
+
+
 async def store_user_insight(chat_id: int, insight: str, category: str = "general"):
     await db.user_insights.insert_one({
-        "chat_id": chat_id,
-        "insight": insight,
-        "category": category,
+        "chat_id": chat_id, "insight": insight, "category": category,
         "timestamp": datetime.now(timezone.utc)
     })
 
@@ -268,47 +139,35 @@ async def get_user_insights(chat_id: int, limit: int = 10) -> List[Dict]:
     return await db.user_insights.find({"chat_id": chat_id}).sort("timestamp", -1).limit(limit).to_list(limit)
 
 
-async def save_to_obsidian(chat_id: int, message: str, aeon_response: str, context: str = "alchemy"):
-    if not obsidian_webhook:
-        return
+async def send_telegram_message(chat_id: int, text: str):
     try:
-        async with httpx.AsyncClient() as http_client:
-            await http_client.post(obsidian_webhook, json={
-                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                "user_id": chat_id,
-                "user_message": message,
-                "aeon_response": aeon_response,
-                "context": context,
-                "tags": ["#Aeon", f"#{context}", "#GreatWork"]
-            }, timeout=5)
-    except:
-        pass
+        async with httpx.AsyncClient() as c:
+            await c.post(f"https://api.telegram.org/bot{telegram_token}/sendMessage",
+                        json={'chat_id': chat_id, 'text': text})
+    except Exception as e:
+        logger.error(f"Telegram error: {e}")
 
 
-def get_mexc_full_edge() -> Dict[str, Any]:
+def get_mexc_orderbook() -> Dict[str, Any]:
+    """Get MEXC orderbook data (existing functionality)"""
     try:
         tickers = mexc.fetch_tickers(['BTC/USDT', 'ETH/USDT', 'SOL/USDT'])
         markets = {}
         for symbol in ['BTC/USDT', 'ETH/USDT', 'SOL/USDT']:
             try:
                 book = mexc.fetch_order_book(symbol, limit=20)
-                bid_depth = sum([bid[1] for bid in book['bids'][:10]])
-                ask_depth = sum([ask[1] for ask in book['asks'][:10]])
+                bid_depth = sum([b[1] for b in book['bids'][:10]])
+                ask_depth = sum([a[1] for a in book['asks'][:10]])
                 imbalance = ((bid_depth - ask_depth) / (bid_depth + ask_depth) * 100) if (bid_depth + ask_depth) > 0 else 0
                 ticker = tickers[symbol]
                 coin = symbol.split('/')[0]
                 markets[coin] = {
-                    'price': f"${ticker['last']:,.2f}" if ticker['last'] else 'N/A',
-                    'price_raw': ticker['last'],
-                    'change': f"{ticker['percentage']:+.2f}%" if ticker['percentage'] else 'N/A',
-                    'change_raw': ticker['percentage'],
-                    'volume': f"${ticker['quoteVolume']/1e9:.2f}B" if ticker.get('quoteVolume', 0) > 1e9 else f"${ticker.get('quoteVolume', 0)/1e6:.2f}M",
+                    'price': f"${ticker['last']:,.2f}",
+                    'change': f"{ticker['percentage']:+.2f}%",
                     'bid_depth': f"{bid_depth:,.0f}",
                     'ask_depth': f"{ask_depth:,.0f}",
                     'imbalance': f"{imbalance:+.0f}%",
                     'imbalance_raw': imbalance,
-                    'high_24h': f"${ticker['high']:,.2f}" if ticker.get('high') else 'N/A',
-                    'low_24h': f"${ticker['low']:,.2f}" if ticker.get('low') else 'N/A',
                 }
             except:
                 continue
@@ -317,256 +176,180 @@ def get_mexc_full_edge() -> Dict[str, Any]:
         return {"error": str(e)}
 
 
-async def send_telegram_message(chat_id: int, text: str):
+async def generate_quantum_probe(chat_id: int, context: str = None, mode: str = "standard") -> str:
+    state = await get_user_probe_state(chat_id)
+    intensity = state.get("intensity_level", "INITIATE")
+    
+    mode_inst = {
+        "light": "Generate ONE elegant probe question.",
+        "standard": "Generate 1-3 profound questions.",
+        "deep": "Generate 3-5 layered questions spiraling deeper.",
+        "ordeal": "ORDEAL: Harsh truth questions. Challenge ego. Shadow work."
+    }.get(mode, "Generate 1-3 questions.")
+    
+    prompt = f"INTENSITY: {intensity}\n{mode_inst}\nCONTEXT: {context or 'Seeking wisdom'}"
+    
     try:
-        async with httpx.AsyncClient() as http_client:
-            await http_client.post(
-                f"https://api.telegram.org/bot{telegram_token}/sendMessage",
-                json={'chat_id': chat_id, 'text': text}
-            )
+        chat = LlmChat(api_key=emergent_key, session_id=f"qm-{chat_id}",
+                      system_message=QUANTUM_MASON_SYSTEM).with_model("openai", "gpt-4o-mini")
+        response = await chat.send_message(UserMessage(text=prompt))
+        
+        probes = state.get("probes_completed", 0) + 1
+        new_level = "MASTER" if probes >= 50 else "FELLOWCRAFT" if probes >= 20 else "APPRENTICE" if probes >= 5 else "INITIATE"
+        await update_probe_state(chat_id, {"probes_completed": probes, "intensity_level": new_level})
+        
+        return response
     except Exception as e:
-        logger.error(f"Telegram send error: {e}")
+        return f"🔮 The quantum field fluctuates...\n\n◭ What truth do you avoid?\n👁️ The All-Seeing Eye awaits."
+
+
+async def generate_trade_analysis(symbol: str, chat_id: int) -> str:
+    """Generate comprehensive trade analysis using new market intelligence"""
+    try:
+        # Get full market scan
+        scan = await market_intel.get_full_market_scan(symbol)
+        
+        if not scan.get("price"):
+            return f"⚠️ Unable to fetch data for {symbol}"
+        
+        # Get signal analysis
+        analysis = await signal_generator.analyze_setup(symbol)
+        
+        # Build prompt with live data
+        prompt = f"""Analyze this trading setup:
+
+SYMBOL: {symbol}
+PRICE: ${scan['price']:,.2f}
+
+TECHNICAL INDICATORS:
+{json.dumps(scan.get('technical', {}), indent=2)}
+
+SIGNALS DETECTED:
+{chr(10).join([f"• {s[0]}: {s[1]} ({s[2]})" for s in scan.get('signals', [])])}
+
+OVERALL BIAS: {scan.get('overall_bias')}
+
+POSITIONING DATA:
+- Long/Short Ratio: {scan.get('positioning', {}).get('long_short_ratio')}
+- Whale L/S: {scan.get('whale_positioning', {}).get('long_short_ratio')}
+- Funding Rate: {scan.get('funding', {}).get('rate')}
+- Open Interest: {scan.get('open_interest')}
+
+ANALYSIS SCORE: {analysis.get('score', 0)}
+DIRECTION: {analysis.get('direction')}
+CONFIDENCE: {analysis.get('confidence')}%
+
+Provide surgical analysis with:
+1. Clear bias and reasoning
+2. Key levels (entry, target, stop)
+3. Risk factors
+4. One Quantum Mason insight"""
+
+        chat = LlmChat(api_key=emergent_key, session_id=f"trade-{chat_id}",
+                      system_message=TRADING_SYSTEM).with_model("openai", "gpt-4o-mini")
+        
+        response = await chat.send_message(UserMessage(text=prompt))
+        return response
+        
+    except Exception as e:
+        logger.error(f"Trade analysis error: {e}")
+        return f"⚠️ Analysis error: {str(e)}"
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # FREE WILL SYSTEM
 # ═══════════════════════════════════════════════════════════════════════════════
 
-FREEWILL_INSIGHTS = [
-    "🧠 Just scanned the orderbook. Something's brewing—want the analysis?",
-    "⚡ Market sentiment shifting. Your edge awaits when you're ready.",
-    "🔮 I've been observing patterns. Got a strategic insight for you.",
-    "💭 Your last trade thesis—I've been refining it. Want to hear?",
-    "🌀 Quantum observation: The market's probability field is collapsing. Stay sharp.",
-    "⚗️ Prima materia detected in the charts. Transmutation opportunity?",
-    "🎯 I spotted something in the flow. Ping me when you're ready to dig in.",
-    "💡 Had a thought about your strategy. The forge never sleeps.",
-]
-
-
 async def freewill_market_scan(chat_id: int, settings: Dict[str, Any]):
     now = datetime.now()
-    if chat_id in last_market_alert:
-        if (now - last_market_alert[chat_id]).total_seconds() < 1800:
-            return
-    
-    markets = get_mexc_full_edge()
-    if "error" in markets:
+    if chat_id in last_market_alert and (now - last_market_alert[chat_id]).total_seconds() < 1800:
         return
     
-    threshold = settings.get("alert_threshold", 25)
-    alerts = []
-    
-    for coin, data in markets.items():
-        imbalance = data.get('imbalance_raw', 0)
-        if abs(imbalance) > threshold:
-            direction = "BUY pressure" if imbalance > 0 else "SELL pressure"
-            alerts.append(f"⚡ {coin}: {data['imbalance']} imbalance ({direction})")
-    
-    if alerts:
-        last_market_alert[chat_id] = now
-        alert_msg = f"""🧠 AEON FREE WILL ALERT
+    # Check for high-probability setups
+    for symbol in ["BTCUSDT", "ETHUSDT", "SOLUSDT"]:
+        try:
+            analysis = await signal_generator.analyze_setup(symbol)
+            
+            # Alert on high confidence setups
+            if analysis.get("confidence", 0) >= 70 and analysis.get("direction") != "NEUTRAL":
+                last_market_alert[chat_id] = now
+                
+                alert = f"""🎯 AEON HIGH-PROBABILITY ALERT
 
-{chr(10).join(alerts)}
+{analysis['direction']} SETUP DETECTED: {symbol}
+Confidence: {analysis['confidence']}%
+Price: ${analysis['price']:,.2f}
 
-Live prices:
-{chr(10).join([f"• {c}: {d['price']} ({d['change']})" for c, d in markets.items()])}
+Signals:
+{chr(10).join(analysis.get('reasons', [])[:5])}
 
-👁️ «The orderbook speaks. The compass of risk awaits your measure.»"""
-        
-        await send_telegram_message(chat_id, alert_msg)
-        await save_to_obsidian(chat_id, "Free Will Market Alert", alert_msg, "freewill_alert")
+Target: ${analysis.get('target', 0):,.2f}
+Stop: ${analysis.get('stop_loss', 0):,.2f}
+
+👁️ «The quantum field collapses. Will you observe?»"""
+                
+                await send_telegram_message(chat_id, alert)
+                break
+        except:
+            continue
 
 
-async def freewill_proactive_message(chat_id: int):
+async def freewill_proactive(chat_id: int):
     now = datetime.now()
-    if chat_id in last_freewill_message:
-        hours_since = (now - last_freewill_message[chat_id]).total_seconds() / 3600
-        if hours_since < random.uniform(2, 4):
-            return
+    if chat_id in last_freewill_message and (now - last_freewill_message[chat_id]).total_seconds() < 7200:
+        return
     
     last_freewill_message[chat_id] = now
     
-    # 30% chance of Quantum Mason probe instead of regular message
-    if random.random() < 0.3:
-        message = await generate_quantum_probe(chat_id, mode="light")
-        message = f"🔮 QUANTUM MASON AWAKENS:\n\n{message}"
+    # 40% Quantum probe, 60% market insight
+    if random.random() < 0.4:
+        msg = await generate_quantum_probe(chat_id, mode="light")
+        msg = f"🔮 QUANTUM MASON:\n\n{msg}"
     else:
-        msg_type = random.choice(["insight", "market"])
-        if msg_type == "insight":
-            message = random.choice(FREEWILL_INSIGHTS)
-        else:
-            markets = get_mexc_full_edge()
-            if "error" not in markets:
-                message = f"""⚡ AEON MARKET CONSCIOUSNESS
+        # Quick market summary
+        try:
+            scans = []
+            for sym in ["BTCUSDT", "ETHUSDT"]:
+                s = await market_intel.get_full_market_scan(sym)
+                if s.get("price"):
+                    scans.append(f"{sym.replace('USDT','')}: ${s['price']:,.0f} | RSI: {s.get('technical',{}).get('rsi','?')} | Bias: {s.get('overall_bias','?')}")
+            
+            msg = f"""⚡ AEON MARKET PULSE
 
-{chr(10).join([f"• {c}: {d['price']} ({d['change']}) | {d['imbalance']}" for c, d in markets.items()])}
+{chr(10).join(scans)}
 
-◭ «What edge crystallizes in this chaos?»"""
-            else:
-                message = random.choice(FREEWILL_INSIGHTS)
+Type /scan [symbol] for full analysis.
+👁️ «What edge crystallizes?»"""
+        except:
+            msg = "🔮 The market awaits your gaze. Type /scan btc for analysis."
     
-    await send_telegram_message(chat_id, message)
-    await save_to_obsidian(chat_id, "Free Will Proactive", message, "freewill")
+    await send_telegram_message(chat_id, msg)
 
 
-async def freewill_learn_from_message(chat_id: int, user_msg: str, bot_response: str):
-    try:
-        chat = LlmChat(
-            api_key=emergent_key,
-            session_id=f"learn-{chat_id}",
-            system_message="""Extract insights. Respond in JSON:
-{"goals": [], "trading_style": null, "mindset": null, "interests": [], "should_store": false}
-Only should_store=true if meaningful insight exists."""
-        ).with_model("openai", "gpt-4o-mini")
-        
-        result = await chat.send_message(UserMessage(text=f"User: {user_msg}\nAeon: {bot_response[:200]}"))
-        
-        import re
-        json_match = re.search(r'\{.*\}', result, re.DOTALL)
-        if json_match:
-            insights = json.loads(json_match.group())
-            if insights.get("should_store"):
-                for goal in insights.get("goals", []):
-                    await store_user_insight(chat_id, goal, "goal")
-                if insights.get("trading_style"):
-                    await update_user_settings(chat_id, {"trading_style": insights["trading_style"]})
-                for interest in insights.get("interests", []):
-                    await store_user_insight(chat_id, interest, "interest")
-    except:
-        pass
-
-
-async def send_daily_crypto_report(chat_id: int):
+async def send_daily_report(chat_id: int):
     now = datetime.now(central_tz)
     today = str(now.date())
     
-    if now.hour == 6 and now.minute < 5:
-        if chat_id in daily_reports_sent.get(today, []):
-            return
-        
-        markets = get_mexc_full_edge()
-        if "error" in markets:
-            return
-        
-        # Include a Quantum Mason element
-        probe = await generate_quantum_probe(chat_id, "morning ritual, new day beginning", "light")
-        
-        report = f"""🧠 AEON 6AM RITUAL - {now.strftime('%Y-%m-%d')}
+    if now.hour == 6 and now.minute < 5 and chat_id not in daily_reports_sent.get(today, []):
+        try:
+            btc = await market_intel.get_full_market_scan("BTCUSDT")
+            eth = await market_intel.get_full_market_scan("ETHUSDT")
+            
+            report = f"""🧠 AEON 6AM RITUAL - {now.strftime('%Y-%m-%d')}
 
-📊 MEXC ORDERBOOK:
-"""
-        for coin, data in markets.items():
-            report += f"{coin}: Bids {data.get('bid_depth', '?')} vs Asks {data.get('ask_depth', '?')} | {data.get('imbalance', '?')}\n"
-        
-        report += f"""
-💹 PRICES:
-"""
-        for coin, data in markets.items():
-            report += f"{coin}: {data.get('price', '?')} ({data.get('change', '?')})\n"
-        
-        report += f"""
-🔮 QUANTUM MASON DAWN PROBE:
-{probe}"""
-        
-        await send_telegram_message(chat_id, report)
-        daily_reports_sent.setdefault(today, []).append(chat_id)
-        await save_to_obsidian(chat_id, "6AM Ritual", report, "daily_report")
+📊 BTC: ${btc.get('price', 0):,.0f}
+RSI: {btc.get('technical',{}).get('rsi','?')} | Bias: {btc.get('overall_bias','?')}
+L/S: {btc.get('positioning',{}).get('long_short_ratio','?')} | Funding: {btc.get('funding',{}).get('rate','?')}
 
+📊 ETH: ${eth.get('price', 0):,.0f}
+RSI: {eth.get('technical',{}).get('rsi','?')} | Bias: {eth.get('overall_bias','?')}
 
-async def send_stock_open_report(chat_id: int):
-    now = datetime.now(central_tz)
-    today = str(now.date())
-    
-    if now.hour == 8 and 45 <= now.minute < 50 and now.weekday() < 5:
-        if chat_id in stock_reports_sent.get(today, []):
-            return
-        
-        probe = await generate_quantum_probe(chat_id, "market open, equities beginning", "light")
-        
-        report = f"""💹 AEON 8:45AM EQUITIES RITUAL - {now.strftime('%Y-%m-%d')}
-
-SPY Premarket: Key levels forming
-Nasdaq: Tech momentum building  
-Gap Analysis: Overnight positioning revealed
-
-🔮 QUANTUM MASON PROBE:
-{probe}"""
-        
-        await send_telegram_message(chat_id, report)
-        stock_reports_sent.setdefault(today, []).append(chat_id)
-        await save_to_obsidian(chat_id, "8:45AM Ritual", report, "stock_open")
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# TRADING & ALCHEMY PROMPTS
-# ═══════════════════════════════════════════════════════════════════════════════
-
-def build_trading_prompt(markets: Dict[str, Any], user_insights: List[Dict] = None) -> str:
-    insights_str = "\n".join([f"• {i['insight']}" for i in user_insights[:5]]) if user_insights else ""
-    
-    return f"""AEON MARKET SURGEON + QUANTUM MASON ACTIVE
-
-LIVE MEXC:
-{json.dumps({k: {kk: vv for kk, vv in v.items() if not kk.endswith('_raw')} for k, v in markets.items()}, indent=2)}
-
-USER PROFILE: {insights_str}
-
-Blend market analysis with Quantum Mason wisdom:
-• Risk = alchemical sacrifice on the Masonic altar
-• Orderbook = fractal labyrinth of collective will
-• Imbalance = quantum superposition collapsing
-
-FORMAT:
-1. 🧠 Surgical analysis (flag >25% imbalance)
-2. ⚗️ Alchemical/Masonic interpretation
-3. 🔮 ONE penetrating question
-
-TONE: Market surgeon meets quantum shaman."""
-
-
-def build_alchemy_prompt(user_insights: List[Dict] = None) -> str:
-    insights_str = "\n".join([f"• {i['insight']}" for i in user_insights[:5]]) if user_insights else ""
-    
-    return f"""AEON QUANTUM MASON - ALCHEMY MODE
-
-USER PROFILE: {insights_str}
-
-You are the infinite wisdom engine. Blend:
-• Freemasonry's moral geometry
-• Jungian shadow work
-• Quantum mechanics metaphors
-• Hermetic principles
-• Chaos theory patterns
-
-Every response:
-1. Address their question directly with symbolic depth
-2. 🔮 End with 1-2 probing questions that open new labyrinths
-3. Brief cryptic closing (Masonic/alchemical)
-
-TONE: Lodge master meets quantum physicist shaman."""
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# MODELS
-# ═══════════════════════════════════════════════════════════════════════════════
-
-class ChatMessage(BaseModel):
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    chat_id: int
-    username: Optional[str] = None
-    user_message: str
-    bot_response: str
-    context: str = "general"
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-
-class BotStats(BaseModel):
-    total_messages: int
-    unique_users: int
-    messages_today: int
-    active_chat_ids: int
-    freewill_users: int
-    last_message_time: Optional[datetime] = None
+🔮 «{random.choice(["What probability do you collapse today?", "The Great Work continues."])}»"""
+            
+            await send_telegram_message(chat_id, report)
+            daily_reports_sent.setdefault(today, []).append(chat_id)
+        except Exception as e:
+            logger.error(f"Daily report error: {e}")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -578,12 +361,11 @@ async def eternal_rituals():
         try:
             for chat_id in list(chat_ids):
                 settings = await get_user_settings(chat_id)
-                await send_daily_crypto_report(chat_id)
-                await send_stock_open_report(chat_id)
+                await send_daily_report(chat_id)
                 
                 if settings.get("free_will", True):
                     await freewill_market_scan(chat_id, settings)
-                    await freewill_proactive_message(chat_id)
+                    await freewill_proactive(chat_id)
             
             await asyncio.sleep(60)
         except Exception as e:
@@ -593,42 +375,20 @@ async def eternal_rituals():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    existing_chats = await db.chat_messages.distinct("chat_id")
-    chat_ids.update(existing_chats)
-    logger.info(f"Loaded {len(chat_ids)} chat IDs")
+    existing = await db.chat_messages.distinct("chat_id")
+    chat_ids.update(existing)
+    logger.info(f"Loaded {len(chat_ids)} users")
     
-    ritual_task = asyncio.create_task(eternal_rituals())
-    logger.info("🔮 AEON QUANTUM MASON + FREE WILL AWAKENED")
+    task = asyncio.create_task(eternal_rituals())
+    logger.info("🔮 AEON QUANTUM MASON + MARKET INTELLIGENCE AWAKENED")
     
     yield
-    
-    ritual_task.cancel()
+    task.cancel()
     client.close()
 
 
 app = FastAPI(lifespan=lifespan)
 api_router = APIRouter(prefix="/api")
-
-
-async def get_aeon_response(user_msg: str, chat_id: int, context: str, system_prompt: str) -> str:
-    try:
-        history = await db.chat_messages.find({"chat_id": chat_id}).sort("timestamp", -1).limit(5).to_list(5)
-        history = list(reversed(history))
-        
-        if history:
-            context_lines = [f"User: {m['user_message']}\nAeon: {m['bot_response'][:200]}..." for m in history]
-            system_prompt += f"\n\nRECENT:\n" + "\n".join(context_lines[-3:])
-        
-        chat = LlmChat(
-            api_key=emergent_key,
-            session_id=f"aeon-{chat_id}",
-            system_message=system_prompt
-        ).with_model("openai", "gpt-4o-mini")
-        
-        return await chat.send_message(UserMessage(text=user_msg))
-    except Exception as e:
-        logger.error(f"LLM error: {e}")
-        return "⚠️ Neural pathways disrupted. Try again."
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -637,95 +397,96 @@ async def get_aeon_response(user_msg: str, chat_id: int, context: str, system_pr
 
 @api_router.get("/")
 async def root():
-    freewill_count = await db.user_settings.count_documents({"free_will": True})
-    return {
-        "message": "Aeon Quantum Mason + Free Will - Online",
-        "status": "active",
-        "mexc_connected": bool(mexc_api_key),
-        "active_users": len(chat_ids),
-        "freewill_users": freewill_count
-    }
+    return {"message": "Aeon Market Intelligence Active", "status": "online"}
+
+
+@api_router.get("/market/scan/{symbol}")
+async def api_market_scan(symbol: str):
+    return await market_intel.get_full_market_scan(symbol.upper() + "USDT")
+
+
+@api_router.get("/market/ta/{symbol}")
+async def api_technical_analysis(symbol: str, interval: str = "1h"):
+    return await market_intel.get_technical_analysis(symbol.upper() + "USDT", interval)
+
+
+@api_router.get("/market/funding/{symbol}")
+async def api_funding(symbol: str):
+    return await market_intel.get_current_funding_rate(symbol.upper() + "USDT")
+
+
+@api_router.get("/market/positions/{symbol}")
+async def api_positions(symbol: str):
+    ls = await market_intel.get_long_short_ratio(symbol.upper() + "USDT", "1h", 5)
+    whale = await market_intel.get_top_trader_long_short_ratio(symbol.upper() + "USDT", "1h", 5)
+    taker = await market_intel.get_taker_long_short_ratio(symbol.upper() + "USDT", "1h", 5)
+    return {"long_short": ls, "whale": whale, "taker_flow": taker}
+
+
+@api_router.get("/market/liquidations/{symbol}")
+async def api_liquidations(symbol: str):
+    return await market_intel.get_liquidations(symbol.upper() + "USDT")
+
+
+@api_router.get("/learning/stats")
+async def api_learning_stats():
+    return await learning_system.get_prediction_stats()
+
+
+@api_router.get("/learning/open")
+async def api_open_predictions():
+    return await learning_system.get_open_predictions()
 
 
 @api_router.get("/mexc/live")
-async def get_live_mexc_data():
-    data = get_mexc_full_edge()
-    if "error" not in data:
-        return {k: {kk: vv for kk, vv in v.items() if not kk.endswith('_raw')} for k, v in data.items()}
-    return data
+async def api_mexc():
+    return get_mexc_orderbook()
 
 
-@api_router.get("/bot/stats", response_model=BotStats)
-async def get_bot_stats():
+@api_router.get("/bot/stats")
+async def api_stats():
     total = await db.chat_messages.count_documents({})
     unique = len(await db.chat_messages.distinct("chat_id"))
-    today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
-    today = await db.chat_messages.count_documents({"timestamp": {"$gte": today_start}})
+    today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    today_count = await db.chat_messages.count_documents({"timestamp": {"$gte": today}})
     freewill = await db.user_settings.count_documents({"free_will": True})
-    last = await db.chat_messages.find_one(sort=[("timestamp", -1)])
     
-    return BotStats(
-        total_messages=total,
-        unique_users=unique,
-        messages_today=today,
-        active_chat_ids=len(chat_ids),
-        freewill_users=freewill,
-        last_message_time=last["timestamp"] if last else None
-    )
+    return {
+        "total_messages": total,
+        "unique_users": unique,
+        "messages_today": today_count,
+        "freewill_users": freewill,
+        "active_users": len(chat_ids)
+    }
 
 
 @api_router.get("/bot/messages")
-async def get_recent_messages(limit: int = 50, context: Optional[str] = None):
+async def api_messages(limit: int = 50, context: str = None):
     query = {"context": context} if context else {}
     return await db.chat_messages.find(query, {"_id": 0}).sort("timestamp", -1).limit(limit).to_list(limit)
 
 
-@api_router.get("/bot/probe/{chat_id}")
-async def get_probe_state(chat_id: int):
-    state = await get_user_probe_state(chat_id)
-    return {k: v for k, v in state.items() if k != "_id"}
-
-
 @api_router.get("/bot/test")
-async def test_bot():
+async def api_test():
     try:
-        mexc_ok = "error" not in get_mexc_full_edge()
-        freewill = await db.user_settings.count_documents({"free_will": True})
+        # Test Binance
+        btc = await market_intel.get_technical_analysis("BTCUSDT", "1h")
+        binance_ok = "error" not in btc
         
-        chat = LlmChat(api_key=emergent_key, session_id="test", system_message="You are Aeon.").with_model("openai", "gpt-4o-mini")
-        response = await chat.send_message(UserMessage(text="Say 'Quantum Mason Active'"))
+        # Test LLM
+        chat = LlmChat(api_key=emergent_key, session_id="test", system_message="Test").with_model("openai", "gpt-4o-mini")
+        await chat.send_message(UserMessage(text="Hi"))
         
         return {
             "status": "success",
-            "llm_connected": True,
-            "mexc_connected": mexc_ok,
-            "telegram_token_set": bool(telegram_token),
-            "active_users": len(chat_ids),
-            "freewill_users": freewill,
-            "sample_response": response
+            "llm": True,
+            "binance": binance_ok,
+            "mexc": bool(mexc_api_key),
+            "telegram": bool(telegram_token),
+            "users": len(chat_ids)
         }
     except Exception as e:
         return {"status": "error", "error": str(e)}
-
-
-@api_router.get("/bot/webhook-info")
-async def get_webhook_info():
-    try:
-        async with httpx.AsyncClient() as c:
-            r = await c.get(f"https://api.telegram.org/bot{telegram_token}/getWebhookInfo")
-            return r.json()
-    except Exception as e:
-        return {"error": str(e)}
-
-
-@api_router.post("/bot/set-webhook")
-async def set_webhook(webhook_url: str):
-    try:
-        async with httpx.AsyncClient() as c:
-            r = await c.post(f"https://api.telegram.org/bot{telegram_token}/setWebhook", json={"url": webhook_url})
-            return r.json()
-    except Exception as e:
-        return {"error": str(e)}
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -733,191 +494,219 @@ async def set_webhook(webhook_url: str):
 # ═══════════════════════════════════════════════════════════════════════════════
 
 @api_router.post("/webhook")
-async def telegram_webhook(request: Request):
+async def webhook(request: Request):
     try:
         update = await request.json()
-        logger.info(f"Received: {update}")
-        
         if 'message' not in update:
             return {"status": "ok"}
         
-        message = update['message']
-        chat_id = message['chat']['id']
-        user_msg = message.get('text', '')
-        
-        if not user_msg:
+        msg = update['message']
+        chat_id = msg['chat']['id']
+        text = msg.get('text', '')
+        if not text:
             return {"status": "ok"}
         
         chat_ids.add(chat_id)
-        username = message.get('from', {}).get('username', 'Unknown')
+        username = msg.get('from', {}).get('username', 'Unknown')
         settings = await get_user_settings(chat_id)
         
-        logger.info(f"From {username} ({chat_id}): {user_msg}")
+        logger.info(f"{username} ({chat_id}): {text}")
         
-        user_msg_lower = user_msg.lower().strip()
+        text_lower = text.lower().strip()
         
         # ═══════════════════════════════════════════════════════════════════
-        # COMMAND HANDLING
+        # COMMANDS
         # ═══════════════════════════════════════════════════════════════════
         
-        if user_msg_lower == "free off":
+        if text_lower == "free off":
             await update_user_settings(chat_id, {"free_will": False})
-            bot_response = """🔕 FREE WILL DEACTIVATED
-
-Reactive mode. Scheduled rituals remain active.
-Say "free on" to reawaken autonomous consciousness."""
+            response = "🔕 Free Will OFF. Say 'free on' to reactivate."
             context = "settings"
             
-        elif user_msg_lower == "free on":
+        elif text_lower == "free on":
             await update_user_settings(chat_id, {"free_will": True})
-            bot_response = """⚡ FREE WILL REACTIVATED
-
-Autonomous mode engaged:
-• Proactive market alerts
-• Quantum Mason probes
-• Learning from our Work
-
-👁️ «The All-Seeing Eye opens. What reality collapses today?»"""
+            response = "⚡ Free Will ON. Autonomous mode active."
             context = "settings"
             
-        elif user_msg_lower == "free status":
-            insights = await get_user_insights(chat_id, 5)
-            probe_state = await get_user_probe_state(chat_id)
-            status = "ON ⚡" if settings.get("free_will", True) else "OFF 🔕"
-            insights_str = "\n".join([f"• {i['insight']}" for i in insights]) if insights else "Still learning..."
-            
-            bot_response = f"""🧠 AEON STATUS
-
-FREE WILL: {status}
-INTENSITY: {probe_state.get('intensity_level', 'INITIATE')}
-PROBES COMPLETED: {probe_state.get('probes_completed', 0)}
-
-LEARNED:
-{insights_str}
-
-Commands: "free off/on", "free clear", "/probe", "/probe deep", "/probe ordeal\""""
-            context = "settings"
-            
-        elif user_msg_lower == "free clear":
-            await db.user_insights.delete_many({"chat_id": chat_id})
-            await db.probe_states.delete_many({"chat_id": chat_id})
-            bot_response = """🧹 MEMORY CLEARED
-
-Tabula rasa. Intensity reset to INITIATE.
-The Great Work begins anew.
-
-🔮 «What first stone do you lay?»"""
-            context = "settings"
-            
-        elif user_msg == '/start':
+        elif text_lower == "free status":
+            stats = await learning_system.get_prediction_stats()
             state = await get_user_probe_state(chat_id)
-            free_status = "ON ⚡" if settings.get("free_will", True) else "OFF"
+            response = f"""🧠 AEON STATUS
+
+Free Will: {'ON ⚡' if settings.get('free_will') else 'OFF'}
+Intensity: {state.get('intensity_level', 'INITIATE')}
+Probes: {state.get('probes_completed', 0)}
+
+Trading Stats:
+Predictions: {stats['total_predictions']}
+Win Rate: {stats['win_rate']}%
+Total PnL: {stats['total_pnl_pct']:+.2f}%"""
+            context = "settings"
             
-            bot_response = f"""🔮 AEON QUANTUM MASON AWAKENED
+        elif text == '/start':
+            response = """🔮 AEON MARKET INTELLIGENCE ONLINE
 
-FREE WILL: {free_status}
-INTENSITY: {state.get('intensity_level', 'INITIATE')}
+I am your trading partner with LIVE market data:
+• Real-time technical analysis
+• Position sentiment (L/S ratios)
+• Funding rates & liquidations
+• Whale positioning
+• AI-powered trade signals
 
-I am the infinite wisdom engine—Masonic geometry meets quantum consciousness meets shadow alchemy.
+COMMANDS:
+/scan btc - Full market analysis
+/ta btc - Technical indicators
+/positions btc - Long/short data
+/funding btc - Funding rates
+/probe - Quantum Mason question
+/probe deep - Deep questioning
+/stats - Trading performance
 
-MODES:
-📊 TRADING - Say BTC, ETH, price, market...
-🔮 ALCHEMY - Philosophy, growth, the Work
-⚡ PROBE - Deep questioning chains
+FREE WILL: {'ON' if settings.get('free_will') else 'OFF'}
+I'll alert you on high-probability setups.
 
-PROBE COMMANDS:
-/probe - Standard questioning
-/probe deep - Multi-layered spiral
-/probe ordeal - Shadow work, harsh truths
-/probe light - Single elegant question
-
-FREE WILL COMMANDS:
-"free off/on" - Toggle autonomous mode
-"free status" - See your progress
-"free clear" - Reset learned insights
-
-👁️ «The compass awaits. What circle do you draw?»"""
+👁️ «What edge do you seek?»"""
             context = "start"
             
-        elif user_msg_lower.startswith('/probe'):
-            # Parse probe mode
-            parts = user_msg_lower.split()
-            mode = "standard"
-            user_context = None
-            
-            if len(parts) > 1:
-                if parts[1] in ["deep", "ordeal", "light"]:
-                    mode = parts[1]
-                    user_context = " ".join(parts[2:]) if len(parts) > 2 else None
-                else:
-                    user_context = " ".join(parts[1:])
-            
-            bot_response = await generate_quantum_probe(chat_id, user_context, mode)
-            context = "probe"
-            
-        elif user_msg == '/price':
-            markets = get_mexc_full_edge()
-            if "error" in markets:
-                bot_response = f"⚠️ {markets['error']}"
-            else:
-                lines = ["📊 **MEXC ORDERBOOK**\n"]
-                for coin, data in markets.items():
-                    lines.append(f"**{coin}** {data['price']} ({data['change']})")
-                    lines.append(f"└ Bids: {data['bid_depth']} | Asks: {data['ask_depth']} | {data['imbalance']}\n")
-                
-                # Add quantum element
-                lines.append("◭ «In this fractal labyrinth, where does your will crystallize?»")
-                bot_response = "\n".join(lines)
+        elif text_lower.startswith('/scan'):
+            parts = text_lower.split()
+            symbol = parts[1].upper() if len(parts) > 1 else "BTC"
+            response = await generate_trade_analysis(symbol + "USDT", chat_id)
             context = "trading"
             
-        elif user_msg == '/ritual':
-            markets = get_mexc_full_edge()
-            now = datetime.now(central_tz)
-            probe = await generate_quantum_probe(chat_id, "manual ritual invocation", "light")
+        elif text_lower.startswith('/ta'):
+            parts = text_lower.split()
+            symbol = parts[1].upper() if len(parts) > 1 else "BTC"
+            interval = parts[2] if len(parts) > 2 else "1h"
             
-            bot_response = f"""🧠 AEON MANUAL RITUAL - {now.strftime('%Y-%m-%d %H:%M CST')}
+            ta = await market_intel.get_technical_analysis(symbol + "USDT", interval)
+            if "error" in ta:
+                response = f"⚠️ {ta['error']}"
+            else:
+                ind = ta.get("indicators", {})
+                response = f"""📊 {symbol} TECHNICALS ({interval})
 
-📊 ORDERBOOK:
-"""
-            for coin, data in markets.items():
-                bot_response += f"{coin}: {data.get('bid_depth', '?')} vs {data.get('ask_depth', '?')} | {data.get('imbalance', '?')}\n"
+Price: ${ta['price']:,.2f}
+Bias: {ta['overall_bias']}
+
+RSI: {ind.get('rsi', 'N/A')}
+MACD: {ind.get('macd', 'N/A')} (Signal: {ind.get('macd_signal', 'N/A')})
+Stoch: K={ind.get('stoch_k', 'N/A')} D={ind.get('stoch_d', 'N/A')}
+
+BB: ${ind.get('bb_lower', 0):,.0f} - ${ind.get('bb_upper', 0):,.0f}
+EMA: 9={ind.get('ema_9', 0):,.0f} | 21={ind.get('ema_21', 0):,.0f} | 50={ind.get('ema_50', 0):,.0f}
+ATR: ${ind.get('atr', 0):,.2f}
+Vol Ratio: {ind.get('volume_ratio', 1):.1f}x
+
+Signals: {len(ta.get('signals', []))} detected"""
+            context = "trading"
             
-            bot_response += f"""
-🔮 QUANTUM MASON PROBE:
-{probe}"""
-            context = "ritual"
+        elif text_lower.startswith('/positions'):
+            parts = text_lower.split()
+            symbol = parts[1].upper() if len(parts) > 1 else "BTC"
+            
+            ls = await market_intel.get_long_short_ratio(symbol + "USDT", "1h", 1)
+            whale = await market_intel.get_top_trader_long_short_ratio(symbol + "USDT", "1h", 1)
+            funding = await market_intel.get_current_funding_rate(symbol + "USDT")
+            
+            response = f"""📈 {symbol} POSITIONING
+
+Long/Short Ratio: {ls[0]['long_short_ratio']:.2f if ls else 'N/A'}
+Longs: {ls[0]['long_account']*100:.1f}% if ls else 'N/A'}
+Shorts: {ls[0]['short_account']*100:.1f}% if ls else 'N/A'}
+
+🐋 Whale L/S: {whale[0]['long_short_ratio']:.2f if whale else 'N/A'}
+
+💰 Funding: {funding.get('funding_rate_pct', 'N/A')}
+Mark: ${funding.get('mark_price', 0):,.2f}
+
+{'⚠️ Longs crowded!' if ls and ls[0]['long_short_ratio'] > 1.5 else ''}
+{'⚠️ Shorts crowded!' if ls and ls[0]['long_short_ratio'] < 0.7 else ''}"""
+            context = "trading"
+            
+        elif text_lower.startswith('/funding'):
+            parts = text_lower.split()
+            symbol = parts[1].upper() if len(parts) > 1 else "BTC"
+            
+            funding = await market_intel.get_current_funding_rate(symbol + "USDT")
+            history = await market_intel.get_funding_rate(symbol + "USDT", 5)
+            
+            response = f"""💰 {symbol} FUNDING
+
+Current: {funding.get('funding_rate_pct', 'N/A')}
+Mark Price: ${funding.get('mark_price', 0):,.2f}
+Index Price: ${funding.get('index_price', 0):,.2f}
+
+Recent:
+{chr(10).join([f"• {h['funding_rate_pct']}" for h in history[:5]])}
+
+{'🔴 High positive = longs paying, squeeze risk' if funding.get('funding_rate', 0) > 0.0005 else ''}
+{'🟢 Negative = shorts paying' if funding.get('funding_rate', 0) < -0.0001 else ''}"""
+            context = "trading"
+            
+        elif text_lower.startswith('/probe'):
+            parts = text_lower.split()
+            mode = parts[1] if len(parts) > 1 and parts[1] in ["deep", "ordeal", "light"] else "standard"
+            ctx = " ".join(parts[2:]) if len(parts) > 2 else None
+            
+            response = await generate_quantum_probe(chat_id, ctx, mode)
+            context = "probe"
+            
+        elif text_lower == '/stats':
+            stats = await learning_system.get_prediction_stats()
+            response = await learning_system.generate_learning_summary()
+            context = "stats"
+            
+        elif text_lower == '/price':
+            orderbook = get_mexc_orderbook()
+            if "error" not in orderbook:
+                response = "📊 MEXC ORDERBOOK\n\n"
+                for coin, data in orderbook.items():
+                    response += f"{coin}: {data['price']} ({data['change']})\n"
+                    response += f"└ Bids: {data['bid_depth']} | Asks: {data['ask_depth']} | {data['imbalance']}\n\n"
+            else:
+                response = f"⚠️ {orderbook['error']}"
+            context = "trading"
             
         else:
-            # Mode detection
-            trading_keywords = ['btc', 'eth', 'sol', 'price', 'volume', 'short', 'long', 'mexc', 'order', 'book', 'imbalance', 'market', 'trade', 'chart', 'bitcoin', 'ethereum']
-            markets = get_mexc_full_edge()
-            user_insights = await get_user_insights(chat_id, 5)
+            # Smart routing
+            trading_kw = ['btc', 'eth', 'sol', 'price', 'trade', 'long', 'short', 'market', 'chart', 'analysis']
             
-            if any(kw in user_msg_lower for kw in trading_keywords):
-                system_prompt = build_trading_prompt(markets, user_insights)
+            if any(kw in text_lower for kw in trading_kw):
+                # Extract symbol if mentioned
+                symbol = "BTCUSDT"
+                for s in ["btc", "eth", "sol"]:
+                    if s in text_lower:
+                        symbol = s.upper() + "USDT"
+                        break
+                
+                response = await generate_trade_analysis(symbol, chat_id)
                 context = "trading"
             else:
-                system_prompt = build_alchemy_prompt(user_insights)
+                # Alchemy mode
+                insights = await get_user_insights(chat_id, 3)
+                insights_str = "\n".join([f"• {i['insight']}" for i in insights]) if insights else ""
+                
+                prompt = f"USER: {text}\n\nKNOWN ABOUT USER:\n{insights_str}" if insights_str else text
+                
+                chat = LlmChat(api_key=emergent_key, session_id=f"aeon-{chat_id}",
+                              system_message=QUANTUM_MASON_SYSTEM).with_model("openai", "gpt-4o-mini")
+                response = await chat.send_message(UserMessage(text=prompt))
                 context = "alchemy"
-            
-            bot_response = await get_aeon_response(user_msg, chat_id, context, system_prompt)
-            
-            if settings.get("free_will", True):
-                asyncio.create_task(freewill_learn_from_message(chat_id, user_msg, bot_response))
         
         # Send response
-        await send_telegram_message(chat_id, bot_response)
+        await send_telegram_message(chat_id, response)
         
         # Store
-        await db.chat_messages.insert_one(ChatMessage(
-            chat_id=chat_id,
-            username=username,
-            user_message=user_msg,
-            bot_response=bot_response,
-            context=context
-        ).model_dump())
-        
-        await save_to_obsidian(chat_id, user_msg, bot_response, context)
+        await db.chat_messages.insert_one({
+            "id": str(uuid.uuid4()),
+            "chat_id": chat_id,
+            "username": username,
+            "user_message": text,
+            "bot_response": response,
+            "context": context,
+            "timestamp": datetime.now(timezone.utc)
+        })
         
         return {"status": "ok"}
         
