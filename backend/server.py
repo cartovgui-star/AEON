@@ -642,7 +642,8 @@ async def api_technical_analysis(symbol: str, interval: str = "1h"):
 
 @api_router.get("/market/funding/{symbol}")
 async def api_funding(symbol: str):
-    return await market_intel.get_current_funding_rate(symbol.upper() + "USDT")
+    # Use real Bybit data instead of mocked
+    return await enhanced_intel.get_bybit_funding_rate(symbol.upper() + "USDT")
 
 
 @api_router.get("/market/positions/{symbol}")
@@ -656,6 +657,70 @@ async def api_positions(symbol: str):
 @api_router.get("/market/liquidations/{symbol}")
 async def api_liquidations(symbol: str):
     return await market_intel.get_liquidations(symbol.upper() + "USDT")
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# ENHANCED INTELLIGENCE APIs (Real Data)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@api_router.get("/intel/top100")
+async def api_top_100():
+    """Get top 100 cryptocurrencies by market cap"""
+    return await enhanced_intel.get_top_100_coins()
+
+
+@api_router.get("/intel/fear-greed")
+async def api_fear_greed(days: int = 1):
+    """Get Fear & Greed Index"""
+    return await enhanced_intel.get_fear_greed_index(days)
+
+
+@api_router.get("/intel/global")
+async def api_global_market():
+    """Get global crypto market data"""
+    return await enhanced_intel.get_global_market_data()
+
+
+@api_router.get("/intel/trending")
+async def api_trending():
+    """Get trending coins"""
+    return await enhanced_intel.get_trending_coins()
+
+
+@api_router.get("/intel/movers")
+async def api_top_movers():
+    """Get top gainers and losers"""
+    return await enhanced_intel.get_top_movers()
+
+
+@api_router.get("/intel/summary")
+async def api_market_summary():
+    """Get comprehensive market summary"""
+    return {"summary": await enhanced_intel.get_market_summary()}
+
+
+@api_router.get("/intel/sentiment/{symbol}")
+async def api_sentiment(symbol: str):
+    """Get sentiment analysis for a symbol"""
+    return await enhanced_intel.analyze_symbol_sentiment(symbol.upper() + "USDT")
+
+
+@api_router.get("/intel/full/{symbol}")
+async def api_full_intel(symbol: str):
+    """Get full market intelligence for a symbol"""
+    return await enhanced_intel.get_market_intelligence(symbol.upper() + "USDT")
+
+
+@api_router.get("/intel/bybit/funding/{symbol}")
+async def api_bybit_funding(symbol: str):
+    """Get REAL funding rate from Bybit"""
+    return await enhanced_intel.get_bybit_funding_rate(symbol.upper() + "USDT")
+
+
+@api_router.get("/intel/bybit/oi/{symbol}")
+async def api_bybit_oi(symbol: str):
+    """Get REAL open interest from Bybit"""
+    return await enhanced_intel.get_bybit_open_interest(symbol.upper() + "USDT")
 
 
 @api_router.get("/learning/stats")
