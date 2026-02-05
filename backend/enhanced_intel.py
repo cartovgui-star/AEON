@@ -37,7 +37,7 @@ class EnhancedMarketIntel:
         # Top coins list
         self.tracked_symbols = [
             "BTC/USDT", "ETH/USDT", "SOL/USDT", "XRP/USDT", "DOGE/USDT", 
-            "ADA/USDT", "AVAX/USDT", "DOT/USDT", "LINK/USDT", "MATIC/USDT",
+            "ADA/USDT", "AVAX/USDT", "DOT/USDT", "LINK/USDT", "TRX/USDT",
             "UNI/USDT", "ATOM/USDT", "LTC/USDT", "BCH/USDT", "NEAR/USDT",
             "APT/USDT", "ARB/USDT", "OP/USDT", "FIL/USDT", "INJ/USDT"
         ]
