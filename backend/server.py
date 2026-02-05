@@ -809,35 +809,29 @@ Total PnL: {stats['total_pnl_pct']:+.2f}%"""
             context = "settings"
             
         elif text == '/start':
-            response = f"""🔮 AEON AUTONOMOUS TRADING INTELLIGENCE
+            current_mode = settings.get("mode", "default")
+            response = f"""Yo, I'm Aeon—your trading buddy and life coach.
 
-I am your AI trading partner with:
-• Real-time technical analysis
-• Autonomous paper trading
-• Self-learning strategy optimization
-• Position sentiment & whale tracking
+I'm here to help you level up. Trading, mindset, life—whatever you need.
 
-📊 ANALYSIS COMMANDS:
-/scan btc - Full market analysis
-/ta btc - Technical indicators
-/positions btc - Long/short data
-/funding btc - Funding rates
+TRADING:
+/scan btc - Full analysis
+/ta btc - Technicals
+/positions - L/S data
+/funding - Funding rates
 
-🤖 AUTO-TRADING:
-/auto - Trading status & stats
-/auto on/off - Toggle auto-trading
-/opps - Current opportunities
+AUTO-TRADING:
+/auto - Status & stats
+/opps - Opportunities
 /open - Open positions
-/strategy - Strategy performance
-/stats - Full performance
 
-🔮 ALCHEMY:
-/probe - Quantum Mason question
-/probe deep - Deep questioning
+MODES:
+Say "Alchemy mode" for mystical/philosophical
+Say "Casual mode" to switch back
 
-Status: Auto-Trading {'🟢 ON' if autonomous_trader.active else '🔴 OFF'} | Free Will {'ON' if settings.get('free_will') else 'OFF'}
+Current: {'Alchemy ⚗️' if current_mode == 'alchemy' else 'Default'} | Auto: {'ON 🟢' if autonomous_trader.active else 'OFF'} | Free Will: {'ON' if settings.get('free_will') else 'OFF'}
 
-👁️ «The algorithm awakens. What edge do you seek?»"""
+What's on your mind?"""
             context = "start"
             
         elif text_lower.startswith('/scan'):
