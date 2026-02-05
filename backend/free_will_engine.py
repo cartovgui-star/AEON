@@ -35,19 +35,21 @@ class FreeWillEngine:
     Aeon's true autonomous brain.
     - Scans ALL 44 pairs across ALL 9 timeframes
     - Uses ALL available data: TA, funding, sentiment, order book, volume
-    - Sends immediate alerts for high-probability setups (>70%)
+    - Sends immediate alerts for high-probability setups (>65%)
+    - Consolidates alerts per coin (best setup only)
+    - Prioritizes higher timeframes for quality signals
     - Learns from user feedback
     """
     
     def __init__(self, db: AsyncIOMotorDatabase):
         self.db = db
         self.active = True
-        self.min_confidence = 70  # Only alert on >70% confidence
+        self.min_confidence = 65  # Only alert on >65% confidence
         self.scan_interval = 30  # Scan every 30 seconds
         
-        # Track recent alerts to avoid spam
+        # Track recent alerts to avoid spam - per symbol (not per timeframe)
         self.recent_alerts: Dict[str, datetime] = {}
-        self.alert_cooldown = 300  # 5 min cooldown per symbol/timeframe
+        self.alert_cooldown = 600  # 10 min cooldown per symbol (increased from 5)
         
         # Learning from feedback
         self.feedback_weights = {
