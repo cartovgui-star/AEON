@@ -974,7 +974,6 @@ Shorts: {short_pct:.1f}%
 🐋 Whale L/S: {whale_ratio:.2f}
 
 💰 Funding: {funding.get('funding_rate_pct', 'N/A')}
-Mark: ${funding.get('mark_price', 0):,.2f}
 
 {crowd_warning}"""
             context = "trading"
