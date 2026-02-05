@@ -50,7 +50,18 @@ class DerivativesIntel:
     
     def _get_perp_symbol(self, symbol: str) -> str:
         """Convert BTCUSDT to BTC/USDT:USDT format"""
-        return self.perp_format.get(symbol, f"{symbol.replace('USDT', '')}/USDT:USDT")
+        # Check mapping first
+        if symbol in self.perp_format:
+            return self.perp_format[symbol]
+        
+        # Handle already formatted symbols
+        if "/" in symbol:
+            base = symbol.split("/")[0]
+            return f"{base}/USDT:USDT"
+        
+        # Convert BTCUSDT format
+        base = symbol.replace("USDT", "")
+        return f"{base}/USDT:USDT"
     
     def _cache_get(self, key: str) -> Optional[Dict]:
         """Get from cache if not expired"""
