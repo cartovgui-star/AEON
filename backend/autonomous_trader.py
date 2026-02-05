@@ -1,6 +1,7 @@
 """
 AEON AUTONOMOUS TRADING ENGINE
 Paper trading with learning feedback loop
+Now with REAL derivatives data from multiple exchanges
 """
 
 import asyncio
@@ -14,6 +15,13 @@ from market_intelligence import market_intel
 from learning_system import AeonLearningSystem
 
 logger = logging.getLogger(__name__)
+
+# Import derivatives intel (will be available after server initializes)
+derivatives_intel = None
+
+def set_derivatives_intel(di):
+    global derivatives_intel
+    derivatives_intel = di
 
 
 class AutonomousTrader:
