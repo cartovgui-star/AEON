@@ -373,7 +373,7 @@ function App() {
             <CardTitle className="text-white text-sm">Bot Commands</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4 text-sm">
               <div className="bg-zinc-800/30 rounded-lg p-3">
                 <code className="text-amber-400">/start</code>
                 <p className="text-zinc-500 text-xs mt-1">Initialize Aeon</p>
