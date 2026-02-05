@@ -686,8 +686,8 @@ async def free_will_scanner():
                             # Small delay between users to avoid rate limiting
                             await asyncio.sleep(0.5)
                         
-                        # Mark as alerted
-                        free_will._mark_alerted(setup["symbol"], setup["timeframe"])
+                        # Mark symbol as alerted (consolidated per symbol)
+                        free_will._mark_alerted(setup["symbol"])
                         alerts_sent += 1
                         
                         logger.info(f"🚨 FREE WILL ALERT: {setup['symbol']} {setup['timeframe']} {setup['direction']}")
