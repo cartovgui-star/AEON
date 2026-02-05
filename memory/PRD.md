@@ -173,13 +173,40 @@ Build a Telegram chatbot "Aeon" that integrates with OpenAI - a business partner
 - [x] Enhanced trade close notifications with running stats
 - [x] Added `/liqs` command for liquidation data
 - [x] All 6 coins now scanned every 5 minutes
+- [x] **NEW: Enhanced Market Intelligence APIs**
+  - Fear & Greed Index (Alternative.me API - REAL DATA)
+  - Global market data (CoinGecko/MEXC)
+  - Top coins prices (MEXC)
+  - Trending coins (CoinGecko)
+  - Top movers (gainers/losers)
+  - Sentiment analysis
+- [x] **NEW Telegram Commands:**
+  - `/market` - Full market summary
+  - `/fear` - Fear & Greed Index
+  - `/top100` - Top coins by market cap
+  - `/movers` - Top gainers/losers
+  - `/trending` - Trending coins
+  - `/sentiment btc` - Sentiment analysis
+- [x] **Updated Aeon Persona:**
+  - More curious and aware
+  - Asks follow-up questions
+  - References past conversations
+  - Challenges weak thinking
+  - Default casual mode, Alchemy mode on command
 
-## Alerts System
-Aeon automatically alerts users (with Free Will ON) when:
-- **High-confidence trade signals** (≥75% confidence)
-- **Trade closes** (win or loss, with running stats)
-- **Extreme funding rates** (>0.08% - squeeze potential)
-- **Large liquidations** (>$8M - market stress)
+## Data Sources
+| Data | Source | Status |
+|------|--------|--------|
+| Fear & Greed Index | Alternative.me | ✅ REAL |
+| Global Market | CoinGecko | ✅ REAL |
+| Prices | MEXC (ccxt) | ✅ REAL |
+| Trending | CoinGecko | ✅ REAL |
+| Technical Analysis | MEXC (ccxt) | ✅ REAL |
+| Funding Rate | Estimated | ⚠️ ESTIMATED |
+| L/S Ratio | Estimated | ⚠️ MOCK |
+| Liquidations | Estimated | ⚠️ MOCK |
+
+Note: Bybit API is geo-restricted in this environment. Funding, L/S ratio, and liquidation data are estimated/mocked.
 
 ## Prioritized Backlog
 
