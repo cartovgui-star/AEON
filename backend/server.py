@@ -1027,21 +1027,20 @@ Shorts: {short_pct:.1f}%
             symbol = parts[1].upper() if len(parts) > 1 else "BTC"
             
             # Use enhanced intel funding data
-            funding = await enhanced_intel.get_funding_rate(symbol + "USDT")
+            # Use REAL derivatives data from multiple exchanges
+            funding = await derivatives_intel.get_aggregated_funding(symbol + "USDT")
             
-            rate = funding.get('funding_rate', 0)
-            funding_warning = ""
-            if rate > 0.0005:
-                funding_warning = "🔴 High positive = longs paying, squeeze risk"
-            elif rate < -0.0001:
-                funding_warning = "🟢 Negative = shorts paying"
-            
-            response = f"""💰 {symbol} FUNDING (Real Bybit Data)
+            response = f"""💰 {symbol} FUNDING RATES (REAL DATA)
 
-Current: {funding.get('funding_rate_pct', 'N/A')}
+Average: {funding.get('average_funding_pct', 'N/A')}
 {funding.get('interpretation', '')}
 
-{funding_warning}"""
+📊 BY EXCHANGE:"""
+            
+            for ex in funding.get('exchanges', []):
+                response += f"\n• {ex.get('exchange')}: {ex.get('funding_rate_pct', 'N/A')}"
+            
+            response += f"\n\nData from {funding.get('data_sources', 0)} exchanges"
             context = "trading"
             
         elif text_lower == '/market' or text_lower == '/summary':
