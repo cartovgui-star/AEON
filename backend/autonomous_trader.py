@@ -356,6 +356,9 @@ class AutonomousTrader:
                 if created and not status:
                     if isinstance(created, str):
                         created = datetime.fromisoformat(created.replace('Z', '+00:00'))
+                    # Ensure created has timezone info for comparison
+                    if created.tzinfo is None:
+                        created = created.replace(tzinfo=timezone.utc)
                     age = datetime.now(timezone.utc) - created
                     if age > timedelta(hours=24):
                         pnl = 0
