@@ -643,6 +643,7 @@ async def free_will_scanner():
     )
     
     scan_count = 0
+    MAX_ALERTS_PER_SCAN = 5  # Limit alerts per scan to avoid spam
     
     while True:
         try:
@@ -657,8 +658,15 @@ async def free_will_scanner():
                     extended = await free_will.scan_extended()
                     setups.extend(extended)
                 
+                # Sort by confidence and limit alerts
+                setups.sort(key=lambda x: x["confidence"], reverse=True)
+                alerts_sent = 0
+                
                 # Send alerts for valid setups
                 for setup in setups:
+                    if alerts_sent >= MAX_ALERTS_PER_SCAN:
+                        break
+                        
                     if setup["confidence"] >= free_will.min_confidence:
                         alert_msg = free_will.format_alert(setup)
                         
@@ -674,9 +682,13 @@ async def free_will_scanner():
                                     "setup": setup,
                                     "timestamp": datetime.now(timezone.utc)
                                 })
+                            
+                            # Small delay between users to avoid rate limiting
+                            await asyncio.sleep(0.5)
                         
                         # Mark as alerted
                         free_will._mark_alerted(setup["symbol"], setup["timeframe"])
+                        alerts_sent += 1
                         
                         logger.info(f"🚨 FREE WILL ALERT: {setup['symbol']} {setup['timeframe']} {setup['direction']}")
             
