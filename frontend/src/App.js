@@ -390,6 +390,18 @@ function App() {
                 <code className="text-orange-400">/ritual</code>
                 <p className="text-zinc-500 text-xs mt-1">Manual daily report</p>
               </div>
+              <div className="bg-zinc-800/30 rounded-lg p-3">
+                <code className="text-emerald-400">free off</code>
+                <p className="text-zinc-500 text-xs mt-1">Disable proactive AI</p>
+              </div>
+              <div className="bg-zinc-800/30 rounded-lg p-3">
+                <code className="text-emerald-400">free on</code>
+                <p className="text-zinc-500 text-xs mt-1">Enable proactive AI</p>
+              </div>
+              <div className="bg-zinc-800/30 rounded-lg p-3">
+                <code className="text-zinc-400">free status</code>
+                <p className="text-zinc-500 text-xs mt-1">See learned insights</p>
+              </div>
             </div>
           </CardContent>
         </Card>
