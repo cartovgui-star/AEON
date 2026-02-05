@@ -36,7 +36,17 @@ class AutonomousTrader:
     def __init__(self, db: AsyncIOMotorDatabase, learning_system: AeonLearningSystem):
         self.db = db
         self.learning = learning_system
-        self.symbols = ["BTC/USDT", "ETH/USDT", "SOL/USDT", "DOGE/USDT", "XRP/USDT", "AVAX/USDT"]
+        self.symbols = [
+            "BTC/USDT", "ETH/USDT", "BNB/USDT", "SOL/USDT", "XRP/USDT", 
+            "DOGE/USDT", "ADA/USDT", "AVAX/USDT", "SHIB/USDT", "DOT/USDT",
+            "LINK/USDT", "TRX/USDT", "BCH/USDT", "LTC/USDT", "NEAR/USDT",
+            "UNI/USDT", "APT/USDT", "ICP/USDT", "ETC/USDT", "FIL/USDT",
+            "ATOM/USDT", "XLM/USDT", "ARB/USDT", "OP/USDT", "INJ/USDT",
+            "HBAR/USDT", "VET/USDT", "GRT/USDT", "AAVE/USDT", "ALGO/USDT",
+            "SAND/USDT", "AXS/USDT", "MANA/USDT", "XTZ/USDT", "FLOW/USDT",
+            "NEO/USDT", "SNX/USDT", "CRV/USDT", "RUNE/USDT", "ZEC/USDT",
+            "DASH/USDT", "COMP/USDT", "ENJ/USDT", "CHZ/USDT"
+        ]  # Top 44 pairs available on MEXC
         self.active = True
         self.min_confidence = 65  # Minimum confidence to take a trade
         self.max_open_positions = 3  # Max simultaneous predictions per symbol
