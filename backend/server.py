@@ -609,19 +609,29 @@ Signals: {len(ta.get('signals', []))} detected"""
             whale = await market_intel.get_top_trader_long_short_ratio(symbol + "USDT", "1h", 1)
             funding = await market_intel.get_current_funding_rate(symbol + "USDT")
             
+            ls_ratio = ls[0]['long_short_ratio'] if ls else 0
+            whale_ratio = whale[0]['long_short_ratio'] if whale else 0
+            long_pct = ls[0]['long_account']*100 if ls else 0
+            short_pct = ls[0]['short_account']*100 if ls else 0
+            
+            crowd_warning = ""
+            if ls and ls_ratio > 1.5:
+                crowd_warning = "⚠️ Longs crowded!"
+            elif ls and ls_ratio < 0.7:
+                crowd_warning = "⚠️ Shorts crowded!"
+            
             response = f"""📈 {symbol} POSITIONING
 
-Long/Short Ratio: {ls[0]['long_short_ratio']:.2f if ls else 'N/A'}
-Longs: {ls[0]['long_account']*100:.1f}% if ls else 'N/A'}
-Shorts: {ls[0]['short_account']*100:.1f}% if ls else 'N/A'}
+Long/Short Ratio: {ls_ratio:.2f}
+Longs: {long_pct:.1f}%
+Shorts: {short_pct:.1f}%
 
-🐋 Whale L/S: {whale[0]['long_short_ratio']:.2f if whale else 'N/A'}
+🐋 Whale L/S: {whale_ratio:.2f}
 
 💰 Funding: {funding.get('funding_rate_pct', 'N/A')}
 Mark: ${funding.get('mark_price', 0):,.2f}
 
-{'⚠️ Longs crowded!' if ls and ls[0]['long_short_ratio'] > 1.5 else ''}
-{'⚠️ Shorts crowded!' if ls and ls[0]['long_short_ratio'] < 0.7 else ''}"""
+{crowd_warning}"""
             context = "trading"
             
         elif text_lower.startswith('/funding'):
