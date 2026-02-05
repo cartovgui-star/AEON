@@ -34,15 +34,18 @@ class DerivativesIntel:
         self.kucoin = ccxt.kucoinfutures({'enableRateLimit': True})
         self.gate = ccxt.gate({'enableRateLimit': True})
         
-        # Symbol mapping for perpetuals
-        self.perp_format = {
-            "BTCUSDT": "BTC/USDT:USDT",
-            "ETHUSDT": "ETH/USDT:USDT",
-            "SOLUSDT": "SOL/USDT:USDT",
-            "XRPUSDT": "XRP/USDT:USDT",
-            "DOGEUSDT": "DOGE/USDT:USDT",
-            "AVAXUSDT": "AVAX/USDT:USDT",
-        }
+        # Symbol mapping for perpetuals - Top 44 pairs
+        self.supported_symbols = [
+            "BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT", "XRPUSDT", 
+            "DOGEUSDT", "ADAUSDT", "AVAXUSDT", "SHIBUSDT", "DOTUSDT",
+            "LINKUSDT", "TRXUSDT", "BCHUSDT", "LTCUSDT", "NEARUSDT",
+            "UNIUSDT", "APTUSDT", "ICPUSDT", "ETCUSDT", "FILUSDT",
+            "ATOMUSDT", "XLMUSDT", "ARBUSDT", "OPUSDT", "INJUSDT",
+            "HBARUSDT", "VETUSDT", "GRTUSDT", "AAVEUSDT", "ALGOUSDT",
+            "SANDUSDT", "AXSUSDT", "MANAUSDT", "XTZUSDT", "FLOWUSDT",
+            "NEOUSDT", "SNXUSDT", "CRVUSDT", "RUNEUSDT", "ZECUSDT",
+            "DASHUSDT", "COMPUSDT", "ENJUSDT", "CHZUSDT"
+        ]
         
         # Cache
         self._cache = {}
