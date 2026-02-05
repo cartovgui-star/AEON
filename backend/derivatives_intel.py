@@ -306,12 +306,12 @@ class DerivativesIntel:
         }
     
     # ═══════════════════════════════════════════════════════════════════════════
-    # LONG/SHORT RATIO - REAL DATA from Binance (Free Public API)
+    # LONG/SHORT RATIO - REAL DATA from OKX (Free Public API, no geo-restriction)
     # ═══════════════════════════════════════════════════════════════════════════
     
-    async def get_long_short_ratio_binance(self, symbol: str = "BTCUSDT") -> Dict:
-        """Get REAL long/short ratio from Binance Futures (Free Public API)"""
-        cache_key = f"binance_ls_{symbol}"
+    async def get_long_short_ratio_okx_real(self, symbol: str = "BTCUSDT") -> Dict:
+        """Get REAL long/short ratio from OKX (Free Public API)"""
+        cache_key = f"okx_ls_{symbol}"
         cached = self._cache_get(cache_key)
         if cached:
             return cached
@@ -319,44 +319,48 @@ class DerivativesIntel:
         try:
             import aiohttp
             
-            # Binance Global Long/Short Account Ratio endpoint (FREE)
-            url = f"https://fapi.binance.com/futures/data/globalLongShortAccountRatio"
+            # Convert BTCUSDT to BTC-USDT-SWAP format for OKX
+            base = symbol.replace("USDT", "").replace("/", "")
+            inst_id = f"{base}-USDT-SWAP"
+            
+            # OKX Long/Short Account Ratio endpoint (FREE, public)
+            url = "https://www.okx.com/api/v5/rubik/stat/contracts/long-short-account-ratio"
             params = {
-                "symbol": symbol.replace("/", ""),
-                "period": "1h",
-                "limit": 1
+                "instId": inst_id,
+                "period": "1H"
             }
             
             async with aiohttp.ClientSession() as session:
                 async with session.get(url, params=params, timeout=aiohttp.ClientTimeout(total=10)) as resp:
                     if resp.status == 200:
                         data = await resp.json()
-                        if data and len(data) > 0:
-                            latest = data[0]
+                        if data.get("code") == "0" and data.get("data"):
+                            latest = data["data"][0]
                             ratio = float(latest.get("longShortRatio", 1.0))
-                            long_pct = float(latest.get("longAccount", 0.5)) * 100
-                            short_pct = float(latest.get("shortAccount", 0.5)) * 100
+                            # Calculate percentages from ratio
+                            long_pct = (ratio / (ratio + 1)) * 100
+                            short_pct = 100 - long_pct
                             
                             result = {
-                                "exchange": "Binance",
+                                "exchange": "OKX",
                                 "symbol": symbol,
                                 "long_short_ratio": round(ratio, 3),
                                 "long_pct": round(long_pct, 1),
                                 "short_pct": round(short_pct, 1),
-                                "timestamp": latest.get("timestamp"),
-                                "source": "REAL - Binance Futures API"
+                                "timestamp": latest.get("ts"),
+                                "source": "REAL - OKX Public API"
                             }
                             self._cache_set(cache_key, result)
                             return result
                     
-                    return {"exchange": "Binance", "symbol": symbol, "error": f"HTTP {resp.status}"}
+                    return {"exchange": "OKX", "symbol": symbol, "error": f"HTTP {resp.status}"}
         except Exception as e:
-            logger.error(f"Binance L/S error: {e}")
-            return {"exchange": "Binance", "symbol": symbol, "error": str(e)}
+            logger.error(f"OKX L/S error: {e}")
+            return {"exchange": "OKX", "symbol": symbol, "error": str(e)}
     
-    async def get_top_trader_ls_binance(self, symbol: str = "BTCUSDT") -> Dict:
-        """Get REAL top trader long/short ratio from Binance (Free Public API)"""
-        cache_key = f"binance_top_ls_{symbol}"
+    async def get_top_trader_ls_okx(self, symbol: str = "BTCUSDT") -> Dict:
+        """Get REAL top trader long/short ratio from OKX (Free Public API)"""
+        cache_key = f"okx_top_ls_{symbol}"
         cached = self._cache_get(cache_key)
         if cached:
             return cached
@@ -364,47 +368,49 @@ class DerivativesIntel:
         try:
             import aiohttp
             
-            # Binance Top Trader Long/Short Account Ratio (FREE)
-            url = f"https://fapi.binance.com/futures/data/topLongShortAccountRatio"
+            base = symbol.replace("USDT", "").replace("/", "")
+            inst_id = f"{base}-USDT-SWAP"
+            
+            # OKX Top Traders L/S Ratio endpoint
+            url = "https://www.okx.com/api/v5/rubik/stat/contracts/long-short-account-ratio-contract-top-trader"
             params = {
-                "symbol": symbol.replace("/", ""),
-                "period": "1h",
-                "limit": 1
+                "instId": inst_id,
+                "period": "1H"
             }
             
             async with aiohttp.ClientSession() as session:
                 async with session.get(url, params=params, timeout=aiohttp.ClientTimeout(total=10)) as resp:
                     if resp.status == 200:
                         data = await resp.json()
-                        if data and len(data) > 0:
-                            latest = data[0]
+                        if data.get("code") == "0" and data.get("data"):
+                            latest = data["data"][0]
                             ratio = float(latest.get("longShortRatio", 1.0))
-                            long_pct = float(latest.get("longAccount", 0.5)) * 100
-                            short_pct = float(latest.get("shortAccount", 0.5)) * 100
+                            long_pct = (ratio / (ratio + 1)) * 100
+                            short_pct = 100 - long_pct
                             
                             result = {
-                                "exchange": "Binance",
-                                "type": "Top Traders (Top 20%)",
+                                "exchange": "OKX",
+                                "type": "Top Traders",
                                 "symbol": symbol,
                                 "long_short_ratio": round(ratio, 3),
                                 "long_pct": round(long_pct, 1),
                                 "short_pct": round(short_pct, 1),
-                                "timestamp": latest.get("timestamp"),
-                                "source": "REAL - Binance Futures API"
+                                "timestamp": latest.get("ts"),
+                                "source": "REAL - OKX Public API"
                             }
                             self._cache_set(cache_key, result)
                             return result
                     
-                    return {"exchange": "Binance", "symbol": symbol, "error": f"HTTP {resp.status}"}
+                    return {"exchange": "OKX", "symbol": symbol, "error": f"HTTP {resp.status}"}
         except Exception as e:
-            logger.error(f"Binance Top L/S error: {e}")
-            return {"exchange": "Binance", "symbol": symbol, "error": str(e)}
+            logger.error(f"OKX Top L/S error: {e}")
+            return {"exchange": "OKX", "symbol": symbol, "error": str(e)}
     
     async def get_aggregated_long_short(self, symbol: str = "BTCUSDT") -> Dict:
-        """Get aggregated L/S ratio from Binance (REAL DATA)"""
+        """Get aggregated L/S ratio from OKX (REAL DATA)"""
         tasks = [
-            self.get_long_short_ratio_binance(symbol),
-            self.get_top_trader_ls_binance(symbol),
+            self.get_long_short_ratio_okx_real(symbol),
+            self.get_top_trader_ls_okx(symbol),
         ]
         
         results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -428,14 +434,13 @@ class DerivativesIntel:
             "global": global_ls,
             "top_traders": top_ls,
             "interpretation": interpretation,
-            "data_source": "REAL - Binance Futures Public API",
+            "data_source": "REAL - OKX Public API",
             "timestamp": datetime.now(timezone.utc).isoformat()
         }
     
     async def get_long_short_ratio_okx(self, symbol: str = "BTCUSDT") -> Dict:
-        """Get long/short ratio - NOW USES BINANCE REAL DATA"""
-        # Redirect to Binance for real data
-        return await self.get_long_short_ratio_binance(symbol)
+        """Get long/short ratio - NOW USES OKX REAL DATA"""
+        return await self.get_long_short_ratio_okx_real(symbol)
     
     # ═══════════════════════════════════════════════════════════════════════════
     # COMPREHENSIVE DERIVATIVES REPORT
