@@ -1414,7 +1414,7 @@ Funding: {sent.get('funding', {}).get('funding_rate_pct', 'N/A')}"""
             oi = report.get('open_interest', {})
             ls = report.get('long_short', {})
             
-            response = f"""📊 {symbol} DERIVATIVES (REAL DATA)
+            response = f"""📊 {symbol} DERIVATIVES (ALL REAL DATA)
 
 💰 FUNDING (Avg: {funding.get('average_funding_pct', 'N/A')})
 {funding.get('interpretation', '')}
@@ -1430,12 +1430,17 @@ Total: {oi.get('total_open_interest_str', 'N/A')}
                 if ex.get('open_interest_value_str'):
                     response += f"• {ex.get('exchange')}: {ex.get('open_interest_value_str')}\n"
             
+            # Real L/S data from Binance
+            global_ls = ls.get('global', {})
+            top_ls = ls.get('top_traders', {})
+            
             response += f"""
-📊 POSITIONING
-{ls.get('long_pct', 50)}% Long / {ls.get('short_pct', 50)}% Short
-Ratio: {ls.get('long_short_ratio', 1.0)}
+📊 LONG/SHORT RATIO (REAL - Binance)
+Global: {global_ls.get('long_pct', '?')}% L / {global_ls.get('short_pct', '?')}% S
+Top Traders: {top_ls.get('long_pct', '?')}% L / {top_ls.get('short_pct', '?')}% S
+{ls.get('interpretation', '')}
 
-Data from OKX, Bitget, KuCoin, Gate.io"""
+Data: OKX, Bitget, KuCoin, Gate, Binance"""
             context = "trading"
             
         elif text_lower.startswith('/liqs') or text_lower.startswith('/liquidations'):
