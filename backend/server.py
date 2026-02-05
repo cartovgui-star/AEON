@@ -880,22 +880,25 @@ Total PnL: {stats['total_pnl_pct']:+.2f}%"""
 
 I'm here to help you level up. Trading, mindset, life—whatever you need.
 
-TRADING:
+📊 ANALYSIS:
 /scan btc - Full analysis
 /ta btc - Technicals
-/positions - L/S data
-/funding - Funding rates
+/funding btc - Real funding rate
+/sentiment btc - Sentiment analysis
 
-AUTO-TRADING:
+🌍 MARKET INTEL:
+/market - Global market summary
+/fear - Fear & Greed Index
+/top100 - Top 100 coins
+/movers - Top gainers/losers
+/trending - What's hot
+
+🤖 AUTO-TRADING:
 /auto - Status & stats
 /opps - Opportunities
 /open - Open positions
 
-MODES:
-Say "Alchemy mode" for mystical/philosophical
-Say "Casual mode" to switch back
-
-Current: {'Alchemy ⚗️' if current_mode == 'alchemy' else 'Default'} | Auto: {'ON 🟢' if autonomous_trader.active else 'OFF'} | Free Will: {'ON' if settings.get('free_will') else 'OFF'}
+Current: {'Alchemy ⚗️' if current_mode == 'alchemy' else 'Casual'} | Auto: {'ON 🟢' if autonomous_trader.active else 'OFF'}
 
 What's on your mind?"""
             context = "start"
