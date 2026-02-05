@@ -659,8 +659,8 @@ async def api_technical_analysis(symbol: str, interval: str = "1h"):
 
 @api_router.get("/market/funding/{symbol}")
 async def api_funding(symbol: str):
-    # Use real Bybit data instead of mocked
-    return await enhanced_intel.get_bybit_funding_rate(symbol.upper() + "USDT")
+    # Use real funding data from enhanced_intel
+    return await enhanced_intel.get_funding_rate(symbol.upper() + "USDT")
 
 
 @api_router.get("/market/positions/{symbol}")
