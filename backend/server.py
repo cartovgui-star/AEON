@@ -46,6 +46,7 @@ mexc_secret_key = os.environ.get('MEXC_SECRET_KEY', '')
 learning_system = AeonLearningSystem(db)
 signal_generator = TradingSignalGenerator(market_intel, learning_system)
 autonomous_trader = init_autonomous_trader(db, learning_system)
+free_will = init_free_will(db)
 
 # Set derivatives_intel reference for autonomous trader
 from autonomous_trader import set_derivatives_intel
