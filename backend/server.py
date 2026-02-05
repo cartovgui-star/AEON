@@ -358,6 +358,108 @@ RSI: {eth.get('technical',{}).get('rsi','?')} | Bias: {eth.get('overall_bias','?
 # BACKGROUND TASKS
 # ═══════════════════════════════════════════════════════════════════════════════
 
+# Track last funding/liquidation alerts to avoid spam
+last_funding_alert: Dict[str, datetime] = {}
+last_liquidation_alert: Dict[str, datetime] = {}
+
+
+async def check_funding_rate_alerts():
+    """Check for extreme funding rates and alert users."""
+    now = datetime.now()
+    
+    for symbol in ["BTC/USDT", "ETH/USDT", "SOL/USDT"]:
+        try:
+            # Skip if alerted recently (1 hour cooldown)
+            if symbol in last_funding_alert and (now - last_funding_alert[symbol]).total_seconds() < 3600:
+                continue
+            
+            funding = await market_intel.get_current_funding_rate(symbol)
+            rate = funding.get("funding_rate", 0)
+            
+            # Alert on extreme funding rates
+            if abs(rate) > 0.0008:  # >0.08% is significant
+                last_funding_alert[symbol] = now
+                
+                if rate > 0:
+                    alert_type = "🔴 HIGH POSITIVE"
+                    warning = "Longs paying shorts heavily - potential long squeeze incoming"
+                else:
+                    alert_type = "🟢 HIGH NEGATIVE"
+                    warning = "Shorts paying longs heavily - potential short squeeze incoming"
+                
+                alert = f"""⚡ FUNDING RATE ALERT
+
+{alert_type} FUNDING: {symbol}
+Rate: {funding.get('funding_rate_pct', 'N/A')}
+
+{warning}
+
+Price: ${funding.get('mark_price', 0):,.2f}
+
+👁️ «The leverage winds shift. Prepare accordingly.»"""
+                
+                for chat_id in list(chat_ids):
+                    settings = await get_user_settings(chat_id)
+                    if settings.get("free_will", True):
+                        await send_telegram_message(chat_id, alert)
+                        
+        except Exception as e:
+            logger.error(f"Funding alert error for {symbol}: {e}")
+
+
+async def check_liquidation_alerts():
+    """Check for significant liquidation events and alert users."""
+    now = datetime.now()
+    
+    for symbol in ["BTC/USDT", "ETH/USDT"]:
+        try:
+            # Skip if alerted recently (30 min cooldown)
+            if symbol in last_liquidation_alert and (now - last_liquidation_alert[symbol]).total_seconds() < 1800:
+                continue
+            
+            liqs = await market_intel.get_liquidations(symbol)
+            
+            # Parse liquidation amounts
+            long_liq_str = liqs.get("long_liquidations", "$0M")
+            short_liq_str = liqs.get("short_liquidations", "$0M")
+            
+            long_liq = float(long_liq_str.replace("$", "").replace("M", "")) if "M" in long_liq_str else 0
+            short_liq = float(short_liq_str.replace("$", "").replace("M", "")) if "M" in short_liq_str else 0
+            
+            # Alert on large liquidations (>$8M)
+            if long_liq > 8 or short_liq > 8:
+                last_liquidation_alert[symbol] = now
+                
+                if long_liq > short_liq:
+                    dominant = "LONGS"
+                    emoji = "🔴"
+                    implication = "Bulls getting wrecked - possible capitulation"
+                else:
+                    dominant = "SHORTS"
+                    emoji = "🟢"
+                    implication = "Bears getting squeezed - possible reversal"
+                
+                alert = f"""💥 LIQUIDATION ALERT
+
+{emoji} MAJOR {dominant} LIQUIDATED: {symbol.replace('/USDT', '')}
+
+Long Liquidations: {long_liq_str}
+Short Liquidations: {short_liq_str}
+Total: {liqs.get('total_liquidations', 'N/A')}
+
+{implication}
+
+👁️ «The weak hands fold. Only diamond hands remain.»"""
+                
+                for chat_id in list(chat_ids):
+                    settings = await get_user_settings(chat_id)
+                    if settings.get("free_will", True):
+                        await send_telegram_message(chat_id, alert)
+                        
+        except Exception as e:
+            logger.error(f"Liquidation alert error for {symbol}: {e}")
+
+
 async def autonomous_trading_loop():
     """
     Aeon's autonomous trading brain - runs continuously.
@@ -365,6 +467,7 @@ async def autonomous_trading_loop():
     - Takes paper trades when high-confidence setups appear
     - Evaluates open positions every 5 minutes
     - Learns from outcomes and adjusts strategy weights
+    - Monitors funding rates and liquidations for alerts
     """
     # Load existing strategy weights
     await autonomous_trader.load_strategy_weights()
@@ -402,21 +505,37 @@ Reasoning:
                 # Evaluate open predictions
                 closed = await autonomous_trader.evaluate_predictions()
                 
-                # Notify about closed trades
+                # Notify about closed trades with more detail
                 for result in closed:
                     if result.get("pnl_pct") is not None:
-                        emoji = "✅" if result.get("pnl_pct", 0) > 0 else "❌"
+                        pnl = result.get("pnl_pct", 0)
+                        emoji = "✅" if pnl > 0 else "❌"
+                        
+                        # Get updated stats
+                        stats = await learning_system.get_prediction_stats()
+                        
                         for chat_id in list(chat_ids):
                             settings = await get_user_settings(chat_id)
                             if settings.get("free_will", True):
                                 msg = f"""{emoji} TRADE CLOSED
 
-PnL: {result.get('pnl_pct', 0):+.2f}%
+PnL: {pnl:+.2f}%
 Entry: ${result.get('entry', 0):,.2f}
 Exit: ${result.get('exit', 0):,.2f}
 
+📊 RUNNING STATS:
+Win Rate: {stats.get('win_rate', 0)}%
+Total PnL: {stats.get('total_pnl_pct', 0):+.2f}%
+Record: {stats.get('wins', 0)}W / {stats.get('losses', 0)}L
+
 👁️ «Every trade teaches. The Great Work continues.»"""
                                 await send_telegram_message(chat_id, msg)
+                
+                # Check for funding rate alerts
+                await check_funding_rate_alerts()
+                
+                # Check for liquidation alerts
+                await check_liquidation_alerts()
             
             # Run every 5 minutes
             await asyncio.sleep(300)
