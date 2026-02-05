@@ -645,37 +645,40 @@ class AeonMarketIntelligenceTester:
             self.log_test("Alchemy Mode Detection", True, "Philosophical message processed")
 
     def run_all_tests(self):
-        """Run all API tests"""
-        print("🚀 Starting Aeon Bot API Tests (MEXC Integration)")
-        print("=" * 50)
+        """Run all API tests for Market Intelligence features"""
+        print("🚀 Starting Aeon Market Intelligence API Tests")
+        print("=" * 60)
         
-        # Test all endpoints
+        # Core system tests
+        print("\n🔧 Testing Core System...")
         self.test_root_endpoint()
-        self.test_bot_stats()
-        self.test_bot_messages()
-        self.test_bot_test_llm()
-        self.test_webhook_info()
-        self.test_status_endpoints()
+        self.test_bot_system_connectivity()
         
-        # NEW: Test MEXC-specific endpoints
-        print("\n🔥 Testing MEXC Integration...")
-        self.test_mexc_live_endpoint()
-        self.test_mexc_orderbook_endpoint()
-        self.test_bot_test_mexc_connection()
+        # Market Intelligence API tests
+        print("\n📊 Testing Market Intelligence APIs...")
+        self.test_market_scan_api()
+        self.test_technical_analysis_api()
+        self.test_market_positions_api()
+        self.test_market_funding_api()
         
-        # NEW: Test Aeon-specific endpoints
-        print("\n🔮 Testing Aeon Quartet Features...")
-        self.test_alchemical_questions()
-        self.test_telegram_commands()
+        # Learning System tests
+        print("\n🧠 Testing Learning System...")
+        self.test_learning_system_api()
         
-        self.test_webhook_post()
+        # MEXC Integration tests
+        print("\n💱 Testing MEXC Integration...")
+        self.test_mexc_integration()
+        
+        # Telegram Command tests
+        print("\n📱 Testing Telegram Commands...")
+        self.test_telegram_market_commands()
         
         # Print summary
-        print("\n" + "=" * 50)
+        print("\n" + "=" * 60)
         print(f"📊 Test Summary: {self.tests_passed}/{self.tests_run} tests passed")
         
         if self.tests_passed == self.tests_run:
-            print("🎉 All tests passed!")
+            print("🎉 All Market Intelligence tests passed!")
             return 0
         else:
             print("⚠️  Some tests failed. Check the details above.")
