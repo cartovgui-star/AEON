@@ -226,7 +226,7 @@ async def generate_quantum_probe(chat_id: int, context: str = None, mode: str = 
     
     try:
         chat = LlmChat(api_key=emergent_key, session_id=f"qm-{chat_id}",
-                      system_message=QUANTUM_MASON_SYSTEM).with_model("openai", "gpt-4o-mini")
+                      system_message=ALCHEMY_MODE_SYSTEM).with_model("openai", "gpt-4o-mini")
         response = await chat.send_message(UserMessage(text=prompt))
         
         probes = state.get("probes_completed", 0) + 1
