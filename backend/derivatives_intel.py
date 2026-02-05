@@ -306,46 +306,136 @@ class DerivativesIntel:
         }
     
     # ═══════════════════════════════════════════════════════════════════════════
-    # LONG/SHORT RATIO - From exchanges that support it
+    # LONG/SHORT RATIO - REAL DATA from Binance (Free Public API)
     # ═══════════════════════════════════════════════════════════════════════════
     
-    async def get_long_short_ratio_okx(self, symbol: str = "BTCUSDT") -> Dict:
-        """Get long/short ratio from OKX"""
+    async def get_long_short_ratio_binance(self, symbol: str = "BTCUSDT") -> Dict:
+        """Get REAL long/short ratio from Binance Futures (Free Public API)"""
+        cache_key = f"binance_ls_{symbol}"
+        cached = self._cache_get(cache_key)
+        if cached:
+            return cached
+        
         try:
-            # OKX provides this via their contract API
-            # Using the margin ratio as a proxy
-            perp = self._get_perp_symbol(symbol)
-            loop = asyncio.get_event_loop()
+            import aiohttp
             
-            # Fetch ticker which has some position info
-            ticker = await loop.run_in_executor(executor, self.okx.fetch_ticker, perp)
-            
-            # OKX doesn't directly expose L/S in ccxt, estimate from funding
-            funding = await self.get_funding_rate_okx(symbol)
-            rate = funding.get("funding_rate", 0)
-            
-            # Positive funding = more longs, negative = more shorts
-            if rate > 0.0003:
-                ratio = 1.5 + (rate * 1000)
-                long_pct = 60 + (rate * 10000)
-            elif rate < -0.0001:
-                ratio = 0.7 - (abs(rate) * 500)
-                long_pct = 40 - (abs(rate) * 5000)
-            else:
-                ratio = 1.0
-                long_pct = 50
-            
-            return {
-                "exchange": "OKX",
-                "symbol": symbol,
-                "long_short_ratio": round(ratio, 2),
-                "long_pct": round(min(80, max(20, long_pct)), 1),
-                "short_pct": round(100 - min(80, max(20, long_pct)), 1),
-                "note": "Estimated from funding rate",
+            # Binance Global Long/Short Account Ratio endpoint (FREE)
+            url = f"https://fapi.binance.com/futures/data/globalLongShortAccountRatio"
+            params = {
+                "symbol": symbol.replace("/", ""),
+                "period": "1h",
+                "limit": 1
             }
+            
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url, params=params, timeout=aiohttp.ClientTimeout(total=10)) as resp:
+                    if resp.status == 200:
+                        data = await resp.json()
+                        if data and len(data) > 0:
+                            latest = data[0]
+                            ratio = float(latest.get("longShortRatio", 1.0))
+                            long_pct = float(latest.get("longAccount", 0.5)) * 100
+                            short_pct = float(latest.get("shortAccount", 0.5)) * 100
+                            
+                            result = {
+                                "exchange": "Binance",
+                                "symbol": symbol,
+                                "long_short_ratio": round(ratio, 3),
+                                "long_pct": round(long_pct, 1),
+                                "short_pct": round(short_pct, 1),
+                                "timestamp": latest.get("timestamp"),
+                                "source": "REAL - Binance Futures API"
+                            }
+                            self._cache_set(cache_key, result)
+                            return result
+                    
+                    return {"exchange": "Binance", "symbol": symbol, "error": f"HTTP {resp.status}"}
         except Exception as e:
-            logger.error(f"OKX L/S error: {e}")
-            return {"exchange": "OKX", "symbol": symbol, "error": str(e)}
+            logger.error(f"Binance L/S error: {e}")
+            return {"exchange": "Binance", "symbol": symbol, "error": str(e)}
+    
+    async def get_top_trader_ls_binance(self, symbol: str = "BTCUSDT") -> Dict:
+        """Get REAL top trader long/short ratio from Binance (Free Public API)"""
+        cache_key = f"binance_top_ls_{symbol}"
+        cached = self._cache_get(cache_key)
+        if cached:
+            return cached
+        
+        try:
+            import aiohttp
+            
+            # Binance Top Trader Long/Short Account Ratio (FREE)
+            url = f"https://fapi.binance.com/futures/data/topLongShortAccountRatio"
+            params = {
+                "symbol": symbol.replace("/", ""),
+                "period": "1h",
+                "limit": 1
+            }
+            
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url, params=params, timeout=aiohttp.ClientTimeout(total=10)) as resp:
+                    if resp.status == 200:
+                        data = await resp.json()
+                        if data and len(data) > 0:
+                            latest = data[0]
+                            ratio = float(latest.get("longShortRatio", 1.0))
+                            long_pct = float(latest.get("longAccount", 0.5)) * 100
+                            short_pct = float(latest.get("shortAccount", 0.5)) * 100
+                            
+                            result = {
+                                "exchange": "Binance",
+                                "type": "Top Traders (Top 20%)",
+                                "symbol": symbol,
+                                "long_short_ratio": round(ratio, 3),
+                                "long_pct": round(long_pct, 1),
+                                "short_pct": round(short_pct, 1),
+                                "timestamp": latest.get("timestamp"),
+                                "source": "REAL - Binance Futures API"
+                            }
+                            self._cache_set(cache_key, result)
+                            return result
+                    
+                    return {"exchange": "Binance", "symbol": symbol, "error": f"HTTP {resp.status}"}
+        except Exception as e:
+            logger.error(f"Binance Top L/S error: {e}")
+            return {"exchange": "Binance", "symbol": symbol, "error": str(e)}
+    
+    async def get_aggregated_long_short(self, symbol: str = "BTCUSDT") -> Dict:
+        """Get aggregated L/S ratio from Binance (REAL DATA)"""
+        tasks = [
+            self.get_long_short_ratio_binance(symbol),
+            self.get_top_trader_ls_binance(symbol),
+        ]
+        
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        
+        global_ls = results[0] if not isinstance(results[0], Exception) else {"error": str(results[0])}
+        top_ls = results[1] if not isinstance(results[1], Exception) else {"error": str(results[1])}
+        
+        # Interpretation
+        interpretation = ""
+        if "long_pct" in global_ls:
+            long_pct = global_ls["long_pct"]
+            if long_pct > 60:
+                interpretation = "🔴 LONGS CROWDED - Potential squeeze risk for longs"
+            elif long_pct < 40:
+                interpretation = "🟢 SHORTS CROWDED - Potential squeeze risk for shorts"
+            else:
+                interpretation = "⚪ BALANCED - No extreme positioning"
+        
+        return {
+            "symbol": symbol,
+            "global": global_ls,
+            "top_traders": top_ls,
+            "interpretation": interpretation,
+            "data_source": "REAL - Binance Futures Public API",
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+    
+    async def get_long_short_ratio_okx(self, symbol: str = "BTCUSDT") -> Dict:
+        """Get long/short ratio - NOW USES BINANCE REAL DATA"""
+        # Redirect to Binance for real data
+        return await self.get_long_short_ratio_binance(symbol)
     
     # ═══════════════════════════════════════════════════════════════════════════
     # COMPREHENSIVE DERIVATIVES REPORT
