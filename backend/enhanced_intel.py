@@ -366,8 +366,8 @@ Open Interest: ${btc.get('open_interest', 0):,.0f}
     async def analyze_symbol_sentiment(self, symbol: str) -> Dict:
         """Comprehensive sentiment analysis for a symbol"""
         # Get all relevant data
-        funding = await self.get_bybit_funding_rate(symbol)
-        oi = await self.get_bybit_open_interest(symbol)
+        funding = await self.get_funding_rate(symbol)
+        oi = await self.get_open_interest_estimate(symbol)
         fng = await self.get_fear_greed_index()
         
         # Score calculation
