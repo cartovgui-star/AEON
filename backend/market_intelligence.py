@@ -6,7 +6,7 @@ Using MEXC + Bybit (both work without geo-restrictions) + Technical Analysis
 import ccxt
 import pandas as pd
 import numpy as np
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Dict, Any, List
 import ta
 import logging
