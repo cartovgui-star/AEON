@@ -1430,17 +1430,17 @@ Total: {oi.get('total_open_interest_str', 'N/A')}
                 if ex.get('open_interest_value_str'):
                     response += f"• {ex.get('exchange')}: {ex.get('open_interest_value_str')}\n"
             
-            # Real L/S data from Binance
+            # Real L/S data from OKX
             global_ls = ls.get('global', {})
             top_ls = ls.get('top_traders', {})
             
             response += f"""
-📊 LONG/SHORT RATIO (REAL - Binance)
+📊 LONG/SHORT RATIO (REAL - OKX)
 Global: {global_ls.get('long_pct', '?')}% L / {global_ls.get('short_pct', '?')}% S
 Top Traders: {top_ls.get('long_pct', '?')}% L / {top_ls.get('short_pct', '?')}% S
 {ls.get('interpretation', '')}
 
-Data: OKX, Bitget, KuCoin, Gate, Binance"""
+Data: OKX, Bitget, KuCoin, Gate"""
             context = "trading"
             
         elif text_lower.startswith('/liqs') or text_lower.startswith('/liquidations'):
