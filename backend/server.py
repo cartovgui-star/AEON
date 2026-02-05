@@ -24,6 +24,8 @@ from learning_system import AeonLearningSystem, TradingSignalGenerator
 from autonomous_trader import AutonomousTrader, init_autonomous_trader
 from enhanced_intel import enhanced_intel, EnhancedMarketIntel
 from derivatives_intel import derivatives_intel, DerivativesIntel
+from news_intel import news_intel, futures_calc, NewsIntel, FuturesCalculator
+from mtf_analysis import mtf_analysis, MultiTimeframeAnalysis
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
