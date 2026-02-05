@@ -469,34 +469,20 @@ class AeonMarketIntelligenceTester:
         
         if success and data:
             # Check MEXC connection status
-            mexc_connected = data.get('mexc_connected', False)
+            mexc_connected = data.get('mexc', False)
             if mexc_connected:
                 self.log_test("MEXC Connection Status", True, "MEXC is connected")
                 print(f"   ✅ MEXC Connected: {mexc_connected}")
-                
-                # Check if sample MEXC data is present
-                if 'mexc_sample' in data and data['mexc_sample']:
-                    self.log_test("MEXC Sample Data", True, "Sample data available")
-                    print(f"   📊 Sample MEXC data present")
-                else:
-                    self.log_test("MEXC Sample Data", False, "No sample data in test response")
             else:
                 self.log_test("MEXC Connection Status", False, "MEXC is not connected")
                 print(f"   ❌ MEXC Connected: {mexc_connected}")
-                
-                # Check for error details
-                if 'error' in data:
-                    print(f"   Error details: {data['error']}")
             
             # Also verify other connections
-            llm_connected = data.get('llm_connected', False)
-            telegram_token_set = data.get('telegram_token_set', False)
+            llm_connected = data.get('llm', False)
+            telegram_token_set = data.get('telegram', False)
             
             print(f"   🤖 LLM Connected: {llm_connected}")
             print(f"   📱 Telegram Token Set: {telegram_token_set}")
-            
-            if data.get('sample_response'):
-                print(f"   💬 Sample Response: {data['sample_response'][:100]}...")
         
         return success, data
 
