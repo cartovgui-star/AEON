@@ -202,11 +202,19 @@ Build a Telegram chatbot "Aeon" that integrates with OpenAI - a business partner
 | Prices | MEXC (ccxt) | ✅ REAL |
 | Trending | CoinGecko | ✅ REAL |
 | Technical Analysis | MEXC (ccxt) | ✅ REAL |
-| Funding Rate | Estimated | ⚠️ ESTIMATED |
-| L/S Ratio | Estimated | ⚠️ MOCK |
+| **Funding Rate** | **OKX, Bitget, KuCoin, Gate.io** | ✅ **REAL** |
+| **Open Interest** | **OKX, Bitget** | ✅ **REAL** |
+| L/S Ratio | Estimated from funding | ⚠️ ESTIMATED |
 | Liquidations | Estimated | ⚠️ MOCK |
 
-Note: Bybit API is geo-restricted in this environment. Funding, L/S ratio, and liquidation data are estimated/mocked.
+## New Derivatives APIs
+- `/api/derivatives/funding/{symbol}` - Real funding from 4 exchanges
+- `/api/derivatives/oi/{symbol}` - Real OI from OKX/Bitget
+- `/api/derivatives/full/{symbol}` - Complete derivatives report
+- `/api/derivatives/funding/exchange/{exchange}/{symbol}` - Per-exchange data
+
+## New Telegram Commands
+- `/deriv btc` or `/oi btc` - Full derivatives report with real data
 
 ## Prioritized Backlog
 
