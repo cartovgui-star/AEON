@@ -247,6 +247,124 @@ function App() {
           </div>
         )}
 
+        {/* Autonomous Trading Stats */}
+        {tradingStats && (
+          <div className="mb-6" data-testid="trading-stats">
+            <h2 className="text-sm font-medium text-zinc-500 mb-3 uppercase tracking-wider flex items-center gap-2">
+              <Brain className="w-4 h-4" />
+              Autonomous Trading Intelligence
+            </h2>
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+              <Card className={`bg-zinc-900/50 border-zinc-800/50 ${tradingStats.active ? 'border-emerald-500/30' : 'border-red-500/30'}`}>
+                <CardContent className="pt-4 pb-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-zinc-500 text-xs font-medium">Status</p>
+                      <p className={`text-xl font-bold ${tradingStats.active ? 'text-emerald-400' : 'text-red-400'}`} style={{fontFamily: "'Space Grotesk', sans-serif"}}>
+                        {tradingStats.active ? 'ACTIVE' : 'PAUSED'}
+                      </p>
+                    </div>
+                    <Bot className={`w-5 h-5 ${tradingStats.active ? 'text-emerald-400' : 'text-red-400'}`} />
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-zinc-900/50 border-zinc-800/50">
+                <CardContent className="pt-4 pb-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-zinc-500 text-xs font-medium">Total Trades</p>
+                      <p className="text-2xl font-bold text-white" style={{fontFamily: "'Space Grotesk', sans-serif"}}>
+                        {tradingStats.closed_stats?.total_predictions || 0}
+                      </p>
+                    </div>
+                    <Target className="w-5 h-5 text-blue-400" />
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-zinc-900/50 border-zinc-800/50">
+                <CardContent className="pt-4 pb-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-zinc-500 text-xs font-medium">Win Rate</p>
+                      <p className={`text-2xl font-bold ${(tradingStats.closed_stats?.win_rate || 0) >= 50 ? 'text-emerald-400' : 'text-red-400'}`} style={{fontFamily: "'Space Grotesk', sans-serif"}}>
+                        {tradingStats.closed_stats?.win_rate || 0}%
+                      </p>
+                    </div>
+                    <Trophy className={`w-5 h-5 ${(tradingStats.closed_stats?.win_rate || 0) >= 50 ? 'text-emerald-400' : 'text-red-400'}`} />
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-zinc-900/50 border-zinc-800/50">
+                <CardContent className="pt-4 pb-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-zinc-500 text-xs font-medium">Total PnL</p>
+                      <p className={`text-2xl font-bold ${(tradingStats.total_pnl_pct || 0) >= 0 ? 'text-emerald-400' : 'text-red-400'}`} style={{fontFamily: "'Space Grotesk', sans-serif"}}>
+                        {(tradingStats.total_pnl_pct || 0) >= 0 ? '+' : ''}{(tradingStats.total_pnl_pct || 0).toFixed(2)}%
+                      </p>
+                    </div>
+                    {(tradingStats.total_pnl_pct || 0) >= 0 ? (
+                      <TrendingUp className="w-5 h-5 text-emerald-400" />
+                    ) : (
+                      <TrendingDown className="w-5 h-5 text-red-400" />
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-zinc-900/50 border-zinc-800/50">
+                <CardContent className="pt-4 pb-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-zinc-500 text-xs font-medium">Open Positions</p>
+                      <p className="text-2xl font-bold text-white" style={{fontFamily: "'Space Grotesk', sans-serif"}}>
+                        {tradingStats.open_positions || 0}
+                      </p>
+                      {tradingStats.open_positions > 0 && (
+                        <p className={`text-xs ${(tradingStats.open_pnl_pct || 0) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                          {(tradingStats.open_pnl_pct || 0) >= 0 ? '+' : ''}{(tradingStats.open_pnl_pct || 0).toFixed(2)}%
+                        </p>
+                      )}
+                    </div>
+                    <Activity className="w-5 h-5 text-amber-400" />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Best/Worst Trade */}
+            {(tradingStats.closed_stats?.best_trade || tradingStats.closed_stats?.worst_trade) && (
+              <div className="grid grid-cols-2 gap-4 mt-4">
+                {tradingStats.closed_stats?.best_trade && (
+                  <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-lg p-3">
+                    <p className="text-xs text-emerald-400 font-medium">Best Trade</p>
+                    <p className="text-sm text-white">
+                      {tradingStats.closed_stats.best_trade.symbol} {tradingStats.closed_stats.best_trade.prediction}
+                    </p>
+                    <p className="text-lg font-bold text-emerald-400">
+                      +{tradingStats.closed_stats.best_trade.pnl.toFixed(2)}%
+                    </p>
+                  </div>
+                )}
+                {tradingStats.closed_stats?.worst_trade && (
+                  <div className="bg-red-500/5 border border-red-500/20 rounded-lg p-3">
+                    <p className="text-xs text-red-400 font-medium">Worst Trade</p>
+                    <p className="text-sm text-white">
+                      {tradingStats.closed_stats.worst_trade.symbol} {tradingStats.closed_stats.worst_trade.prediction}
+                    </p>
+                    <p className={`text-lg font-bold ${tradingStats.closed_stats.worst_trade.pnl >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                      {tradingStats.closed_stats.worst_trade.pnl >= 0 ? '+' : ''}{tradingStats.closed_stats.worst_trade.pnl.toFixed(2)}%
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Stats Grid */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6" data-testid="stats-grid">
           <Card className="bg-zinc-900/50 border-zinc-800/50">
