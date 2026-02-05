@@ -983,16 +983,91 @@ Mark: ${funding.get('mark_price', 0):,.2f}
             elif rate < -0.0001:
                 funding_warning = "🟢 Negative = shorts paying"
             
-            response = f"""💰 {symbol} FUNDING
+            response = f"""💰 {symbol} FUNDING (Real Bybit Data)
 
 Current: {funding.get('funding_rate_pct', 'N/A')}
-Mark Price: ${funding.get('mark_price', 0):,.2f}
-Index Price: ${funding.get('index_price', 0):,.2f}
-
-Recent:
-{chr(10).join([f"• {h['funding_rate_pct']}" for h in history[:5]])}
+{funding.get('interpretation', '')}
 
 {funding_warning}"""
+            context = "trading"
+            
+        elif text_lower == '/market' or text_lower == '/summary':
+            summary = await enhanced_intel.get_market_summary()
+            response = summary
+            context = "trading"
+            
+        elif text_lower == '/fear' or text_lower == '/greed' or text_lower == '/fng':
+            fng = await enhanced_intel.get_fear_greed_index()
+            interpretation = enhanced_intel.interpret_fear_greed(fng.get("value", 50))
+            
+            response = f"""🎭 FEAR & GREED INDEX
+
+Value: {fng.get('value', '?')}
+Status: {fng.get('classification', '?')}
+
+{interpretation}
+
+This is a contrarian indicator:
+• Extreme Fear = potential buying opportunity
+• Extreme Greed = potential top, be cautious"""
+            context = "trading"
+            
+        elif text_lower == '/top100' or text_lower == '/top':
+            coins = await enhanced_intel.get_top_100_coins()
+            
+            if coins:
+                response = "📊 TOP 10 BY MARKET CAP\n\n"
+                for c in coins[:10]:
+                    change = c.get("price_change_percentage_24h", 0) or 0
+                    emoji = "🟢" if change >= 0 else "🔴"
+                    price = c.get("current_price", 0)
+                    price_str = f"${price:,.2f}" if price >= 1 else f"${price:.4f}"
+                    response += f"{emoji} #{c.get('market_cap_rank')} {c.get('symbol', '').upper()}: {price_str} ({change:+.1f}%)\n"
+                response += "\nUse /movers for top gainers/losers"
+            else:
+                response = "⚠️ Failed to fetch top 100 data"
+            context = "trading"
+            
+        elif text_lower == '/movers' or text_lower == '/gainers':
+            movers = await enhanced_intel.get_top_movers(5)
+            
+            response = "📈 TOP GAINERS (24h)\n"
+            for c in movers.get("gainers", []):
+                response += f"🟢 {c['symbol']}: {c['change_24h']:+.1f}%\n"
+            
+            response += "\n📉 TOP LOSERS (24h)\n"
+            for c in movers.get("losers", []):
+                response += f"🔴 {c['symbol']}: {c['change_24h']:+.1f}%\n"
+            context = "trading"
+            
+        elif text_lower == '/trending' or text_lower == '/hot':
+            trending = await enhanced_intel.get_trending_coins()
+            
+            if trending:
+                response = "🔥 TRENDING COINS (Most Searched)\n\n"
+                for i, c in enumerate(trending[:7], 1):
+                    response += f"{i}. {c.get('name', '?')} ({c.get('symbol', '?').upper()})\n"
+                response += "\nThese are being searched heavily in the last 24h"
+            else:
+                response = "⚠️ Failed to fetch trending data"
+            context = "trading"
+            
+        elif text_lower.startswith('/sentiment'):
+            parts = text_lower.split()
+            symbol = parts[1].upper() if len(parts) > 1 else "BTC"
+            
+            sent = await enhanced_intel.analyze_symbol_sentiment(symbol + "USDT")
+            
+            response = f"""📊 {symbol} SENTIMENT ANALYSIS
+
+Overall: {sent.get('sentiment', 'NEUTRAL')}
+Score: {sent.get('score', 0):+d}
+
+Signals:
+{chr(10).join(sent.get('signals', ['No signals']))}
+
+Fear & Greed: {sent.get('fear_greed', {}).get('value', '?')} ({sent.get('fear_greed', {}).get('classification', '?')})
+Funding: {sent.get('funding', {}).get('funding_rate_pct', 'N/A')}"""
             context = "trading"
             
         elif text_lower.startswith('/liqs') or text_lower.startswith('/liquidations'):
