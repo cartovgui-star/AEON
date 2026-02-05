@@ -1122,6 +1122,40 @@ Fear & Greed: {sent.get('fear_greed', {}).get('value', '?')} ({sent.get('fear_gr
 Funding: {sent.get('funding', {}).get('funding_rate_pct', 'N/A')}"""
             context = "trading"
             
+        elif text_lower.startswith('/deriv') or text_lower.startswith('/oi'):
+            parts = text_lower.split()
+            symbol = parts[1].upper() if len(parts) > 1 else "BTC"
+            
+            report = await derivatives_intel.get_full_derivatives_report(symbol + "USDT")
+            
+            funding = report.get('funding', {})
+            oi = report.get('open_interest', {})
+            ls = report.get('long_short', {})
+            
+            response = f"""📊 {symbol} DERIVATIVES (REAL DATA)
+
+💰 FUNDING (Avg: {funding.get('average_funding_pct', 'N/A')})
+{funding.get('interpretation', '')}
+"""
+            for ex in funding.get('exchanges', [])[:4]:
+                response += f"• {ex.get('exchange')}: {ex.get('funding_rate_pct', 'N/A')}\n"
+            
+            response += f"""
+📈 OPEN INTEREST
+Total: {oi.get('total_open_interest_str', 'N/A')}
+"""
+            for ex in oi.get('exchanges', []):
+                if ex.get('open_interest_value_str'):
+                    response += f"• {ex.get('exchange')}: {ex.get('open_interest_value_str')}\n"
+            
+            response += f"""
+📊 POSITIONING
+{ls.get('long_pct', 50)}% Long / {ls.get('short_pct', 50)}% Short
+Ratio: {ls.get('long_short_ratio', 1.0)}
+
+Data from OKX, Bitget, KuCoin, Gate.io"""
+            context = "trading"
+            
         elif text_lower.startswith('/liqs') or text_lower.startswith('/liquidations'):
             parts = text_lower.split()
             symbol = parts[1].upper() if len(parts) > 1 else "BTC"
