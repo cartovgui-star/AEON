@@ -71,10 +71,12 @@ class EnhancedMarketIntel:
     async def get_mexc_prices(self) -> List[Dict]:
         """Get prices from MEXC as fallback when CoinGecko rate limits"""
         try:
-            tickers = self.mexc.fetch_tickers(self.tracked_symbols)
+            # Fetch a smaller set to avoid timeout
+            primary_symbols = ["BTC/USDT", "ETH/USDT", "SOL/USDT", "XRP/USDT", "DOGE/USDT", "ADA/USDT", "AVAX/USDT"]
+            tickers = self.mexc.fetch_tickers(primary_symbols)
             
             results = []
-            for i, symbol in enumerate(self.tracked_symbols):
+            for i, symbol in enumerate(primary_symbols):
                 if symbol in tickers:
                     t = tickers[symbol]
                     coin = symbol.split('/')[0]
