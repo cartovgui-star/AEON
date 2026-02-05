@@ -140,42 +140,49 @@ class EnhancedMarketIntel:
             return "EXTREME GREED - Market euphoria, high risk of correction"
     
     # ═══════════════════════════════════════════════════════════════════════════
-    # BYBIT - REAL FUNDING RATES, OPEN INTEREST, LIQUIDATIONS
+    # BYBIT - REAL FUNDING RATES, OPEN INTEREST VIA CCXT
     # ═══════════════════════════════════════════════════════════════════════════
     
     async def get_bybit_funding_rate(self, symbol: str = "BTCUSDT") -> Dict:
-        """Get REAL funding rate from Bybit"""
-        url = f"{self.bybit_base}/v5/market/funding/history?category=linear&symbol={symbol}&limit=1"
-        data = await self._fetch_json(url, f"bybit_funding_{symbol}")
-        
-        if data.get("retCode") == 0 and data.get("result", {}).get("list"):
-            item = data["result"]["list"][0]
-            rate = float(item.get("fundingRate", 0))
+        """Get REAL funding rate from Bybit via ccxt"""
+        try:
+            # Convert symbol format for ccxt (BTCUSDT -> BTC/USDT:USDT)
+            base = symbol.replace("USDT", "")
+            ccxt_symbol = f"{base}/USDT:USDT"
+            
+            # Fetch funding rate
+            funding = self.bybit.fetch_funding_rate(ccxt_symbol)
+            
+            rate = funding.get("fundingRate", 0) or 0
             return {
                 "symbol": symbol,
                 "funding_rate": rate,
                 "funding_rate_pct": f"{rate * 100:.4f}%",
-                "funding_time": item.get("fundingRateTimestamp"),
+                "next_funding_time": funding.get("fundingTimestamp"),
                 "is_positive": rate > 0,
                 "interpretation": "Longs pay shorts" if rate > 0 else "Shorts pay longs"
             }
-        return {"symbol": symbol, "error": "Failed to fetch"}
+        except Exception as e:
+            logger.error(f"Bybit funding error: {e}")
+            return {"symbol": symbol, "error": str(e)}
     
     async def get_bybit_open_interest(self, symbol: str = "BTCUSDT") -> Dict:
-        """Get REAL open interest from Bybit"""
-        url = f"{self.bybit_base}/v5/market/open-interest?category=linear&symbol={symbol}&intervalTime=1h&limit=1"
-        data = await self._fetch_json(url, f"bybit_oi_{symbol}")
-        
-        if data.get("retCode") == 0 and data.get("result", {}).get("list"):
-            item = data["result"]["list"][0]
-            oi = float(item.get("openInterest", 0))
+        """Get REAL open interest from Bybit via ccxt"""
+        try:
+            base = symbol.replace("USDT", "")
+            ccxt_symbol = f"{base}/USDT:USDT"
+            
+            oi = self.bybit.fetch_open_interest(ccxt_symbol)
+            
             return {
                 "symbol": symbol,
-                "open_interest": oi,
-                "open_interest_value": f"${oi:,.0f}",
-                "timestamp": item.get("timestamp")
+                "open_interest": oi.get("openInterestAmount", 0),
+                "open_interest_value": f"${oi.get('openInterestValue', 0):,.0f}",
+                "timestamp": oi.get("timestamp")
             }
-        return {"symbol": symbol, "error": "Failed to fetch"}
+        except Exception as e:
+            logger.error(f"Bybit OI error: {e}")
+            return {"symbol": symbol, "error": str(e)}
     
     async def get_bybit_recent_trades(self, symbol: str = "BTCUSDT", limit: int = 50) -> List[Dict]:
         """Get recent trades (can filter for liquidations)"""
