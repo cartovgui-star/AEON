@@ -982,8 +982,8 @@ Shorts: {short_pct:.1f}%
             parts = text_lower.split()
             symbol = parts[1].upper() if len(parts) > 1 else "BTC"
             
-            # Use REAL Bybit funding data
-            funding = await enhanced_intel.get_bybit_funding_rate(symbol + "USDT")
+            # Use enhanced intel funding data
+            funding = await enhanced_intel.get_funding_rate(symbol + "USDT")
             
             rate = funding.get('funding_rate', 0)
             funding_warning = ""
