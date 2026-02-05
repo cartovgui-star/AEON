@@ -694,7 +694,7 @@ class AeonMarketIntelligenceTester:
         }
 
 def main():
-    tester = AeonBotAPITester()
+    tester = AeonMarketIntelligenceTester()
     exit_code = tester.run_all_tests()
     
     # Save detailed results
