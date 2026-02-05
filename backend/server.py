@@ -983,7 +983,8 @@ Shorts: {short_pct:.1f}%
             symbol = parts[1].upper() if len(parts) > 1 else "BTC"
             
             funding = await market_intel.get_current_funding_rate(symbol + "USDT")
-            history = await market_intel.get_funding_rate(symbol + "USDT", 5)
+            # Use REAL Bybit funding data
+            funding = await enhanced_intel.get_bybit_funding_rate(symbol + "USDT")
             
             rate = funding.get('funding_rate', 0)
             funding_warning = ""
