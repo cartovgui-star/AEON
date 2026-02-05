@@ -207,14 +207,58 @@ Build a Telegram chatbot "Aeon" that integrates with OpenAI - a business partner
 | L/S Ratio | Estimated from funding | ⚠️ ESTIMATED |
 | Liquidations | Estimated | ⚠️ MOCK |
 
-## New Derivatives APIs
-- `/api/derivatives/funding/{symbol}` - Real funding from 4 exchanges
-- `/api/derivatives/oi/{symbol}` - Real OI from OKX/Bitget
-- `/api/derivatives/full/{symbol}` - Complete derivatives report
-- `/api/derivatives/funding/exchange/{exchange}/{symbol}` - Per-exchange data
+## New Features (Feb 2026 - Latest)
+
+### 1. Crypto News & Sentiment
+- `/news` - Latest crypto headlines with sentiment analysis
+- Auto-categorizes as BULLISH/BEARISH/NEUTRAL
+- Sources: Blockworks, CoinTelegraph RSS feeds
+
+### 2. On-Chain Intelligence
+- `/onchain` - BTC network stats
+- Real-time fees from mempool.space
+- Exchange flow estimates
+- Network demand indicator
+
+### 3. Whale Tracking
+- `/whales` - Large BTC transaction monitoring
+- Tracks transactions >10 BTC, highlights >100 BTC
+- Activity level: HIGH/MODERATE/LOW
+
+### 4. Multi-Timeframe Analysis
+- `/mtf btc` - Confluence across 1h, 4h, 1d
+- Alignment detection (all timeframes agree = stronger signal)
+- Trade quality scoring: HIGH/MEDIUM/LOW
+- Confidence percentage
+
+### 5. Futures Calculator
+- `/calc entry exit size leverage direction` - PnL calculator
+- `/calcsize balance risk% entry stop leverage` - Position size calculator
+- Calculates: PnL, ROI, liquidation price, margin required
+- Risk management focused
+
+## Data Sources Summary
+| Feature | Source | Status |
+|---------|--------|--------|
+| Fear & Greed | Alternative.me | ✅ REAL |
+| Funding Rates | OKX, Bitget, KuCoin, Gate.io | ✅ REAL |
+| Open Interest | OKX, Bitget | ✅ REAL |
+| Prices | MEXC | ✅ REAL |
+| Technical Analysis | MEXC | ✅ REAL |
+| On-Chain (BTC) | Mempool.space | ✅ REAL |
+| Whale Tracking | Mempool.space | ✅ REAL |
+| News | Blockworks, CoinTelegraph | ✅ REAL |
+| Multi-Timeframe | MEXC (ccxt) | ✅ REAL |
 
 ## New Telegram Commands
-- `/deriv btc` or `/oi btc` - Full derivatives report with real data
+```
+/news - Crypto news + sentiment
+/whales - Whale activity
+/onchain - BTC on-chain data
+/mtf btc - Multi-timeframe analysis
+/calc 65000 68000 1000 10 long - PnL calculator
+/calcsize 10000 2 65000 63000 10 - Position size calc
+```
 
 ## Prioritized Backlog
 
