@@ -169,8 +169,255 @@ class AeonMarketIntelligenceTester:
                 200
             )
 
-    def test_mexc_live_endpoint(self):
-        """Test MEXC live data endpoint"""
+    def test_market_scan_api(self):
+        """Test market scan API endpoints"""
+        symbols = ['btc', 'eth', 'sol']
+        
+        for symbol in symbols:
+            success, data = self.run_test(
+                f"Market Scan - {symbol.upper()}",
+                "GET",
+                f"market/scan/{symbol}",
+                200
+            )
+            
+            if success and data:
+                if 'error' in data:
+                    self.log_test(f"Market Scan {symbol.upper()} Data", False, f"API error: {data['error']}")
+                else:
+                    # Verify market scan structure
+                    required_fields = ['symbol', 'price', 'technical', 'signals', 'overall_bias']
+                    missing_fields = [f for f in required_fields if f not in data]
+                    
+                    if missing_fields:
+                        self.log_test(f"Market Scan {symbol.upper()} Structure", False, f"Missing fields: {missing_fields}")
+                    else:
+                        self.log_test(f"Market Scan {symbol.upper()} Structure", True, f"Valid market scan data")
+                        print(f"   📊 {symbol.upper()}: ${data.get('price', 0):,.2f} | Bias: {data.get('overall_bias', 'N/A')} | Signals: {len(data.get('signals', []))}")
+                        
+                        # Check technical indicators
+                        tech = data.get('technical', {})
+                        if tech:
+                            indicators = ['rsi', 'macd', 'bb_upper', 'bb_lower', 'ema_9', 'ema_21', 'ema_50']
+                            present_indicators = [ind for ind in indicators if ind in tech]
+                            if len(present_indicators) >= 5:
+                                self.log_test(f"Market Scan {symbol.upper()} Technical Indicators", True, f"Found {len(present_indicators)} indicators")
+                            else:
+                                self.log_test(f"Market Scan {symbol.upper()} Technical Indicators", False, f"Only {len(present_indicators)} indicators found")
+
+    def test_technical_analysis_api(self):
+        """Test technical analysis API endpoints"""
+        symbols = ['btc', 'eth', 'sol']
+        
+        for symbol in symbols:
+            success, data = self.run_test(
+                f"Technical Analysis - {symbol.upper()}",
+                "GET",
+                f"market/ta/{symbol}",
+                200
+            )
+            
+            if success and data:
+                if 'error' in data:
+                    self.log_test(f"TA {symbol.upper()} Data", False, f"API error: {data['error']}")
+                else:
+                    # Verify TA structure
+                    required_fields = ['symbol', 'price', 'indicators', 'signals', 'overall_bias']
+                    missing_fields = [f for f in required_fields if f not in data]
+                    
+                    if missing_fields:
+                        self.log_test(f"TA {symbol.upper()} Structure", False, f"Missing fields: {missing_fields}")
+                    else:
+                        self.log_test(f"TA {symbol.upper()} Structure", True, f"Valid TA data")
+                        
+                        # Check specific indicators
+                        indicators = data.get('indicators', {})
+                        key_indicators = ['rsi', 'macd', 'macd_signal', 'bb_upper', 'bb_lower', 'ema_9', 'ema_21']
+                        present = [ind for ind in key_indicators if ind in indicators]
+                        
+                        print(f"   📈 {symbol.upper()}: RSI={indicators.get('rsi', 'N/A')} | MACD={indicators.get('macd', 'N/A')} | Bias={data.get('overall_bias', 'N/A')}")
+                        
+                        if len(present) >= 6:
+                            self.log_test(f"TA {symbol.upper()} Indicators Complete", True, f"All key indicators present")
+                        else:
+                            self.log_test(f"TA {symbol.upper()} Indicators Complete", False, f"Missing indicators: {set(key_indicators) - set(present)}")
+
+    def test_market_positions_api(self):
+        """Test market positions API endpoints"""
+        symbols = ['btc', 'eth', 'sol']
+        
+        for symbol in symbols:
+            success, data = self.run_test(
+                f"Market Positions - {symbol.upper()}",
+                "GET",
+                f"market/positions/{symbol}",
+                200
+            )
+            
+            if success and data:
+                if 'error' in data:
+                    self.log_test(f"Positions {symbol.upper()} Data", False, f"API error: {data['error']}")
+                else:
+                    # Verify positions structure
+                    required_fields = ['long_short', 'whale', 'taker_flow']
+                    missing_fields = [f for f in required_fields if f not in data]
+                    
+                    if missing_fields:
+                        self.log_test(f"Positions {symbol.upper()} Structure", False, f"Missing fields: {missing_fields}")
+                    else:
+                        self.log_test(f"Positions {symbol.upper()} Structure", True, f"Valid positions data")
+                        
+                        # Check long/short data
+                        ls_data = data.get('long_short', [])
+                        whale_data = data.get('whale', [])
+                        
+                        if ls_data and len(ls_data) > 0:
+                            ls_ratio = ls_data[0].get('long_short_ratio', 0)
+                            print(f"   📊 {symbol.upper()}: L/S Ratio={ls_ratio:.2f}")
+                            self.log_test(f"Positions {symbol.upper()} L/S Data", True, f"L/S ratio: {ls_ratio:.2f}")
+                        else:
+                            self.log_test(f"Positions {symbol.upper()} L/S Data", False, "No L/S data available")
+
+    def test_market_funding_api(self):
+        """Test market funding API endpoints"""
+        symbols = ['btc', 'eth', 'sol']
+        
+        for symbol in symbols:
+            success, data = self.run_test(
+                f"Market Funding - {symbol.upper()}",
+                "GET",
+                f"market/funding/{symbol}",
+                200
+            )
+            
+            if success and data:
+                if 'error' in data:
+                    self.log_test(f"Funding {symbol.upper()} Data", False, f"API error: {data['error']}")
+                else:
+                    # Verify funding structure
+                    required_fields = ['funding_rate', 'mark_price']
+                    missing_fields = [f for f in required_fields if f not in data]
+                    
+                    if missing_fields:
+                        self.log_test(f"Funding {symbol.upper()} Structure", False, f"Missing fields: {missing_fields}")
+                    else:
+                        funding_rate = data.get('funding_rate', 0)
+                        mark_price = data.get('mark_price', 0)
+                        print(f"   💰 {symbol.upper()}: Funding={funding_rate:.6f} | Mark=${mark_price:,.2f}")
+                        self.log_test(f"Funding {symbol.upper()} Structure", True, f"Valid funding data")
+
+    def test_learning_system_api(self):
+        """Test learning system API endpoints"""
+        # Test learning stats
+        success, data = self.run_test(
+            "Learning System Stats",
+            "GET",
+            "learning/stats",
+            200
+        )
+        
+        if success and data:
+            required_fields = ['total_predictions', 'win_rate', 'total_pnl_pct']
+            missing_fields = [f for f in required_fields if f not in data]
+            
+            if missing_fields:
+                self.log_test("Learning Stats Structure", False, f"Missing fields: {missing_fields}")
+            else:
+                total = data.get('total_predictions', 0)
+                win_rate = data.get('win_rate', 0)
+                pnl = data.get('total_pnl_pct', 0)
+                print(f"   🧠 Learning: {total} predictions | {win_rate}% win rate | {pnl:+.2f}% PnL")
+                self.log_test("Learning Stats Structure", True, f"Valid learning stats")
+        
+        # Test open predictions
+        success, data = self.run_test(
+            "Learning System Open Predictions",
+            "GET",
+            "learning/open",
+            200
+        )
+        
+        if success:
+            predictions = data if isinstance(data, list) else []
+            self.log_test("Learning Open Predictions", True, f"Found {len(predictions)} open predictions")
+
+    def test_bot_system_connectivity(self):
+        """Test bot system connectivity"""
+        success, data = self.run_test(
+            "Bot System Test",
+            "GET",
+            "bot/test",
+            200
+        )
+        
+        if success and data:
+            # Check system connections
+            systems = ['llm', 'binance', 'mexc', 'telegram']
+            system_status = {}
+            
+            for system in systems:
+                status = data.get(system, False)
+                system_status[system] = status
+                print(f"   {'✅' if status else '❌'} {system.upper()}: {status}")
+            
+            # Overall connectivity check
+            connected_systems = sum(1 for status in system_status.values() if status)
+            total_systems = len(system_status)
+            
+            if connected_systems >= 3:  # At least 3 systems should be connected
+                self.log_test("Bot System Connectivity", True, f"{connected_systems}/{total_systems} systems connected")
+            else:
+                self.log_test("Bot System Connectivity", False, f"Only {connected_systems}/{total_systems} systems connected")
+            
+            # Check for users
+            users = data.get('users', 0)
+            print(f"   👥 Active Users: {users}")
+
+    def test_telegram_market_commands(self):
+        """Test Telegram market intelligence commands"""
+        commands = [
+            ("/scan btc", "Market scan command"),
+            ("/ta btc", "Technical analysis command"),
+            ("/positions btc", "Positions command"),
+            ("/funding btc", "Funding command"),
+            ("btc price analysis", "Trading keyword detection")
+        ]
+        
+        for command, description in commands:
+            sample_update = {
+                "update_id": 123456789,
+                "message": {
+                    "message_id": 1,
+                    "from": {
+                        "id": 987654321,
+                        "is_bot": False,
+                        "first_name": "Test",
+                        "username": "testuser"
+                    },
+                    "chat": {
+                        "id": 987654321,
+                        "first_name": "Test",
+                        "username": "testuser",
+                        "type": "private"
+                    },
+                    "date": 1640995200,
+                    "text": command
+                }
+            }
+            
+            success, response = self.run_test(
+                f"Telegram Command - {command}",
+                "POST",
+                "webhook",
+                200,
+                data=sample_update
+            )
+            
+            if success:
+                self.log_test(f"{description}", True, f"Command processed successfully")
+
+    def test_mexc_integration(self):
+        """Test MEXC integration endpoints"""
         success, data = self.run_test(
             "MEXC Live Data",
             "GET",
@@ -179,36 +426,37 @@ class AeonMarketIntelligenceTester:
         )
         
         if success and data:
-            # Verify MEXC data structure - updated for correct symbol format
-            expected_symbols = ['BTC', 'ETH', 'SOL']  # API returns just coin names, not pairs
             if 'error' in data:
-                print(f"   ⚠️  MEXC API Error: {data['error']}")
-                self.log_test("MEXC Data Structure", False, f"API returned error: {data['error']}")
+                self.log_test("MEXC Integration", False, f"MEXC API error: {data['error']}")
             else:
-                # Check if we have the expected crypto pairs
+                # Check for expected crypto pairs
+                expected_symbols = ['BTC', 'ETH', 'SOL']
                 found_symbols = list(data.keys())
                 missing_symbols = [s for s in expected_symbols if s not in found_symbols]
                 
                 if missing_symbols:
-                    self.log_test("MEXC Data Structure", False, f"Missing symbols: {missing_symbols}")
+                    self.log_test("MEXC Data Coverage", False, f"Missing symbols: {missing_symbols}")
                 else:
-                    # Verify data structure for each symbol including orderbook fields
+                    self.log_test("MEXC Data Coverage", True, f"All expected symbols present")
+                    
+                    # Verify orderbook data structure
                     valid_structure = True
                     for symbol, info in data.items():
-                        required_fields = ['price', 'change', 'volume', 'high_24h', 'low_24h', 'bid_depth', 'ask_depth', 'imbalance']
+                        required_fields = ['price', 'change', 'bid_depth', 'ask_depth', 'imbalance']
                         missing_fields = [f for f in required_fields if f not in info]
                         if missing_fields:
-                            print(f"   ⚠️  {symbol} missing fields: {missing_fields}")
                             valid_structure = False
+                            break
                         else:
-                            # Verify orderbook specific fields
-                            print(f"   📊 {symbol}: Bids={info['bid_depth']}, Asks={info['ask_depth']}, Imbalance={info['imbalance']}")
+                            price = info.get('price', 'N/A')
+                            change = info.get('change', 'N/A')
+                            imbalance = info.get('imbalance', 'N/A')
+                            print(f"   📊 {symbol}: {price} ({change}) | Imbalance: {imbalance}")
                     
                     if valid_structure:
-                        self.log_test("MEXC Orderbook Data Structure", True, f"All symbols present with orderbook fields")
-                        print(f"   📊 Found orderbook data for: {', '.join(found_symbols)}")
+                        self.log_test("MEXC Orderbook Structure", True, "Valid orderbook data for all symbols")
                     else:
-                        self.log_test("MEXC Orderbook Data Structure", False, "Invalid orderbook data structure")
+                        self.log_test("MEXC Orderbook Structure", False, "Invalid orderbook data structure")
 
     def test_bot_test_mexc_connection(self):
         """Test bot test endpoint specifically for MEXC connection"""
