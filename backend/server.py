@@ -21,6 +21,7 @@ from contextlib import asynccontextmanager
 # Import new modules
 from market_intelligence import market_intel, MarketIntelligence
 from learning_system import AeonLearningSystem, TradingSignalGenerator
+from autonomous_trader import AutonomousTrader, init_autonomous_trader
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
