@@ -1101,35 +1101,71 @@ Stop: ${pred.get('stop_loss', 0):,.2f}
             context = "trading"
             
         else:
-            # Smart routing
-            trading_kw = ['btc', 'eth', 'sol', 'price', 'trade', 'long', 'short', 'market', 'chart', 'analysis']
-            
-            if any(kw in text_lower for kw in trading_kw):
-                # Extract symbol if mentioned
-                symbol = "BTCUSDT"
-                for s in ["btc", "eth", "sol"]:
-                    if s in text_lower:
-                        symbol = s.upper() + "USDT"
-                        break
-                
-                response = await generate_trade_analysis(symbol, chat_id)
-                context = "trading"
-            else:
-                # Alchemy mode
-                insights = await get_user_insights(chat_id, 3)
-                insights_str = "\n".join([f"• {i['insight']}" for i in insights]) if insights else ""
-                
-                prompt = f"USER: {text}\n\nKNOWN ABOUT USER:\n{insights_str}" if insights_str else text
-                
-                chat = LlmChat(api_key=emergent_key, session_id=f"aeon-{chat_id}",
-                              system_message=QUANTUM_MASON_SYSTEM).with_model("openai", "gpt-4o-mini")
-                response = await chat.send_message(UserMessage(text=prompt))
+            # Check for mode switches first
+            if "alchemy mode" in text_lower or "philosopher mode" in text_lower:
+                await update_user_settings(chat_id, {"mode": "alchemy"})
+                response = "⚗️ Entering Alchemy mode. The veil thins, the symbols speak. What transmutation do you seek?"
                 context = "alchemy"
+            
+            elif "casual mode" in text_lower or "just talk" in text_lower or "normal mode" in text_lower:
+                await update_user_settings(chat_id, {"mode": "default"})
+                response = "Got it, casual mode. What's on your mind?"
+                context = "chat"
+            
+            else:
+                # Check current mode
+                current_mode = settings.get("mode", "default")
+                
+                # Smart routing for trading keywords
+                trading_kw = ['btc', 'eth', 'sol', 'doge', 'xrp', 'avax', 'price', 'trade', 'long', 'short', 'market', 'chart', 'analysis']
+                
+                if any(kw in text_lower for kw in trading_kw):
+                    # Extract symbol if mentioned
+                    symbol = "BTCUSDT"
+                    for s in ["btc", "eth", "sol", "doge", "xrp", "avax"]:
+                        if s in text_lower:
+                            symbol = s.upper() + "USDT"
+                            break
+                    
+                    response = await generate_trade_analysis(symbol, chat_id)
+                    context = "trading"
+                else:
+                    # Get user insights for context
+                    insights = await get_user_insights(chat_id, 5)
+                    insights_str = "\n".join([f"• {i['insight']}" for i in insights]) if insights else ""
+                    
+                    # Get recent conversation for continuity
+                    recent = await db.chat_messages.find({"chat_id": chat_id}).sort("timestamp", -1).limit(3).to_list(3)
+                    recent_context = ""
+                    if recent:
+                        recent_context = "\n\nRECENT CONVERSATION:\n" + "\n".join([
+                            f"User: {m.get('user_message', '')[:100]}\nAeon: {m.get('bot_response', '')[:100]}" 
+                            for m in reversed(recent)
+                        ])
+                    
+                    # Build prompt
+                    prompt = f"USER: {text}"
+                    if insights_str:
+                        prompt += f"\n\nWHAT I KNOW ABOUT THIS USER:\n{insights_str}"
+                    if recent_context:
+                        prompt += recent_context
+                    
+                    # Choose system based on mode
+                    if current_mode == "alchemy":
+                        system = ALCHEMY_MODE_SYSTEM
+                        context = "alchemy"
+                    else:
+                        system = AEON_DEFAULT_SYSTEM
+                        context = "chat"
+                    
+                    chat = LlmChat(api_key=emergent_key, session_id=f"aeon-{chat_id}",
+                                  system_message=system).with_model("openai", "gpt-4o-mini")
+                    response = await chat.send_message(UserMessage(text=prompt))
         
         # Send response
         await send_telegram_message(chat_id, response)
         
-        # Store
+        # Store conversation and extract insights
         await db.chat_messages.insert_one({
             "id": str(uuid.uuid4()),
             "chat_id": chat_id,
@@ -1139,6 +1175,14 @@ Stop: ${pred.get('stop_loss', 0):,.2f}
             "context": context,
             "timestamp": datetime.now(timezone.utc)
         })
+        
+        # Try to extract insights from conversation for future reference
+        if context in ["chat", "alchemy"] and len(text) > 20:
+            # Simple insight extraction for trading/mood mentions
+            if any(word in text_lower for word in ["feel", "mood", "stress", "happy", "worried", "confident"]):
+                await store_user_insight(chat_id, text[:200], "mood")
+            elif any(word in text_lower for word in ["bought", "sold", "position", "trade", "loss", "profit", "win"]):
+                await store_user_insight(chat_id, text[:200], "trade")
         
         return {"status": "ok"}
         
