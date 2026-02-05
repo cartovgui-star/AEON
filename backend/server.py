@@ -274,14 +274,13 @@ ANALYSIS SCORE: {analysis.get('score', 0)}
 DIRECTION: {analysis.get('direction')}
 CONFIDENCE: {analysis.get('confidence')}%
 
-Provide surgical analysis with:
-1. Clear bias and reasoning
-2. Key levels (entry, target, stop)
-3. Risk factors
-4. One Quantum Mason insight"""
+Give me your take:
+1. Clear bias and why
+2. Entry, target, stop
+3. What could go wrong"""
 
         chat = LlmChat(api_key=emergent_key, session_id=f"trade-{chat_id}",
-                      system_message=TRADING_SYSTEM).with_model("openai", "gpt-4o-mini")
+                      system_message=TRADING_ANALYSIS_SYSTEM).with_model("openai", "gpt-4o-mini")
         
         response = await chat.send_message(UserMessage(text=prompt))
         return response
