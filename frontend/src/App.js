@@ -166,8 +166,14 @@ function App() {
                 )}
                 <Badge variant="outline" className="border-orange-500/30 text-orange-400 bg-orange-500/5">
                   <Flame className="w-3 h-3 mr-1" />
-                  Rituals Active
+                  Rituals
                 </Badge>
+                {botStatus?.freewill_users > 0 && (
+                  <Badge variant="outline" className="border-emerald-500/30 text-emerald-400 bg-emerald-500/5">
+                    <Zap className="w-3 h-3 mr-1" />
+                    Free Will ({botStatus.freewill_users})
+                  </Badge>
+                )}
               </div>
             </div>
           </div>
