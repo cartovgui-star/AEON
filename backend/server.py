@@ -1027,29 +1027,30 @@ Total PnL: {stats['total_pnl_pct']:+.2f}%"""
             current_mode = settings.get("mode", "default")
             response = f"""Yo, I'm Aeon—your trading buddy and life coach.
 
-I'm here to help you level up. Trading, mindset, life—whatever you need.
-
 📊 ANALYSIS:
 /scan btc - Full analysis
-/ta btc - Technicals
-/funding btc - Real funding rate
+/mtf btc - Multi-timeframe (1h/4h/1d)
+/deriv btc - Derivatives data
 /sentiment btc - Sentiment analysis
 
 🌍 MARKET INTEL:
-/market - Global market summary
+/market - Global summary
 /fear - Fear & Greed Index
-/top100 - Top 100 coins
-/movers - Top gainers/losers
-/trending - What's hot
+/news - Latest news + sentiment
+/whales - Whale activity
+/onchain - BTC on-chain data
+
+🧮 CALCULATORS:
+/calc entry exit size lev dir - PnL calc
+/calcsize bal risk% entry stop lev - Position size
 
 🤖 AUTO-TRADING:
 /auto - Status & stats
 /opps - Opportunities
-/open - Open positions
 
-Current: {'Alchemy ⚗️' if current_mode == 'alchemy' else 'Casual'} | Auto: {'ON 🟢' if autonomous_trader.active else 'OFF'}
+Mode: {'Alchemy ⚗️' if current_mode == 'alchemy' else 'Casual'} | Auto: {'🟢' if autonomous_trader.active else '🔴'}
 
-What's on your mind?"""
+What's up?"""
             context = "start"
             
         elif text_lower.startswith('/scan'):
