@@ -641,6 +641,13 @@ Mark: ${funding.get('mark_price', 0):,.2f}
             funding = await market_intel.get_current_funding_rate(symbol + "USDT")
             history = await market_intel.get_funding_rate(symbol + "USDT", 5)
             
+            rate = funding.get('funding_rate', 0)
+            funding_warning = ""
+            if rate > 0.0005:
+                funding_warning = "🔴 High positive = longs paying, squeeze risk"
+            elif rate < -0.0001:
+                funding_warning = "🟢 Negative = shorts paying"
+            
             response = f"""💰 {symbol} FUNDING
 
 Current: {funding.get('funding_rate_pct', 'N/A')}
@@ -650,8 +657,7 @@ Index Price: ${funding.get('index_price', 0):,.2f}
 Recent:
 {chr(10).join([f"• {h['funding_rate_pct']}" for h in history[:5]])}
 
-{'🔴 High positive = longs paying, squeeze risk' if funding.get('funding_rate', 0) > 0.0005 else ''}
-{'🟢 Negative = shorts paying' if funding.get('funding_rate', 0) < -0.0001 else ''}"""
+{funding_warning}"""
             context = "trading"
             
         elif text_lower.startswith('/probe'):
