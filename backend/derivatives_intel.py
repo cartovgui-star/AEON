@@ -480,9 +480,12 @@ class DerivativesIntel:
         if "total_open_interest_str" in oi:
             parts.append(f"Total OI: {oi['total_open_interest_str']}")
         
-        # L/S analysis
-        if "long_pct" in ls:
-            parts.append(f"Positioning: {ls['long_pct']}% Long / {ls['short_pct']}% Short")
+        # L/S analysis (now from Binance real data)
+        if "global" in ls and "long_pct" in ls.get("global", {}):
+            global_ls = ls["global"]
+            parts.append(f"Global L/S: {global_ls['long_pct']}% Long / {global_ls['short_pct']}% Short (REAL)")
+        if "interpretation" in ls:
+            parts.append(ls["interpretation"])
         
         return "\n".join(parts)
 
