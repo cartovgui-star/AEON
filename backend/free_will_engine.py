@@ -311,22 +311,20 @@ class FreeWillEngine:
             logger.error(f"Setup analysis error {symbol} {timeframe}: {e}")
             return None
     
-    def _should_alert(self, symbol: str, timeframe: str) -> bool:
-        """Check if we should send alert (cooldown check)"""
-        key = f"{symbol}_{timeframe}"
+    def _should_alert(self, symbol: str) -> bool:
+        """Check if we should send alert (cooldown check per symbol)"""
         now = datetime.now()
         
-        if key in self.recent_alerts:
-            last_alert = self.recent_alerts[key]
+        if symbol in self.recent_alerts:
+            last_alert = self.recent_alerts[symbol]
             if (now - last_alert).seconds < self.alert_cooldown:
                 return False
         
         return True
     
-    def _mark_alerted(self, symbol: str, timeframe: str):
-        """Mark that we sent an alert"""
-        key = f"{symbol}_{timeframe}"
-        self.recent_alerts[key] = datetime.now()
+    def _mark_alerted(self, symbol: str):
+        """Mark that we sent an alert for this symbol"""
+        self.recent_alerts[symbol] = datetime.now()
     
     def format_alert(self, setup: Dict) -> str:
         """Format the alert message"""
