@@ -1,6 +1,6 @@
 """
 AEON MARKET INTELLIGENCE MODULE
-Using CCXT for multi-exchange support + Technical Analysis
+Using MEXC + Bybit (both work without geo-restrictions) + Technical Analysis
 """
 
 import ccxt
@@ -11,61 +11,86 @@ from typing import Dict, Any, List
 import ta
 import logging
 import asyncio
+import os
 
 logger = logging.getLogger(__name__)
 
 
 class MarketIntelligence:
-    """Market data using CCXT (supports multiple exchanges) + Technical Analysis"""
+    """Market data using MEXC/Bybit + Technical Analysis"""
     
     def __init__(self):
-        # Use Binance spot (more accessible) + MEXC for derivatives data
-        self.binance = ccxt.binance({'enableRateLimit': True})
+        # MEXC (user already has keys)
+        self.mexc = ccxt.mexc({
+            'apiKey': os.environ.get('MEXC_API_KEY', ''),
+            'secret': os.environ.get('MEXC_SECRET_KEY', ''),
+            'enableRateLimit': True
+        })
+        
+        # Bybit as backup (no auth needed for public data)
+        self.bybit = ccxt.bybit({'enableRateLimit': True})
+        
+        self.primary = self.mexc
         self.symbols = ["BTC/USDT", "ETH/USDT", "SOL/USDT"]
     
     def get_klines_sync(self, symbol: str = "BTC/USDT", timeframe: str = "1h", limit: int = 100) -> pd.DataFrame:
-        """Fetch OHLCV data synchronously"""
+        """Fetch OHLCV data"""
         try:
-            ohlcv = self.binance.fetch_ohlcv(symbol, timeframe, limit=limit)
+            ohlcv = self.primary.fetch_ohlcv(symbol, timeframe, limit=limit)
             df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
             df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
             return df
         except Exception as e:
-            logger.error(f"CCXT klines error: {e}")
-            return pd.DataFrame()
+            logger.error(f"Klines error: {e}")
+            # Try backup
+            try:
+                ohlcv = self.bybit.fetch_ohlcv(symbol, timeframe, limit=limit)
+                df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
+                df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
+                return df
+            except:
+                return pd.DataFrame()
     
-    async def get_klines(self, symbol: str = "BTC/USDT", timeframe: str = "1h", limit: int = 100) -> pd.DataFrame:
-        """Async wrapper for klines"""
+    async def get_klines(self, symbol: str, timeframe: str = "1h", limit: int = 100) -> pd.DataFrame:
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(None, self.get_klines_sync, symbol, timeframe, limit)
     
     def get_ticker_sync(self, symbol: str = "BTC/USDT") -> Dict[str, Any]:
-        """Get current ticker data"""
+        """Get current ticker"""
         try:
-            ticker = self.binance.fetch_ticker(symbol)
+            ticker = self.primary.fetch_ticker(symbol)
             return {
                 "symbol": symbol,
                 "price": ticker['last'],
-                "change_24h": ticker['percentage'],
-                "high_24h": ticker['high'],
-                "low_24h": ticker['low'],
-                "volume_24h": ticker['quoteVolume'],
-                "bid": ticker['bid'],
-                "ask": ticker['ask'],
+                "change_24h": ticker.get('percentage', 0),
+                "high_24h": ticker.get('high', 0),
+                "low_24h": ticker.get('low', 0),
+                "volume_24h": ticker.get('quoteVolume', 0),
             }
         except Exception as e:
             logger.error(f"Ticker error: {e}")
-            return {"error": str(e)}
+            try:
+                ticker = self.bybit.fetch_ticker(symbol)
+                return {
+                    "symbol": symbol,
+                    "price": ticker['last'],
+                    "change_24h": ticker.get('percentage', 0),
+                    "high_24h": ticker.get('high', 0),
+                    "low_24h": ticker.get('low', 0),
+                    "volume_24h": ticker.get('quoteVolume', 0),
+                }
+            except:
+                return {"error": str(e)}
     
-    async def get_ticker(self, symbol: str = "BTC/USDT") -> Dict[str, Any]:
+    async def get_ticker(self, symbol: str) -> Dict[str, Any]:
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(None, self.get_ticker_sync, symbol)
     
     def get_orderbook_sync(self, symbol: str = "BTC/USDT", limit: int = 20) -> Dict[str, Any]:
-        """Get orderbook with bid/ask analysis"""
+        """Get orderbook analysis"""
         try:
-            book = self.binance.fetch_order_book(symbol, limit)
-            bid_depth = sum([b[1] * b[0] for b in book['bids'][:10]])  # USD value
+            book = self.primary.fetch_order_book(symbol, limit)
+            bid_depth = sum([b[1] * b[0] for b in book['bids'][:10]])
             ask_depth = sum([a[1] * a[0] for a in book['asks'][:10]])
             total = bid_depth + ask_depth
             imbalance = ((bid_depth - ask_depth) / total * 100) if total > 0 else 0
@@ -75,19 +100,17 @@ class MarketIntelligence:
                 "bid_depth_usd": bid_depth,
                 "ask_depth_usd": ask_depth,
                 "imbalance_pct": imbalance,
-                "top_bid": book['bids'][0] if book['bids'] else None,
-                "top_ask": book['asks'][0] if book['asks'] else None,
             }
         except Exception as e:
             logger.error(f"Orderbook error: {e}")
             return {"error": str(e)}
     
-    async def get_orderbook(self, symbol: str = "BTC/USDT") -> Dict[str, Any]:
+    async def get_orderbook(self, symbol: str) -> Dict[str, Any]:
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(None, self.get_orderbook_sync, symbol)
     
     async def get_technical_analysis(self, symbol: str = "BTC/USDT", interval: str = "1h") -> Dict[str, Any]:
-        """Full technical analysis with indicators"""
+        """Full technical analysis"""
         df = await self.get_klines(symbol, interval, 100)
         
         if df.empty:
@@ -97,17 +120,13 @@ class MarketIntelligence:
             price = df['close'].iloc[-1]
             
             # RSI
-            df['rsi'] = ta.momentum.RSIIndicator(df['close'], window=14).rsi()
-            rsi = df['rsi'].iloc[-1]
+            rsi = ta.momentum.RSIIndicator(df['close'], window=14).rsi().iloc[-1]
             
             # MACD
             macd_ind = ta.trend.MACD(df['close'])
-            df['macd'] = macd_ind.macd()
-            df['macd_signal'] = macd_ind.macd_signal()
-            df['macd_hist'] = macd_ind.macd_diff()
-            macd = df['macd'].iloc[-1]
-            macd_signal = df['macd_signal'].iloc[-1]
-            macd_hist = df['macd_hist'].iloc[-1]
+            macd = macd_ind.macd().iloc[-1]
+            macd_signal = macd_ind.macd_signal().iloc[-1]
+            macd_hist = macd_ind.macd_diff().iloc[-1]
             
             # Bollinger Bands
             bb = ta.volatility.BollingerBands(df['close'], window=20, window_dev=2)
@@ -133,13 +152,17 @@ class MarketIntelligence:
             curr_vol = df['volume'].iloc[-1]
             vol_ratio = curr_vol / avg_vol if avg_vol > 0 else 1
             
-            # Generate signals
+            # Signals
             signals = []
             
             if rsi < 30:
                 signals.append(("RSI", "OVERSOLD", "bullish"))
             elif rsi > 70:
                 signals.append(("RSI", "OVERBOUGHT", "bearish"))
+            elif rsi < 40:
+                signals.append(("RSI", "LOW", "neutral_bullish"))
+            elif rsi > 60:
+                signals.append(("RSI", "HIGH", "neutral_bearish"))
             
             if macd > macd_signal and macd_hist > 0:
                 signals.append(("MACD", "BULLISH", "bullish"))
@@ -156,15 +179,14 @@ class MarketIntelligence:
             elif ema_9 < ema_21 < ema_50:
                 signals.append(("EMA", "BEARISH STACK", "bearish"))
             
-            if stoch_k < 20:
+            if stoch_k < 20 and stoch_d < 20:
                 signals.append(("STOCH", "OVERSOLD", "bullish"))
-            elif stoch_k > 80:
+            elif stoch_k > 80 and stoch_d > 80:
                 signals.append(("STOCH", "OVERBOUGHT", "bearish"))
             
             if vol_ratio > 1.5:
                 signals.append(("VOLUME", f"HIGH {vol_ratio:.1f}x", "attention"))
             
-            # Overall bias
             bullish = sum(1 for s in signals if s[2] == "bullish")
             bearish = sum(1 for s in signals if s[2] == "bearish")
             
@@ -209,7 +231,6 @@ class MarketIntelligence:
     async def get_full_market_scan(self, symbol: str = "BTC/USDT") -> Dict[str, Any]:
         """Comprehensive market scan"""
         try:
-            # Run all fetches
             ta_data = await self.get_technical_analysis(symbol, "1h")
             ticker = await self.get_ticker(symbol)
             orderbook = await self.get_orderbook(symbol)
@@ -221,14 +242,14 @@ class MarketIntelligence:
                 "symbol": symbol,
                 "timestamp": datetime.now(timezone.utc).isoformat(),
                 "price": ta_data.get("price"),
-                "change_24h": ticker.get("change_24h"),
+                "change_24h": ticker.get("change_24h", 0),
                 "technical": ta_data.get("indicators", {}),
                 "signals": ta_data.get("signals", []),
                 "overall_bias": ta_data.get("overall_bias"),
                 "orderbook": {
-                    "bid_depth": f"${orderbook.get('bid_depth_usd', 0)/1e6:.1f}M",
-                    "ask_depth": f"${orderbook.get('ask_depth_usd', 0)/1e6:.1f}M",
-                    "imbalance": f"{orderbook.get('imbalance_pct', 0):+.1f}%"
+                    "bid_depth": f"${orderbook.get('bid_depth_usd', 0)/1e6:.1f}M" if orderbook.get('bid_depth_usd') else "N/A",
+                    "ask_depth": f"${orderbook.get('ask_depth_usd', 0)/1e6:.1f}M" if orderbook.get('ask_depth_usd') else "N/A",
+                    "imbalance": f"{orderbook.get('imbalance_pct', 0):+.1f}%" if 'imbalance_pct' in orderbook else "N/A"
                 },
                 "volume_24h": f"${ticker.get('volume_24h', 0)/1e9:.2f}B" if ticker.get('volume_24h', 0) > 1e9 else f"${ticker.get('volume_24h', 0)/1e6:.1f}M",
             }
@@ -255,15 +276,17 @@ class MarketIntelligence:
                 score -= 1
                 reasons.append(f"🔴 {ind}: {cond}")
         
-        # Orderbook imbalance
+        # Orderbook
         ob = scan.get("orderbook", {})
-        imb = float(ob.get("imbalance", "0%").replace("%", "").replace("+", ""))
-        if imb > 15:
-            score += 0.5
-            reasons.append(f"✅ Orderbook bullish imbalance ({ob['imbalance']})")
-        elif imb < -15:
-            score -= 0.5
-            reasons.append(f"🔴 Orderbook bearish imbalance ({ob['imbalance']})")
+        imb_str = ob.get("imbalance", "0%")
+        if imb_str != "N/A":
+            imb = float(imb_str.replace("%", "").replace("+", ""))
+            if imb > 15:
+                score += 0.5
+                reasons.append(f"✅ Orderbook bullish ({imb_str})")
+            elif imb < -15:
+                score -= 0.5
+                reasons.append(f"🔴 Orderbook bearish ({imb_str})")
         
         # Direction
         if score >= 2:
@@ -276,7 +299,6 @@ class MarketIntelligence:
             direction = "NEUTRAL"
             confidence = 40
         
-        # Targets
         price = scan["price"]
         atr = scan.get("technical", {}).get("atr", price * 0.02)
         
