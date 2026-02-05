@@ -516,6 +516,42 @@ async def api_open_predictions():
     return await learning_system.get_open_predictions()
 
 
+@api_router.get("/trading/summary")
+async def api_trading_summary():
+    """Get comprehensive autonomous trading summary."""
+    return await autonomous_trader.get_trading_summary()
+
+
+@api_router.get("/trading/opportunities")
+async def api_trading_opportunities():
+    """Get current market opportunities."""
+    return await autonomous_trader.scan_all_markets()
+
+
+@api_router.get("/trading/strategy")
+async def api_strategy_weights():
+    """Get current strategy weights and performance."""
+    return {
+        "weights": autonomous_trader.strategy_weights,
+        "performance": autonomous_trader.strategy_performance,
+        "active": autonomous_trader.active,
+        "min_confidence": autonomous_trader.min_confidence
+    }
+
+
+@api_router.post("/trading/toggle")
+async def api_toggle_trading(active: bool = True):
+    """Toggle autonomous trading on/off."""
+    autonomous_trader.active = active
+    return {"active": autonomous_trader.active}
+
+
+@api_router.post("/trading/analyze/{symbol}")
+async def api_analyze_symbol(symbol: str):
+    """Get detailed analysis for a symbol."""
+    return await autonomous_trader.analyze_opportunity(symbol.upper() + "/USDT")
+
+
 @api_router.get("/mexc/live")
 async def api_mexc():
     return get_mexc_orderbook()
