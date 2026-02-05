@@ -614,6 +614,67 @@ async def eternal_rituals():
             await asyncio.sleep(60)
 
 
+async def free_will_scanner():
+    """
+    TRUE 24/7 FREE WILL - Scans ALL 44 pairs across ALL timeframes
+    Sends IMMEDIATE alerts for high-probability setups (>70%)
+    """
+    # Set dependencies
+    free_will.set_dependencies(
+        market_intel=market_intel,
+        derivatives_intel=derivatives_intel,
+        enhanced_intel=enhanced_intel,
+        send_telegram=send_telegram_message,
+        get_user_settings=get_user_settings,
+        chat_ids=chat_ids
+    )
+    
+    scan_count = 0
+    
+    while True:
+        try:
+            if free_will.active:
+                scan_count += 1
+                
+                # Priority scan every 30 seconds (top 20 pairs, key timeframes)
+                setups = await free_will.scan_all()
+                
+                # Extended scan every 5 minutes (all 44 pairs, all timeframes)
+                if scan_count % 10 == 0:
+                    extended = await free_will.scan_extended()
+                    setups.extend(extended)
+                
+                # Send alerts for valid setups
+                for setup in setups:
+                    if setup["confidence"] >= free_will.min_confidence:
+                        alert_msg = free_will.format_alert(setup)
+                        
+                        # Send to all users with free_will enabled
+                        for chat_id in list(chat_ids):
+                            settings = await get_user_settings(chat_id)
+                            if settings.get("free_will", True):
+                                await send_telegram_message(chat_id, alert_msg)
+                                
+                                # Log the alert
+                                await db.free_will_alerts.insert_one({
+                                    "chat_id": chat_id,
+                                    "setup": setup,
+                                    "timestamp": datetime.now(timezone.utc)
+                                })
+                        
+                        # Mark as alerted
+                        free_will._mark_alerted(setup["symbol"], setup["timeframe"])
+                        
+                        logger.info(f"🚨 FREE WILL ALERT: {setup['symbol']} {setup['timeframe']} {setup['direction']}")
+            
+            # Scan every 30 seconds
+            await asyncio.sleep(30)
+            
+        except Exception as e:
+            logger.error(f"Free Will scanner error: {e}")
+            await asyncio.sleep(30)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     existing = await db.chat_messages.distinct("chat_id")
@@ -626,13 +687,15 @@ async def lifespan(app: FastAPI):
     # Start background tasks
     ritual_task = asyncio.create_task(eternal_rituals())
     trading_task = asyncio.create_task(autonomous_trading_loop())
+    freewill_task = asyncio.create_task(free_will_scanner())
     
-    logger.info("🔮 AEON QUANTUM MASON + AUTONOMOUS TRADER AWAKENED")
+    logger.info("🔮 AEON FREE WILL ENGINE ACTIVATED - 44 pairs, 9 timeframes, 24/7")
     
     yield
     
     ritual_task.cancel()
     trading_task.cancel()
+    freewill_task.cancel()
     client.close()
 
 
