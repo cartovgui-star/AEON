@@ -23,21 +23,24 @@ class EnhancedMarketIntel:
     """
     
     def __init__(self):
-        # Bybit public API (no auth needed)
-        self.bybit = ccxt.bybit({'enableRateLimit': True})
+        # MEXC for spot data
+        self.mexc = ccxt.mexc({'enableRateLimit': True})
         
         # API endpoints
         self.coingecko_base = "https://api.coingecko.com/api/v3"
         self.fear_greed_api = "https://api.alternative.me/fng"
-        self.bybit_base = "https://api.bybit.com"
         
         # Cache for rate limiting
         self._cache = {}
-        self._cache_ttl = 60  # 60 second cache
+        self._cache_ttl = 120  # 2 minute cache to avoid rate limits
         
-        # Top coins list (updated periodically)
-        self.top_coins = []
-        self.top_coins_updated = None
+        # Top coins list
+        self.tracked_symbols = [
+            "BTC/USDT", "ETH/USDT", "SOL/USDT", "XRP/USDT", "DOGE/USDT", 
+            "ADA/USDT", "AVAX/USDT", "DOT/USDT", "LINK/USDT", "MATIC/USDT",
+            "UNI/USDT", "ATOM/USDT", "LTC/USDT", "BCH/USDT", "NEAR/USDT",
+            "APT/USDT", "ARB/USDT", "OP/USDT", "FIL/USDT", "INJ/USDT"
+        ]
     
     async def _fetch_json(self, url: str, cache_key: str = None) -> Dict:
         """Fetch JSON with caching"""
