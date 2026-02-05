@@ -141,6 +141,22 @@ Build a Telegram chatbot "Aeon" that integrates with OpenAI - a business partner
 - Win Rate: 100%
 - Total PnL: +26.72%
 - Status: ACTIVE
+- Tracked Symbols: BTC, ETH, SOL, DOGE, XRP, AVAX
+
+## Recent Enhancements (Feb 2026)
+- [x] Added 3 more trading pairs: DOGE, XRP, AVAX
+- [x] Implemented funding rate alerts (triggers on >0.08%)
+- [x] Implemented liquidation alerts (triggers on >$8M)
+- [x] Enhanced trade close notifications with running stats
+- [x] Added `/liqs` command for liquidation data
+- [x] All 6 coins now scanned every 5 minutes
+
+## Alerts System
+Aeon automatically alerts users (with Free Will ON) when:
+- **High-confidence trade signals** (≥75% confidence)
+- **Trade closes** (win or loss, with running stats)
+- **Extreme funding rates** (>0.08% - squeeze potential)
+- **Large liquidations** (>$8M - market stress)
 
 ## Prioritized Backlog
 
