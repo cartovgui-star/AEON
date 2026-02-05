@@ -723,14 +723,14 @@ async def api_full_intel(symbol: str):
 
 @api_router.get("/intel/bybit/funding/{symbol}")
 async def api_bybit_funding(symbol: str):
-    """Get REAL funding rate from Bybit"""
-    return await enhanced_intel.get_bybit_funding_rate(symbol.upper() + "USDT")
+    """Get funding rate data"""
+    return await enhanced_intel.get_funding_rate(symbol.upper() + "USDT")
 
 
 @api_router.get("/intel/bybit/oi/{symbol}")
 async def api_bybit_oi(symbol: str):
-    """Get REAL open interest from Bybit"""
-    return await enhanced_intel.get_bybit_open_interest(symbol.upper() + "USDT")
+    """Get open interest estimate"""
+    return await enhanced_intel.get_open_interest_estimate(symbol.upper() + "USDT")
 
 
 @api_router.get("/learning/stats")
