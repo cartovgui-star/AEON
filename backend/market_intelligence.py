@@ -322,6 +322,146 @@ class MarketIntelligence:
             "reasons": reasons,
             "market_data": scan,
         }
+    
+    async def get_long_short_ratio(self, symbol: str, period: str = "1h", limit: int = 5) -> List[Dict]:
+        """Get long/short ratio data (mock implementation for MEXC)"""
+        try:
+            # MEXC doesn't provide this data via public API, so we'll return mock data
+            # In a real implementation, this would come from Binance futures API
+            import random
+            
+            data = []
+            for i in range(limit):
+                ratio = random.uniform(0.8, 1.5)  # Random L/S ratio
+                long_pct = ratio / (1 + ratio)
+                short_pct = 1 - long_pct
+                
+                data.append({
+                    "symbol": symbol,
+                    "long_short_ratio": round(ratio, 2),
+                    "long_account": round(long_pct, 3),
+                    "short_account": round(short_pct, 3),
+                    "timestamp": datetime.now(timezone.utc).isoformat()
+                })
+            
+            return data
+        except Exception as e:
+            logger.error(f"Long/short ratio error: {e}")
+            return []
+    
+    async def get_top_trader_long_short_ratio(self, symbol: str, period: str = "1h", limit: int = 5) -> List[Dict]:
+        """Get top trader (whale) long/short ratio data (mock implementation)"""
+        try:
+            import random
+            
+            data = []
+            for i in range(limit):
+                ratio = random.uniform(0.9, 1.3)  # Whales tend to be more balanced
+                long_pct = ratio / (1 + ratio)
+                short_pct = 1 - long_pct
+                
+                data.append({
+                    "symbol": symbol,
+                    "long_short_ratio": round(ratio, 2),
+                    "long_account": round(long_pct, 3),
+                    "short_account": round(short_pct, 3),
+                    "timestamp": datetime.now(timezone.utc).isoformat()
+                })
+            
+            return data
+        except Exception as e:
+            logger.error(f"Top trader L/S ratio error: {e}")
+            return []
+    
+    async def get_taker_long_short_ratio(self, symbol: str, period: str = "1h", limit: int = 5) -> List[Dict]:
+        """Get taker buy/sell ratio data (mock implementation)"""
+        try:
+            import random
+            
+            data = []
+            for i in range(limit):
+                buy_vol = random.uniform(0.4, 0.7)
+                sell_vol = 1 - buy_vol
+                
+                data.append({
+                    "symbol": symbol,
+                    "buy_vol": round(buy_vol, 3),
+                    "sell_vol": round(sell_vol, 3),
+                    "timestamp": datetime.now(timezone.utc).isoformat()
+                })
+            
+            return data
+        except Exception as e:
+            logger.error(f"Taker ratio error: {e}")
+            return []
+    
+    async def get_current_funding_rate(self, symbol: str) -> Dict[str, Any]:
+        """Get current funding rate (mock implementation for MEXC)"""
+        try:
+            import random
+            
+            # Get current price for mark price
+            ticker = await self.get_ticker(symbol)
+            price = ticker.get('price', 0)
+            
+            # Mock funding rate (typically between -0.1% to +0.1%)
+            funding_rate = random.uniform(-0.001, 0.001)
+            funding_rate_pct = f"{funding_rate * 100:+.4f}%"
+            
+            return {
+                "symbol": symbol,
+                "funding_rate": funding_rate,
+                "funding_rate_pct": funding_rate_pct,
+                "mark_price": price,
+                "index_price": price * random.uniform(0.999, 1.001),  # Slight variation
+                "next_funding_time": (datetime.now(timezone.utc) + timedelta(hours=8)).isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            }
+        except Exception as e:
+            logger.error(f"Funding rate error: {e}")
+            return {"error": str(e)}
+    
+    async def get_funding_rate(self, symbol: str, limit: int = 5) -> List[Dict]:
+        """Get historical funding rates (mock implementation)"""
+        try:
+            import random
+            
+            data = []
+            for i in range(limit):
+                funding_rate = random.uniform(-0.001, 0.001)
+                funding_rate_pct = f"{funding_rate * 100:+.4f}%"
+                
+                data.append({
+                    "symbol": symbol,
+                    "funding_rate": funding_rate,
+                    "funding_rate_pct": funding_rate_pct,
+                    "timestamp": (datetime.now(timezone.utc) - timedelta(hours=8*i)).isoformat()
+                })
+            
+            return data
+        except Exception as e:
+            logger.error(f"Historical funding rate error: {e}")
+            return []
+    
+    async def get_liquidations(self, symbol: str) -> Dict[str, Any]:
+        """Get liquidation data (mock implementation)"""
+        try:
+            import random
+            
+            # Mock liquidation data
+            long_liq = random.uniform(1000000, 10000000)  # $1M - $10M
+            short_liq = random.uniform(1000000, 10000000)
+            
+            return {
+                "symbol": symbol,
+                "long_liquidations": f"${long_liq/1e6:.1f}M",
+                "short_liquidations": f"${short_liq/1e6:.1f}M",
+                "total_liquidations": f"${(long_liq + short_liq)/1e6:.1f}M",
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            }
+        except Exception as e:
+            logger.error(f"Liquidations error: {e}")
+            return {"error": str(e)}
 
 
 # Global instance
