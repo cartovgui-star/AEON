@@ -136,8 +136,12 @@ async def get_user_settings(chat_id: int) -> Dict[str, Any]:
             "free_will": True,
             "created_at": datetime.now(timezone.utc),
             "alert_threshold": 25,
+            "mode": "default",  # default or alchemy
         }
         await db.user_settings.insert_one(settings)
+    # Ensure mode exists for existing users
+    if "mode" not in settings:
+        settings["mode"] = "default"
     return settings
 
 
