@@ -28,7 +28,7 @@ class AutonomousTrader:
     def __init__(self, db: AsyncIOMotorDatabase, learning_system: AeonLearningSystem):
         self.db = db
         self.learning = learning_system
-        self.symbols = ["BTC/USDT", "ETH/USDT", "SOL/USDT"]
+        self.symbols = ["BTC/USDT", "ETH/USDT", "SOL/USDT", "DOGE/USDT", "XRP/USDT", "AVAX/USDT"]
         self.active = True
         self.min_confidence = 65  # Minimum confidence to take a trade
         self.max_open_positions = 3  # Max simultaneous predictions per symbol

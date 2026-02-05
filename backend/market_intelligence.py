@@ -31,7 +31,7 @@ class MarketIntelligence:
         self.bybit = ccxt.bybit({'enableRateLimit': True})
         
         self.primary = self.mexc
-        self.symbols = ["BTC/USDT", "ETH/USDT", "SOL/USDT"]
+        self.symbols = ["BTC/USDT", "ETH/USDT", "SOL/USDT", "DOGE/USDT", "XRP/USDT", "AVAX/USDT"]
     
     def get_klines_sync(self, symbol: str = "BTC/USDT", timeframe: str = "1h", limit: int = 100) -> pd.DataFrame:
         """Fetch OHLCV data"""
