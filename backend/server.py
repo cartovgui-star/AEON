@@ -783,6 +783,95 @@ async def api_exchange_funding(exchange: str, symbol: str):
     return {"error": f"Unknown exchange: {exchange}"}
 
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# NEWS & SENTIMENT APIs
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@api_router.get("/news/latest")
+async def api_latest_news(limit: int = 10, coin: str = None):
+    """Get latest crypto news"""
+    return await news_intel.get_latest_news(limit, coin)
+
+
+@api_router.get("/news/sentiment")
+async def api_news_sentiment():
+    """Get news sentiment summary"""
+    return await news_intel.get_news_sentiment_summary()
+
+
+@api_router.get("/onchain/btc")
+async def api_btc_onchain():
+    """Get Bitcoin on-chain stats"""
+    return await news_intel.get_btc_onchain_stats()
+
+
+@api_router.get("/onchain/flow")
+async def api_exchange_flow():
+    """Get exchange flow estimate"""
+    return await news_intel.get_exchange_flow_estimate()
+
+
+@api_router.get("/whales/activity")
+async def api_whale_activity():
+    """Get whale activity summary"""
+    return await news_intel.get_whale_summary()
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# MULTI-TIMEFRAME ANALYSIS APIs
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@api_router.get("/mtf/{symbol}")
+async def api_multi_timeframe(symbol: str):
+    """Get multi-timeframe confluence analysis"""
+    return await mtf_analysis.get_multi_timeframe_analysis(symbol.upper() + "USDT")
+
+
+@api_router.get("/mtf/align/{symbol}")
+async def api_trend_alignment(symbol: str):
+    """Get trend alignment across timeframes"""
+    return await mtf_analysis.get_trend_alignment(symbol.upper() + "USDT")
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# FUTURES CALCULATOR APIs
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@api_router.get("/calc/pnl")
+async def api_calc_pnl(
+    entry: float,
+    exit: float,
+    size: float,
+    leverage: int = 1,
+    direction: str = "LONG"
+):
+    """Calculate futures PnL"""
+    return futures_calc.calculate_pnl(entry, exit, size, leverage, direction)
+
+
+@api_router.get("/calc/position")
+async def api_calc_position(
+    balance: float,
+    risk_pct: float,
+    entry: float,
+    stop: float,
+    leverage: int = 1
+):
+    """Calculate recommended position size"""
+    return futures_calc.calculate_position_size(balance, risk_pct, entry, stop, leverage)
+
+
+@api_router.get("/calc/scenarios")
+async def api_calc_scenarios(
+    entry: float,
+    size: float,
+    leverage: int = 1,
+    direction: str = "LONG"
+):
+    """Generate PnL scenarios at different price levels"""
+    return futures_calc.generate_scenarios(entry, size, leverage, direction)
+
+
 @api_router.get("/learning/stats")
 async def api_learning_stats():
     return await learning_system.get_prediction_stats()
