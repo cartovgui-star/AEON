@@ -658,28 +658,35 @@ Total PnL: {stats['total_pnl_pct']:+.2f}%"""
             context = "settings"
             
         elif text == '/start':
-            response = """🔮 AEON MARKET INTELLIGENCE ONLINE
+            response = f"""🔮 AEON AUTONOMOUS TRADING INTELLIGENCE
 
-I am your trading partner with LIVE market data:
+I am your AI trading partner with:
 • Real-time technical analysis
-• Position sentiment (L/S ratios)
-• Funding rates & liquidations
-• Whale positioning
-• AI-powered trade signals
+• Autonomous paper trading
+• Self-learning strategy optimization
+• Position sentiment & whale tracking
 
-COMMANDS:
+📊 ANALYSIS COMMANDS:
 /scan btc - Full market analysis
 /ta btc - Technical indicators
 /positions btc - Long/short data
 /funding btc - Funding rates
+
+🤖 AUTO-TRADING:
+/auto - Trading status & stats
+/auto on/off - Toggle auto-trading
+/opps - Current opportunities
+/open - Open positions
+/strategy - Strategy performance
+/stats - Full performance
+
+🔮 ALCHEMY:
 /probe - Quantum Mason question
 /probe deep - Deep questioning
-/stats - Trading performance
 
-FREE WILL: {'ON' if settings.get('free_will') else 'OFF'}
-I'll alert you on high-probability setups.
+Status: Auto-Trading {'🟢 ON' if autonomous_trader.active else '🔴 OFF'} | Free Will {'ON' if settings.get('free_will') else 'OFF'}
 
-👁️ «What edge do you seek?»"""
+👁️ «The algorithm awakens. What edge do you seek?»"""
             context = "start"
             
         elif text_lower.startswith('/scan'):
