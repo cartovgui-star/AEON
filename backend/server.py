@@ -151,9 +151,10 @@ async def send_telegram_message(chat_id: int, text: str):
 
 
 def get_mexc_orderbook() -> Dict[str, Any]:
-    """Get MEXC orderbook data for all tracked symbols"""
+    """Get MEXC orderbook data for main tracked symbols (dashboard)"""
     try:
-        symbols = ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'DOGE/USDT', 'XRP/USDT', 'AVAX/USDT']
+        # Main 3 coins for dashboard (faster loading)
+        symbols = ['BTC/USDT', 'ETH/USDT', 'SOL/USDT']
         tickers = mexc.fetch_tickers(symbols)
         markets = {}
         for symbol in symbols:
