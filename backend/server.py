@@ -23,6 +23,7 @@ from market_intelligence import market_intel, MarketIntelligence
 from learning_system import AeonLearningSystem, TradingSignalGenerator
 from autonomous_trader import AutonomousTrader, init_autonomous_trader
 from enhanced_intel import enhanced_intel, EnhancedMarketIntel
+from derivatives_intel import derivatives_intel, DerivativesIntel
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
