@@ -852,7 +852,7 @@ async def api_bybit_oi(symbol: str):
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# REAL DERIVATIVES DATA APIs (OKX, Bitget, KuCoin, Gate)
+# REAL DERIVATIVES DATA APIs (OKX, Bitget, KuCoin, Gate, Binance)
 # ═══════════════════════════════════════════════════════════════════════════════
 
 @api_router.get("/derivatives/funding/{symbol}")
@@ -869,8 +869,8 @@ async def api_real_oi(symbol: str):
 
 @api_router.get("/derivatives/ls/{symbol}")
 async def api_real_ls(symbol: str):
-    """Get long/short ratio estimate"""
-    return await derivatives_intel.get_long_short_ratio_okx(symbol.upper() + "USDT")
+    """Get REAL long/short ratio from Binance Futures"""
+    return await derivatives_intel.get_aggregated_long_short(symbol.upper() + "USDT")
 
 
 @api_router.get("/derivatives/full/{symbol}")
