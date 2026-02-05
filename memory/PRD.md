@@ -157,7 +157,7 @@ Build a Telegram chatbot "Aeon" that integrates with OpenAI - a business partner
 ## Credentials (Pre-configured)
 - Telegram Bot Token: `8586106246:AAHZTWfSHMuLwyGxeOn9DelRaesZF2Joans`
 - Bot URL: https://t.me/ObsidianCabalbot
-- Webhook URL: https://quantum-mason.preview.emergentagent.com/api/webhook
+- Webhook URL: https://aeon-ai.preview.emergentagent.com/api/webhook
 
 ## Current Performance
 - Total Trades: 2
