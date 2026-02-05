@@ -192,13 +192,26 @@ async def get_user_insights(chat_id: int, limit: int = 10) -> List[Dict]:
     return await db.user_insights.find({"chat_id": chat_id}).sort("timestamp", -1).limit(limit).to_list(limit)
 
 
-async def send_telegram_message(chat_id: int, text: str):
-    try:
-        async with httpx.AsyncClient() as c:
-            await c.post(f"https://api.telegram.org/bot{telegram_token}/sendMessage",
-                        json={'chat_id': chat_id, 'text': text})
-    except Exception as e:
-        logger.error(f"Telegram error: {e}")
+async def send_telegram_message(chat_id: int, text: str, retry: int = 2):
+    """Send telegram message with retry and rate limit handling"""
+    for attempt in range(retry + 1):
+        try:
+            async with httpx.AsyncClient(timeout=10) as c:
+                resp = await c.post(
+                    f"https://api.telegram.org/bot{telegram_token}/sendMessage",
+                    json={'chat_id': chat_id, 'text': text}
+                )
+                if resp.status_code == 429:  # Rate limited
+                    retry_after = resp.json().get('parameters', {}).get('retry_after', 5)
+                    logger.warning(f"Telegram rate limited, waiting {retry_after}s")
+                    await asyncio.sleep(retry_after)
+                    continue
+                return
+        except Exception as e:
+            if attempt < retry:
+                await asyncio.sleep(1)
+            else:
+                logger.error(f"Telegram error: {e}")
 
 
 def get_mexc_orderbook() -> Dict[str, Any]:
