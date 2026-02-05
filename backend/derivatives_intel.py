@@ -52,17 +52,13 @@ class DerivativesIntel:
         self._cache_ttl = 60
     
     def _get_perp_symbol(self, symbol: str) -> str:
-        """Convert BTCUSDT to BTC/USDT:USDT format"""
-        # Check mapping first
-        if symbol in self.perp_format:
-            return self.perp_format[symbol]
-        
+        """Convert BTCUSDT to BTC/USDT:USDT format for any symbol"""
         # Handle already formatted symbols
         if "/" in symbol:
             base = symbol.split("/")[0]
             return f"{base}/USDT:USDT"
         
-        # Convert BTCUSDT format
+        # Convert BTCUSDT format - remove USDT suffix
         base = symbol.replace("USDT", "")
         return f"{base}/USDT:USDT"
     
