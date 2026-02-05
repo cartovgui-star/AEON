@@ -546,7 +546,7 @@ async def api_toggle_trading(active: bool = True):
     return {"active": autonomous_trader.active}
 
 
-@api_router.post("/trading/analyze/{symbol}")
+@api_router.get("/trading/analyze/{symbol}")
 async def api_analyze_symbol(symbol: str):
     """Get detailed analysis for a symbol."""
     return await autonomous_trader.analyze_opportunity(symbol.upper() + "/USDT")
