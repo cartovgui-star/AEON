@@ -385,45 +385,59 @@ Sources: {sources_str}
         return alert
     
     async def scan_all(self) -> List[Dict]:
-        """Scan all pairs across priority timeframes"""
-        setups = []
+        """
+        Scan all pairs across priority timeframes.
+        Returns BEST setup per symbol (consolidated alerts).
+        Prioritizes higher timeframes for quality.
+        """
+        all_setups = {}  # symbol -> best setup
         
-        # Priority timeframes (scan more frequently)
-        priority_tfs = ["5m", "15m", "1h", "4h"]
+        # Priority timeframes (higher TFs = better signals, scanned first)
+        priority_tfs = ["4h", "1h", "15m", "5m"]  # Ordered by importance
         
         # Scan priority pairs on priority timeframes
         priority_pairs = ALL_PAIRS[:20]  # Top 20 first
         
         for symbol in priority_pairs:
-            for tf in priority_tfs:
-                if not self._should_alert(symbol, tf):
-                    continue
+            if not self._should_alert(symbol):
+                continue
                 
+            for tf in priority_tfs:
                 setup = await self.analyze_setup(symbol, tf)
                 if setup and setup["confidence"] >= self.min_confidence:
-                    setups.append(setup)
+                    # Keep best setup per symbol (highest confidence)
+                    if symbol not in all_setups or setup["confidence"] > all_setups[symbol]["confidence"]:
+                        all_setups[symbol] = setup
                 
                 # Small delay to avoid rate limits
                 await asyncio.sleep(0.1)
         
-        return setups
+        return list(all_setups.values())
     
     async def scan_extended(self) -> List[Dict]:
-        """Extended scan - all pairs, all timeframes (runs less frequently)"""
-        setups = []
+        """
+        Extended scan - all pairs, prioritized timeframes.
+        Returns BEST setup per symbol (consolidated alerts).
+        """
+        all_setups = {}  # symbol -> best setup
+        
+        # Prioritize higher timeframes for quality signals
+        priority_tfs = ["1d", "4h", "1h", "15m"]
         
         for symbol in ALL_PAIRS:
-            for tf in TIMEFRAMES:
-                if not self._should_alert(symbol, tf):
-                    continue
+            if not self._should_alert(symbol):
+                continue
                 
+            for tf in priority_tfs:
                 setup = await self.analyze_setup(symbol, tf)
                 if setup and setup["confidence"] >= self.min_confidence:
-                    setups.append(setup)
+                    # Keep best setup per symbol
+                    if symbol not in all_setups or setup["confidence"] > all_setups[symbol]["confidence"]:
+                        all_setups[symbol] = setup
                 
                 await asyncio.sleep(0.05)
         
-        return setups
+        return list(all_setups.values())
     
     async def record_feedback(self, setup_id: str, outcome: str, notes: str = None):
         """Record user feedback to improve signals"""
