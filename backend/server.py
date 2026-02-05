@@ -358,6 +358,74 @@ RSI: {eth.get('technical',{}).get('rsi','?')} | Bias: {eth.get('overall_bias','?
 # BACKGROUND TASKS
 # ═══════════════════════════════════════════════════════════════════════════════
 
+async def autonomous_trading_loop():
+    """
+    Aeon's autonomous trading brain - runs continuously.
+    - Scans markets every 5 minutes
+    - Takes paper trades when high-confidence setups appear
+    - Evaluates open positions every 5 minutes
+    - Learns from outcomes and adjusts strategy weights
+    """
+    # Load existing strategy weights
+    await autonomous_trader.load_strategy_weights()
+    
+    while True:
+        try:
+            if autonomous_trader.active:
+                # Scan for new opportunities
+                opportunities = await autonomous_trader.scan_all_markets()
+                
+                for opp in opportunities:
+                    if opp.get("confidence", 0) >= autonomous_trader.min_confidence:
+                        # Execute paper trade (use chat_id=0 for autonomous trades)
+                        pred_id = await autonomous_trader.execute_paper_trade(opp, chat_id=0)
+                        
+                        if pred_id:
+                            # Notify users with free_will enabled about high-confidence trades
+                            for chat_id in list(chat_ids):
+                                settings = await get_user_settings(chat_id)
+                                if settings.get("free_will", True) and opp.get("confidence", 0) >= 75:
+                                    alert = f"""🤖 AEON AUTO-TRADE SIGNAL
+
+{opp['signal']} {opp['symbol']}
+Confidence: {opp['confidence']}%
+Entry: ${opp['price']:,.2f}
+Target: ${opp.get('target', 0):,.2f}
+Stop: ${opp.get('stop_loss', 0):,.2f}
+
+Reasoning:
+{chr(10).join(['• ' + r for r in opp.get('reasons', [])[:4]])}
+
+👁️ «Aeon has spoken. The quantum field collapses.»"""
+                                    await send_telegram_message(chat_id, alert)
+                
+                # Evaluate open predictions
+                closed = await autonomous_trader.evaluate_predictions()
+                
+                # Notify about closed trades
+                for result in closed:
+                    if result.get("pnl_pct") is not None:
+                        emoji = "✅" if result.get("pnl_pct", 0) > 0 else "❌"
+                        for chat_id in list(chat_ids):
+                            settings = await get_user_settings(chat_id)
+                            if settings.get("free_will", True):
+                                msg = f"""{emoji} TRADE CLOSED
+
+PnL: {result.get('pnl_pct', 0):+.2f}%
+Entry: ${result.get('entry', 0):,.2f}
+Exit: ${result.get('exit', 0):,.2f}
+
+👁️ «Every trade teaches. The Great Work continues.»"""
+                                await send_telegram_message(chat_id, msg)
+            
+            # Run every 5 minutes
+            await asyncio.sleep(300)
+            
+        except Exception as e:
+            logger.error(f"Autonomous trading error: {e}")
+            await asyncio.sleep(60)
+
+
 async def eternal_rituals():
     while True:
         try:
@@ -381,11 +449,19 @@ async def lifespan(app: FastAPI):
     chat_ids.update(existing)
     logger.info(f"Loaded {len(chat_ids)} users")
     
-    task = asyncio.create_task(eternal_rituals())
-    logger.info("🔮 AEON QUANTUM MASON + MARKET INTELLIGENCE AWAKENED")
+    # Load strategy weights
+    await autonomous_trader.load_strategy_weights()
+    
+    # Start background tasks
+    ritual_task = asyncio.create_task(eternal_rituals())
+    trading_task = asyncio.create_task(autonomous_trading_loop())
+    
+    logger.info("🔮 AEON QUANTUM MASON + AUTONOMOUS TRADER AWAKENED")
     
     yield
-    task.cancel()
+    
+    ritual_task.cancel()
+    trading_task.cancel()
     client.close()
 
 
