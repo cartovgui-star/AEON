@@ -94,14 +94,18 @@ class EnhancedMarketIntel:
             return []
     
     async def get_top_100_coins(self) -> List[Dict]:
-        """Get top 100 cryptocurrencies by market cap"""
+        """Get top 100 cryptocurrencies - uses MEXC as primary (faster, no rate limits)"""
+        # Use MEXC as primary source - always available
+        coins = await self.get_mexc_prices()
+        if coins:
+            return coins
+        
+        # Fallback to CoinGecko if MEXC fails
         url = f"{self.coingecko_base}/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=100&page=1&sparkline=false&price_change_percentage=1h,24h,7d"
         
         data = await self._fetch_json(url, "top100")
         
-        if isinstance(data, list):
-            self.top_coins = data
-            self.top_coins_updated = datetime.now(timezone.utc)
+        if isinstance(data, list) and len(data) > 0:
             return data
         return []
     
