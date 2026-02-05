@@ -140,48 +140,75 @@ class EnhancedMarketIntel:
             return "EXTREME GREED - Market euphoria, high risk of correction"
     
     # ═══════════════════════════════════════════════════════════════════════════
-    # BYBIT - REAL FUNDING RATES, OPEN INTEREST VIA CCXT
+    # DERIVATIVES DATA - Using available sources
     # ═══════════════════════════════════════════════════════════════════════════
     
-    async def get_bybit_funding_rate(self, symbol: str = "BTCUSDT") -> Dict:
-        """Get REAL funding rate from Bybit via ccxt"""
+    async def get_funding_rate(self, symbol: str = "BTCUSDT") -> Dict:
+        """Get funding rate from available sources"""
         try:
-            # Convert symbol format for ccxt (BTCUSDT -> BTC/USDT:USDT)
+            # Try MEXC first (via ccxt)
             base = symbol.replace("USDT", "")
-            ccxt_symbol = f"{base}/USDT:USDT"
             
-            # Fetch funding rate
-            funding = self.bybit.fetch_funding_rate(ccxt_symbol)
+            # MEXC uses swap format
+            try:
+                mexc = ccxt.mexc({'enableRateLimit': True})
+                funding = mexc.fetch_funding_rate(f"{base}/USDT:USDT")
+                
+                rate = funding.get("fundingRate", 0) or 0
+                return {
+                    "symbol": symbol,
+                    "source": "MEXC",
+                    "funding_rate": rate,
+                    "funding_rate_pct": f"{rate * 100:.4f}%",
+                    "is_positive": rate > 0,
+                    "interpretation": "Longs pay shorts" if rate > 0 else "Shorts pay longs"
+                }
+            except Exception as mexc_err:
+                logger.warning(f"MEXC funding error: {mexc_err}")
             
-            rate = funding.get("fundingRate", 0) or 0
+            # Fallback: use estimate based on market conditions
+            fng = await self.get_fear_greed_index()
+            fg_value = fng.get("value", 50)
+            
+            # Estimate funding based on sentiment
+            if fg_value < 25:
+                est_rate = -0.0001  # Slight negative in extreme fear
+            elif fg_value < 40:
+                est_rate = 0.0001
+            elif fg_value > 75:
+                est_rate = 0.0005  # Positive in extreme greed
+            elif fg_value > 60:
+                est_rate = 0.0003
+            else:
+                est_rate = 0.0001
+            
             return {
                 "symbol": symbol,
-                "funding_rate": rate,
-                "funding_rate_pct": f"{rate * 100:.4f}%",
-                "next_funding_time": funding.get("fundingTimestamp"),
-                "is_positive": rate > 0,
-                "interpretation": "Longs pay shorts" if rate > 0 else "Shorts pay longs"
+                "source": "ESTIMATED",
+                "funding_rate": est_rate,
+                "funding_rate_pct": f"{est_rate * 100:.4f}%",
+                "is_positive": est_rate > 0,
+                "interpretation": "Longs pay shorts" if est_rate > 0 else "Shorts pay longs",
+                "note": "Estimated based on market sentiment"
             }
+            
         except Exception as e:
-            logger.error(f"Bybit funding error: {e}")
+            logger.error(f"Funding error: {e}")
             return {"symbol": symbol, "error": str(e)}
     
-    async def get_bybit_open_interest(self, symbol: str = "BTCUSDT") -> Dict:
-        """Get REAL open interest from Bybit via ccxt"""
+    async def get_open_interest_estimate(self, symbol: str = "BTCUSDT") -> Dict:
+        """Get open interest estimate"""
         try:
-            base = symbol.replace("USDT", "")
-            ccxt_symbol = f"{base}/USDT:USDT"
-            
-            oi = self.bybit.fetch_open_interest(ccxt_symbol)
+            # Use market data to estimate OI trends
+            global_data = await self.get_global_market_data()
             
             return {
                 "symbol": symbol,
-                "open_interest": oi.get("openInterestAmount", 0),
-                "open_interest_value": f"${oi.get('openInterestValue', 0):,.0f}",
-                "timestamp": oi.get("timestamp")
+                "note": "OI data requires exchange API access",
+                "market_volume_24h": global_data.get("total_volume_24h", 0),
+                "market_trend": "HIGH" if global_data.get("market_cap_change_24h", 0) > 5 else "LOW" if global_data.get("market_cap_change_24h", 0) < -5 else "NEUTRAL"
             }
         except Exception as e:
-            logger.error(f"Bybit OI error: {e}")
             return {"symbol": symbol, "error": str(e)}
     
     async def get_bybit_recent_trades(self, symbol: str = "BTCUSDT", limit: int = 50) -> List[Dict]:
