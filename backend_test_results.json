@@ -1,211 +1,259 @@
 {
-  "total_tests": 34,
-  "passed_tests": 33,
-  "success_rate": 97.05882352941177,
+  "total_tests": 42,
+  "passed_tests": 34,
+  "success_rate": 80.95238095238095,
   "results": [
     {
       "test": "Root API Endpoint",
       "success": true,
       "details": "",
-      "timestamp": "2026-02-04T09:29:23.397666"
+      "timestamp": "2026-02-05T02:30:32.622905"
     },
     {
-      "test": "Bot Statistics",
+      "test": "Bot System Test",
       "success": true,
       "details": "",
-      "timestamp": "2026-02-04T09:29:23.432767"
+      "timestamp": "2026-02-05T02:30:33.424632"
     },
     {
-      "test": "Bot Messages History",
+      "test": "Bot System Connectivity",
       "success": true,
-      "details": "",
-      "timestamp": "2026-02-04T09:29:23.464281"
+      "details": "4/4 systems connected",
+      "timestamp": "2026-02-05T02:30:33.425287"
     },
     {
-      "test": "LLM Connection Test",
+      "test": "Market Scan - BTC",
       "success": true,
       "details": "",
-      "timestamp": "2026-02-04T09:29:24.533143"
+      "timestamp": "2026-02-05T02:30:34.035353"
     },
     {
-      "test": "Webhook Info",
+      "test": "Market Scan BTC Structure",
       "success": true,
-      "details": "",
-      "timestamp": "2026-02-04T09:29:24.948147"
+      "details": "Valid market scan data",
+      "timestamp": "2026-02-05T02:30:34.035995"
     },
     {
-      "test": "Create Status Check",
+      "test": "Market Scan BTC Technical Indicators",
       "success": true,
-      "details": "",
-      "timestamp": "2026-02-04T09:29:24.985161"
+      "details": "Found 7 indicators",
+      "timestamp": "2026-02-05T02:30:34.036015"
     },
     {
-      "test": "Get Status Checks",
+      "test": "Market Scan - ETH",
       "success": true,
       "details": "",
-      "timestamp": "2026-02-04T09:29:25.021650"
+      "timestamp": "2026-02-05T02:30:34.644366"
+    },
+    {
+      "test": "Market Scan ETH Structure",
+      "success": true,
+      "details": "Valid market scan data",
+      "timestamp": "2026-02-05T02:30:34.644954"
+    },
+    {
+      "test": "Market Scan ETH Technical Indicators",
+      "success": true,
+      "details": "Found 7 indicators",
+      "timestamp": "2026-02-05T02:30:34.644973"
+    },
+    {
+      "test": "Market Scan - SOL",
+      "success": true,
+      "details": "",
+      "timestamp": "2026-02-05T02:30:35.301662"
+    },
+    {
+      "test": "Market Scan SOL Structure",
+      "success": true,
+      "details": "Valid market scan data",
+      "timestamp": "2026-02-05T02:30:35.302300"
+    },
+    {
+      "test": "Market Scan SOL Technical Indicators",
+      "success": true,
+      "details": "Found 7 indicators",
+      "timestamp": "2026-02-05T02:30:35.302318"
+    },
+    {
+      "test": "Technical Analysis - BTC",
+      "success": true,
+      "details": "",
+      "timestamp": "2026-02-05T02:30:35.555172"
+    },
+    {
+      "test": "TA BTC Structure",
+      "success": true,
+      "details": "Valid TA data",
+      "timestamp": "2026-02-05T02:30:35.555797"
+    },
+    {
+      "test": "TA BTC Indicators Complete",
+      "success": true,
+      "details": "All key indicators present",
+      "timestamp": "2026-02-05T02:30:35.555821"
+    },
+    {
+      "test": "Technical Analysis - ETH",
+      "success": true,
+      "details": "",
+      "timestamp": "2026-02-05T02:30:35.831717"
+    },
+    {
+      "test": "TA ETH Structure",
+      "success": true,
+      "details": "Valid TA data",
+      "timestamp": "2026-02-05T02:30:35.832331"
+    },
+    {
+      "test": "TA ETH Indicators Complete",
+      "success": true,
+      "details": "All key indicators present",
+      "timestamp": "2026-02-05T02:30:35.832348"
+    },
+    {
+      "test": "Technical Analysis - SOL",
+      "success": true,
+      "details": "",
+      "timestamp": "2026-02-05T02:30:36.042860"
+    },
+    {
+      "test": "TA SOL Structure",
+      "success": true,
+      "details": "Valid TA data",
+      "timestamp": "2026-02-05T02:30:36.043608"
+    },
+    {
+      "test": "TA SOL Indicators Complete",
+      "success": true,
+      "details": "All key indicators present",
+      "timestamp": "2026-02-05T02:30:36.043626"
+    },
+    {
+      "test": "Market Positions - BTC",
+      "success": false,
+      "details": "Expected 200, got 520",
+      "timestamp": "2026-02-05T02:30:36.078136"
+    },
+    {
+      "test": "Market Positions - ETH",
+      "success": false,
+      "details": "Expected 200, got 520",
+      "timestamp": "2026-02-05T02:30:36.121581"
+    },
+    {
+      "test": "Market Positions - SOL",
+      "success": false,
+      "details": "Expected 200, got 520",
+      "timestamp": "2026-02-05T02:30:36.156163"
+    },
+    {
+      "test": "Market Funding - BTC",
+      "success": false,
+      "details": "Expected 200, got 520",
+      "timestamp": "2026-02-05T02:30:36.194176"
+    },
+    {
+      "test": "Market Funding - ETH",
+      "success": false,
+      "details": "Expected 200, got 520",
+      "timestamp": "2026-02-05T02:30:36.233211"
+    },
+    {
+      "test": "Market Funding - SOL",
+      "success": false,
+      "details": "Expected 200, got 520",
+      "timestamp": "2026-02-05T02:30:36.265694"
+    },
+    {
+      "test": "Learning System Stats",
+      "success": true,
+      "details": "",
+      "timestamp": "2026-02-05T02:30:36.301211"
+    },
+    {
+      "test": "Learning Stats Structure",
+      "success": true,
+      "details": "Valid learning stats",
+      "timestamp": "2026-02-05T02:30:36.301824"
+    },
+    {
+      "test": "Learning System Open Predictions",
+      "success": true,
+      "details": "",
+      "timestamp": "2026-02-05T02:30:36.334951"
+    },
+    {
+      "test": "Learning Open Predictions",
+      "success": true,
+      "details": "Found 0 open predictions",
+      "timestamp": "2026-02-05T02:30:36.335532"
     },
     {
       "test": "MEXC Live Data",
       "success": true,
       "details": "",
-      "timestamp": "2026-02-04T09:29:25.629187"
+      "timestamp": "2026-02-05T02:30:37.213790"
     },
     {
-      "test": "MEXC Orderbook Data Structure",
+      "test": "MEXC Data Coverage",
       "success": true,
-      "details": "All symbols present with orderbook fields",
-      "timestamp": "2026-02-04T09:29:25.629814"
+      "details": "All expected symbols present",
+      "timestamp": "2026-02-05T02:30:37.214603"
     },
     {
-      "test": "MEXC Orderbook - BTC",
+      "test": "MEXC Orderbook Structure",
       "success": true,
-      "details": "",
-      "timestamp": "2026-02-04T09:29:25.825921"
+      "details": "Valid orderbook data for all symbols",
+      "timestamp": "2026-02-05T02:30:37.214623"
     },
     {
-      "test": "MEXC BTC Orderbook Structure",
-      "success": true,
-      "details": "Valid orderbook structure",
-      "timestamp": "2026-02-04T09:29:25.826437"
-    },
-    {
-      "test": "MEXC Orderbook - ETH",
+      "test": "Telegram Command - /scan btc",
       "success": true,
       "details": "",
-      "timestamp": "2026-02-04T09:29:26.023808"
+      "timestamp": "2026-02-05T02:30:47.539342"
     },
     {
-      "test": "MEXC ETH Orderbook Structure",
+      "test": "Market scan command",
       "success": true,
-      "details": "Valid orderbook structure",
-      "timestamp": "2026-02-04T09:29:26.024307"
+      "details": "Command processed successfully",
+      "timestamp": "2026-02-05T02:30:47.541271"
     },
     {
-      "test": "MEXC Orderbook - SOL",
-      "success": true,
-      "details": "",
-      "timestamp": "2026-02-04T09:29:26.222766"
-    },
-    {
-      "test": "MEXC SOL Orderbook Structure",
-      "success": true,
-      "details": "Valid orderbook structure",
-      "timestamp": "2026-02-04T09:29:26.223372"
-    },
-    {
-      "test": "Bot Test - MEXC Connection",
+      "test": "Telegram Command - /ta btc",
       "success": true,
       "details": "",
-      "timestamp": "2026-02-04T09:29:27.272375"
+      "timestamp": "2026-02-05T02:30:48.552354"
     },
     {
-      "test": "MEXC Connection Status",
+      "test": "Technical analysis command",
       "success": true,
-      "details": "MEXC is connected",
-      "timestamp": "2026-02-04T09:29:27.272976"
+      "details": "Command processed successfully",
+      "timestamp": "2026-02-05T02:30:48.552934"
     },
     {
-      "test": "MEXC Sample Data",
+      "test": "Telegram Command - /positions btc",
       "success": false,
-      "details": "No sample data in test response",
-      "timestamp": "2026-02-04T09:29:27.272988"
+      "details": "Expected 200, got 520",
+      "timestamp": "2026-02-05T02:30:48.588433"
     },
     {
-      "test": "Alchemical Questions Bank",
+      "test": "Telegram Command - /funding btc",
+      "success": false,
+      "details": "Expected 200, got 520",
+      "timestamp": "2026-02-05T02:30:48.623279"
+    },
+    {
+      "test": "Telegram Command - btc price analysis",
       "success": true,
       "details": "",
-      "timestamp": "2026-02-04T09:29:27.322139"
+      "timestamp": "2026-02-05T02:31:01.653809"
     },
     {
-      "test": "Alchemical Questions Count",
-      "success": true,
-      "details": "Found 30 questions",
-      "timestamp": "2026-02-04T09:29:27.322535"
-    },
-    {
-      "test": "Alchemical Questions Content",
-      "success": true,
-      "details": "Contains alchemical terms: ['masonic', 'prima materia', 'rubedo']",
-      "timestamp": "2026-02-04T09:29:27.322714"
-    },
-    {
-      "test": "Telegram Command - /start",
-      "success": true,
-      "details": "",
-      "timestamp": "2026-02-04T09:29:28.649945"
-    },
-    {
-      "test": "Command /start Response",
+      "test": "Trading keyword detection",
       "success": true,
       "details": "Command processed successfully",
-      "timestamp": "2026-02-04T09:29:28.650584"
-    },
-    {
-      "test": "Telegram Command - /price",
-      "success": true,
-      "details": "",
-      "timestamp": "2026-02-04T09:29:29.967563"
-    },
-    {
-      "test": "Command /price Response",
-      "success": true,
-      "details": "Command processed successfully",
-      "timestamp": "2026-02-04T09:29:29.968150"
-    },
-    {
-      "test": "Telegram Command - /probe",
-      "success": true,
-      "details": "",
-      "timestamp": "2026-02-04T09:29:31.306554"
-    },
-    {
-      "test": "Command /probe Response",
-      "success": true,
-      "details": "Command processed successfully",
-      "timestamp": "2026-02-04T09:29:31.307133"
-    },
-    {
-      "test": "Telegram Command - /ritual",
-      "success": true,
-      "details": "",
-      "timestamp": "2026-02-04T09:29:33.197860"
-    },
-    {
-      "test": "Command /ritual Response",
-      "success": true,
-      "details": "Command processed successfully",
-      "timestamp": "2026-02-04T09:29:33.198428"
-    },
-    {
-      "test": "Trading Mode Detection",
-      "success": true,
-      "details": "",
-      "timestamp": "2026-02-04T09:29:37.581536"
-    },
-    {
-      "test": "Trading Mode Detection",
-      "success": true,
-      "details": "Trading keywords detected",
-      "timestamp": "2026-02-04T09:29:37.582118"
-    },
-    {
-      "test": "Alchemy Mode Detection",
-      "success": true,
-      "details": "",
-      "timestamp": "2026-02-04T09:29:40.944406"
-    },
-    {
-      "test": "Alchemy Mode Detection",
-      "success": true,
-      "details": "Philosophical message processed",
-      "timestamp": "2026-02-04T09:29:40.944984"
-    },
-    {
-      "test": "Webhook POST Handler",
-      "success": true,
-      "details": "",
-      "timestamp": "2026-02-04T09:29:43.241866"
+      "timestamp": "2026-02-05T02:31:01.654399"
     }
   ]
 }
