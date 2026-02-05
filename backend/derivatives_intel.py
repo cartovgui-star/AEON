@@ -442,11 +442,11 @@ class DerivativesIntel:
     # ═══════════════════════════════════════════════════════════════════════════
     
     async def get_full_derivatives_report(self, symbol: str = "BTCUSDT") -> Dict:
-        """Get comprehensive derivatives data from all sources"""
+        """Get comprehensive derivatives data from all sources (ALL REAL DATA)"""
         tasks = [
             self.get_aggregated_funding(symbol),
             self.get_aggregated_open_interest(symbol),
-            self.get_long_short_ratio_okx(symbol),
+            self.get_aggregated_long_short(symbol),  # Now uses Binance REAL data
         ]
         
         funding, oi, ls = await asyncio.gather(*tasks, return_exceptions=True)
