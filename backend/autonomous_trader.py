@@ -181,6 +181,23 @@ class AutonomousTrader:
                 reasons.append(f"Volume spike ({vol_ratio:.1f}x avg)")
                 signals_used.append("volume_spike")
             
+            # REAL Funding Rate Analysis (from derivatives_intel)
+            if derivatives_intel:
+                try:
+                    funding = await derivatives_intel.get_aggregated_funding(symbol)
+                    avg_rate = funding.get("average_funding_rate", 0)
+                    
+                    if avg_rate > 0.0005:  # High positive = longs crowded
+                        score -= 0.8
+                        reasons.append(f"🔴 High funding ({avg_rate*100:.3f}%) - longs crowded")
+                        signals_used.append("funding_high")
+                    elif avg_rate < -0.0002:  # Negative = shorts crowded
+                        score += 0.6
+                        reasons.append(f"🟢 Negative funding ({avg_rate*100:.3f}%) - shorts crowded")
+                        signals_used.append("funding_negative")
+                except Exception as e:
+                    logger.warning(f"Funding data unavailable: {e}")
+            
             # Determine signal
             atr = indicators.get("atr", price * 0.02 if price else 0)
             
