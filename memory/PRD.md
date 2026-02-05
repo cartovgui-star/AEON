@@ -237,18 +237,28 @@ Build a Telegram chatbot "Aeon" that integrates with OpenAI - a business partner
 - Calculates: PnL, ROI, liquidation price, margin required
 - Risk management focused
 
-## Data Sources Summary
-| Feature | Source | Status |
-|---------|--------|--------|
-| Fear & Greed | Alternative.me | ✅ REAL |
-| Funding Rates | OKX, Bitget, KuCoin, Gate.io | ✅ REAL |
-| Open Interest | OKX, Bitget | ✅ REAL |
-| Prices | MEXC | ✅ REAL |
-| Technical Analysis | MEXC | ✅ REAL |
-| On-Chain (BTC) | Mempool.space | ✅ REAL |
-| Whale Tracking | Mempool.space | ✅ REAL |
-| News | Blockworks, CoinTelegraph | ✅ REAL |
-| Multi-Timeframe | MEXC (ccxt) | ✅ REAL |
+## Supported Trading Pairs: 44
+
+**Major Caps:**
+BTC, ETH, BNB, SOL, XRP, DOGE, ADA, AVAX, SHIB, DOT
+
+**DeFi & Layer 1:**
+LINK, TRX, BCH, LTC, NEAR, UNI, APT, ICP, ETC, FIL, ATOM, XLM
+
+**Layer 2 & Infra:**
+ARB, OP, INJ, HBAR, VET, GRT, AAVE, ALGO
+
+**Gaming & Metaverse:**
+SAND, AXS, MANA, ENJ, CHZ, FLOW
+
+**Others:**
+XTZ, NEO, SNX, CRV, RUNE, ZEC, DASH, COMP
+
+All pairs support:
+- Autonomous trading (scanned every 5 minutes)
+- Real derivatives data (OKX, Bitget, KuCoin, Gate.io)
+- Multi-timeframe analysis (1h, 4h, 1d)
+- Technical indicators (RSI, MACD, BB, EMA, Stoch)
 
 ## New Telegram Commands
 ```
