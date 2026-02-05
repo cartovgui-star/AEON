@@ -734,6 +734,49 @@ async def api_bybit_oi(symbol: str):
     return await enhanced_intel.get_open_interest_estimate(symbol.upper() + "USDT")
 
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# REAL DERIVATIVES DATA APIs (OKX, Bitget, KuCoin, Gate)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@api_router.get("/derivatives/funding/{symbol}")
+async def api_real_funding(symbol: str):
+    """Get REAL aggregated funding rates from multiple exchanges"""
+    return await derivatives_intel.get_aggregated_funding(symbol.upper() + "USDT")
+
+
+@api_router.get("/derivatives/oi/{symbol}")
+async def api_real_oi(symbol: str):
+    """Get REAL open interest from multiple exchanges"""
+    return await derivatives_intel.get_aggregated_open_interest(symbol.upper() + "USDT")
+
+
+@api_router.get("/derivatives/ls/{symbol}")
+async def api_real_ls(symbol: str):
+    """Get long/short ratio estimate"""
+    return await derivatives_intel.get_long_short_ratio_okx(symbol.upper() + "USDT")
+
+
+@api_router.get("/derivatives/full/{symbol}")
+async def api_full_derivatives(symbol: str):
+    """Get full derivatives report from all exchanges"""
+    return await derivatives_intel.get_full_derivatives_report(symbol.upper() + "USDT")
+
+
+@api_router.get("/derivatives/funding/exchange/{exchange}/{symbol}")
+async def api_exchange_funding(exchange: str, symbol: str):
+    """Get funding from specific exchange (okx, bitget, kucoin, gate)"""
+    sym = symbol.upper() + "USDT"
+    if exchange.lower() == "okx":
+        return await derivatives_intel.get_funding_rate_okx(sym)
+    elif exchange.lower() == "bitget":
+        return await derivatives_intel.get_funding_rate_bitget(sym)
+    elif exchange.lower() == "kucoin":
+        return await derivatives_intel.get_funding_rate_kucoin(sym)
+    elif exchange.lower() == "gate":
+        return await derivatives_intel.get_funding_rate_gate(sym)
+    return {"error": f"Unknown exchange: {exchange}"}
+
+
 @api_router.get("/learning/stats")
 async def api_learning_stats():
     return await learning_system.get_prediction_stats()
