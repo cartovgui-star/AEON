@@ -40,6 +40,7 @@ mexc_secret_key = os.environ.get('MEXC_SECRET_KEY', '')
 # Initialize systems
 learning_system = AeonLearningSystem(db)
 signal_generator = TradingSignalGenerator(market_intel, learning_system)
+autonomous_trader = init_autonomous_trader(db, learning_system)
 
 # MEXC for orderbook (keeping existing)
 mexc = ccxt.mexc({'apiKey': mexc_api_key, 'secret': mexc_secret_key, 'enableRateLimit': True})
