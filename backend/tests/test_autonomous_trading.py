@@ -214,7 +214,7 @@ class TestMarketIntelligence:
         assert "symbol" in data
         assert "funding_rate" in data
         assert "funding_rate_pct" in data
-        assert "mark_price" in data
+        assert "interpretation" in data  # Updated: new response structure
     
     def test_market_positions_btc(self):
         """Test /api/market/positions/btc returns position data"""
