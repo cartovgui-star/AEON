@@ -1272,6 +1272,168 @@ Alerts sent automatically when Free Will is ON.
 👁️ «Liquidations reveal where the weak hands fold.»"""
             context = "trading"
             
+        elif text_lower == '/news':
+            news = await news_intel.get_latest_news(8)
+            sentiment = await news_intel.get_news_sentiment_summary()
+            
+            response = f"""📰 CRYPTO NEWS
+
+Sentiment: {sentiment.get('sentiment', 'UNKNOWN')}
+Bullish: {sentiment.get('bullish_pct', 0)}% | Bearish: {sentiment.get('bearish_pct', 0)}%
+
+Recent Headlines:
+"""
+            for n in news[:6]:
+                emoji = n.get('sentiment', {}).get('emoji', '⚪')
+                response += f"{emoji} {n.get('title', '')[:60]}...\n"
+            
+            context = "news"
+            
+        elif text_lower == '/whales' or text_lower == '/whale':
+            whales = await news_intel.get_whale_summary()
+            
+            response = f"""🐋 WHALE ACTIVITY
+
+Activity Level: {whales.get('emoji', '')} {whales.get('activity', 'UNKNOWN')}
+Large Transactions: {whales.get('large_transactions', 0)}
+Whale Transactions (>100 BTC): {whales.get('whale_transactions', 0)}
+Total BTC Moved: {whales.get('total_btc_moved', 0)} BTC
+
+Recent Large Moves:
+"""
+            for tx in whales.get('transactions', [])[:5]:
+                response += f"{tx.get('size', '')} {tx.get('value_btc', 0)} BTC ({tx.get('value_usd_approx', '')})\n"
+            
+            context = "trading"
+            
+        elif text_lower == '/onchain' or text_lower == '/chain':
+            onchain = await news_intel.get_btc_onchain_stats()
+            flow = await news_intel.get_exchange_flow_estimate()
+            
+            response = f"""⛓️ BTC ON-CHAIN DATA
+
+📊 NETWORK
+Fastest Fee: {onchain.get('fees', {}).get('fastest', 0)} sat/vB
+Hour Fee: {onchain.get('fees', {}).get('hour', 0)} sat/vB
+{onchain.get('fee_interpretation', '')}
+
+Hashrate: {onchain.get('hashrate', {}).get('current', 'N/A')}
+
+📈 EXCHANGE FLOW
+{flow.get('flow_estimate', '')}
+Mempool TX: {flow.get('mempool_tx_count', 0):,}
+{flow.get('interpretation', '')}"""
+            context = "trading"
+            
+        elif text_lower.startswith('/mtf') or text_lower.startswith('/timeframe'):
+            parts = text_lower.split()
+            symbol = parts[1].upper() if len(parts) > 1 else "BTC"
+            
+            mtf = await mtf_analysis.get_multi_timeframe_analysis(symbol + "USDT")
+            
+            response = f"""📊 {symbol} MULTI-TIMEFRAME ANALYSIS
+
+{mtf.get('confluence_emoji', '')} {mtf.get('confluence', '')}
+Confidence: {mtf.get('confidence', 0)}%
+
+"""
+            for tf in ['1h', '4h', '1d']:
+                if tf in mtf.get('timeframes', {}):
+                    t = mtf['timeframes'][tf]
+                    response += f"{tf}: {t.get('emoji', '')} {t.get('bias', '')} (score: {t.get('score', 0):+.1f})\n"
+            
+            response += f"""
+💡 {mtf.get('recommendation', '')}"""
+            context = "trading"
+            
+        elif text_lower.startswith('/calc'):
+            parts = text_lower.split()
+            
+            if len(parts) < 5:
+                response = """📊 FUTURES CALCULATOR
+
+Usage: /calc [entry] [exit] [size] [leverage] [direction]
+
+Example:
+/calc 65000 68000 1000 10 long
+= Calculate PnL for $1000 long at 10x
+
+/calcsize [balance] [risk%] [entry] [stop] [leverage]
+= Calculate position size based on risk"""
+            else:
+                try:
+                    entry = float(parts[1])
+                    exit_p = float(parts[2])
+                    size = float(parts[3])
+                    leverage = int(parts[4]) if len(parts) > 4 else 1
+                    direction = parts[5].upper() if len(parts) > 5 else "LONG"
+                    
+                    result = futures_calc.calculate_pnl(entry, exit_p, size, leverage, direction)
+                    
+                    emoji = "✅" if result['pnl_usd'] > 0 else "❌" if result['pnl_usd'] < 0 else "⚪"
+                    
+                    response = f"""{emoji} FUTURES CALCULATION
+
+{result['direction']} @ {leverage}x
+Entry: ${entry:,.2f}
+Exit: ${exit_p:,.2f}
+
+Position: ${result['position_size_usd']:,.2f}
+Margin Used: ${result['margin_required']:,.2f}
+
+Price Move: {result['price_change_pct']:+.2f}%
+PnL: {result['pnl_pct']:+.2f}%
+PnL USD: ${result['pnl_usd']:+,.2f}
+ROI on Margin: {result['roi_on_margin']:+.2f}%
+
+⚠️ Liquidation: ${result['liquidation_price']:,.2f}"""
+                except Exception as e:
+                    response = f"⚠️ Calculation error: {e}\n\nUsage: /calc entry exit size leverage direction"
+            context = "trading"
+            
+        elif text_lower.startswith('/calcsize'):
+            parts = text_lower.split()
+            
+            if len(parts) < 5:
+                response = """📊 POSITION SIZE CALCULATOR
+
+Usage: /calcsize [balance] [risk%] [entry] [stop] [leverage]
+
+Example:
+/calcsize 10000 2 65000 63000 10
+= Calculate size risking 2% of $10k account with 10x leverage"""
+            else:
+                try:
+                    balance = float(parts[1])
+                    risk = float(parts[2])
+                    entry = float(parts[3])
+                    stop = float(parts[4])
+                    leverage = int(parts[5]) if len(parts) > 5 else 1
+                    
+                    result = futures_calc.calculate_position_size(balance, risk, entry, stop, leverage)
+                    
+                    direction = "LONG" if stop < entry else "SHORT"
+                    
+                    response = f"""📊 POSITION SIZE CALCULATION
+
+Account: ${balance:,.2f}
+Risk: {risk}% (${result['risk_amount_usd']:,.2f})
+
+{direction} @ {leverage}x
+Entry: ${entry:,.2f}
+Stop Loss: ${stop:,.2f}
+Stop Distance: {result['stop_distance_pct']:.2f}%
+
+✅ RECOMMENDED SIZE:
+Position: ${result['recommended_position_size']:,.2f}
+Margin Required: ${result['margin_required']:,.2f}
+Coins: {result['coins_to_buy']:.6f}
+
+Max Loss at Stop: ${result['max_loss_at_stop']:,.2f}"""
+                except Exception as e:
+                    response = f"⚠️ Calculation error: {e}"
+            context = "trading"
+            
         elif text_lower.startswith('/probe'):
             parts = text_lower.split()
             mode = parts[1] if len(parts) > 1 and parts[1] in ["deep", "ordeal", "light"] else "standard"
