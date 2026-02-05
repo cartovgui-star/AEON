@@ -47,6 +47,16 @@ Build a Telegram chatbot "Aeon" that integrates with OpenAI - a business partner
 - [x] Frontend filter tabs by conversation type
 - [x] Orderbook imbalance visualization bars
 
+## Market Intelligence System (Feb 2026)
+- [x] Real-time technical analysis via MEXC/ccxt
+- [x] Indicators: RSI, MACD, Bollinger Bands, EMA (9/21/50), ATR, Stochastic
+- [x] Trading signal detection with bias scoring
+- [x] Trade setup analyzer with entry/target/stop levels
+- [x] Learning system to track predictions
+- [x] New commands: /scan, /ta, /positions, /funding
+- [x] Automatic high-probability setup alerts (Free Will)
+- [x] Multi-symbol support (BTC, ETH, SOL)
+
 ## Technical Architecture
 - **Backend**: FastAPI + MongoDB + Emergent integrations
 - **Frontend**: React + TailwindCSS + shadcn/ui
