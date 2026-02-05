@@ -44,6 +44,10 @@ learning_system = AeonLearningSystem(db)
 signal_generator = TradingSignalGenerator(market_intel, learning_system)
 autonomous_trader = init_autonomous_trader(db, learning_system)
 
+# Set derivatives_intel reference for autonomous trader
+from autonomous_trader import set_derivatives_intel
+set_derivatives_intel(derivatives_intel)
+
 # MEXC for orderbook (keeping existing)
 mexc = ccxt.mexc({'apiKey': mexc_api_key, 'secret': mexc_secret_key, 'enableRateLimit': True})
 
