@@ -65,8 +65,33 @@ class EnhancedMarketIntel:
             return {"error": str(e)}
     
     # ═══════════════════════════════════════════════════════════════════════════
-    # COINGECKO - TOP 100 COINS
+    # COINGECKO - TOP 100 COINS (with MEXC fallback)
     # ═══════════════════════════════════════════════════════════════════════════
+    
+    async def get_mexc_prices(self) -> List[Dict]:
+        """Get prices from MEXC as fallback when CoinGecko rate limits"""
+        try:
+            tickers = self.mexc.fetch_tickers(self.tracked_symbols)
+            
+            results = []
+            for i, symbol in enumerate(self.tracked_symbols):
+                if symbol in tickers:
+                    t = tickers[symbol]
+                    coin = symbol.split('/')[0]
+                    results.append({
+                        "symbol": coin.lower(),
+                        "name": coin,
+                        "current_price": t.get("last", 0),
+                        "price_change_percentage_24h": t.get("percentage", 0),
+                        "market_cap_rank": i + 1,
+                        "high_24h": t.get("high", 0),
+                        "low_24h": t.get("low", 0),
+                        "total_volume": t.get("quoteVolume", 0),
+                    })
+            return results
+        except Exception as e:
+            logger.error(f"MEXC prices error: {e}")
+            return []
     
     async def get_top_100_coins(self) -> List[Dict]:
         """Get top 100 cryptocurrencies by market cap"""
