@@ -384,7 +384,15 @@ function App() {
               </div>
               <div className="bg-zinc-800/30 rounded-lg p-3">
                 <code className="text-purple-400">/probe</code>
-                <p className="text-zinc-500 text-xs mt-1">Alchemical question</p>
+                <p className="text-zinc-500 text-xs mt-1">Quantum Mason question</p>
+              </div>
+              <div className="bg-zinc-800/30 rounded-lg p-3">
+                <code className="text-purple-400">/probe deep</code>
+                <p className="text-zinc-500 text-xs mt-1">Multi-layer spiral</p>
+              </div>
+              <div className="bg-zinc-800/30 rounded-lg p-3">
+                <code className="text-red-400">/probe ordeal</code>
+                <p className="text-zinc-500 text-xs mt-1">Shadow work mode</p>
               </div>
               <div className="bg-zinc-800/30 rounded-lg p-3">
                 <code className="text-orange-400">/ritual</code>
