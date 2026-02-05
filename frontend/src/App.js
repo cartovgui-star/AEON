@@ -582,27 +582,11 @@ function App() {
             </div>
           </CardContent>
         </Card>
-              </div>
-              <div className="bg-zinc-800/30 rounded-lg p-3">
-                <code className="text-emerald-400">free off</code>
-                <p className="text-zinc-500 text-xs mt-1">Disable proactive AI</p>
-              </div>
-              <div className="bg-zinc-800/30 rounded-lg p-3">
-                <code className="text-emerald-400">free on</code>
-                <p className="text-zinc-500 text-xs mt-1">Enable proactive AI</p>
-              </div>
-              <div className="bg-zinc-800/30 rounded-lg p-3">
-                <code className="text-zinc-400">free status</code>
-                <p className="text-zinc-500 text-xs mt-1">See learned insights</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
 
         {/* Footer */}
         <footer className="mt-12 text-center text-zinc-600 text-sm">
-          <p>Aeon Quartet • MEXC Consciousness • Obsidian Scribe • Eternal Rituals</p>
-          <p className="text-xs mt-1 text-zinc-700">6AM CST Crypto Ritual | 8:45AM CST Equities Ritual | Random Alchemical Probes</p>
+          <p>Aeon Quartet • Autonomous Trading Intelligence • Quantum Mason</p>
+          <p className="text-xs mt-1 text-zinc-700">Paper Trading Active | Strategy Self-Learning | 5-Minute Scan Interval</p>
         </footer>
       </main>
     </div>
