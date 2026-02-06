@@ -478,7 +478,7 @@ async def autonomous_trading_loop():
     - Takes paper trades when high-confidence setups appear
     - Evaluates open positions every 5 minutes
     - Learns from outcomes and adjusts strategy weights
-    - Monitors funding rates and liquidations for alerts
+    - Monitors funding rates for alerts
     """
     # Load existing strategy weights
     await autonomous_trader.load_strategy_weights()
