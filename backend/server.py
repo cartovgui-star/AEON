@@ -544,9 +544,6 @@ Record: {stats.get('wins', 0)}W / {stats.get('losses', 0)}L
                 
                 # Check for funding rate alerts
                 await check_funding_rate_alerts()
-                
-                # Check for liquidation alerts
-                await check_liquidation_alerts()
             
             # Run every 5 minutes
             await asyncio.sleep(300)
