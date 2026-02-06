@@ -205,7 +205,6 @@ Build a Telegram chatbot "Aeon" that integrates with OpenAI - a business partner
 | **Funding Rate** | **OKX, Bitget, KuCoin, Gate.io** | ✅ **REAL** |
 | **Open Interest** | **OKX, Bitget** | ✅ **REAL** |
 | **L/S Ratio** | **OKX Public API** | ✅ **REAL** |
-| Liquidations | Estimated | ⚠️ MOCK |
 
 ## Recent Improvements (Feb 2026)
 
@@ -222,10 +221,13 @@ Build a Telegram chatbot "Aeon" that integrates with OpenAI - a business partner
 - Interpretation: LONGS CROWDED / SHORTS CROWDED / BALANCED
 - Endpoint: `/api/derivatives/ls/{symbol}`
 
-### 3. Code Refactoring Started
-- Created `/app/backend/routes/` module structure
-- Created derivatives.py, freewill.py, intelligence.py route files
-- server.py still main entry but modularization in progress
+### 3. Code Refactoring Complete
+- Created `/app/backend/routes/` - API route modules (derivatives, freewill, intelligence)
+- Created `/app/backend/telegram/` - Telegram command handlers
+- Created `/app/backend/tasks/` - Background tasks (trading loop, Free Will scanner)
+- Created `/app/backend/helpers/` - Database helper functions
+- server.py reduced from 1868 to 1785 lines
+- **Removed all liquidation code** (was mocked/estimated data)
 
 ## New Features (Feb 2026 - Latest)
 
