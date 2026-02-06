@@ -725,11 +725,6 @@ async def api_positions(symbol: str):
     return {"long_short": ls, "whale": whale, "taker_flow": taker}
 
 
-@api_router.get("/market/liquidations/{symbol}")
-async def api_liquidations(symbol: str):
-    return await market_intel.get_liquidations(symbol.upper() + "USDT")
-
-
 # ═══════════════════════════════════════════════════════════════════════════════
 # ENHANCED INTELLIGENCE APIs (Real Data)
 # ═══════════════════════════════════════════════════════════════════════════════
