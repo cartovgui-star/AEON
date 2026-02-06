@@ -1381,27 +1381,6 @@ Top Traders: {top_ls.get('long_pct', '?')}% L / {top_ls.get('short_pct', '?')}% 
 Data: OKX, Bitget, KuCoin, Gate"""
             context = "trading"
             
-        elif text_lower.startswith('/liqs') or text_lower.startswith('/liquidations'):
-            parts = text_lower.split()
-            symbol = parts[1].upper() if len(parts) > 1 else "BTC"
-            
-            liqs = await market_intel.get_liquidations(symbol + "USDT")
-            
-            response = f"""💥 {symbol} LIQUIDATIONS
-
-Long Liquidations: {liqs.get('long_liquidations', 'N/A')}
-Short Liquidations: {liqs.get('short_liquidations', 'N/A')}
-Total: {liqs.get('total_liquidations', 'N/A')}
-
-📊 Aeon monitors for:
-• Large liquidation events (>$8M)
-• Imbalanced liquidations (squeeze potential)
-
-Alerts sent automatically when Free Will is ON.
-
-👁️ «Liquidations reveal where the weak hands fold.»"""
-            context = "trading"
-            
         elif text_lower == '/news':
             news = await news_intel.get_latest_news(8)
             sentiment = await news_intel.get_news_sentiment_summary()
