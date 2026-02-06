@@ -204,8 +204,28 @@ Build a Telegram chatbot "Aeon" that integrates with OpenAI - a business partner
 | Technical Analysis | MEXC (ccxt) | ✅ REAL |
 | **Funding Rate** | **OKX, Bitget, KuCoin, Gate.io** | ✅ **REAL** |
 | **Open Interest** | **OKX, Bitget** | ✅ **REAL** |
-| L/S Ratio | Estimated from funding | ⚠️ ESTIMATED |
+| **L/S Ratio** | **OKX Public API** | ✅ **REAL** |
 | Liquidations | Estimated | ⚠️ MOCK |
+
+## Recent Improvements (Feb 2026)
+
+### 1. Alert Noise Reduction
+- Minimum confidence threshold: **65%** (was 70%)
+- Alerts consolidated **per symbol** (not per timeframe)
+- 10-minute cooldown per symbol (was 5 min per symbol/timeframe)
+- Max 5 alerts per scan
+- Higher timeframes prioritized (4h, 1h before 5m, 15m)
+
+### 2. REAL Long/Short Ratio Data
+- Now using **OKX Public API** (was estimated from funding)
+- Global L/S ratio + Top Traders L/S ratio
+- Interpretation: LONGS CROWDED / SHORTS CROWDED / BALANCED
+- Endpoint: `/api/derivatives/ls/{symbol}`
+
+### 3. Code Refactoring Started
+- Created `/app/backend/routes/` module structure
+- Created derivatives.py, freewill.py, intelligence.py route files
+- server.py still main entry but modularization in progress
 
 ## New Features (Feb 2026 - Latest)
 
