@@ -371,7 +371,7 @@ class DerivativesIntel:
             base = symbol.replace("USDT", "").replace("/", "")
             inst_id = f"{base}-USDT-SWAP"
             
-            # OKX Top Traders L/S Ratio endpoint
+            # OKX Top Traders Position L/S Ratio endpoint
             url = "https://www.okx.com/api/v5/rubik/stat/contracts/long-short-account-ratio-contract-top-trader"
             params = {
                 "instId": inst_id,
@@ -382,9 +382,10 @@ class DerivativesIntel:
                 async with session.get(url, params=params, timeout=aiohttp.ClientTimeout(total=10)) as resp:
                     if resp.status == 200:
                         data = await resp.json()
-                        if data.get("code") == "0" and data.get("data"):
+                        if data.get("code") == "0" and data.get("data") and len(data["data"]) > 0:
+                            # Response is [[timestamp, ratio], ...]
                             latest = data["data"][0]
-                            ratio = float(latest.get("longShortRatio", 1.0))
+                            ratio = float(latest[1])
                             long_pct = (ratio / (ratio + 1)) * 100
                             short_pct = 100 - long_pct
                             
@@ -395,7 +396,7 @@ class DerivativesIntel:
                                 "long_short_ratio": round(ratio, 3),
                                 "long_pct": round(long_pct, 1),
                                 "short_pct": round(short_pct, 1),
-                                "timestamp": latest.get("ts"),
+                                "timestamp": latest[0],
                                 "source": "REAL - OKX Public API"
                             }
                             self._cache_set(cache_key, result)
