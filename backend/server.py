@@ -423,9 +423,8 @@ RSI: {eth.get('technical',{}).get('rsi','?')} | Bias: {eth.get('overall_bias','?
 # BACKGROUND TASKS
 # ═══════════════════════════════════════════════════════════════════════════════
 
-# Track last funding/liquidation alerts to avoid spam
+# Track last funding alerts to avoid spam
 last_funding_alert: Dict[str, datetime] = {}
-last_liquidation_alert: Dict[str, datetime] = {}
 
 
 async def check_funding_rate_alerts():
@@ -470,59 +469,6 @@ Price: ${funding.get('mark_price', 0):,.2f}
                         
         except Exception as e:
             logger.error(f"Funding alert error for {symbol}: {e}")
-
-
-async def check_liquidation_alerts():
-    """Check for significant liquidation events and alert users."""
-    now = datetime.now()
-    
-    for symbol in ["BTC/USDT", "ETH/USDT"]:
-        try:
-            # Skip if alerted recently (30 min cooldown)
-            if symbol in last_liquidation_alert and (now - last_liquidation_alert[symbol]).total_seconds() < 1800:
-                continue
-            
-            liqs = await market_intel.get_liquidations(symbol)
-            
-            # Parse liquidation amounts
-            long_liq_str = liqs.get("long_liquidations", "$0M")
-            short_liq_str = liqs.get("short_liquidations", "$0M")
-            
-            long_liq = float(long_liq_str.replace("$", "").replace("M", "")) if "M" in long_liq_str else 0
-            short_liq = float(short_liq_str.replace("$", "").replace("M", "")) if "M" in short_liq_str else 0
-            
-            # Alert on large liquidations (>$8M)
-            if long_liq > 8 or short_liq > 8:
-                last_liquidation_alert[symbol] = now
-                
-                if long_liq > short_liq:
-                    dominant = "LONGS"
-                    emoji = "🔴"
-                    implication = "Bulls getting wrecked - possible capitulation"
-                else:
-                    dominant = "SHORTS"
-                    emoji = "🟢"
-                    implication = "Bears getting squeezed - possible reversal"
-                
-                alert = f"""💥 LIQUIDATION ALERT
-
-{emoji} MAJOR {dominant} LIQUIDATED: {symbol.replace('/USDT', '')}
-
-Long Liquidations: {long_liq_str}
-Short Liquidations: {short_liq_str}
-Total: {liqs.get('total_liquidations', 'N/A')}
-
-{implication}
-
-👁️ «The weak hands fold. Only diamond hands remain.»"""
-                
-                for chat_id in list(chat_ids):
-                    settings = await get_user_settings(chat_id)
-                    if settings.get("free_will", True):
-                        await send_telegram_message(chat_id, alert)
-                        
-        except Exception as e:
-            logger.error(f"Liquidation alert error for {symbol}: {e}")
 
 
 async def autonomous_trading_loop():
