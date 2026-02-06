@@ -1,0 +1,67 @@
+{
+  "summary": "Iteration 8 testing complete - All 37 tests pass. Verified: 1) REAL L/S ratio from OKX Public API (not estimated), 2) Free Will 65% confidence threshold, 3) Alert consolidation per symbol with 10-min cooldown, 4) Higher timeframes prioritized (4h, 1h, 15m, 5m).",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration8_improvements.py",
+    "/app/backend/tests/test_freewill_engine.py",
+    "/app/test_reports/pytest/pytest_results_iter8.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [],
+  "updated_files": [
+    "/app/backend/tests/test_iteration8_improvements.py"
+  ],
+  "success_rate": {
+    "backend": "100% (37/37 tests passed - 22 new + 15 existing)"
+  },
+  "seed_data_creation": "None required",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "All iteration 8 improvements verified: REAL L/S from OKX API (uses ccy param), 65% confidence threshold, 10-min cooldown per symbol, alerts consolidated per coin (not per timeframe), higher TFs prioritized. Liquidation data is still ESTIMATED (as documented).",
+  "passed_tests": [
+    "L/S BTC returns REAL data from OKX Public API",
+    "L/S ETH returns REAL data from OKX Public API",
+    "L/S SOL returns REAL data from OKX Public API",
+    "L/S interpretation shows correct crowd positioning (LONGS CROWDED when >60%)",
+    "Full derivatives report includes REAL L/S data",
+    "Funding aggregated from 4 exchanges (OKX, Bitget, KuCoin, Gate)",
+    "Free Will min_confidence is 65%",
+    "Free Will stats structure correct (44 pairs, 9 timeframes)",
+    "Free Will scan respects 65% confidence threshold",
+    "Free Will scan works on multiple timeframes (5m, 15m, 1h, 4h)",
+    "Free Will toggle on/off working",
+    "Free Will confidence clamped to 50-95 range",
+    "L/S ratio works for BTC, ETH, SOL, XRP, DOGE",
+    "Aggregated funding from multiple exchanges",
+    "Exchange-specific funding endpoints working",
+    "Open interest aggregation working",
+    "All 15 existing Free Will tests still passing"
+  ],
+  "verified_improvements": {
+    "real_ls_ratio": {
+      "status": "WORKING",
+      "source": "OKX Public API",
+      "endpoint": "/api/derivatives/ls/{symbol}",
+      "response_format": "[[timestamp, ratio], ...] parsed correctly"
+    },
+    "alert_noise_reduction": {
+      "min_confidence": 65,
+      "cooldown_per_symbol": "10 minutes (600 seconds)",
+      "consolidated_per_symbol": true,
+      "max_alerts_per_scan": 5
+    },
+    "timeframe_priority": {
+      "scan_all": ["4h", "1h", "15m", "5m"],
+      "scan_extended": ["1d", "4h", "1h", "15m"]
+    }
+  },
+  "mocked_apis_note": "Liquidation data is still ESTIMATED. L/S ratio is now REAL from OKX."
+}
