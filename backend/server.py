@@ -485,74 +485,94 @@ Price: ${funding.get('mark_price', 0):,.2f}
 
 async def autonomous_trading_loop():
     """
-    Aeon's autonomous trading brain - runs continuously.
-    - Scans markets every 5 minutes
-    - Takes paper trades when high-confidence setups appear
-    - Evaluates open positions every 5 minutes
-    - Learns from outcomes and adjusts strategy weights
-    - Monitors funding rates for alerts
+    AEON AUTONOMOUS TRADING ENGINE v2
+    Elite trading with ALL data sources and smart execution
+    
+    Features:
+    - Multi-source confirmation (8 data sources)
+    - Smart entry timing (pullbacks to key levels)
+    - Market regime filter
+    - Session awareness (Asia/London/NY)
+    - Trail stops and partial profits
+    - Unlimited signals (quality filtered)
     """
-    # Load existing strategy weights
+    # Set dependencies for v2 engine
+    autonomous_trader_v2.set_dependencies(
+        market_intel=market_intel,
+        derivatives_intel=derivatives_intel,
+        enhanced_intel=enhanced_intel,
+        advanced_strategies=advanced_strategies,
+        order_flow=order_flow,
+        options_analyzer=options_analyzer,
+        learning_system=learning_system,
+        send_alert=send_telegram_message,
+        chat_ids=chat_ids
+    )
+    
+    # Also load old trader weights for backward compatibility
     await autonomous_trader.load_strategy_weights()
+    
+    logger.info("🚀 AUTONOMOUS TRADER v2 INITIALIZED - Using ALL data sources")
     
     while True:
         try:
-            if autonomous_trader.active:
-                # Scan for new opportunities
-                opportunities = await autonomous_trader.scan_all_markets()
+            if autonomous_trader_v2.active:
+                # Scan all markets with full analysis
+                signals = await autonomous_trader_v2.scan_all_markets()
                 
-                for opp in opportunities:
-                    if opp.get("confidence", 0) >= autonomous_trader.min_confidence:
-                        # Execute paper trade (use chat_id=0 for autonomous trades)
-                        pred_id = await autonomous_trader.execute_paper_trade(opp, chat_id=0)
-                        
-                        if pred_id:
-                            # Notify users with free_will enabled about high-confidence trades
-                            for chat_id in list(chat_ids):
-                                settings = await get_user_settings(chat_id)
-                                if settings.get("free_will", True) and opp.get("confidence", 0) >= 75:
-                                    alert = f"""🤖 AEON AUTO-TRADE SIGNAL
-
-{opp['signal']} {opp['symbol']}
-Confidence: {opp['confidence']}%
-Entry: ${opp['price']:,.2f}
-Target: ${opp.get('target', 0):,.2f}
-Stop: ${opp.get('stop_loss', 0):,.2f}
-
-Reasoning:
-{chr(10).join(['• ' + r for r in opp.get('reasons', [])[:4]])}
-
-👁️ «Aeon has spoken. The quantum field collapses.»"""
-                                    await send_telegram_message(chat_id, alert)
-                
-                # Evaluate open predictions
-                closed = await autonomous_trader.evaluate_predictions()
-                
-                # Notify about closed trades with more detail
-                for result in closed:
-                    if result.get("pnl_pct") is not None:
-                        pnl = result.get("pnl_pct", 0)
-                        emoji = "✅" if pnl > 0 else "❌"
-                        
-                        # Get updated stats
-                        stats = await learning_system.get_prediction_stats()
+                for signal in signals:
+                    # Take trade if quality threshold met
+                    trade = await autonomous_trader_v2.take_trade(signal)
+                    
+                    if trade and "error" not in trade:
+                        # Send elite alert to users
+                        alert_msg = autonomous_trader_v2.format_signal_alert(signal)
                         
                         for chat_id in list(chat_ids):
                             settings = await get_user_settings(chat_id)
                             if settings.get("free_will", True):
-                                msg = f"""{emoji} TRADE CLOSED
+                                await send_telegram_message(chat_id, alert_msg)
+                                
+                                # Log trade
+                                await db.auto_trades_v2.insert_one({
+                                    "chat_id": chat_id,
+                                    "trade": trade,
+                                    "signal": signal,
+                                    "timestamp": datetime.now(timezone.utc)
+                                })
+                            
+                            await asyncio.sleep(0.5)
+                
+                # Evaluate open trades (trail stops, partials, exits)
+                closed = await autonomous_trader_v2.evaluate_trades()
+                
+                # Notify about closed trades
+                for result in closed:
+                    pnl = result.get("pnl_pct", 0)
+                    emoji = "✅" if pnl > 0 else "❌"
+                    reason = result.get("exit_reason", "N/A")
+                    
+                    # Get updated stats
+                    stats = await autonomous_trader_v2.get_stats()
+                    
+                    for chat_id in list(chat_ids):
+                        settings = await get_user_settings(chat_id)
+                        if settings.get("free_will", True):
+                            msg = f"""{emoji} TRADE CLOSED ({reason})
 
+{result.get('symbol', '')} {result.get('direction', '')}
+Entry: ${result.get('entry_price', 0):,.2f}
+Exit: ${result.get('exit_price', 0):,.2f}
 PnL: {pnl:+.2f}%
-Entry: ${result.get('entry', 0):,.2f}
-Exit: ${result.get('exit', 0):,.2f}
 
-📊 RUNNING STATS:
+📊 v2 ENGINE STATS:
 Win Rate: {stats.get('win_rate', 0)}%
 Total PnL: {stats.get('total_pnl_pct', 0):+.2f}%
+Profit Factor: {stats.get('profit_factor', 0)}
 Record: {stats.get('wins', 0)}W / {stats.get('losses', 0)}L
 
-👁️ «Every trade teaches. The Great Work continues.»"""
-                                await send_telegram_message(chat_id, msg)
+👁️ «The algorithm evolves. Each trade teaches.»"""
+                            await send_telegram_message(chat_id, msg)
                 
                 # Check for funding rate alerts
                 await check_funding_rate_alerts()
@@ -561,7 +581,7 @@ Record: {stats.get('wins', 0)}W / {stats.get('losses', 0)}L
             await asyncio.sleep(300)
             
         except Exception as e:
-            logger.error(f"Autonomous trading error: {e}")
+            logger.error(f"Autonomous trading v2 error: {e}")
             await asyncio.sleep(60)
 
 
