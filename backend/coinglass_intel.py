@@ -144,8 +144,14 @@ class CoinglassIntel:
     async def get_open_interest(self, symbol: str = "BTC") -> Dict:
         """
         Get aggregated open interest across exchanges
-        FREE - No API key required
+        Requires API key (free tier available)
         """
+        if not self.has_api_key:
+            return {
+                "error": "API key required",
+                "how_to_get_key": "Visit https://www.coinglass.com/api to get your API key (free tier available)"
+            }
+        
         cache_key = f"cg_oi_{symbol}"
         cached = self._cache_get(cache_key)
         if cached:
