@@ -2208,6 +2208,179 @@ Stop: ${pred.get('stop_loss', 0):,.2f}
 """
                     response += "👁️ «The positions speak. Listen.»"
             context = "trading"
+        
+        elif text_lower.startswith('/close'):
+            # /close btc - Close a position manually
+            parts = text_lower.split()
+            if len(parts) < 2:
+                response = """📊 CLOSE POSITION
+
+Usage: /close btc
+Closes the open v2 paper trade for that symbol.
+
+Example: /close btc"""
+            else:
+                symbol = parts[1].upper() + "/USDT"
+                
+                # Find the trade
+                trade_to_close = None
+                trade_index = -1
+                for i, trade in enumerate(autonomous_trader_v2.open_trades):
+                    if trade.get("symbol") == symbol:
+                        trade_to_close = trade
+                        trade_index = i
+                        break
+                
+                if trade_to_close:
+                    # Get current price
+                    ticker = await market_intel.get_ticker(symbol)
+                    current_price = ticker.get("price", 0) if "error" not in ticker else 0
+                    
+                    entry = trade_to_close.get("entry_price", 0)
+                    direction = trade_to_close.get("direction", "")
+                    
+                    # Calculate PnL
+                    pnl = 0
+                    if entry and current_price:
+                        if direction == "LONG":
+                            pnl = ((current_price - entry) / entry) * 100
+                        else:
+                            pnl = ((entry - current_price) / entry) * 100
+                    
+                    # Close the trade
+                    closed_trade = autonomous_trader_v2.open_trades.pop(trade_index)
+                    closed_trade["exit_price"] = current_price
+                    closed_trade["pnl_pct"] = pnl
+                    closed_trade["exit_reason"] = "MANUAL_CLOSE"
+                    closed_trade["closed_at"] = datetime.now(timezone.utc).isoformat()
+                    autonomous_trader_v2.closed_trades.append(closed_trade)
+                    
+                    emoji = "✅" if pnl > 0 else "❌"
+                    response = f"""{emoji} TRADE CLOSED (Manual)
+
+{symbol} {direction}
+Entry: ${entry:,.2f}
+Exit: ${current_price:,.2f}
+PnL: {pnl:+.2f}%
+
+👁️ «Your will, executed.»"""
+                else:
+                    response = f"""⚠️ No open trade found for {symbol}
+
+Use /open to see your positions."""
+            context = "trading"
+        
+        elif text_lower.startswith('/trail'):
+            # /trail btc 3 - Set trailing stop to 3%
+            parts = text_lower.split()
+            if len(parts) < 3:
+                response = """🎯 ADJUST TRAILING STOP
+
+Usage: /trail btc 3
+Sets trailing stop to 3% from current price.
+
+Example: /trail btc 5 (sets 5% trail)
+Range: 1-20%"""
+            else:
+                symbol = parts[1].upper() + "/USDT"
+                try:
+                    trail_pct = float(parts[2])
+                    trail_pct = max(1, min(20, trail_pct))  # Clamp 1-20%
+                    
+                    # Find the trade
+                    trade_found = None
+                    for trade in autonomous_trader_v2.open_trades:
+                        if trade.get("symbol") == symbol:
+                            trade_found = trade
+                            break
+                    
+                    if trade_found:
+                        # Get current price
+                        ticker = await market_intel.get_ticker(symbol)
+                        current_price = ticker.get("price", 0) if "error" not in ticker else 0
+                        
+                        direction = trade_found.get("direction", "")
+                        
+                        # Calculate new trail stop
+                        if direction == "LONG":
+                            new_stop = current_price * (1 - trail_pct / 100)
+                        else:
+                            new_stop = current_price * (1 + trail_pct / 100)
+                        
+                        old_stop = trade_found.get("trail_stop", 0)
+                        trade_found["trail_stop"] = new_stop
+                        trade_found["trail_pct"] = trail_pct
+                        
+                        response = f"""🎯 TRAIL STOP UPDATED
+
+{symbol} {direction}
+Current: ${current_price:,.2f}
+Old Stop: ${old_stop:,.2f}
+New Stop: ${new_stop:,.2f}
+Trail: {trail_pct}%
+
+👁️ «The safety net adjusts.»"""
+                    else:
+                        response = f"⚠️ No open trade found for {symbol}"
+                except ValueError:
+                    response = "⚠️ Invalid percentage. Usage: /trail btc 3"
+            context = "trading"
+        
+        elif text_lower.startswith('/tp'):
+            # /tp btc 72000 - Set new take profit
+            parts = text_lower.split()
+            if len(parts) < 3:
+                response = """🎯 ADJUST TAKE PROFIT
+
+Usage: /tp btc 72000
+Sets take profit to $72,000.
+
+Example: /tp eth 2500"""
+            else:
+                symbol = parts[1].upper() + "/USDT"
+                try:
+                    new_tp = float(parts[2])
+                    
+                    trade_found = None
+                    for trade in autonomous_trader_v2.open_trades:
+                        if trade.get("symbol") == symbol:
+                            trade_found = trade
+                            break
+                    
+                    if trade_found:
+                        old_tp = trade_found.get("target_price", 0)
+                        trade_found["target_price"] = new_tp
+                        
+                        entry = trade_found.get("entry_price", 0)
+                        direction = trade_found.get("direction", "")
+                        
+                        # Calculate new R:R
+                        stop = trade_found.get("trail_stop", 0)
+                        if direction == "LONG" and stop and entry:
+                            risk = entry - stop
+                            reward = new_tp - entry
+                            rr = reward / risk if risk > 0 else 0
+                        elif direction == "SHORT" and stop and entry:
+                            risk = stop - entry
+                            reward = entry - new_tp
+                            rr = reward / risk if risk > 0 else 0
+                        else:
+                            rr = 0
+                        
+                        response = f"""🎯 TAKE PROFIT UPDATED
+
+{symbol} {direction}
+Entry: ${entry:,.2f}
+Old TP: ${old_tp:,.2f}
+New TP: ${new_tp:,.2f}
+R:R: 1:{rr:.1f}
+
+👁️ «The target shifts. Vision evolves.»"""
+                    else:
+                        response = f"⚠️ No open trade found for {symbol}"
+                except ValueError:
+                    response = "⚠️ Invalid price. Usage: /tp btc 72000"
+            context = "trading"
             
         elif text_lower == '/price':
             orderbook = get_mexc_orderbook()
