@@ -1843,6 +1843,31 @@ Overall: {options.get('overall_bias', 'NEUTRAL')}
 💡 PCR > 1 = bearish | PCR < 1 = bullish"""
             context = "trading"
         
+        elif text_lower.startswith('/backtest') or text_lower.startswith('/bt'):
+            parts = text_lower.split()
+            symbol = parts[1].upper() if len(parts) > 1 else "BTC"
+            timeframe = parts[2] if len(parts) > 2 else "1h"
+            
+            results = await backtest_engine.compare_strategies(symbol + "/USDT", timeframe, 30)
+            
+            response = f"""📊 {symbol} BACKTEST RESULTS ({timeframe}, 30 days)
+
+"""
+            for strat in results.get("strategies", []):
+                if "error" not in strat:
+                    emoji = "🟢" if strat.get("total_pnl_pct", 0) > 0 else "🔴"
+                    response += f"""{emoji} {strat.get('strategy', 'Unknown')}
+Trades: {strat.get('total_trades', 0)} | Win Rate: {strat.get('win_rate', 0)}%
+PnL: {strat.get('total_pnl_pct', 0):+.2f}% | PF: {strat.get('profit_factor', 0)}
+Max DD: -{strat.get('max_drawdown_pct', 0):.2f}%
+
+"""
+            
+            response += f"""🏆 Best Strategy: {results.get('best_strategy', 'None')}
+
+Use /bt [coin] [tf] to backtest different pairs/timeframes"""
+            context = "trading"
+        
         elif text_lower.startswith('/adv') or text_lower.startswith('/advanced'):
             parts = text_lower.split()
             symbol = parts[1].upper() if len(parts) > 1 else "BTC"
