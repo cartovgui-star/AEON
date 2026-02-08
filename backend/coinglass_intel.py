@@ -2,25 +2,17 @@
 COINGLASS DATA MODULE
 Real liquidation heatmaps, open interest, and funding data
 
-FREE API Endpoints (no key required):
-- Funding rates
-- Open Interest
-- Long/Short ratios
-- Liquidation data (limited)
-
-PAID API (requires key from coinglass.com):
-- Full liquidation heatmaps
-- Historical data
-- More granular data
+NOTE: As of 2025, Coinglass requires an API key for ALL endpoints.
+Free tier is available with limited calls.
 
 To get API key:
 1. Go to https://www.coinglass.com/api
 2. Sign up for an account
 3. Navigate to API section
 4. Generate your API key
-5. Add COINGLASS_API_KEY to .env
+5. Add COINGLASS_API_KEY to backend/.env
 
-Pricing: Free tier available, paid plans start ~$30-50/month
+Pricing: Free tier available (limited calls), paid plans start ~$30-50/month
 """
 
 import asyncio
