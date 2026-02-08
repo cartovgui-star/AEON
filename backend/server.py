@@ -1632,6 +1632,189 @@ Max Loss at Stop: ${result['max_loss_at_stop']:,.2f}"""
                     response = f"⚠️ Calculation error: {e}"
             context = "trading"
             
+        # ═══════════════════════════════════════════════════════════════════════
+        # ADVANCED ANALYSIS COMMANDS
+        # ═══════════════════════════════════════════════════════════════════════
+        
+        elif text_lower.startswith('/divergence') or text_lower.startswith('/div'):
+            parts = text_lower.split()
+            symbol = parts[1].upper() if len(parts) > 1 else "BTC"
+            timeframe = parts[2] if len(parts) > 2 else "1h"
+            
+            div = await advanced_strategies.detect_divergence(symbol + "/USDT", timeframe)
+            
+            response = f"""📊 {symbol} DIVERGENCE ANALYSIS ({timeframe})
+
+RSI: {div.get('current_rsi', 50)}
+MACD Hist: {div.get('current_macd_hist', 0):.6f}
+
+"""
+            if div.get('has_divergence'):
+                for d in div.get('divergences', []):
+                    emoji = "🟢" if d['signal'] == 'BUY' else "🔴"
+                    response += f"""{emoji} {d['type']}
+Signal: {d['signal']}
+Strength: {d['strength']}
+{d['description']}
+
+"""
+            else:
+                response += "No divergences detected on this timeframe.\n\nTry different timeframes: 15m, 1h, 4h, 1d"
+            
+            context = "trading"
+        
+        elif text_lower.startswith('/structure') or text_lower.startswith('/struct'):
+            parts = text_lower.split()
+            symbol = parts[1].upper() if len(parts) > 1 else "BTC"
+            timeframe = parts[2] if len(parts) > 2 else "1h"
+            
+            struct = await advanced_strategies.analyze_market_structure(symbol + "/USDT", timeframe)
+            
+            bos_info = ""
+            if struct.get('bos'):
+                bos = struct['bos']
+                bos_info = f"""
+⚡ {bos['type']}
+Level: ${bos['level']:,.2f}
+{bos['description']}
+"""
+            
+            response = f"""📈 {symbol} MARKET STRUCTURE ({timeframe})
+
+Trend: {struct.get('trend', 'UNKNOWN')}
+Bias: {struct.get('bias', 'NEUTRAL')}
+Structure: {' → '.join(struct.get('structure', []))}
+
+Support: ${struct.get('support', 0):,.2f}
+Resistance: ${struct.get('resistance', 0):,.2f}
+Current: ${struct.get('current_price', 0):,.2f}
+
+Range: {'Yes' if struct.get('is_ranging') else 'No'} ({struct.get('range_pct', 0):.1f}%)
+{bos_info}
+Use this to identify trend direction and key levels."""
+            context = "trading"
+        
+        elif text_lower.startswith('/vwap'):
+            parts = text_lower.split()
+            symbol = parts[1].upper() if len(parts) > 1 else "BTC"
+            timeframe = parts[2] if len(parts) > 2 else "1h"
+            
+            vwap = await advanced_strategies.calculate_vwap(symbol + "/USDT", timeframe)
+            
+            response = f"""📊 {symbol} VWAP ANALYSIS ({timeframe})
+
+VWAP: ${vwap.get('vwap', 0):,.2f}
+Current: ${vwap.get('current_price', 0):,.2f}
+Distance: {vwap.get('distance_pct', 0):+.2f}%
+
+Bands:
++2σ: ${vwap.get('upper_band_2', 0):,.2f}
++1σ: ${vwap.get('upper_band_1', 0):,.2f}
+VWAP: ${vwap.get('vwap', 0):,.2f}
+-1σ: ${vwap.get('lower_band_1', 0):,.2f}
+-2σ: ${vwap.get('lower_band_2', 0):,.2f}
+
+Bias: {vwap.get('bias', 'NEUTRAL')}
+{vwap.get('signal', '')}
+
+💡 Price above VWAP = institutional buyers in control
+💡 Price below VWAP = institutional sellers in control"""
+            context = "trading"
+        
+        elif text_lower.startswith('/orderflow') or text_lower.startswith('/cvd') or text_lower.startswith('/flow'):
+            parts = text_lower.split()
+            symbol = parts[1].upper() if len(parts) > 1 else "BTC"
+            
+            flow = await order_flow.get_full_order_flow(symbol)
+            cvd = flow.get('cvd', {})
+            
+            response = f"""💰 {symbol} ORDER FLOW ANALYSIS
+
+CVD: ${cvd.get('cvd', 0):,.0f}
+Trend: {cvd.get('cvd_trend', 'UNKNOWN')}
+
+Buy Volume: ${cvd.get('buy_volume', 0):,.0f} ({cvd.get('buy_pct', 50):.1f}%)
+Sell Volume: ${cvd.get('sell_volume', 0):,.0f} ({cvd.get('sell_pct', 50):.1f}%)
+
+Bias: {cvd.get('bias', 'NEUTRAL')}
+{cvd.get('signal', '')}
+
+Signal: {flow.get('overall_signal', 'NEUTRAL')}
+Confidence: {flow.get('confidence', 50)}%
+
+💡 CVD shows real buying/selling pressure
+💡 Rising CVD = accumulation
+💡 Falling CVD = distribution"""
+            context = "trading"
+        
+        elif text_lower.startswith('/options') or text_lower.startswith('/maxpain') or text_lower.startswith('/pcr'):
+            parts = text_lower.split()
+            currency = parts[1].upper() if len(parts) > 1 else "BTC"
+            
+            options = await options_analyzer.get_full_options_analysis(currency)
+            mp = options.get('max_pain', {})
+            pcr = options.get('put_call_ratio', {})
+            oi = options.get('oi_distribution', {})
+            
+            response = f"""📈 {currency} OPTIONS ANALYSIS
+
+🎯 MAX PAIN
+Strike: ${mp.get('max_pain', 0):,.0f}
+Current: ${mp.get('current_price', 0):,.0f}
+Distance: {mp.get('distance_pct', 0):+.1f}%
+Expiry: {mp.get('expiry', 'N/A')} ({mp.get('days_to_expiry', 0)} days)
+
+{mp.get('signal', '')}
+
+📊 PUT/CALL RATIO
+Ratio: {pcr.get('put_call_ratio_oi', 0):.3f}
+Sentiment: {pcr.get('sentiment', 'NEUTRAL')}
+{pcr.get('signal', '')}
+
+🏔️ OI WALLS
+Call Wall: ${oi.get('call_wall', 0):,.0f} (resistance)
+Put Wall: ${oi.get('put_wall', 0):,.0f} (support)
+
+Overall: {options.get('overall_bias', 'NEUTRAL')}
+
+💡 Price tends to move toward max pain near expiry
+💡 PCR > 1 = bearish | PCR < 1 = bullish"""
+            context = "trading"
+        
+        elif text_lower.startswith('/adv') or text_lower.startswith('/advanced'):
+            parts = text_lower.split()
+            symbol = parts[1].upper() if len(parts) > 1 else "BTC"
+            timeframe = parts[2] if len(parts) > 2 else "1h"
+            
+            analysis = await advanced_strategies.get_full_analysis(symbol + "/USDT", timeframe)
+            
+            div = analysis.get('divergence', {})
+            struct = analysis.get('market_structure', {})
+            vwap = analysis.get('vwap', {})
+            
+            response = f"""🧠 {symbol} ADVANCED ANALYSIS ({timeframe})
+
+Overall: {analysis.get('overall_signal', 'NEUTRAL')}
+Confidence: {analysis.get('confidence', 50)}%
+
+📊 MARKET STRUCTURE
+Trend: {struct.get('trend', 'UNKNOWN')}
+Bias: {struct.get('bias', 'NEUTRAL')}
+Support: ${struct.get('support', 0):,.2f}
+Resistance: ${struct.get('resistance', 0):,.2f}
+
+📈 VWAP
+VWAP: ${vwap.get('vwap', 0):,.2f}
+Price vs VWAP: {vwap.get('distance_pct', 0):+.2f}%
+Bias: {vwap.get('bias', 'NEUTRAL')}
+
+🔀 DIVERGENCE
+RSI: {div.get('current_rsi', 50)}
+Found: {'Yes - ' + div.get('divergences', [{}])[0].get('type', '') if div.get('has_divergence') else 'None'}
+
+Signals: {analysis.get('signals_breakdown', {}).get('buy_signals', 0)} Buy / {analysis.get('signals_breakdown', {}).get('sell_signals', 0)} Sell"""
+            context = "trading"
+        
         elif text_lower.startswith('/probe'):
             parts = text_lower.split()
             mode = parts[1] if len(parts) > 1 and parts[1] in ["deep", "ordeal", "light"] else "standard"
