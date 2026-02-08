@@ -55,7 +55,8 @@ mexc_secret_key = os.environ.get('MEXC_SECRET_KEY', '')
 # Initialize systems
 learning_system = AeonLearningSystem(db)
 signal_generator = TradingSignalGenerator(market_intel, learning_system)
-autonomous_trader = init_autonomous_trader(db, learning_system)
+autonomous_trader = init_autonomous_trader(db, learning_system)  # Keep for backward compat
+autonomous_trader_v2 = init_autonomous_trader_v2(db)  # New elite trading engine
 free_will = init_free_will(db)
 free_will_v2 = init_free_will_v2(db)  # New ultra-selective engine
 
