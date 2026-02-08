@@ -21,14 +21,20 @@ import os
 from datetime import datetime, timezone
 from typing import Dict, List, Optional
 import httpx
+from dotenv import load_dotenv
+
+# Reload env to get latest values
+load_dotenv(override=True)
 
 logger = logging.getLogger(__name__)
 
 # Coinglass API base URL
 COINGLASS_BASE = "https://open-api.coinglass.com/public/v2"
 
-# API Key (optional for free endpoints)
-COINGLASS_API_KEY = os.environ.get('COINGLASS_API_KEY', '')
+
+def get_coinglass_key():
+    """Get Coinglass API key from environment (dynamic load)"""
+    return os.environ.get('COINGLASS_API_KEY', '')
 
 
 class CoinglassIntel:
