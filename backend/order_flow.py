@@ -4,48 +4,32 @@ Order Flow Analysis Module
 - Buy/Sell Pressure
 - Delta Divergence
 - Absorption Detection
+Uses MEXC API (no geo-restrictions)
 """
 import asyncio
 import aiohttp
 import logging
 from datetime import datetime, timezone
 from typing import Dict, List, Optional
-from collections import deque
+from concurrent.futures import ThreadPoolExecutor
+import ccxt
 
 logger = logging.getLogger(__name__)
+executor = ThreadPoolExecutor(max_workers=3)
 
 
 class OrderFlowAnalyzer:
     """
-    Analyzes order flow data from Binance
+    Analyzes order flow data from MEXC (no geo-restrictions)
     - CVD (Cumulative Volume Delta) = Buy Volume - Sell Volume
     - Positive CVD = More buying pressure
     - Negative CVD = More selling pressure
-    - CVD Divergence = Price and CVD moving opposite directions (reversal signal)
     """
     
     def __init__(self):
         self.cache = {}
-        self.cache_ttl = 30  # 30 second cache for real-time data
-        
-        # Symbol mapping for Binance Futures
-        self.symbol_map = {
-            "BTC": "BTCUSDT",
-            "ETH": "ETHUSDT",
-            "SOL": "SOLUSDT",
-            "BNB": "BNBUSDT",
-            "XRP": "XRPUSDT",
-            "DOGE": "DOGEUSDT",
-            "ADA": "ADAUSDT",
-            "AVAX": "AVAXUSDT",
-            "DOT": "DOTUSDT",
-            "LINK": "LINKUSDT",
-            "MATIC": "MATICUSDT",
-            "SHIB": "SHIBUSDT",
-            "LTC": "LTCUSDT",
-            "TRX": "TRXUSDT",
-            "ATOM": "ATOMUSDT",
-        }
+        self.cache_ttl = 30  # 30 second cache
+        self.mexc = ccxt.mexc()
     
     def _cache_get(self, key: str):
         if key in self.cache:
@@ -57,95 +41,41 @@ class OrderFlowAnalyzer:
     def _cache_set(self, key: str, data):
         self.cache[key] = (data, datetime.now())
     
-    def _get_binance_symbol(self, symbol: str) -> str:
-        """Convert symbol to Binance format"""
-        base = symbol.upper().replace("/USDT", "").replace("USDT", "")
-        return self.symbol_map.get(base, f"{base}USDT")
-    
-    async def get_recent_trades(self, symbol: str, limit: int = 1000) -> List[Dict]:
-        """Fetch recent trades from Binance Futures"""
+    async def get_recent_trades(self, symbol: str, limit: int = 500) -> List[Dict]:
+        """Fetch recent trades from MEXC"""
         cache_key = f"trades_{symbol}_{limit}"
         cached = self._cache_get(cache_key)
         if cached:
             return cached
         
         try:
-            binance_symbol = self._get_binance_symbol(symbol)
-            url = f"https://fapi.binance.com/fapi/v1/trades"
-            params = {"symbol": binance_symbol, "limit": limit}
+            # Format symbol for MEXC
+            formatted = symbol.upper().replace("/", "") 
+            if not formatted.endswith("USDT"):
+                formatted += "USDT"
+            full_symbol = formatted.replace("USDT", "/USDT")
             
-            async with aiohttp.ClientSession() as session:
-                async with session.get(url, params=params, timeout=aiohttp.ClientTimeout(total=10)) as resp:
-                    if resp.status == 200:
-                        trades = await resp.json()
-                        self._cache_set(cache_key, trades)
-                        return trades
-                    elif resp.status == 451:
-                        # Geo-restricted, try spot
-                        return await self._get_spot_trades(symbol, limit)
-                    else:
-                        logger.warning(f"Binance trades API returned {resp.status}")
-                        return []
+            loop = asyncio.get_event_loop()
+            trades = await loop.run_in_executor(
+                executor,
+                lambda: self.mexc.fetch_trades(full_symbol, limit=limit)
+            )
+            
+            self._cache_set(cache_key, trades)
+            return trades
         except Exception as e:
             logger.error(f"Error fetching trades: {e}")
             return []
     
-    async def _get_spot_trades(self, symbol: str, limit: int = 1000) -> List[Dict]:
-        """Fallback to Binance Spot trades"""
-        try:
-            binance_symbol = self._get_binance_symbol(symbol)
-            url = f"https://api.binance.com/api/v3/trades"
-            params = {"symbol": binance_symbol, "limit": limit}
-            
-            async with aiohttp.ClientSession() as session:
-                async with session.get(url, params=params, timeout=aiohttp.ClientTimeout(total=10)) as resp:
-                    if resp.status == 200:
-                        return await resp.json()
-                    return []
-        except Exception as e:
-            logger.error(f"Spot trades error: {e}")
-            return []
-    
-    async def get_aggregated_trades(self, symbol: str, limit: int = 500) -> List[Dict]:
-        """Fetch aggregated trades (more efficient)"""
-        cache_key = f"agg_trades_{symbol}_{limit}"
-        cached = self._cache_get(cache_key)
-        if cached:
-            return cached
-        
-        try:
-            binance_symbol = self._get_binance_symbol(symbol)
-            url = f"https://fapi.binance.com/fapi/v1/aggTrades"
-            params = {"symbol": binance_symbol, "limit": limit}
-            
-            async with aiohttp.ClientSession() as session:
-                async with session.get(url, params=params, timeout=aiohttp.ClientTimeout(total=10)) as resp:
-                    if resp.status == 200:
-                        trades = await resp.json()
-                        self._cache_set(cache_key, trades)
-                        return trades
-                    elif resp.status == 451:
-                        # Geo-restricted, use spot
-                        url = f"https://api.binance.com/api/v3/aggTrades"
-                        async with session.get(url, params=params, timeout=aiohttp.ClientTimeout(total=10)) as resp2:
-                            if resp2.status == 200:
-                                trades = await resp2.json()
-                                self._cache_set(cache_key, trades)
-                                return trades
-                    return []
-        except Exception as e:
-            logger.error(f"Aggregated trades error: {e}")
-            return []
-    
     async def calculate_cvd(self, symbol: str) -> Dict:
         """
-        Calculate Cumulative Volume Delta
+        Calculate Cumulative Volume Delta from MEXC trades
         
         CVD = Sum of (Buy Volume - Sell Volume)
-        - Buyer initiated = Trade at ask price (market buy)
-        - Seller initiated = Trade at bid price (market sell)
+        - 'buy' side = buyer initiated (market buy)
+        - 'sell' side = seller initiated (market sell)
         """
-        trades = await self.get_aggregated_trades(symbol, 500)
+        trades = await self.get_recent_trades(symbol, 500)
         
         if not trades:
             return {
@@ -162,20 +92,18 @@ class OrderFlowAnalyzer:
         running_cvd = 0
         
         for trade in trades:
-            qty = float(trade.get("q", 0))
-            price = float(trade.get("p", 0))
-            is_buyer_maker = trade.get("m", False)
+            amount = trade.get("amount", 0)
+            price = trade.get("price", 0)
+            side = trade.get("side", "")
             
-            volume_usd = qty * price
+            volume_usd = amount * price
             
-            if is_buyer_maker:
-                # Buyer is maker = Seller initiated (market sell)
-                sell_volume += volume_usd
-                running_cvd -= volume_usd
-            else:
-                # Seller is maker = Buyer initiated (market buy)
+            if side == "buy":
                 buy_volume += volume_usd
                 running_cvd += volume_usd
+            else:
+                sell_volume += volume_usd
+                running_cvd -= volume_usd
             
             cvd_values.append(running_cvd)
         
@@ -199,7 +127,7 @@ class OrderFlowAnalyzer:
             bias = "NEUTRAL"
             signal = "Balanced order flow"
         
-        # Calculate CVD trend (is it rising or falling?)
+        # Calculate CVD trend
         if len(cvd_values) > 10:
             recent_cvd = cvd_values[-10:]
             cvd_change = recent_cvd[-1] - recent_cvd[0]
@@ -238,8 +166,6 @@ class OrderFlowAnalyzer:
                 "error": cvd_result.get("error")
             }
         
-        # For divergence detection, we need historical CVD
-        # This is a simplified version based on current CVD trend vs price trend
         cvd_trend = cvd_result.get("cvd_trend")
         
         # Simplified divergence detection
@@ -268,45 +194,39 @@ class OrderFlowAnalyzer:
     async def detect_absorption(self, symbol: str) -> Dict:
         """
         Detect absorption (large orders being absorbed)
-        
-        Bullish Absorption: Large sell orders absorbed, price doesn't drop much
-        Bearish Absorption: Large buy orders absorbed, price doesn't rise much
         """
-        trades = await self.get_aggregated_trades(symbol, 500)
+        trades = await self.get_recent_trades(symbol, 500)
         
         if not trades or len(trades) < 100:
             return {"symbol": symbol, "error": "Insufficient trade data"}
         
         # Calculate average trade size
-        trade_sizes = [float(t.get("q", 0)) * float(t.get("p", 0)) for t in trades]
+        trade_sizes = [t.get("amount", 0) * t.get("price", 0) for t in trades]
         avg_size = sum(trade_sizes) / len(trade_sizes)
-        large_threshold = avg_size * 5  # 5x average = large order
+        large_threshold = avg_size * 5
         
         large_buys = []
         large_sells = []
         
         for trade in trades:
-            qty = float(trade.get("q", 0))
-            price = float(trade.get("p", 0))
-            size = qty * price
-            is_buyer_maker = trade.get("m", False)
+            size = trade.get("amount", 0) * trade.get("price", 0)
+            side = trade.get("side", "")
             
             if size > large_threshold:
-                if is_buyer_maker:
-                    large_sells.append({"size": size, "price": price})
+                if side == "buy":
+                    large_buys.append({"size": size, "price": trade.get("price", 0)})
                 else:
-                    large_buys.append({"size": size, "price": price})
+                    large_sells.append({"size": size, "price": trade.get("price", 0)})
         
         # Check for absorption
         absorption = None
         
         if large_sells and len(large_sells) > len(large_buys):
-            # Large sells but price stable = bullish absorption
-            first_price = float(trades[0].get("p", 0))
-            last_price = float(trades[-1].get("p", 0))
+            first_price = trades[0].get("price", 0)
+            last_price = trades[-1].get("price", 0)
             price_change = ((last_price - first_price) / first_price) * 100 if first_price > 0 else 0
             
-            if price_change > -0.5:  # Price didn't drop much despite selling
+            if price_change > -0.5:
                 absorption = {
                     "type": "BULLISH_ABSORPTION",
                     "signal": "BUY",
@@ -316,12 +236,11 @@ class OrderFlowAnalyzer:
                 }
         
         elif large_buys and len(large_buys) > len(large_sells):
-            # Large buys but price stable = bearish absorption
-            first_price = float(trades[0].get("p", 0))
-            last_price = float(trades[-1].get("p", 0))
+            first_price = trades[0].get("price", 0)
+            last_price = trades[-1].get("price", 0)
             price_change = ((last_price - first_price) / first_price) * 100 if first_price > 0 else 0
             
-            if price_change < 0.5:  # Price didn't rise much despite buying
+            if price_change < 0.5:
                 absorption = {
                     "type": "BEARISH_ABSORPTION",
                     "signal": "SELL",
