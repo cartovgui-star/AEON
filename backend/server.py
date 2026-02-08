@@ -963,6 +963,90 @@ async def api_calc_scenarios(
     return futures_calc.generate_scenarios(entry, size, leverage, direction)
 
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# ADVANCED STRATEGIES APIs (Divergence, Market Structure, VWAP)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@api_router.get("/advanced/divergence/{symbol}")
+async def api_divergence(symbol: str, timeframe: str = "1h"):
+    """Detect RSI and MACD divergences"""
+    return await advanced_strategies.detect_divergence(symbol.upper() + "/USDT", timeframe)
+
+
+@api_router.get("/advanced/structure/{symbol}")
+async def api_market_structure(symbol: str, timeframe: str = "1h"):
+    """Analyze market structure (HH/HL/LH/LL, BOS, trend)"""
+    return await advanced_strategies.analyze_market_structure(symbol.upper() + "/USDT", timeframe)
+
+
+@api_router.get("/advanced/vwap/{symbol}")
+async def api_vwap(symbol: str, timeframe: str = "1h"):
+    """Calculate VWAP with bands"""
+    return await advanced_strategies.calculate_vwap(symbol.upper() + "/USDT", timeframe)
+
+
+@api_router.get("/advanced/full/{symbol}")
+async def api_advanced_full(symbol: str, timeframe: str = "1h"):
+    """Get full advanced analysis (divergence + structure + VWAP)"""
+    return await advanced_strategies.get_full_analysis(symbol.upper() + "/USDT", timeframe)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# ORDER FLOW APIs (CVD, Absorption, Delta)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@api_router.get("/orderflow/cvd/{symbol}")
+async def api_cvd(symbol: str):
+    """Calculate Cumulative Volume Delta"""
+    return await order_flow.calculate_cvd(symbol.upper())
+
+
+@api_router.get("/orderflow/divergence/{symbol}")
+async def api_cvd_divergence(symbol: str):
+    """Detect CVD divergence"""
+    return await order_flow.detect_cvd_divergence(symbol.upper())
+
+
+@api_router.get("/orderflow/absorption/{symbol}")
+async def api_absorption(symbol: str):
+    """Detect order absorption"""
+    return await order_flow.detect_absorption(symbol.upper())
+
+
+@api_router.get("/orderflow/full/{symbol}")
+async def api_orderflow_full(symbol: str):
+    """Get full order flow analysis"""
+    return await order_flow.get_full_order_flow(symbol.upper())
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# OPTIONS DATA APIs (Max Pain, Put/Call Ratio)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@api_router.get("/options/maxpain/{currency}")
+async def api_max_pain(currency: str = "BTC"):
+    """Calculate options max pain"""
+    return await options_analyzer.calculate_max_pain(currency.upper())
+
+
+@api_router.get("/options/pcr/{currency}")
+async def api_put_call_ratio(currency: str = "BTC"):
+    """Get put/call ratio"""
+    return await options_analyzer.calculate_put_call_ratio(currency.upper())
+
+
+@api_router.get("/options/oi/{currency}")
+async def api_options_oi(currency: str = "BTC"):
+    """Get options open interest by strike"""
+    return await options_analyzer.get_oi_by_strike(currency.upper())
+
+
+@api_router.get("/options/full/{currency}")
+async def api_options_full(currency: str = "BTC"):
+    """Get full options analysis"""
+    return await options_analyzer.get_full_options_analysis(currency.upper())
+
+
 @api_router.get("/learning/stats")
 async def api_learning_stats():
     return await learning_system.get_prediction_stats()
