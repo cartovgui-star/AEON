@@ -2066,23 +2066,17 @@ Commands:
             context = "trading"
             
         elif text_lower.startswith('/openpos') or text_lower == '/open':
-            open_preds = await learning_system.get_open_predictions()
+            # Check v2 open trades first
+            v2_trades = autonomous_trader_v2.open_trades
             
-            if not open_preds:
-                response = """📊 NO OPEN POSITIONS
-
-Aeon has no active predictions.
-Use /opps to see current opportunities.
-
-👁️ «The slate is clean. What will you inscribe?»"""
-            else:
-                response = "📊 OPEN POSITIONS\n\n"
-                for pred in open_preds[:10]:
+            if v2_trades:
+                response = "📊 OPEN TRADES (v2 ENGINE)\n\n"
+                for trade in v2_trades[:10]:
                     # Get current price for PnL calc
-                    ticker = await market_intel.get_ticker(pred.get("symbol", ""))
+                    ticker = await market_intel.get_ticker(trade.get("symbol", ""))
                     current = ticker.get("price", 0) if "error" not in ticker else 0
-                    entry = pred.get("entry_price", 0)
-                    direction = pred.get("prediction", "")
+                    entry = trade.get("entry_price", 0)
+                    direction = trade.get("direction", "")
                     
                     pnl = 0
                     if entry and current:
@@ -2092,14 +2086,51 @@ Use /opps to see current opportunities.
                             pnl = ((entry - current) / entry) * 100
                     
                     emoji = "🟢" if pnl > 0 else "🔴" if pnl < 0 else "⚪"
-                    response += f"""{emoji} {pred.get('symbol')}
+                    partial = " (partial)" if trade.get("partial_closed") else ""
+                    
+                    response += f"""{emoji} {trade.get('symbol')} {direction}{partial}
+Entry: ${entry:,.2f} | Now: ${current:,.2f}
+PnL: {pnl:+.2f}%
+TP: ${trade.get('target_price', 0):,.2f} | SL: ${trade.get('trail_stop', 0):,.2f}
+Conf: {trade.get('confidence', 0)}%
+
+"""
+                response += "👁️ «The positions evolve. Watch them.»"
+            else:
+                # Fall back to old system
+                open_preds = await learning_system.get_open_predictions()
+                
+                if not open_preds:
+                    response = """📊 NO OPEN POSITIONS
+
+Both v2 engine and v1 have no active trades.
+Use /opps to see current opportunities.
+
+👁️ «The slate is clean. What will you inscribe?»"""
+                else:
+                    response = "📊 OPEN POSITIONS (v1 Legacy)\n\n"
+                    for pred in open_preds[:10]:
+                        ticker = await market_intel.get_ticker(pred.get("symbol", ""))
+                        current = ticker.get("price", 0) if "error" not in ticker else 0
+                        entry = pred.get("entry_price", 0)
+                        direction = pred.get("prediction", "")
+                        
+                        pnl = 0
+                        if entry and current:
+                            if direction == "LONG":
+                                pnl = ((current - entry) / entry) * 100
+                            elif direction == "SHORT":
+                                pnl = ((entry - current) / entry) * 100
+                        
+                        emoji = "🟢" if pnl > 0 else "🔴" if pnl < 0 else "⚪"
+                        response += f"""{emoji} {pred.get('symbol')}
 {direction} @ ${entry:,.2f}
 Current: ${current:,.2f} ({pnl:+.2f}%)
 Target: ${pred.get('target_price', 0):,.2f}
 Stop: ${pred.get('stop_loss', 0):,.2f}
 
 """
-                response += "👁️ «The positions speak. Listen.»"
+                    response += "👁️ «The positions speak. Listen.»"
             context = "trading"
             
         elif text_lower == '/price':
