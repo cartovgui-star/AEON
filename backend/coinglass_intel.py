@@ -81,7 +81,18 @@ class CoinglassIntel:
                     data = resp.json()
                     if data.get("success"):
                         return data.get("data", {})
-                    return {"error": data.get("msg", "Unknown error")}
+                    
+                    error_msg = data.get("msg", "Unknown error")
+                    
+                    # Handle specific error messages
+                    if "Upgrade plan" in error_msg or "upgrade" in error_msg.lower():
+                        return {
+                            "error": "Paid plan required",
+                            "message": "Coinglass requires a paid subscription ($29/month+)",
+                            "info": "Visit coinglass.com/pricing to upgrade your plan"
+                        }
+                    
+                    return {"error": error_msg}
                 
                 return {"error": f"HTTP {resp.status_code}"}
                 
