@@ -1209,6 +1209,91 @@ async def api_trading_v2_confidence(min_conf: int = 85):
     return {"min_confidence": autonomous_trader_v2.min_confidence}
 
 
+@api_router.post("/trading/v2/close/{symbol}")
+async def api_trading_v2_close(symbol: str):
+    """Manually close a v2 paper trade."""
+    symbol_full = symbol.upper() + "/USDT"
+    
+    for i, trade in enumerate(autonomous_trader_v2.open_trades):
+        if trade.get("symbol") == symbol_full:
+            ticker = await market_intel.get_ticker(symbol_full)
+            current_price = ticker.get("price", 0) if "error" not in ticker else 0
+            
+            entry = trade.get("entry_price", 0)
+            direction = trade.get("direction", "")
+            
+            pnl = 0
+            if entry and current_price:
+                if direction == "LONG":
+                    pnl = ((current_price - entry) / entry) * 100
+                else:
+                    pnl = ((entry - current_price) / entry) * 100
+            
+            closed_trade = autonomous_trader_v2.open_trades.pop(i)
+            closed_trade["exit_price"] = current_price
+            closed_trade["pnl_pct"] = pnl
+            closed_trade["exit_reason"] = "API_MANUAL_CLOSE"
+            closed_trade["closed_at"] = datetime.now(timezone.utc).isoformat()
+            autonomous_trader_v2.closed_trades.append(closed_trade)
+            
+            return {"status": "closed", "trade": closed_trade}
+    
+    return {"error": f"No open trade found for {symbol_full}"}
+
+
+@api_router.post("/trading/v2/trail/{symbol}")
+async def api_trading_v2_trail(symbol: str, trail_pct: float = 3.0):
+    """Update trailing stop percentage for a trade."""
+    symbol_full = symbol.upper() + "/USDT"
+    trail_pct = max(1, min(20, trail_pct))
+    
+    for trade in autonomous_trader_v2.open_trades:
+        if trade.get("symbol") == symbol_full:
+            ticker = await market_intel.get_ticker(symbol_full)
+            current_price = ticker.get("price", 0) if "error" not in ticker else 0
+            
+            direction = trade.get("direction", "")
+            
+            if direction == "LONG":
+                new_stop = current_price * (1 - trail_pct / 100)
+            else:
+                new_stop = current_price * (1 + trail_pct / 100)
+            
+            old_stop = trade.get("trail_stop", 0)
+            trade["trail_stop"] = new_stop
+            trade["trail_pct"] = trail_pct
+            
+            return {
+                "status": "updated",
+                "symbol": symbol_full,
+                "old_stop": old_stop,
+                "new_stop": new_stop,
+                "trail_pct": trail_pct
+            }
+    
+    return {"error": f"No open trade found for {symbol_full}"}
+
+
+@api_router.post("/trading/v2/tp/{symbol}")
+async def api_trading_v2_tp(symbol: str, price: float):
+    """Update take profit price for a trade."""
+    symbol_full = symbol.upper() + "/USDT"
+    
+    for trade in autonomous_trader_v2.open_trades:
+        if trade.get("symbol") == symbol_full:
+            old_tp = trade.get("target_price", 0)
+            trade["target_price"] = price
+            
+            return {
+                "status": "updated",
+                "symbol": symbol_full,
+                "old_tp": old_tp,
+                "new_tp": price
+            }
+    
+    return {"error": f"No open trade found for {symbol_full}"}
+
+
 @api_router.get("/mexc/live")
 async def api_mexc():
     return get_mexc_orderbook()
