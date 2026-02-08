@@ -1291,28 +1291,36 @@ What's up?"""
             context = "start"
             
         elif text_lower == '/freewill' or text_lower == '/fw':
-            stats = await free_will.get_stats()
+            stats = await free_will_v2.get_stats()
             
-            response = f"""🧠 FREE WILL ENGINE
+            response = f"""🎯 FREE WILL v2 (ELITE ALERTS)
 
 Status: {'🟢 ACTIVE' if stats['active'] else '🔴 OFF'}
 Min Confidence: {stats['min_confidence']}%
+Min Confirmations: {stats['min_confirmations']}
 
 📊 MONITORING
-Pairs: {stats['pairs_monitored']}
-Timeframes: {stats['timeframes_monitored']}
-Alerts Sent: {stats['total_alerts_sent']}
+Pairs: {stats['pairs_monitored']} (top coins only)
+Timeframes: {', '.join(stats['timeframes'])}
 
-📈 PERFORMANCE
-Feedback: {stats['feedback_received']}
-Wins: {stats['wins']} | Losses: {stats['losses']}
-Win Rate: {stats['win_rate']}%
+📈 ALERTS
+Today: {stats['daily_alerts']}/{stats['max_daily_alerts']}
+Total: {stats['total_alerts_sent']}
+Cooldown: {stats['alert_cooldown_mins']} min per symbol
+
+📡 DATA SOURCES:
+• TA, Divergence, Structure
+• VWAP, CVD, Options
+• Derivatives, Fear & Greed
+
+Only sends alerts when:
+✅ Confidence 80%+
+✅ 3+ confirmations from different sources
+✅ Higher timeframes (1h, 4h, 1d)
 
 Commands:
 free on/off - Toggle alerts
-/fwconf 70 - Set min confidence
-
-Scanning every 30s. Alerts sent when conf >70%"""
+/fwconf 80 - Set min confidence (70-95)"""
             context = "settings"
             
         elif text_lower.startswith('/fwconf'):
@@ -1320,12 +1328,12 @@ Scanning every 30s. Alerts sent when conf >70%"""
             if len(parts) > 1:
                 try:
                     conf = int(parts[1])
-                    free_will.min_confidence = max(50, min(95, conf))
-                    response = f"✅ Free Will min confidence set to {free_will.min_confidence}%"
+                    free_will_v2.min_confidence = max(70, min(95, conf))
+                    response = f"✅ Free Will min confidence set to {free_will_v2.min_confidence}%"
                 except:
-                    response = "Usage: /fwconf 70 (sets 70% minimum)"
+                    response = "Usage: /fwconf 80 (sets 80% minimum)"
             else:
-                response = f"Current: {free_will.min_confidence}%\nUsage: /fwconf 70"
+                response = f"Current: {free_will_v2.min_confidence}%\nUsage: /fwconf 80"
             context = "settings"
             
         elif text_lower.startswith('/scan'):
