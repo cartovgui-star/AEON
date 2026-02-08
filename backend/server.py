@@ -667,7 +667,7 @@ async def lifespan(app: FastAPI):
     chat_ids.update(existing)
     logger.info(f"Loaded {len(chat_ids)} users")
     
-    # Load strategy weights
+    # Load strategy weights for backward compatibility
     await autonomous_trader.load_strategy_weights()
     
     # Start background tasks
@@ -675,6 +675,7 @@ async def lifespan(app: FastAPI):
     trading_task = asyncio.create_task(autonomous_trading_loop())
     freewill_task = asyncio.create_task(free_will_scanner())
     
+    logger.info("🚀 AEON AUTONOMOUS TRADER v2 ACTIVATED - Elite trades only (85%+ conf, 4+ confirmations)")
     logger.info("🎯 AEON FREE WILL v2 ACTIVATED - Elite alerts only (80%+ conf, 3+ confirmations)")
     
     yield
