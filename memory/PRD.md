@@ -205,59 +205,47 @@ Build a Telegram chatbot "Aeon" that integrates with OpenAI - a business partner
 | **Funding Rate** | **OKX, Bitget, KuCoin, Gate.io** | ✅ **REAL** |
 | **Open Interest** | **OKX, Bitget** | ✅ **REAL** |
 | **L/S Ratio** | **OKX Public API** | ✅ **REAL** |
+| **Order Flow / CVD** | **MEXC Trades** | ✅ **REAL** |
+| **Options (Max Pain/PCR)** | **Deribit** | ✅ **REAL** |
 
-## Recent Improvements (Feb 2026)
+## Latest: Free Will v2 + Backtesting (Feb 2026)
 
-### 1. Alert Noise Reduction
-- Minimum confidence threshold: **65%** (was 70%)
-- Alerts consolidated **per symbol** (not per timeframe)
-- 10-minute cooldown per symbol (was 5 min per symbol/timeframe)
-- Max 5 alerts per scan
-- Higher timeframes prioritized (4h, 1h before 5m, 15m)
+### FREE WILL v2 - Ultra-Selective Alerts
+**Only the BEST alerts - uses 8 data sources:**
+1. Technical Analysis (RSI, MACD, BB, EMA)
+2. Divergence Detection (RSI/MACD divergence)
+3. Market Structure (HH/HL/LH/LL, BOS)
+4. VWAP (institutional levels)
+5. Order Flow / CVD (buy/sell pressure)
+6. Options Data (max pain, put/call ratio)
+7. Derivatives (funding, OI, L/S ratio)
+8. Fear & Greed Index
 
-### 2. REAL Long/Short Ratio Data
-- Now using **OKX Public API** (was estimated from funding)
-- Global L/S ratio + Top Traders L/S ratio
-- Interpretation: LONGS CROWDED / SHORTS CROWDED / BALANCED
-- Endpoint: `/api/derivatives/ls/{symbol}`
+**Alert Requirements:**
+- ✅ 80%+ confidence
+- ✅ 3+ confirmations from different sources
+- ✅ Higher timeframes only (1h, 4h, 1d)
+- ✅ 30-minute cooldown per symbol
+- ✅ Max 10 alerts per day
 
-### 3. Code Refactoring Complete
-- Created `/app/backend/routes/` - API route modules (derivatives, freewill, intelligence)
-- Created `/app/backend/telegram/` - Telegram command handlers
-- Created `/app/backend/tasks/` - Background tasks (trading loop, Free Will scanner)
-- Created `/app/backend/helpers/` - Database helper functions
-- server.py reduced from 1868 to 1785 lines
-- **Removed all liquidation code** (was mocked/estimated data)
+**Commands:**
+- `/fw` - View Free Will v2 stats
+- `/fwconf 80` - Set min confidence (70-95)
+- `free on/off` - Toggle alerts
 
-### 4. Advanced Trading Strategies (NEW)
-**Divergence Detection** (`/div btc`)
-- RSI Divergence: Regular Bullish/Bearish, Hidden Bullish/Bearish
-- MACD Histogram Divergence
-- Auto-detects reversal and continuation patterns
+### BACKTESTING FRAMEWORK
+Test strategies against historical data:
+- **RSI Strategy**: `/bt btc` or `/backtest/rsi/btc`
+- **Bollinger Band Strategy**: `/backtest/bb/btc`
+- **EMA Crossover Strategy**: `/backtest/ema/btc`
+- **Compare All**: `/backtest/compare/btc`
 
-**Market Structure** (`/structure btc`)
-- HH/HL = Uptrend, LH/LL = Downtrend
-- Break of Structure (BOS) detection
-- Automatic support/resistance levels
-- Range detection
+**Metrics Provided:**
+- Win Rate, Total PnL, Profit Factor
+- Max Drawdown, Average Bars Held
+- Best/Worst Trade
 
-**VWAP Analysis** (`/vwap btc`)
-- Volume Weighted Average Price
-- Standard deviation bands (±1σ, ±2σ)
-- Institutional reference levels
-
-### 5. Order Flow / CVD (NEW)
-**Source:** MEXC API (no geo-restrictions)
-- Cumulative Volume Delta (CVD)
-- Buy/Sell volume breakdown
-- CVD trend detection (accumulation vs distribution)
-- Absorption detection
-- Command: `/cvd btc` or `/flow btc`
-
-### 6. Options Data (NEW)
-**Source:** Deribit API (free)
-- **Max Pain**: Strike where options expire worthless (price gravitates here)
-- **Put/Call Ratio**: >1 = bearish, <1 = bullish
+## Earlier Improvements (Feb 2026)
 - **OI by Strike**: Call/Put walls as S/R levels
 - Command: `/options btc` or `/maxpain btc`
 
