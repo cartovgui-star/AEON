@@ -37,6 +37,7 @@ from options_data import options_analyzer, OptionsAnalyzer
 # Import new modules
 from free_will_v2 import FreeWillEngineV2, init_free_will_v2
 from backtesting import backtest_engine, BacktestEngine
+from coinglass_intel import coinglass_intel, CoinglassIntel
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
