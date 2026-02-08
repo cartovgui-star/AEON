@@ -163,6 +163,18 @@ Build a Telegram chatbot "Aeon" that serves as an AI business partner, crypto tr
 - **Timeframes**: 4h, 1h, 1d
 - **Test Success Rate**: 97%+ (29/30 tests passing)
 
+## New Position Management Commands (Feb 2026)
+- `/close btc` - Manually close v2 paper trade
+- `/trail btc 5` - Set trailing stop to 5%
+- `/tp btc 72000` - Set take profit to $72,000
+- `/open` - View all open positions
+
+## Coinglass Integration
+- Module: `/app/backend/coinglass_intel.py`
+- API Routes: `/api/coinglass/funding`, `/api/coinglass/oi`, `/api/coinglass/ls`, `/api/coinglass/liquidations`
+- Telegram: `/cg btc` or `/coinglass btc`
+- **Status**: ⚠️ Requires paid plan ($29/month+) - visit coinglass.com/pricing
+
 ## Prioritized Backlog
 
 ### P0 (COMPLETED)
