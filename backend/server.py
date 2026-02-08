@@ -1601,6 +1601,47 @@ Top Traders: {top_ls.get('long_pct', '?')}% L / {top_ls.get('short_pct', '?')}% 
 Data: OKX, Bitget, KuCoin, Gate"""
             context = "trading"
             
+        elif text_lower.startswith('/coinglass') or text_lower.startswith('/cg'):
+            parts = text_lower.split()
+            symbol = parts[1].upper() if len(parts) > 1 else "BTC"
+            
+            report = await coinglass_intel.get_full_report(symbol)
+            
+            funding = report.get('funding', {})
+            oi = report.get('open_interest', {})
+            ls = report.get('long_short', {})
+            
+            response = f"""📊 {symbol} COINGLASS DATA
+
+💰 FUNDING (Avg: {funding.get('average_rate_pct', 'N/A')})
+"""
+            for ex in funding.get('exchanges', [])[:4]:
+                response += f"• {ex.get('exchange')}: {ex.get('rate_pct', 'N/A')}\n"
+            
+            response += f"""
+📈 OPEN INTEREST
+Total: {oi.get('total_open_interest_str', 'N/A')}
+"""
+            for ex in oi.get('exchanges', [])[:3]:
+                response += f"• {ex.get('exchange')}: {ex.get('open_interest_str', 'N/A')}\n"
+            
+            global_ls = ls.get('global', {})
+            response += f"""
+📊 LONG/SHORT RATIO
+Global: {global_ls.get('long_pct', '?')}% L / {global_ls.get('short_pct', '?')}% S
+{ls.get('interpretation', '')}
+
+Overall Bias: {report.get('overall_bias', 'NEUTRAL')}
+Data: Coinglass"""
+
+            if not report.get('has_api_key'):
+                response += """
+
+💡 Add COINGLASS_API_KEY for liquidation heatmaps
+Get key at: coinglass.com/api"""
+            
+            context = "trading"
+            
         elif text_lower == '/news':
             news = await news_intel.get_latest_news(8)
             sentiment = await news_intel.get_news_sentiment_summary()
