@@ -28,6 +28,11 @@ from news_intel import news_intel, futures_calc, NewsIntel, FuturesCalculator
 from mtf_analysis import mtf_analysis, MultiTimeframeAnalysis
 from free_will_engine import free_will_engine, init_free_will, FreeWillEngine
 
+# Import advanced analysis modules
+from advanced_strategies import advanced_strategies, AdvancedStrategies
+from order_flow import order_flow, OrderFlowAnalyzer
+from options_data import options_analyzer, OptionsAnalyzer
+
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
