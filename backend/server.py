@@ -1423,6 +1423,10 @@ Total PnL: {stats['total_pnl_pct']:+.2f}%"""
 🤖 AUTO-TRADING v2:
 /auto - Status & elite stats
 /opps - Top signals (85%+ conf)
+/open - Open positions
+/close btc - Close position
+/trail btc 5 - Adjust trail stop
+/tp btc 72000 - Adjust take profit
 
 🎯 ADVANCED:
 /divergence btc - RSI/MACD divergence
