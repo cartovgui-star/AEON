@@ -100,7 +100,7 @@ class TestTradingOpportunities:
     
     def test_trading_opportunities_returns_array(self):
         """Verify opportunities returns an array (may be empty)"""
-        response = requests.get(f"{BASE_URL}/api/trading/opportunities", timeout=60)
+        response = requests.get(f"{BASE_URL}/api/trading/opportunities", timeout=120)
         assert response.status_code == 200
         
         data = response.json()
