@@ -1,0 +1,117 @@
+{
+  "summary": "Iteration 10 testing complete - All 29 tests pass. Verified Free Will v2 ultra-selective alerts (80%+ confidence, 3+ confirmations, 8 data sources) and Backtesting framework (RSI, BB, EMA strategies with win rate, PnL, profit factor). Alert volume minimization confirmed (max 10/day, 30min cooldown).",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_freewill_v2_backtesting_iter10.py",
+    "/app/test_reports/pytest/pytest_results_iter10.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Free Will v2 (free_will_v2.py) is well-structured with proper 8 data source integration",
+    "Backtesting framework (backtesting.py) correctly implements RSI, BB, EMA strategies with proper statistics",
+    "Alert volume minimization properly implemented with daily limits and per-symbol cooldowns"
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_freewill_v2_backtesting_iter10.py"
+  ],
+  "success_rate": {
+    "backend": "100% (29/29 tests passed)"
+  },
+  "seed_data_creation": "None required",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "All iteration 10 features verified: Free Will v2 with 8 data sources (TA, Divergence, Structure, VWAP, CVD, Options, Derivatives, Fear&Greed), Backtesting framework (RSI, BB, EMA strategies), Alert minimization (max 10/day, 30min cooldown). Telegram commands /fw and /bt working.",
+  "passed_tests": [
+    "Free Will v2 stats - min_confidence=80, min_confirmations=3, 8 data sources",
+    "Free Will v2 stats - alert limits (max 10/day, 30min cooldown)",
+    "Free Will v2 stats - response structure validation",
+    "Free Will v2 scan BTC - returns null or 80%+ confidence setup",
+    "Free Will v2 scan ETH - returns null or 80%+ confidence setup",
+    "Free Will v2 scan SOL - returns null or 80%+ confidence setup",
+    "Free Will v2 scan response structure validation",
+    "Backtest RSI BTC - win rate, PnL, profit factor",
+    "Backtest RSI ETH 4h",
+    "Backtest RSI custom parameters",
+    "Backtest RSI response structure",
+    "Backtest BB BTC",
+    "Backtest BB ETH 4h",
+    "Backtest BB SOL",
+    "Backtest EMA BTC",
+    "Backtest EMA ETH 4h",
+    "Backtest EMA custom periods",
+    "Backtest Compare BTC - all 3 strategies",
+    "Backtest Compare ETH - all 3 strategies",
+    "Backtest Compare returns best strategy by profit factor",
+    "Backtest Compare response structure",
+    "Free Will v2 toggle on",
+    "Free Will v2 toggle off",
+    "Free Will v2 confidence setting",
+    "Free Will v2 confidence bounds (70-95)",
+    "Backtest multiple symbols RSI (BTC, ETH, SOL, XRP, DOGE)",
+    "Backtest multiple symbols compare (BTC, ETH, SOL)",
+    "API health check",
+    "API pairs endpoint"
+  ],
+  "verified_features": {
+    "free_will_v2": {
+      "status": "WORKING",
+      "endpoint": "/api/freewill/stats",
+      "configuration": {
+        "min_confidence": 80,
+        "min_confirmations": 3,
+        "max_daily_alerts": 10,
+        "alert_cooldown_mins": 30
+      },
+      "data_sources": [
+        "Technical Analysis",
+        "Divergence Detection",
+        "Market Structure",
+        "VWAP",
+        "Order Flow / CVD",
+        "Options (BTC/ETH)",
+        "Derivatives",
+        "Fear & Greed"
+      ]
+    },
+    "free_will_v2_scan": {
+      "status": "WORKING",
+      "endpoint": "/api/freewill/scan/{symbol}",
+      "behavior": "Returns setup only if 80%+ confidence AND 3+ confirmations, otherwise null (expected)"
+    },
+    "backtest_rsi": {
+      "status": "WORKING",
+      "endpoint": "/api/backtest/rsi/{symbol}",
+      "metrics": ["win_rate", "total_pnl_pct", "profit_factor", "max_drawdown_pct", "avg_bars_held"]
+    },
+    "backtest_bb": {
+      "status": "WORKING",
+      "endpoint": "/api/backtest/bb/{symbol}",
+      "metrics": ["win_rate", "total_pnl_pct", "profit_factor", "max_drawdown_pct", "avg_bars_held"]
+    },
+    "backtest_ema": {
+      "status": "WORKING",
+      "endpoint": "/api/backtest/ema/{symbol}",
+      "metrics": ["win_rate", "total_pnl_pct", "profit_factor", "max_drawdown_pct", "avg_bars_held"]
+    },
+    "backtest_compare": {
+      "status": "WORKING",
+      "endpoint": "/api/backtest/compare/{symbol}",
+      "returns": "All 3 strategies compared, best strategy identified by profit factor"
+    }
+  },
+  "telegram_commands_verified": [
+    "/fw - Free Will v2 stats (min_confidence, min_confirmations, data sources)",
+    "/fwconf 80 - Set min confidence (70-95)",
+    "/bt btc - Backtest all strategies for BTC",
+    "/bt eth 4h - Backtest all strategies for ETH on 4h timeframe"
+  ],
+  "mocked_apis_note": "None - all data is REAL from MEXC, Deribit, OKX, and other exchanges"
+}
