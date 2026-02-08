@@ -229,7 +229,46 @@ Build a Telegram chatbot "Aeon" that integrates with OpenAI - a business partner
 - server.py reduced from 1868 to 1785 lines
 - **Removed all liquidation code** (was mocked/estimated data)
 
-## New Features (Feb 2026 - Latest)
+### 4. Advanced Trading Strategies (NEW)
+**Divergence Detection** (`/div btc`)
+- RSI Divergence: Regular Bullish/Bearish, Hidden Bullish/Bearish
+- MACD Histogram Divergence
+- Auto-detects reversal and continuation patterns
+
+**Market Structure** (`/structure btc`)
+- HH/HL = Uptrend, LH/LL = Downtrend
+- Break of Structure (BOS) detection
+- Automatic support/resistance levels
+- Range detection
+
+**VWAP Analysis** (`/vwap btc`)
+- Volume Weighted Average Price
+- Standard deviation bands (±1σ, ±2σ)
+- Institutional reference levels
+
+### 5. Order Flow / CVD (NEW)
+**Source:** MEXC API (no geo-restrictions)
+- Cumulative Volume Delta (CVD)
+- Buy/Sell volume breakdown
+- CVD trend detection (accumulation vs distribution)
+- Absorption detection
+- Command: `/cvd btc` or `/flow btc`
+
+### 6. Options Data (NEW)
+**Source:** Deribit API (free)
+- **Max Pain**: Strike where options expire worthless (price gravitates here)
+- **Put/Call Ratio**: >1 = bearish, <1 = bullish
+- **OI by Strike**: Call/Put walls as S/R levels
+- Command: `/options btc` or `/maxpain btc`
+
+### 7. Combined Advanced Analysis
+`/adv btc` - Full analysis combining:
+- Market Structure (trend, support, resistance)
+- VWAP (institutional levels)
+- Divergence (reversal signals)
+- Confidence score
+
+## New Features (Feb 2026 - Earlier)
 
 ### 1. Crypto News & Sentiment
 - `/news` - Latest crypto headlines with sentiment analysis
