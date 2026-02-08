@@ -1970,38 +1970,48 @@ Min Confirmations: 4+ sources
             context = "settings"
             
         elif text_lower == '/auto off':
-            autonomous_trader.active = False
-            response = """🔴 AUTONOMOUS TRADING PAUSED
+            autonomous_trader_v2.active = False
+            response = """🔴 AUTONOMOUS TRADER v2 PAUSED
 
-Aeon will no longer take autonomous trades.
-Existing positions will still be monitored.
+No new trades will be taken.
+Open positions still monitored.
 
 Use /auto on to resume.
 
-👁️ «The algorithm sleeps. But it remembers.»"""
+👁️ «The algorithm rests. But it remembers.»"""
             context = "settings"
             
         elif text_lower == '/opps' or text_lower == '/opportunities':
-            opps = await autonomous_trader.scan_all_markets()
+            signals = await autonomous_trader_v2.scan_all_markets()
             
-            if not opps:
-                response = """📊 NO HIGH-CONFIDENCE SETUPS
+            if not signals:
+                response = """📊 NO ELITE SIGNALS
 
-All markets show neutral or low-confidence signals.
-Aeon waits for confluence.
+All markets below quality threshold.
+Waiting for 85%+ confidence with 4+ confirmations.
+
+Market Regime: {autonomous_trader_v2.market_regime}
+BTC Bias: {autonomous_trader_v2.btc_bias}
+Session: {autonomous_trader_v2.current_session}
 
 👁️ «Patience is the highest form of trading.»"""
             else:
-                response = "📊 CURRENT OPPORTUNITIES\n\n"
-                for opp in opps[:5]:
-                    emoji = "🟢" if opp["signal"] == "LONG" else "🔴" if opp["signal"] == "SHORT" else "⚖️"
-                    response += f"""{emoji} {opp['symbol']}
-{opp['signal']} | Conf: {opp['confidence']}%
-Price: ${opp['price']:,.2f}
-Score: {opp['score']:+.2f}
-
+                response = "📊 TOP ELITE SIGNALS\n\n"
+                for sig in signals[:5]:
+                    emoji = "🟢" if sig["direction"] == "LONG" else "🔴"
+                    response += f"""{emoji} {sig['symbol']} ({sig['timeframe']})
+{sig['direction']} | Conf: {sig['confidence']}%
+Entry: ${sig['entry']:,.2f} | R:R 1:{sig['risk_reward']}
+Confirmations: {sig['confirmation_count']}
 """
-                response += "👁️ «The quantum field reveals its hand.»"
+                    for c in sig['confirmations'][:3]:
+                        response += f"  • {c}\n"
+                    response += "\n"
+                
+                response += f"""Session: {signals[0].get('session', 'N/A')}
+Regime: {signals[0].get('market_regime', 'N/A')}
+
+👁️ «Elite setups revealed. Choose wisely.»"""
             context = "trading"
             
         elif text_lower == '/strategy':
