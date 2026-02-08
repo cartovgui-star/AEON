@@ -56,6 +56,7 @@ learning_system = AeonLearningSystem(db)
 signal_generator = TradingSignalGenerator(market_intel, learning_system)
 autonomous_trader = init_autonomous_trader(db, learning_system)
 free_will = init_free_will(db)
+free_will_v2 = init_free_will_v2(db)  # New ultra-selective engine
 
 # Set derivatives_intel reference for autonomous trader
 from autonomous_trader import set_derivatives_intel
