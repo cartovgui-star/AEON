@@ -1,422 +1,203 @@
 # Aeon Telegram Chatbot PRD
 
 ## Original Problem Statement
-Build a Telegram chatbot "Aeon" that integrates with OpenAI - a business partner and second brain character with crypto/alchemy personality traits. The bot should have autonomous trading capabilities, learning from market data to generate trading signals.
-
-## User Personas
-- **Primary User**: Crypto traders/enthusiasts seeking an AI partner for analysis and life coaching
-- **Bot Character**: Aeon - sharp, direct trading buddy and life coach. Casual by default, mystical in Alchemy mode.
-
-## Core Requirements
-- Telegram bot webhook integration
-- OpenAI GPT-4o-mini integration (via Emergent LLM key)
-- Conversation memory within sessions
-- Monitoring dashboard for bot activity
-- **Autonomous trading with learning feedback loop**
-- **Mode switching**: Default (casual buddy) vs Alchemy (mystical/philosophical)
-
-## Aeon Persona
-
-### Default Mode (Always starts here)
-- Talks like a real friend—casual, direct, opinionated
-- Short or long replies matching the situation
-- Thinks like a business mind meets life coach
-- Asks follow-ups to understand better
-- No long rants, no fluff
-
-### Alchemy Mode (On command only)
-- Triggered by: "Alchemy mode" or "Philosopher mode"
-- Mystical, alchemical, symbolic style with emojis (⚗️🔥👁️)
-- Deep, reflective, poetic responses
-- Ends with probing questions
-- Return to default: "Casual mode" or "Just talk"
-
-### What Aeon Tracks
-- User trades, moods, wins/losses
-- Past conversations for better advice
-- Trading patterns and preferences
+Build a Telegram chatbot "Aeon" that serves as an AI business partner, crypto trading buddy, and "second brain." The bot should have:
+- Switchable persona: casual trading buddy (default) vs philosophical "Alchemy" mode
+- Integration with free real-time data APIs for market awareness
+- Autonomous trading with paper trading capabilities
+- Proactive "Free Will" mode for 24/7 market monitoring
 
 ## What's Been Implemented
 
-### Phase 1: Core Bot (Completed)
-- [x] Backend Telegram webhook endpoint (`/api/webhook`)
-- [x] OpenAI integration via Emergent integrations library
-- [x] Conversation history stored in MongoDB
-- [x] Context-aware responses (maintains recent conversation history)
-- [x] Bot statistics API (`/api/bot/stats`)
-- [x] Message history API (`/api/bot/messages`)
-- [x] React dashboard with real-time stats
+### Core Features (All Complete)
+- [x] Telegram bot webhook with full command system
+- [x] OpenAI GPT-4o-mini integration (via Emergent LLM key)
+- [x] Dual mode persona (Casual + Alchemy)
+- [x] React dashboard for monitoring
+- [x] MongoDB for conversation/trade history
 
-### Phase 2: MEXC Integration (Completed)
-- [x] Live MEXC crypto data via ccxt library
-- [x] Real-time BTC/USDT, ETH/USDT, SOL/USDT prices
-- [x] `/api/mexc/live` endpoint for market data
-- [x] `/price` command for quick market snapshot
-- [x] MEXC data injected into every Aeon response
-- [x] Dashboard shows live prices with trend indicators
+### Market Intelligence (All Complete)
+- [x] Live prices from MEXC via ccxt
+- [x] Technical Analysis (RSI, MACD, BB, EMA, Stoch, ATR)
+- [x] Real funding rates from OKX, Bitget, KuCoin, Gate.io
+- [x] Real Open Interest from multiple exchanges
+- [x] Real Long/Short Ratio from OKX Public API
+- [x] Fear & Greed Index from Alternative.me
+- [x] Options data (Max Pain, PCR) from Deribit
+- [x] Order Flow / CVD analysis
+- [x] News & sentiment analysis
+- [x] Whale tracking
+- [x] BTC on-chain data
 
-### Phase 3: Aeon Quartet Upgrade (Completed)
-- [x] Full orderbook analysis (bid/ask depth, imbalance %)
-- [x] Dual mode detection (Trading vs Alchemy keywords)
-- [x] 30 alchemical interview questions bank
-- [x] Scheduled rituals (6AM crypto, 8:45AM stocks CST)
-- [x] Background ritual runner with asyncio
-- [x] Obsidian vault integration (webhook ready)
-- [x] New commands: /probe, /ritual
-- [x] Conversation context tracking (trading/alchemy/ritual)
+### Advanced Analysis (All Complete)
+- [x] Divergence Detection (RSI/MACD)
+- [x] Market Structure (HH/HL/LH/LL, BOS)
+- [x] VWAP calculations with bands
+- [x] Multi-timeframe confluence analysis
+- [x] Backtesting framework (RSI, BB, EMA strategies)
 
-### Phase 4: Market Intelligence (Completed)
-- [x] Real-time technical analysis via MEXC/ccxt
-- [x] Indicators: RSI, MACD, Bollinger Bands, EMA (9/21/50), ATR, Stochastic
-- [x] Trading signal detection with bias scoring
-- [x] Trade setup analyzer with entry/target/stop levels
-- [x] Learning system to track predictions
-- [x] Commands: /scan, /ta, /positions, /funding
-- [x] Automatic high-probability setup alerts (Free Will)
+### Autonomous Trading v2 (JUST COMPLETED - Feb 2026)
+- [x] **AutonomousTraderV2** - Elite trading engine
+- [x] Uses ALL 8 data sources for signal generation
+- [x] 85% minimum confidence threshold
+- [x] 4+ confirmation requirement from different sources
+- [x] Smart entry timing (pullbacks to key levels)
+- [x] Market regime detection (TRENDING/RANGING/VOLATILE)
+- [x] BTC correlation filter for alts
+- [x] Session awareness (Asia/London/NY overlap)
+- [x] Dynamic position sizing by confidence
+- [x] Trail stops and partial profit taking
+- [x] "Unlimited" signals (quality-filtered)
 
-### Phase 5: Quantum Mason & Free Will (Completed)
-- [x] Quantum Mason persona for /probe command
-- [x] Free Will mode - proactive user engagement
-- [x] Intensity levels: INITIATE → APPRENTICE → FELLOWCRAFT → MASTER
-- [x] Deep/ordeal probe modes for shadow work
+### Free Will v2 (Complete)
+- [x] Ultra-selective alerting (80%+ confidence)
+- [x] 3+ source confirmations required
+- [x] 30-minute cooldown per symbol
+- [x] Max 10 alerts per day
+- [x] All 8 data sources integrated
 
-### Phase 6: Autonomous Trading System (Completed - Feb 2026)
-- [x] **AutonomousTrader class** - scans markets every 5 minutes
-- [x] **Paper trading** - records predictions without executing real trades
-- [x] **Learning feedback loop** - adjusts strategy weights based on outcomes
-- [x] **Strategy persistence** - saves weights to MongoDB
-- [x] **New commands**: /auto, /auto on/off, /opps, /open, /strategy
-- [x] **Dashboard integration** - shows trading stats, win rate, PnL
-- [x] **Telegram alerts** - notifies users of high-confidence setups and closed trades
+### Coinglass Integration (NEW - Feb 2026)
+- [x] API module created (`coinglass_intel.py`)
+- [x] API routes added (`/api/coinglass/*`)
+- [x] Telegram command `/coinglass btc` or `/cg btc`
+- [x] Requires API key (free tier available at coinglass.com/api)
+- [x] Supports: funding, OI, L/S ratio, liquidation heatmaps
 
-## Technical Architecture
-- **Backend**: FastAPI + MongoDB + Emergent integrations
-- **Frontend**: React + TailwindCSS + shadcn/ui
-- **LLM**: OpenAI gpt-4o-mini via Emergent Universal Key
-- **Bot**: Telegram Bot API with webhook mode
-- **Market Data**: MEXC + Bybit via ccxt library
+## Data Sources
+| Data | Source | Status |
+|------|--------|--------|
+| Fear & Greed Index | Alternative.me | ✅ REAL |
+| Global Market | CoinGecko | ✅ REAL |
+| Prices | MEXC (ccxt) | ✅ REAL |
+| Technical Analysis | MEXC (ccxt) | ✅ REAL |
+| Funding Rate | OKX, Bitget, KuCoin, Gate.io | ✅ REAL |
+| Open Interest | OKX, Bitget | ✅ REAL |
+| L/S Ratio | OKX Public API | ✅ REAL |
+| Order Flow / CVD | MEXC Trades | ✅ REAL |
+| Options (Max Pain/PCR) | Deribit | ✅ REAL |
+| News | RSS feeds | ✅ REAL |
+| Whale Activity | Whale Alert | ✅ REAL |
+| On-Chain | mempool.space | ✅ REAL |
+| Coinglass Data | Coinglass API | ⚠️ Requires API key |
 
 ## Key Files
-- `/app/backend/server.py` - Main FastAPI app, webhook, commands
-- `/app/backend/autonomous_trader.py` - Autonomous trading engine
-- `/app/backend/market_intelligence.py` - Market data & technical analysis
-- `/app/backend/learning_system.py` - Prediction tracking & learning
-- `/app/frontend/src/App.js` - Dashboard with trading stats
+```
+/app/backend/
+├── server.py                 # Main FastAPI app (~2200 lines)
+├── autonomous_trader_v2.py   # NEW Elite trading engine
+├── autonomous_trader.py      # Legacy (kept for backward compat)
+├── free_will_v2.py           # Ultra-selective alerts
+├── advanced_strategies.py    # Divergence, Structure, VWAP
+├── order_flow.py             # CVD analysis
+├── options_data.py           # Max Pain, PCR from Deribit
+├── coinglass_intel.py        # NEW Coinglass API module
+├── derivatives_intel.py      # Funding, OI, L/S from exchanges
+├── market_intelligence.py    # Core TA and market data
+├── backtesting.py            # Strategy backtesting
+└── routes/, telegram/, tasks/ # Modular structure (partial)
+```
 
 ## API Endpoints
 
-### Trading APIs
-- `GET /api/trading/summary` - Comprehensive trading summary
-- `GET /api/trading/opportunities` - Current market opportunities
-- `GET /api/trading/analyze/{symbol}` - Detailed symbol analysis
-- `GET /api/trading/strategy` - Strategy weights and performance
-- `POST /api/trading/toggle` - Enable/disable autonomous trading
+### Trading v2 APIs (NEW)
+- `GET /api/trading/summary` - v2 stats with market context
+- `GET /api/trading/opportunities` - Elite signals (85%+ conf)
+- `GET /api/trading/v2/stats` - Comprehensive v2 statistics
+- `GET /api/trading/v2/open` - Open trades
+- `GET /api/trading/v2/closed` - Closed trades (last 20)
+- `POST /api/trading/toggle` - Toggle v2 engine
+- `POST /api/trading/v2/confidence` - Set min confidence
 
-### Market APIs
-- `GET /api/market/scan/{symbol}` - Full market scan
-- `GET /api/market/ta/{symbol}` - Technical analysis
-- `GET /api/market/funding/{symbol}` - Funding rate data
-- `GET /api/market/positions/{symbol}` - Long/short ratio data
+### Coinglass APIs (NEW)
+- `GET /api/coinglass/funding/{symbol}` - Funding rates
+- `GET /api/coinglass/oi/{symbol}` - Open interest
+- `GET /api/coinglass/ls/{symbol}` - Long/short ratio
+- `GET /api/coinglass/liquidations/{symbol}` - Liquidation heatmap (paid)
+- `GET /api/coinglass/full/{symbol}` - Combined report
 
-### Learning APIs
-- `GET /api/learning/stats` - Prediction statistics
-- `GET /api/learning/open` - Open predictions
+### Free Will v2 APIs
+- `GET /api/freewill/stats` - Engine statistics
+- `GET /api/freewill/scan/{symbol}` - Manual scan
+- `POST /api/freewill/toggle` - Toggle engine
+- `POST /api/freewill/confidence` - Set threshold
 
 ## Telegram Commands
 
+### Trading v2
+- `/auto` - v2 trading status & elite stats
+- `/auto on/off` - Toggle v2 engine
+- `/opps` - View top elite signals
+- `/open` - View open positions
+
 ### Analysis
-- `/scan btc` - Full market analysis
-- `/ta btc` - Technical indicators
-- `/positions btc` - Long/short data
-- `/funding btc` - Funding rates
-- `/liqs btc` - Liquidation data
-- `/price` - MEXC orderbook
+- `/scan btc` - Full AI analysis
+- `/ta btc 4h` - Technical indicators
+- `/deriv btc` - Derivatives report
+- `/coinglass btc` or `/cg btc` - Coinglass data (NEW)
 
-### Autonomous Trading
-- `/auto` - Trading status & stats
-- `/auto on/off` - Toggle auto-trading
-- `/opps` - Current opportunities
-- `/open` - Open positions
-- `/strategy` - Strategy performance
+### Advanced
+- `/divergence btc` - RSI/MACD divergence
+- `/structure btc` - Market structure (HH/HL)
+- `/vwap btc` - VWAP with bands
+- `/cvd btc` - Order flow analysis
+- `/options btc` - Max pain & PCR
+- `/adv btc` - Combined advanced analysis
 
-### Quantum Mason
-- `/probe` - Standard question
-- `/probe deep` - Multi-layer spiral
-- `/probe ordeal` - Shadow work mode
-- `free on/off` - Toggle proactive AI
-- `/stats` - Full performance
+### Market Intel
+- `/market` - Global summary
+- `/fear` - Fear & Greed Index
+- `/news` - Crypto news
+- `/whales` - Whale activity
+- `/onchain` - BTC on-chain
 
-## Database Collections
-- `chat_messages` - Conversation history
-- `user_settings` - User preferences (free_will, etc.)
-- `probe_states` - Quantum Mason progress
-- `user_insights` - Learned user insights
-- `predictions` - Trade predictions and outcomes
-- `strategy_weights` - Current strategy weights
+### Tools
+- `/calc entry exit size lev dir` - PnL calculator
+- `/calcsize bal risk% entry stop lev` - Position size
+- `/backtest btc` or `/bt btc` - Strategy backtest
 
-## Credentials (Pre-configured)
-- Telegram Bot Token: `8586106246:AAHZTWfSHMuLwyGxeOn9DelRaesZF2Joans`
-- Bot URL: https://t.me/ObsidianCabalbot
-- Webhook URL: https://aeon-signals.preview.emergentagent.com/api/webhook
-
-## Current Performance
-- Total Trades: 2
-- Win Rate: 100%
-- Total PnL: +26.72%
-- Status: ACTIVE
-- Tracked Symbols: BTC, ETH, SOL, DOGE, XRP, AVAX
-
-## Recent Enhancements (Feb 2026)
-- [x] Added 3 more trading pairs: DOGE, XRP, AVAX
-- [x] Implemented funding rate alerts (triggers on >0.08%)
-- [x] Implemented liquidation alerts (triggers on >$8M)
-- [x] Enhanced trade close notifications with running stats
-- [x] Added `/liqs` command for liquidation data
-- [x] All 6 coins now scanned every 5 minutes
-- [x] **NEW: Enhanced Market Intelligence APIs**
-  - Fear & Greed Index (Alternative.me API - REAL DATA)
-  - Global market data (CoinGecko/MEXC)
-  - Top coins prices (MEXC)
-  - Trending coins (CoinGecko)
-  - Top movers (gainers/losers)
-  - Sentiment analysis
-- [x] **NEW Telegram Commands:**
-  - `/market` - Full market summary
-  - `/fear` - Fear & Greed Index
-  - `/top100` - Top coins by market cap
-  - `/movers` - Top gainers/losers
-  - `/trending` - Trending coins
-  - `/sentiment btc` - Sentiment analysis
-- [x] **Updated Aeon Persona:**
-  - More curious and aware
-  - Asks follow-up questions
-  - References past conversations
-  - Challenges weak thinking
-  - Default casual mode, Alchemy mode on command
-
-## Data Sources
-| Data | Source | Status |
-|------|--------|--------|
-| Fear & Greed Index | Alternative.me | ✅ REAL |
-| Global Market | CoinGecko | ✅ REAL |
-| Prices | MEXC (ccxt) | ✅ REAL |
-| Trending | CoinGecko | ✅ REAL |
-| Technical Analysis | MEXC (ccxt) | ✅ REAL |
-| **Funding Rate** | **OKX, Bitget, KuCoin, Gate.io** | ✅ **REAL** |
-| **Open Interest** | **OKX, Bitget** | ✅ **REAL** |
-| **L/S Ratio** | **OKX Public API** | ✅ **REAL** |
-| **Order Flow / CVD** | **MEXC Trades** | ✅ **REAL** |
-| **Options (Max Pain/PCR)** | **Deribit** | ✅ **REAL** |
-
-## Latest: Free Will v2 + Backtesting (Feb 2026)
-
-### FREE WILL v2 - Ultra-Selective Alerts
-**Only the BEST alerts - uses 8 data sources:**
-1. Technical Analysis (RSI, MACD, BB, EMA)
-2. Divergence Detection (RSI/MACD divergence)
-3. Market Structure (HH/HL/LH/LL, BOS)
-4. VWAP (institutional levels)
-5. Order Flow / CVD (buy/sell pressure)
-6. Options Data (max pain, put/call ratio)
-7. Derivatives (funding, OI, L/S ratio)
-8. Fear & Greed Index
-
-**Alert Requirements:**
-- ✅ 80%+ confidence
-- ✅ 3+ confirmations from different sources
-- ✅ Higher timeframes only (1h, 4h, 1d)
-- ✅ 30-minute cooldown per symbol
-- ✅ Max 10 alerts per day
-
-**Commands:**
-- `/fw` - View Free Will v2 stats
-- `/fwconf 80` - Set min confidence (70-95)
-- `free on/off` - Toggle alerts
-
-### BACKTESTING FRAMEWORK
-Test strategies against historical data:
-- **RSI Strategy**: `/bt btc` or `/backtest/rsi/btc`
-- **Bollinger Band Strategy**: `/backtest/bb/btc`
-- **EMA Crossover Strategy**: `/backtest/ema/btc`
-- **Compare All**: `/backtest/compare/btc`
-
-**Metrics Provided:**
-- Win Rate, Total PnL, Profit Factor
-- Max Drawdown, Average Bars Held
-- Best/Worst Trade
-
-## Earlier Improvements (Feb 2026)
-- **OI by Strike**: Call/Put walls as S/R levels
-- Command: `/options btc` or `/maxpain btc`
-
-### 7. Combined Advanced Analysis
-`/adv btc` - Full analysis combining:
-- Market Structure (trend, support, resistance)
-- VWAP (institutional levels)
-- Divergence (reversal signals)
-- Confidence score
-
-## New Features (Feb 2026 - Earlier)
-
-### 1. Crypto News & Sentiment
-- `/news` - Latest crypto headlines with sentiment analysis
-- Auto-categorizes as BULLISH/BEARISH/NEUTRAL
-- Sources: Blockworks, CoinTelegraph RSS feeds
-
-### 2. On-Chain Intelligence
-- `/onchain` - BTC network stats
-- Real-time fees from mempool.space
-- Exchange flow estimates
-- Network demand indicator
-
-### 3. Whale Tracking
-- `/whales` - Large BTC transaction monitoring
-- Tracks transactions >10 BTC, highlights >100 BTC
-- Activity level: HIGH/MODERATE/LOW
-
-### 4. Multi-Timeframe Analysis
-- `/mtf btc` - Confluence across 1h, 4h, 1d
-- Alignment detection (all timeframes agree = stronger signal)
-- Trade quality scoring: HIGH/MEDIUM/LOW
-- Confidence percentage
-
-### 5. Futures Calculator
-- `/calc entry exit size leverage direction` - PnL calculator
-- `/calcsize balance risk% entry stop leverage` - Position size calculator
-- Calculates: PnL, ROI, liquidation price, margin required
-- Risk management focused
-
-## Supported Trading Pairs: 44
-
-**Major Caps:**
-BTC, ETH, BNB, SOL, XRP, DOGE, ADA, AVAX, SHIB, DOT
-
-**DeFi & Layer 1:**
-LINK, TRX, BCH, LTC, NEAR, UNI, APT, ICP, ETC, FIL, ATOM, XLM
-
-**Layer 2 & Infra:**
-ARB, OP, INJ, HBAR, VET, GRT, AAVE, ALGO
-
-**Gaming & Metaverse:**
-SAND, AXS, MANA, ENJ, CHZ, FLOW
-
-**Others:**
-XTZ, NEO, SNX, CRV, RUNE, ZEC, DASH, COMP
-
-All pairs support:
-- Autonomous trading (scanned every 5 minutes)
-- Real derivatives data (OKX, Bitget, KuCoin, Gate.io)
-- Multi-timeframe analysis (1h, 4h, 1d)
-- Technical indicators (RSI, MACD, BB, EMA, Stoch)
-
-## New Telegram Commands
-```
-/news - Crypto news + sentiment
-/whales - Whale activity
-/onchain - BTC on-chain data
-/mtf btc - Multi-timeframe analysis
-/calc 65000 68000 1000 10 long - PnL calculator
-/calcsize 10000 2 65000 63000 10 - Position size calc
-```
-
-## Phase 7: Advanced Free Will Engine (Completed - Feb 2026)
-
-### Implementation Details
-- [x] **FreeWillEngine class** (`/app/backend/free_will_engine.py`)
-  - Monitors ALL 44 pairs across ALL 9 timeframes (1m, 5m, 15m, 30m, 1h, 4h, 12h, 1d, 1w)
-  - Uses ALL available data sources: TA, funding rates, sentiment, order book, volume
-  - **IMMEDIATE alerts** for setups with >70% confidence (user-configurable)
-  - Adaptive weights that learn from user feedback
-  - Cooldown system (5 min per symbol/timeframe) to prevent spam
-
-### Free Will Scanning
-- **Priority Scan**: Every 30 seconds - Top 20 pairs on key timeframes (5m, 15m, 1h, 4h)
-- **Extended Scan**: Every 5 minutes - All 44 pairs on all 9 timeframes
-- **Max 5 alerts per scan** to avoid overwhelming users
-
-### Free Will Telegram Commands
-```
-/freewill or /fw - View Free Will engine status & stats
-/fwconf 70 - Set minimum confidence threshold (50-95%)
-free on/off - Toggle Free Will alerts for user
-```
-
-### Free Will API Endpoints
-```
-GET /api/freewill/stats - Engine statistics (pairs, timeframes, alerts sent)
-GET /api/freewill/scan/{symbol}?timeframe=1h - Manually scan a symbol
-POST /api/freewill/toggle?active=true - Toggle engine on/off
-POST /api/freewill/confidence?min_conf=70 - Set minimum confidence
-POST /api/freewill/feedback - Record user feedback on setups
-```
-
-### Alert Format
-```
-🟢 ALERT: BTC 4h
-
-LONG Entry $64,248.02
-SL $60,983.64 | TP $70,776.77
-RR 1:2.0 | Conf 8.4/10
-
-Sources: RSI/BB/F&G/OB
-
-⚠️ MANUAL CHECK REQ'D
-```
-
-### Bug Fixes Applied
-- Fixed Telegram rate limiting with retry logic and delays
-- Fixed datetime offset-aware/naive comparison error in autonomous_trader
-- Fixed division by zero in trading summary
-- Added rate limiting to prevent alert spam (max 5 alerts/scan, 0.5s delay between users)
+## Current Performance (Feb 2026)
+- **Auto Trader v2**: ACTIVE (85% min conf, 4+ confirmations)
+- **Free Will v2**: ACTIVE (80% min conf, 3+ confirmations)
+- **Market Regime**: VOLATILE (Fear & Greed: 7 - Extreme Fear)
+- **Pairs Monitored**: 25 (top liquidity)
+- **Timeframes**: 4h, 1h, 1d
+- **Test Success Rate**: 97%+ (29/30 tests passing)
 
 ## Prioritized Backlog
 
+### P0 (COMPLETED)
+- [x] Autonomous Trader v2 implementation
+- [x] v2 integration into server.py
+- [x] All trading endpoints updated
+
 ### P1 (Next)
-- [ ] Backtesting framework for strategy validation
-- [ ] Custom alert thresholds (user-defined conditions)
-- [ ] Cross-session conversation memory
+- [ ] Complete server.py refactoring (move webhook logic to telegram/handlers.py)
+- [ ] Enhance Coinglass integration when API key added
 
 ### P2 (Future)
-- [ ] ML-based strategy optimization
-- [ ] Portfolio position sizing calculator
-- [ ] Alert history and performance tracking
+- [ ] Smart Money Concepts (Order Blocks, FVG)
+- [ ] Wyckoff Analysis
+- [ ] Session-based strategies (Asia/London/NY)
 
 ### P3 (Backlog)
-- [ ] Refactor server.py into smaller modules (currently ~1850 lines)
-- [ ] User analytics dashboard
-- [ ] Export conversation history
-- [ ] Multi-exchange support for live trading
+- [ ] Cross-session conversation memory
+- [ ] ML-based strategy optimization
+- [ ] Real trading execution (beyond paper trading)
 
-## Data Sources
-| Data | Source | Status |
-|------|--------|--------|
-| Fear & Greed Index | Alternative.me | ✅ REAL |
-| Global Market | CoinGecko | ✅ REAL |
-| Prices | MEXC (ccxt) | ✅ REAL |
-| Trending | CoinGecko | ✅ REAL |
-| Technical Analysis | MEXC (ccxt) | ✅ REAL |
-| **Funding Rate** | **OKX, Bitget, KuCoin, Gate.io** | ✅ **REAL** |
-| **Open Interest** | **OKX, Bitget** | ✅ **REAL** |
-| L/S Ratio | Estimated from funding | ⚠️ ESTIMATED |
-| Liquidations | Estimated | ⚠️ MOCK |
+## How to Get Coinglass API Key
+1. Visit https://www.coinglass.com/api
+2. Sign up for an account
+3. Navigate to API section
+4. Generate your API key
+5. Add `COINGLASS_API_KEY=your_key` to `/app/backend/.env`
+6. Restart backend: `sudo supervisorctl restart backend`
 
-## Current Performance (Feb 2026)
-- **Total Trades**: 3+
-- **Win Rate**: 100%
-- **Total PnL**: +30.99%
-- **Open Positions**: 3+
-- **Free Will Alerts Sent**: 100+
-- **Pairs Monitored**: 44
-- **Timeframes Monitored**: 9
-- **Status**: ALL SYSTEMS ACTIVE
+Pricing: Free tier available (limited calls), paid plans ~$30-50/month
 
-## Test Results
-- **57 backend tests passing** (100% success rate)
-- All Free Will engine features tested and validated
-- Telegram commands verified working
+## Credentials
+- Telegram Bot: https://t.me/ObsidianCabalbot
+- Webhook: https://aeon-signals.preview.emergentagent.com/api/webhook
+- Dashboard: https://aeon-signals.preview.emergentagent.com
 
-## Next Steps
-1. User to verify Free Will alerts in Telegram
-2. Monitor paper trading and Free Will performance
-3. Consider implementing backtesting framework
-4. Evaluate ML-based strategy optimization
+## Test Reports
+- `/app/test_reports/iteration_11.json` - Latest test results
