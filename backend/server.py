@@ -1108,38 +1108,70 @@ async def api_open_predictions():
 
 @api_router.get("/trading/summary")
 async def api_trading_summary():
-    """Get comprehensive autonomous trading summary."""
-    return await autonomous_trader.get_trading_summary()
+    """Get comprehensive autonomous trading v2 summary."""
+    return await autonomous_trader_v2.get_stats()
 
 
 @api_router.get("/trading/opportunities")
 async def api_trading_opportunities():
-    """Get current market opportunities."""
-    return await autonomous_trader.scan_all_markets()
+    """Get current elite market signals (v2)."""
+    return await autonomous_trader_v2.scan_all_markets()
 
 
 @api_router.get("/trading/strategy")
 async def api_strategy_weights():
-    """Get current strategy weights and performance."""
+    """Get current strategy weights and performance (v1 legacy)."""
     return {
         "weights": autonomous_trader.strategy_weights,
         "performance": autonomous_trader.strategy_performance,
         "active": autonomous_trader.active,
-        "min_confidence": autonomous_trader.min_confidence
+        "min_confidence": autonomous_trader.min_confidence,
+        "note": "This is v1 legacy data. Use /trading/v2/stats for v2 engine."
     }
 
 
 @api_router.post("/trading/toggle")
 async def api_toggle_trading(active: bool = True):
-    """Toggle autonomous trading on/off."""
-    autonomous_trader.active = active
-    return {"active": autonomous_trader.active}
+    """Toggle autonomous trading v2 on/off."""
+    autonomous_trader_v2.active = active
+    return {"active": autonomous_trader_v2.active, "engine": "v2"}
 
 
 @api_router.get("/trading/analyze/{symbol}")
-async def api_analyze_symbol(symbol: str):
-    """Get detailed analysis for a symbol."""
-    return await autonomous_trader.analyze_opportunity(symbol.upper() + "/USDT")
+async def api_analyze_symbol(symbol: str, timeframe: str = "4h"):
+    """Get detailed v2 analysis for a symbol."""
+    return await autonomous_trader_v2.analyze_signal(symbol.upper() + "/USDT", timeframe)
+
+
+@api_router.get("/trading/v2/stats")
+async def api_trading_v2_stats():
+    """Get autonomous trader v2 comprehensive statistics."""
+    return await autonomous_trader_v2.get_stats()
+
+
+@api_router.get("/trading/v2/open")
+async def api_trading_v2_open():
+    """Get open trades from v2 engine."""
+    return {
+        "open_trades": autonomous_trader_v2.open_trades,
+        "total_open": len(autonomous_trader_v2.open_trades)
+    }
+
+
+@api_router.get("/trading/v2/closed")
+async def api_trading_v2_closed():
+    """Get closed trades from v2 engine."""
+    return {
+        "closed_trades": autonomous_trader_v2.closed_trades[-20:],  # Last 20
+        "total_closed": len(autonomous_trader_v2.closed_trades)
+    }
+
+
+@api_router.post("/trading/v2/confidence")
+async def api_trading_v2_confidence(min_conf: int = 85):
+    """Set v2 minimum confidence threshold (70-98)."""
+    autonomous_trader_v2.min_confidence = max(70, min(98, min_conf))
+    return {"min_confidence": autonomous_trader_v2.min_confidence}
 
 
 @api_router.get("/mexc/live")
