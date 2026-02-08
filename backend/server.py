@@ -829,42 +829,6 @@ async def api_exchange_funding(exchange: str, symbol: str):
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# FREE WILL ENGINE APIs
-# ═══════════════════════════════════════════════════════════════════════════════
-
-@api_router.get("/freewill/stats")
-async def api_freewill_stats():
-    """Get Free Will engine statistics"""
-    return await free_will.get_stats()
-
-
-@api_router.get("/freewill/scan/{symbol}")
-async def api_freewill_scan_symbol(symbol: str, timeframe: str = "1h"):
-    """Manually scan a specific symbol/timeframe"""
-    return await free_will.analyze_setup(symbol.upper() + "/USDT", timeframe)
-
-
-@api_router.post("/freewill/toggle")
-async def api_freewill_toggle(active: bool = True):
-    """Toggle Free Will engine on/off"""
-    free_will.active = active
-    return {"active": free_will.active}
-
-
-@api_router.post("/freewill/confidence")
-async def api_freewill_confidence(min_conf: int = 70):
-    """Set minimum confidence threshold (0-100)"""
-    free_will.min_confidence = max(50, min(95, min_conf))
-    return {"min_confidence": free_will.min_confidence}
-
-
-@api_router.post("/freewill/feedback")
-async def api_freewill_feedback(setup_id: str, outcome: str, notes: str = None):
-    """Record feedback on a setup (win/loss/skipped/partial)"""
-    await free_will.record_feedback(setup_id, outcome, notes)
-    return {"status": "recorded", "outcome": outcome}
-
-
 # ═══════════════════════════════════════════════════════════════════════════════
 # NEWS & SENTIMENT APIs
 # ═══════════════════════════════════════════════════════════════════════════════
