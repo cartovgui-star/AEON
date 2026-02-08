@@ -653,7 +653,7 @@ async def lifespan(app: FastAPI):
     trading_task = asyncio.create_task(autonomous_trading_loop())
     freewill_task = asyncio.create_task(free_will_scanner())
     
-    logger.info("🔮 AEON FREE WILL ENGINE ACTIVATED - 44 pairs, 9 timeframes, 24/7")
+    logger.info("🎯 AEON FREE WILL v2 ACTIVATED - Elite alerts only (80%+ conf, 3+ confirmations)")
     
     yield
     
