@@ -1300,11 +1300,18 @@ Total PnL: {stats['total_pnl_pct']:+.2f}%"""
 /calc entry exit size lev dir - PnL calc
 /calcsize bal risk% entry stop lev - Position size
 
-🤖 AUTO-TRADING:
-/auto - Status & stats
-/opps - Opportunities
+🤖 AUTO-TRADING v2:
+/auto - Status & elite stats
+/opps - Top signals (85%+ conf)
 
-Mode: {'Alchemy ⚗️' if current_mode == 'alchemy' else 'Casual'} | Auto: {'🟢' if autonomous_trader.active else '🔴'}
+🎯 ADVANCED:
+/divergence btc - RSI/MACD divergence
+/structure btc - HH/HL/LH/LL analysis
+/vwap btc - VWAP levels
+/cvd btc - Order flow
+/options btc - Max pain & PCR
+
+Mode: {'Alchemy ⚗️' if current_mode == 'alchemy' else 'Casual'} | Auto v2: {'🟢' if autonomous_trader_v2.active else '🔴'}
 
 What's up?"""
             context = "start"
