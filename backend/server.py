@@ -1911,16 +1911,42 @@ Signals: {analysis.get('signals_breakdown', {}).get('buy_signals', 0)} Buy / {an
             context = "stats"
             
         elif text_lower == '/auto' or text_lower == '/autotrade':
-            summary = await autonomous_trader.get_trading_summary()
-            stats = summary.get("closed_stats", {})
+            stats = await autonomous_trader_v2.get_stats()
             
-            response = f"""🤖 AEON AUTONOMOUS TRADING
+            response = f"""🤖 AEON AUTONOMOUS TRADER v2
 
-Status: {'🟢 ACTIVE' if autonomous_trader.active else '🔴 PAUSED'}
-Min Confidence: {autonomous_trader.min_confidence}%
+Status: {'🟢 ACTIVE' if stats['active'] else '🔴 PAUSED'}
+Min Confidence: {stats['min_confidence']}%
+Min Confirmations: {stats['min_confirmations']}
 
-📊 PAPER TRADING STATS
-Total Trades: {stats.get('total_predictions', 0)}
+📊 ELITE TRADING STATS
+Total Signals Analyzed: {stats['total_signals_analyzed']:,}
+Total Trades: {stats['total_trades']}
+Open Trades: {stats['open_trades']}
+Win Rate: {stats['win_rate']}%
+Total PnL: {stats['total_pnl_pct']:+.2f}%
+Open PnL: {stats['open_pnl_pct']:+.2f}%
+Profit Factor: {stats['profit_factor']}
+
+📈 TRADE QUALITY
+Best Trade: {stats['best_trade']:+.2f}%
+Worst Trade: {stats['worst_trade']:+.2f}%
+Expectancy: {stats['expectancy']:+.2f}%
+
+📡 MARKET CONTEXT
+Session: {stats['current_session']}
+Regime: {stats['market_regime']}
+BTC Bias: {stats['btc_bias']}
+Fear/Greed: {stats['fear_greed']}
+
+Commands:
+/auto on - Enable elite trading
+/auto off - Pause trading
+/opps - View top signals
+/strategy - View old strategy
+
+👁️ «Quality over quantity. The elite trader prevails.»"""
+            context = "trading"
 Win Rate: {stats.get('win_rate', 0)}%
 Total PnL: {stats.get('total_pnl_pct', 0):+.2f}%
 
