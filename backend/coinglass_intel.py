@@ -93,8 +93,15 @@ class CoinglassIntel:
     async def get_funding_rates(self, symbol: str = "BTC") -> Dict:
         """
         Get funding rates across exchanges
-        FREE - No API key required
+        Requires API key (free tier available)
         """
+        if not self.has_api_key:
+            return {
+                "error": "API key required",
+                "how_to_get_key": "Visit https://www.coinglass.com/api to get your API key (free tier available)",
+                "pricing": "Free tier available with limited calls, paid plans start ~$30-50/month"
+            }
+        
         cache_key = f"cg_funding_{symbol}"
         cached = self._cache_get(cache_key)
         if cached:
