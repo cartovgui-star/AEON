@@ -1947,32 +1947,26 @@ Commands:
 
 👁️ «Quality over quantity. The elite trader prevails.»"""
             context = "trading"
-Win Rate: {stats.get('win_rate', 0)}%
-Total PnL: {stats.get('total_pnl_pct', 0):+.2f}%
-
-Open Positions: {summary.get('open_positions', 0)}
-Open PnL: {summary.get('open_pnl_pct', 0):+.2f}%
-
-Commands:
-/auto on - Enable auto-trading
-/auto off - Pause auto-trading
-/opps - View current opportunities
-/strategy - View strategy performance
-
-👁️ «The algorithm learns. The pattern emerges.»"""
             context = "trading"
             
         elif text_lower == '/auto on':
-            autonomous_trader.active = True
-            response = """🟢 AUTONOMOUS TRADING ENABLED
+            autonomous_trader_v2.active = True
+            response = """🟢 AUTONOMOUS TRADER v2 ENABLED
 
-Aeon will now:
-• Scan markets every 5 minutes
-• Take paper trades on high-confidence setups
-• Evaluate and learn from outcomes
-• Alert you on significant trades
+Using ALL data sources:
+• Technical Analysis (RSI, MACD, BB, EMA)
+• Divergence Detection
+• Market Structure (HH/HL, BOS)
+• VWAP levels
+• Order Flow / CVD
+• Options data (BTC/ETH)
+• Derivatives (funding, OI, L/S)
+• Fear & Greed Index
 
-👁️ «The machine awakens. Let the Great Work begin.»"""
+Min Confidence: 85%
+Min Confirmations: 4+ sources
+
+👁️ «The elite algorithm awakens. Only the best trades.»"""
             context = "settings"
             
         elif text_lower == '/auto off':
