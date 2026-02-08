@@ -1068,6 +1068,40 @@ async def api_backtest_compare(symbol: str, timeframe: str = "1h", days: int = 3
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# COINGLASS APIs (Real Derivatives Data)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@api_router.get("/coinglass/funding/{symbol}")
+async def api_coinglass_funding(symbol: str = "BTC"):
+    """Get funding rates from Coinglass (FREE - no API key)"""
+    return await coinglass_intel.get_funding_rates(symbol.upper())
+
+
+@api_router.get("/coinglass/oi/{symbol}")
+async def api_coinglass_oi(symbol: str = "BTC"):
+    """Get open interest from Coinglass (FREE - no API key)"""
+    return await coinglass_intel.get_open_interest(symbol.upper())
+
+
+@api_router.get("/coinglass/ls/{symbol}")
+async def api_coinglass_ls(symbol: str = "BTC"):
+    """Get long/short ratio from Coinglass (FREE - no API key)"""
+    return await coinglass_intel.get_long_short_ratio(symbol.upper())
+
+
+@api_router.get("/coinglass/liquidations/{symbol}")
+async def api_coinglass_liquidations(symbol: str = "BTC"):
+    """Get liquidation heatmap from Coinglass (PAID - requires API key)"""
+    return await coinglass_intel.get_liquidation_heatmap(symbol.upper())
+
+
+@api_router.get("/coinglass/full/{symbol}")
+async def api_coinglass_full(symbol: str = "BTC"):
+    """Get full Coinglass report (funding + OI + L/S)"""
+    return await coinglass_intel.get_full_report(symbol.upper())
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # FREE WILL v2 APIs (Ultra-selective)
 # ═══════════════════════════════════════════════════════════════════════════════
 
