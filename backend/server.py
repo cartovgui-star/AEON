@@ -33,6 +33,10 @@ from advanced_strategies import advanced_strategies, AdvancedStrategies
 from order_flow import order_flow, OrderFlowAnalyzer
 from options_data import options_analyzer, OptionsAnalyzer
 
+# Import new modules
+from free_will_v2 import FreeWillEngineV2, init_free_will_v2
+from backtesting import backtest_engine, BacktestEngine
+
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
