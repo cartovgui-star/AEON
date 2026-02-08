@@ -66,8 +66,9 @@ class CoinglassIntel:
         """Make request to Coinglass API"""
         try:
             headers = {}
-            if COINGLASS_API_KEY:
-                headers["coinglassSecret"] = COINGLASS_API_KEY
+            api_key = get_coinglass_key()
+            if api_key:
+                headers["coinglassSecret"] = api_key
             
             async with httpx.AsyncClient(timeout=10) as client:
                 resp = await client.get(
