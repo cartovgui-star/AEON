@@ -41,20 +41,16 @@ class CoinglassIntel:
     """
     Real derivatives data from Coinglass
     
-    Free endpoints (no key):
-    - funding_rates
-    - open_interest
-    - long_short_ratio
-    
-    Paid endpoints (key required):
-    - liquidation_heatmap
-    - liquidation_history
+    All endpoints require API key (free tier available).
     """
     
     def __init__(self):
         self.cache = {}
         self.cache_ttl = 60  # 1 minute cache
-        self.has_api_key = bool(COINGLASS_API_KEY)
+    
+    @property
+    def has_api_key(self):
+        return bool(get_coinglass_key())
     
     def _cache_get(self, key: str):
         if key in self.cache:
