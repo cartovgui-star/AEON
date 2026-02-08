@@ -434,8 +434,9 @@ class TestOptionsOI:
             assert "currency" in data
             assert "call_wall" in data
             assert "put_wall" in data
-            assert "total_call_oi" in data
-            assert "total_put_oi" in data
+            assert "significant_strikes" in data
+            assert "interpretation" in data
+            assert isinstance(data["significant_strikes"], list)
             print(f"✅ BTC Options OI: Call Wall=${data['call_wall']:,.0f}, Put Wall=${data['put_wall']:,.0f}")
         else:
             print(f"⚠️ BTC Options OI returned error: {data['error']}")
