@@ -582,75 +582,61 @@ async def eternal_rituals():
 
 async def free_will_scanner():
     """
-    TRUE 24/7 FREE WILL - Scans ALL 44 pairs across ALL timeframes
-    Sends IMMEDIATE alerts for high-probability setups (>70%)
+    ELITE FREE WILL v2 - Ultra-selective alerting
+    Only alerts on 80%+ confidence setups with 3+ confirmations
+    Uses ALL data sources: TA, Divergence, Structure, VWAP, CVD, Options, Derivatives
     """
-    # Set dependencies
-    free_will.set_dependencies(
+    # Set dependencies for v2 engine
+    free_will_v2.set_dependencies(
         market_intel=market_intel,
         derivatives_intel=derivatives_intel,
         enhanced_intel=enhanced_intel,
+        advanced_strategies=advanced_strategies,
+        order_flow=order_flow,
+        options_analyzer=options_analyzer,
         send_telegram=send_telegram_message,
         get_user_settings=get_user_settings,
         chat_ids=chat_ids
     )
     
-    scan_count = 0
-    MAX_ALERTS_PER_SCAN = 5  # Limit alerts per scan to avoid spam
-    
     while True:
         try:
-            if free_will.active:
-                scan_count += 1
+            if free_will_v2.active:
+                # Scan for elite setups (80%+ confidence, 3+ confirmations)
+                setups = await free_will_v2.scan_all()
                 
-                # Priority scan every 30 seconds (top 20 pairs, key timeframes)
-                setups = await free_will.scan_all()
-                
-                # Extended scan every 5 minutes (all 44 pairs, all timeframes)
-                if scan_count % 10 == 0:
-                    extended = await free_will.scan_extended()
-                    setups.extend(extended)
-                
-                # Sort by confidence and limit alerts
-                setups.sort(key=lambda x: x["confidence"], reverse=True)
-                alerts_sent = 0
-                
-                # Send alerts for valid setups
+                # Send alerts (max 3 per scan, already filtered)
                 for setup in setups:
-                    if alerts_sent >= MAX_ALERTS_PER_SCAN:
-                        break
-                        
-                    if setup["confidence"] >= free_will.min_confidence:
-                        alert_msg = free_will.format_alert(setup)
-                        
-                        # Send to all users with free_will enabled
-                        for chat_id in list(chat_ids):
-                            settings = await get_user_settings(chat_id)
-                            if settings.get("free_will", True):
-                                await send_telegram_message(chat_id, alert_msg)
-                                
-                                # Log the alert
-                                await db.free_will_alerts.insert_one({
-                                    "chat_id": chat_id,
-                                    "setup": setup,
-                                    "timestamp": datetime.now(timezone.utc)
-                                })
+                    if not free_will_v2._can_alert(setup["symbol"]):
+                        continue
+                    
+                    alert_msg = free_will_v2.format_alert(setup)
+                    
+                    # Send to users with free_will enabled
+                    for chat_id in list(chat_ids):
+                        settings = await get_user_settings(chat_id)
+                        if settings.get("free_will", True):
+                            await send_telegram_message(chat_id, alert_msg)
                             
-                            # Small delay between users to avoid rate limiting
-                            await asyncio.sleep(0.5)
+                            # Log alert
+                            await db.free_will_alerts.insert_one({
+                                "chat_id": chat_id,
+                                "setup": setup,
+                                "timestamp": datetime.now(timezone.utc)
+                            })
                         
-                        # Mark symbol as alerted (consolidated per symbol)
-                        free_will._mark_alerted(setup["symbol"])
-                        alerts_sent += 1
-                        
-                        logger.info(f"🚨 FREE WILL ALERT: {setup['symbol']} {setup['timeframe']} {setup['direction']}")
+                        await asyncio.sleep(0.5)
+                    
+                    # Mark alerted
+                    free_will_v2._mark_alerted(setup["symbol"])
+                    logger.info(f"🎯 ELITE ALERT: {setup['symbol']} {setup['timeframe']} {setup['direction']} ({setup['confidence']}%)")
             
-            # Scan every 30 seconds
-            await asyncio.sleep(30)
+            # Scan every 60 seconds (less frequent = higher quality)
+            await asyncio.sleep(60)
             
         except Exception as e:
-            logger.error(f"Free Will scanner error: {e}")
-            await asyncio.sleep(30)
+            logger.error(f"Free Will v2 error: {e}")
+            await asyncio.sleep(60)
 
 
 @asynccontextmanager
