@@ -1214,7 +1214,9 @@ async def api_voice_chat(request: Request):
     
     # Get Aeon's response using the LLM
     try:
-        from litellm import acompletion
+        from emergentintegrations.llm.openai import OpenAILLM
+        
+        llm = OpenAILLM(api_key=os.environ.get("EMERGENT_LLM_KEY"))
         
         # Build context from voice history
         messages = [
@@ -1228,10 +1230,9 @@ You help with crypto trading, market analysis, and life advice."""}
         for msg in aeon_voice.get_history()[-10:]:
             messages.append({"role": msg["role"], "content": msg["content"]})
         
-        response = await acompletion(
+        response = await llm.chat_completion(
             model="gpt-4o-mini",
             messages=messages,
-            api_key=os.environ.get("EMERGENT_LLM_KEY"),
             max_tokens=200
         )
         
