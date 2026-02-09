@@ -1495,9 +1495,61 @@ async def webhook(request: Request):
         
         msg = update['message']
         chat_id = msg['chat']['id']
-        text = msg.get('text', '')
-        if not text:
-            return {"status": "ok"}
+        
+        # Handle voice messages
+        if 'voice' in msg:
+            voice = msg['voice']
+            file_id = voice.get('file_id')
+            
+            if file_id:
+                try:
+                    # Get file path from Telegram
+                    telegram_token = os.environ.get("TELEGRAM_TOKEN")
+                    
+                    import httpx
+                    async with httpx.AsyncClient() as client:
+                        # Get file path
+                        file_resp = await client.get(
+                            f"https://api.telegram.org/bot{telegram_token}/getFile?file_id={file_id}"
+                        )
+                        file_data = file_resp.json()
+                        
+                        if file_data.get("ok"):
+                            file_path = file_data["result"]["file_path"]
+                            
+                            # Download the voice file
+                            audio_resp = await client.get(
+                                f"https://api.telegram.org/file/bot{telegram_token}/{file_path}"
+                            )
+                            audio_data = audio_resp.content
+                            
+                            # Transcribe with Whisper
+                            transcription = await aeon_voice.transcribe_audio(audio_data, "ogg")
+                            
+                            if transcription.get("success"):
+                                # Use transcribed text as the message
+                                text = transcription["text"]
+                                logger.info(f"Voice transcribed: {text[:100]}...")
+                                
+                                # Send acknowledgment
+                                await send_telegram_message(chat_id, f"🎤 *Heard:* _{text}_")
+                            else:
+                                await send_telegram_message(chat_id, "⚠️ Couldn't understand the voice message. Try again?")
+                                return {"status": "ok"}
+                        else:
+                            await send_telegram_message(chat_id, "⚠️ Couldn't process voice file.")
+                            return {"status": "ok"}
+                            
+                except Exception as e:
+                    logger.error(f"Voice processing error: {e}")
+                    await send_telegram_message(chat_id, "⚠️ Voice processing failed. Try text instead.")
+                    return {"status": "ok"}
+            else:
+                return {"status": "ok"}
+        else:
+            text = msg.get('text', '')
+            if not text:
+                return {"status": "ok"}
         
         chat_ids.add(chat_id)
         username = msg.get('from', {}).get('username', 'Unknown')
