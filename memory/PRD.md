@@ -155,6 +155,20 @@ Build a Telegram chatbot "Aeon" that serves as an AI business partner, crypto tr
 - `/calcsize bal risk% entry stop lev` - Position size
 - `/backtest btc` or `/bt btc` - Strategy backtest
 
+## Voice Chat Feature (NEW - Feb 2026)
+- **Web Dashboard**: "Talk to Aeon" button opens voice chat modal
+- **Telegram**: Send voice messages, Aeon transcribes and responds
+- **Speech-to-Text**: OpenAI Whisper (via Emergent key)
+- **Text-to-Speech**: Edge TTS (free, Microsoft neural voices)
+- **8 Voice Options**: Guy (default), Davis, Tony, Jason, Aria, Jenny, British, Australian
+
+### Voice API Endpoints
+- `GET /api/voice/voices` - List available voices
+- `POST /api/voice/set?voice=guy` - Change Aeon's voice
+- `POST /api/voice/transcribe` - Transcribe audio to text
+- `POST /api/voice/speak?text=Hello` - Generate speech from text
+- `POST /api/voice/chat` - Full voice chat (audio in → text + audio out)
+
 ## Current Performance (Feb 2026)
 - **Auto Trader v2**: ACTIVE (85% min conf, 4+ confirmations)
 - **Free Will v2**: ACTIVE (80% min conf, 3+ confirmations)
