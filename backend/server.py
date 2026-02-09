@@ -1214,29 +1214,33 @@ async def api_voice_chat(request: Request):
     
     # Get Aeon's response using the LLM
     try:
-        from emergentintegrations.llm.openai import OpenAILLM
+        # Use the same LlmChat as the rest of the app
+        emergent_key = os.environ.get("EMERGENT_LLM_KEY")
         
-        llm = OpenAILLM(api_key=os.environ.get("EMERGENT_LLM_KEY"))
+        # Build conversation context
+        history_msgs = []
+        for msg in aeon_voice.get_history()[-6:]:
+            history_msgs.append({"role": msg["role"], "content": msg["content"]})
         
-        # Build context from voice history
-        messages = [
-            {"role": "system", "content": """You are Aeon, a confident trading buddy and life coach.
-Keep responses concise (2-4 sentences) for voice conversation.
+        voice_chat = LlmChat(
+            api_key=emergent_key,
+            session_id=f"voice-chat",
+            system_message="""You are Aeon, a confident trading buddy and life coach.
+Keep responses concise (2-4 sentences max) for voice conversation.
 Be direct, insightful, and occasionally philosophical.
-You help with crypto trading, market analysis, and life advice."""}
-        ]
+You help with crypto trading, market analysis, and life advice."""
+        ).with_model("openai", "gpt-4o-mini")
         
-        # Add recent conversation history
-        for msg in aeon_voice.get_history()[-10:]:
-            messages.append({"role": msg["role"], "content": msg["content"]})
+        # Add history
+        for hist_msg in history_msgs:
+            if hist_msg["role"] == "user":
+                voice_chat.messages.append(UserMessage(content=hist_msg["content"]))
+            else:
+                voice_chat.messages.append({"role": "assistant", "content": hist_msg["content"]})
         
-        response = await llm.chat_completion(
-            model="gpt-4o-mini",
-            messages=messages,
-            max_tokens=200
-        )
-        
-        aeon_text = response.choices[0].message.content
+        # Get response
+        response = await voice_chat.chat(user_text)
+        aeon_text = response
         aeon_voice.add_to_history("assistant", aeon_text)
         
     except Exception as e:
