@@ -38,6 +38,7 @@ from options_data import options_analyzer, OptionsAnalyzer
 from free_will_v2 import FreeWillEngineV2, init_free_will_v2
 from backtesting import backtest_engine, BacktestEngine
 from coinglass_intel import coinglass_intel, CoinglassIntel
+from voice_chat import aeon_voice, AeonVoiceChat, AEON_VOICES
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
