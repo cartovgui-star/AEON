@@ -1132,6 +1132,142 @@ async def api_freewill_confidence(min_conf: int = 80):
     return {"min_confidence": free_will_v2.min_confidence}
 
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# VOICE CHAT APIs (Real-time voice conversation with Aeon)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@api_router.get("/voice/voices")
+async def api_voice_list():
+    """Get available voice options for Aeon"""
+    return aeon_voice.get_available_voices()
+
+
+@api_router.post("/voice/set")
+async def api_voice_set(voice: str = "guy"):
+    """Set Aeon's voice"""
+    result = aeon_voice.set_voice(voice)
+    return {"message": result, "current_voice": voice}
+
+
+@api_router.post("/voice/transcribe")
+async def api_voice_transcribe(request: Request):
+    """
+    Transcribe audio to text using Whisper
+    
+    Expects multipart form data with 'audio' file
+    """
+    form = await request.form()
+    audio_file = form.get("audio")
+    
+    if not audio_file:
+        return {"error": "No audio file provided"}
+    
+    # Read audio data
+    audio_data = await audio_file.read()
+    
+    # Get format from filename or default to webm
+    filename = audio_file.filename if hasattr(audio_file, 'filename') else "audio.webm"
+    format = filename.split(".")[-1] if "." in filename else "webm"
+    
+    # Transcribe
+    result = await aeon_voice.transcribe_audio(audio_data, format)
+    return result
+
+
+@api_router.post("/voice/speak")
+async def api_voice_speak(text: str, voice: str = None):
+    """
+    Convert text to speech using Edge TTS
+    
+    Returns base64 encoded audio
+    """
+    result = await aeon_voice.generate_speech(text, voice)
+    return result
+
+
+@api_router.post("/voice/chat")
+async def api_voice_chat(request: Request):
+    """
+    Full voice chat: transcribe audio -> get Aeon response -> generate speech
+    
+    Expects multipart form data with 'audio' file
+    Returns JSON with text response and base64 audio
+    """
+    form = await request.form()
+    audio_file = form.get("audio")
+    
+    if not audio_file:
+        return {"error": "No audio file provided"}
+    
+    # Read and transcribe
+    audio_data = await audio_file.read()
+    filename = audio_file.filename if hasattr(audio_file, 'filename') else "audio.webm"
+    format = filename.split(".")[-1] if "." in filename else "webm"
+    
+    transcription = await aeon_voice.transcribe_audio(audio_data, format)
+    
+    if not transcription.get("success"):
+        return {"error": f"Transcription failed: {transcription.get('error')}"}
+    
+    user_text = transcription["text"]
+    aeon_voice.add_to_history("user", user_text)
+    
+    # Get Aeon's response using the LLM
+    try:
+        from litellm import acompletion
+        
+        # Build context from voice history
+        messages = [
+            {"role": "system", "content": """You are Aeon, a confident trading buddy and life coach.
+Keep responses concise (2-4 sentences) for voice conversation.
+Be direct, insightful, and occasionally philosophical.
+You help with crypto trading, market analysis, and life advice."""}
+        ]
+        
+        # Add recent conversation history
+        for msg in aeon_voice.get_history()[-10:]:
+            messages.append({"role": msg["role"], "content": msg["content"]})
+        
+        response = await acompletion(
+            model="gpt-4o-mini",
+            messages=messages,
+            api_key=os.environ.get("EMERGENT_LLM_KEY"),
+            max_tokens=200
+        )
+        
+        aeon_text = response.choices[0].message.content
+        aeon_voice.add_to_history("assistant", aeon_text)
+        
+    except Exception as e:
+        logger.error(f"LLM error in voice chat: {e}")
+        aeon_text = "I'm having trouble thinking right now. Try again in a moment."
+    
+    # Generate speech
+    speech_result = await aeon_voice.generate_speech(aeon_text)
+    
+    return {
+        "success": True,
+        "user_text": user_text,
+        "aeon_text": aeon_text,
+        "audio": speech_result.get("audio_base64"),
+        "audio_format": "mp3",
+        "voice": aeon_voice.current_voice
+    }
+
+
+@api_router.get("/voice/history")
+async def api_voice_history():
+    """Get voice conversation history"""
+    return {"history": aeon_voice.get_history()}
+
+
+@api_router.post("/voice/clear")
+async def api_voice_clear():
+    """Clear voice conversation history"""
+    aeon_voice.clear_history()
+    return {"message": "Voice history cleared"}
+
+
 @api_router.get("/learning/stats")
 async def api_learning_stats():
     return await learning_system.get_prediction_stats()
