@@ -143,17 +143,19 @@ class AeonVoiceChat:
         try:
             voice_to_use = voice if voice else self.current_voice
             
-            # Generate audio with Edge TTS
+            # Generate unique temp file
+            temp_path = os.path.join(self.temp_dir, f"speech_{uuid.uuid4()}.mp3")
+            
+            # Generate audio with Edge TTS (using save method - more reliable)
             communicate = edge_tts.Communicate(text, voice_to_use)
+            await communicate.save(temp_path)
             
-            # Collect audio chunks
-            audio_chunks = []
-            async for chunk in communicate.stream():
-                if chunk["type"] == "audio":
-                    audio_chunks.append(chunk["data"])
+            # Read the audio file
+            with open(temp_path, "rb") as f:
+                audio_data = f.read()
             
-            # Combine chunks
-            audio_data = b"".join(audio_chunks)
+            # Cleanup
+            os.remove(temp_path)
             
             # Convert to base64 for easy transport
             audio_base64 = base64.b64encode(audio_data).decode("utf-8")
