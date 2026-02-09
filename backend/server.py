@@ -1234,7 +1234,7 @@ You help with crypto trading, market analysis, and life advice."""
         # Add history
         for hist_msg in history_msgs:
             if hist_msg["role"] == "user":
-                voice_chat.messages.append(UserMessage(content=hist_msg["content"]))
+                voice_chat.messages.append(UserMessage(text=hist_msg["content"]))
             else:
                 voice_chat.messages.append({"role": "assistant", "content": hist_msg["content"]})
         
