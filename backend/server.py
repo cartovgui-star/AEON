@@ -2909,5 +2909,13 @@ R:R: 1:{rr:.1f}
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# Include main api_router
 app.include_router(api_router)
+
+# Include modular route modules
+app.include_router(smc_router, prefix="/api")
+app.include_router(memory_router, prefix="/api")
+app.include_router(strategies_router, prefix="/api")
+app.include_router(alerts_router, prefix="/api")
+
 app.add_middleware(CORSMiddleware, allow_credentials=True, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
