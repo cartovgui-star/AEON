@@ -66,8 +66,6 @@ function App() {
 
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: Home },
-    { id: 'trades', label: 'Trade History', icon: History },
-    { id: 'settings', label: 'Settings', icon: Settings },
   ];
 
   return (
