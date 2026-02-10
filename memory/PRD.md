@@ -222,8 +222,8 @@ Pricing: Free tier available (limited calls), paid plans ~$30-50/month
 
 ## Credentials
 - Telegram Bot: https://t.me/ObsidianCabalbot
-- Webhook: https://aeon-signals.preview.emergentagent.com/api/webhook
-- Dashboard: https://aeon-signals.preview.emergentagent.com
+- Webhook: https://autonomous-trader-9.preview.emergentagent.com/api/webhook
+- Dashboard: https://autonomous-trader-9.preview.emergentagent.com
 
 ## Test Reports
 - `/app/test_reports/iteration_11.json` - Latest test results
