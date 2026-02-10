@@ -44,7 +44,8 @@ from websocket_manager import ws_manager, WebSocketManager
 from confluence_analyzer import create_confluence_analyzer, ConfluenceAnalyzer
 from conversation_intelligence import (
     conversation_classifier, ConversationClassifier,
-    AEON_CASUAL_SYSTEM, AEON_TRADING_SYSTEM, AEON_MIXED_SYSTEM
+    AEON_CASUAL_SYSTEM, AEON_TRADING_SYSTEM, AEON_MIXED_SYSTEM,
+    get_anti_repetition_prompt, get_flow_prompt
 )
 
 # Import route modules
