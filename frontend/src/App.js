@@ -483,6 +483,9 @@ function App() {
         {/* Page: Trade History */}
         {currentPage === 'trades' && <TradeHistory />}
 
+        {/* Page: Trading */}
+        {currentPage === 'trading' && <Trading />}
+
         {/* Page: Analytics */}
         {currentPage === 'analytics' && <Analytics />}
 
