@@ -12,6 +12,7 @@ import {
 import VoiceConversation from "./components/VoiceConversation";
 import TradeHistory from "./components/TradeHistory";
 import SettingsPanel from "./components/SettingsPanel";
+import Analytics from "./components/Analytics";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
