@@ -1142,6 +1142,147 @@ async def api_freewill_confidence(min_conf: int = 80):
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# PRICE ALERTS APIs (Real-time monitoring)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@api_router.get("/alerts/stats")
+async def api_alerts_stats():
+    """Get price alert system statistics"""
+    return price_alert_system.get_stats()
+
+
+@api_router.get("/alerts/dashboard")
+async def api_alerts_dashboard(limit: int = 20, unread_only: bool = False):
+    """Get dashboard alerts"""
+    return {
+        "alerts": price_alert_system.get_dashboard_alerts(limit, unread_only),
+        "total": len(price_alert_system.dashboard_alerts),
+        "unread": len([a for a in price_alert_system.dashboard_alerts if not a.get("read")])
+    }
+
+
+@api_router.post("/alerts/mark-read/{dashboard_id}")
+async def api_alerts_mark_read(dashboard_id: str):
+    """Mark dashboard alert as read"""
+    success = price_alert_system.mark_alert_read(dashboard_id)
+    return {"success": success}
+
+
+@api_router.post("/alerts/clear")
+async def api_alerts_clear():
+    """Clear all dashboard alerts"""
+    price_alert_system.clear_all_dashboard_alerts()
+    return {"success": True}
+
+
+@api_router.post("/alerts/add")
+async def api_alerts_add(request: Request):
+    """Add custom price alert"""
+    data = await request.json()
+    symbol = data.get("symbol", "BTC") + "/USDT"
+    target_price = data.get("target_price", 0)
+    direction = data.get("direction", "above")  # "above" or "below"
+    chat_id = data.get("chat_id")
+    
+    if not target_price:
+        return {"error": "target_price required"}
+    
+    return price_alert_system.add_price_alert(symbol, target_price, direction, chat_id)
+
+
+@api_router.delete("/alerts/{alert_id}")
+async def api_alerts_remove(alert_id: str):
+    """Remove custom price alert"""
+    return price_alert_system.remove_alert(alert_id)
+
+
+@api_router.get("/alerts/custom")
+async def api_alerts_list(chat_id: int = None):
+    """List custom price alerts"""
+    return {"alerts": price_alert_system.list_alerts(chat_id)}
+
+
+@api_router.post("/alerts/threshold")
+async def api_alerts_threshold(request: Request):
+    """Update auto-alert thresholds"""
+    data = await request.json()
+    for key, value in data.items():
+        if key in price_alert_system.auto_alert_thresholds:
+            price_alert_system.auto_alert_thresholds[key] = value
+    return {"thresholds": price_alert_system.auto_alert_thresholds}
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# MULTI-STRATEGY APIs
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@api_router.get("/strategies/scan/{symbol}")
+async def api_strategies_scan(symbol: str, timeframe: str = "4h"):
+    """Scan all strategies for a symbol"""
+    return await strategy_engine.analyze_all(
+        symbol.upper() + "/USDT",
+        await strategy_engine.get_ohlcv(symbol.upper() + "/USDT", timeframe, 100),
+        {"price": 0}  # Will be fetched in analyze_all
+    )
+
+
+@api_router.get("/strategies/ma/{symbol}")
+async def api_strategy_ma(symbol: str, timeframe: str = "1h", fast: int = 9, slow: int = 21):
+    """MA Crossover strategy analysis"""
+    from strategy_engine import StrategyEngine
+    se = StrategyEngine()
+    return await se.strategy_ma_crossover(symbol.upper() + "/USDT", timeframe, fast, slow)
+
+
+@api_router.get("/strategies/rsi/{symbol}")
+async def api_strategy_rsi(symbol: str, timeframe: str = "1h"):
+    """RSI Momentum strategy analysis"""
+    from strategy_engine import StrategyEngine
+    se = StrategyEngine()
+    return await se.strategy_rsi_momentum(symbol.upper() + "/USDT", timeframe)
+
+
+@api_router.get("/strategies/breakout/{symbol}")
+async def api_strategy_breakout(symbol: str, timeframe: str = "4h"):
+    """Breakout strategy analysis"""
+    from strategy_engine import StrategyEngine
+    se = StrategyEngine()
+    return await se.strategy_breakout(symbol.upper() + "/USDT", timeframe)
+
+
+@api_router.get("/strategies/bb/{symbol}")
+async def api_strategy_bb(symbol: str, timeframe: str = "4h"):
+    """Bollinger Band Squeeze strategy analysis"""
+    from strategy_engine import StrategyEngine
+    se = StrategyEngine()
+    return await se.strategy_bb_squeeze(symbol.upper() + "/USDT", timeframe)
+
+
+@api_router.get("/strategies/macd/{symbol}")
+async def api_strategy_macd(symbol: str, timeframe: str = "4h"):
+    """MACD Reversal strategy analysis"""
+    from strategy_engine import StrategyEngine
+    se = StrategyEngine()
+    return await se.strategy_macd_reversal(symbol.upper() + "/USDT", timeframe)
+
+
+@api_router.get("/strategies/pullback/{symbol}")
+async def api_strategy_pullback(symbol: str, timeframe: str = "4h"):
+    """Trend Pullback strategy analysis"""
+    from strategy_engine import StrategyEngine
+    se = StrategyEngine()
+    return await se.strategy_trend_pullback(symbol.upper() + "/USDT", timeframe)
+
+
+@api_router.get("/strategies/all/{symbol}")
+async def api_strategies_all(symbol: str, timeframe: str = "4h"):
+    """Run all strategies and get combined signal"""
+    from strategy_engine import StrategyEngine
+    se = StrategyEngine()
+    return await se.scan_all_strategies(symbol.upper() + "/USDT", timeframe)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # VOICE CONVERSATION API (Continuous back-and-forth)
 # ═══════════════════════════════════════════════════════════════════════════════
 
