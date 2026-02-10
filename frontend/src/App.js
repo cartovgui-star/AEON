@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import "@/App.css";
 import axios from "axios";
 import { Card, CardContent } from "./components/ui/card";
@@ -7,15 +7,48 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "./components/ui/tabs";
 import { 
   MessageCircle, Users, Activity, Clock, Zap, Bot, ExternalLink, Send, 
   TrendingUp, TrendingDown, BarChart3, Brain, Target, Trophy, Phone,
-  Settings, History, PieChart, Home, Menu, X
+  Settings, History, PieChart, Home, Menu, X, BookOpen, Layers, Bell, BellRing
 } from "lucide-react";
 import VoiceConversation from "./components/VoiceConversation";
 import TradeHistory from "./components/TradeHistory";
 import SettingsPanel from "./components/SettingsPanel";
 import Analytics from "./components/Analytics";
+import SMCAnalysis from "./components/SMCAnalysis";
+import Journal from "./components/Journal";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
+const WS_URL = BACKEND_URL.replace('https://', 'wss://').replace('http://', 'ws://') + '/ws';
+
+// Browser notification permission
+const requestNotificationPermission = async () => {
+  if ('Notification' in window && Notification.permission === 'default') {
+    await Notification.requestPermission();
+  }
+};
+
+// Show browser notification
+const showNotification = (title, body, icon = '🔔') => {
+  if ('Notification' in window && Notification.permission === 'granted') {
+    new Notification(title, {
+      body,
+      icon: '/favicon.ico',
+      tag: 'aeon-alert',
+      requireInteraction: false
+    });
+  }
+};
+
+// Play notification sound
+const playNotificationSound = () => {
+  try {
+    const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2teleS0AGI/L6cxxOwMzhNCnYSQDP4LU/Yl2KAIUdrz/m38tBhZzt/+fgy0GF3K1/6OFLQYZZLL/poYtBRlks/+nhiwFF2S0/6mIKwUWZLX/qogrBRZktf+qiCsFGGW2/6mIKwQYZrf/qIgrBBhmuf+oiCsEGGa5/6eIKwQYZ7r/pogrBBhnu/+liCsEGGi8/6SIKwQYaL3/pIgrBBhovv+jiCsEGWm//6KIKwQZar//oYgrBBlqwP+hiCsEGWvB/6CIKwQZa8L/oIgrBBlrwv+fiCsEGWvD/5+IKwQZa8T/n4grBBlsxf+eiCsEGWzF/56IKwQZbcb/nYgrBBltx/+diCsEGW3H/52IKwQZbcj/nYgrBBltx/+diCsEGW3I/5yIKwQZbcn/nIgrBBltx/+diCsEGW3I/52IKwMZbsn/nIgrBBltx/+diCsE');
+    audio.volume = 0.3;
+    audio.play();
+  } catch (e) {
+    console.log('Could not play notification sound');
+  }
+};
 
 function App() {
   const [stats, setStats] = useState(null);
@@ -28,6 +61,10 @@ function App() {
   const [showVoice, setShowVoice] = useState(false);
   const [currentPage, setCurrentPage] = useState("dashboard");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [wsConnected, setWsConnected] = useState(false);
+  const [unreadAlerts, setUnreadAlerts] = useState(0);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const wsRef = useRef(null);
 
   const fetchData = async () => {
     try {
