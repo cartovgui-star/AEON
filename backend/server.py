@@ -699,6 +699,7 @@ async def lifespan(app: FastAPI):
     logger.info("🚀 AEON AUTONOMOUS TRADER v2 ACTIVATED - Elite trades only (85%+ conf, 4+ confirmations)")
     logger.info("🎯 AEON FREE WILL v2 ACTIVATED - Elite alerts only (80%+ conf, 3+ confirmations)")
     logger.info("🔔 AEON PRICE ALERT SYSTEM ACTIVATED - Real-time monitoring")
+    logger.info("🔌 WEBSOCKET MANAGER READY - Real-time client connections")
     
     yield
     
@@ -711,6 +712,49 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 api_router = APIRouter(prefix="/api")
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# WEBSOCKET ENDPOINT
+# ═══════════════════════════════════════════════════════════════════════════════
+
+from fastapi import WebSocket, WebSocketDisconnect
+
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    """WebSocket endpoint for real-time alerts and updates"""
+    await ws_manager.connect(websocket)
+    try:
+        while True:
+            # Keep connection alive and handle incoming messages
+            data = await websocket.receive_text()
+            # Echo back for ping/pong
+            if data == "ping":
+                await websocket.send_text("pong")
+    except WebSocketDisconnect:
+        ws_manager.disconnect(websocket)
+    except Exception as e:
+        logger.error(f"WebSocket error: {e}")
+        ws_manager.disconnect(websocket)
+
+
+@api_router.get("/ws/stats")
+async def ws_stats():
+    """Get WebSocket connection statistics"""
+    return ws_manager.get_stats()
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# CONFLUENCE API (SMC + Strategy)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@api_router.get("/confluence/{symbol}")
+async def api_confluence(symbol: str, timeframe: str = "4h"):
+    """
+    Get SMC + Strategy confluence analysis
+    Combines Smart Money Concepts with technical strategies for high-probability setups
+    """
+    return await confluence_analyzer.analyze_confluence(symbol.upper() + "/USDT", timeframe)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
