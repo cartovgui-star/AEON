@@ -165,7 +165,7 @@ class PriceAlertSystem:
     
     async def _send_alert(self, alert_type: str, symbol: str, message: str, 
                           data: Dict = None, telegram: bool = True, dashboard: bool = True):
-        """Send alert to both Telegram and Dashboard"""
+        """Send alert to both Telegram and Dashboard (and WebSocket)"""
         alert_key = f"{alert_type}_{symbol}"
         
         if not self._can_send_alert(alert_key):
@@ -185,6 +185,15 @@ class PriceAlertSystem:
         # Send to dashboard
         if dashboard:
             self._add_dashboard_alert(alert_data)
+        
+        # Send via WebSocket (real-time push)
+        if self.ws_manager:
+            try:
+                await self.ws_manager.broadcast_alert(
+                    alert_type, symbol, message, data, self._get_severity(alert_type)
+                )
+            except Exception as e:
+                logger.error(f"WebSocket broadcast error: {e}")
         
         # Send to Telegram
         if telegram and self.send_telegram and self.chat_ids:
