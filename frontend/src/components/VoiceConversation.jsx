@@ -157,44 +157,36 @@ export default function VoiceConversation({ onClose }) {
     if (isActive) startListening();
   }, [selectedVoice, isActive]);
 
-  // Play audio
-  const playAudio = (base64Audio) => {
-    return new Promise((resolve) => {
-      setIsSpeaking(true);
+  // Play audio - requires user interaction first (handled by Start button)
+  const playAudio = async (base64Audio) => {
+    setIsSpeaking(true);
+    
+    try {
+      // Create audio context to unlock audio (some browsers need this)
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (AudioContext) {
+        const ctx = new AudioContext();
+        await ctx.resume();
+        ctx.close();
+      }
       
-      // Create audio element
-      const audio = new Audio();
+      // Create and play audio
+      const audio = new Audio(`data:audio/mp3;base64,${base64Audio}`);
       audioRef.current = audio;
       
-      // Set up event handlers before setting src
-      audio.onended = () => { 
-        console.log('Audio ended');
-        setIsSpeaking(false); 
-        setAeonResponse(''); 
-        resolve(); 
-      };
+      await new Promise((resolve, reject) => {
+        audio.onended = () => resolve();
+        audio.onerror = (e) => reject(e);
+        
+        audio.play().catch(reject);
+      });
       
-      audio.onerror = (e) => { 
-        console.error('Audio error:', e);
-        setIsSpeaking(false); 
-        resolve(); 
-      };
-      
-      audio.oncanplaythrough = () => {
-        console.log('Audio ready, playing...');
-        audio.play().then(() => {
-          console.log('Audio playing');
-        }).catch((err) => { 
-          console.error('Play failed:', err);
-          setIsSpeaking(false); 
-          resolve(); 
-        });
-      };
-      
-      // Set source - this triggers loading
-      audio.src = `data:audio/mp3;base64,${base64Audio}`;
-      audio.load();
-    });
+    } catch (err) {
+      console.error('Audio playback error:', err);
+    }
+    
+    setIsSpeaking(false);
+    setAeonResponse('');
   };
 
   // Start listening
