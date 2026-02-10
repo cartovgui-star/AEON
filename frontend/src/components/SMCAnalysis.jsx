@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Target, TrendingUp, TrendingDown, Layers, BarChart3, Droplets, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Target, TrendingUp, TrendingDown, Layers, BarChart3, RefreshCw } from 'lucide-react';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -10,33 +10,26 @@ export default function SMCAnalysis() {
   const [selectedTimeframe, setSelectedTimeframe] = useState('4h');
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('smc');
-  const [expandedSection, setExpandedSection] = useState(null);
 
-  const symbols = ['BTC', 'ETH', 'SOL', 'BNB', 'XRP', 'DOGE', 'ADA', 'AVAX'];
+  const symbols = ['BTC', 'ETH', 'SOL', 'BNB', 'XRP'];
   const timeframes = ['1h', '4h', '1d'];
 
-  const fetchData = useCallback(async () => {
+  useEffect(() => {
+    fetchData();
+  }, [selectedSymbol, selectedTimeframe]);
+
+  const fetchData = async () => {
     setLoading(true);
     try {
-      const [smcRes, confRes] = await Promise.all([
-        fetch(`${API_URL}/api/smc/analysis/${selectedSymbol}?timeframe=${selectedTimeframe}`),
-        fetch(`${API_URL}/api/confluence/${selectedSymbol}?timeframe=${selectedTimeframe}`)
-      ]);
-      
-      const smcData = await smcRes.json();
-      const confData = await confRes.json();
-      
-      setSmc(smcData);
-      setConfluence(confData);
+      const smcRes = await fetch(`${API_URL}/api/smc/analysis/${selectedSymbol}?timeframe=${selectedTimeframe}`);
+      const confRes = await fetch(`${API_URL}/api/confluence/${selectedSymbol}?timeframe=${selectedTimeframe}`);
+      setSmc(await smcRes.json());
+      setConfluence(await confRes.json());
     } catch (err) {
       console.error('Failed to fetch SMC data:', err);
     }
     setLoading(false);
-  }, [selectedSymbol, selectedTimeframe]);
-
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  };
 
   const getSignalColor = (signal) => {
     if (!signal) return 'text-zinc-400';
@@ -52,25 +45,25 @@ export default function SMCAnalysis() {
     return 'bg-zinc-700/50';
   };
 
-  const toggleSection = (section) => {
-    setExpandedSection(expandedSection === section ? null : section);
-  };
-
   return (
     <div className="space-y-4 md:space-y-6" data-testid="smc-page">
-      {/* Header Controls */}
+      {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
         <div className="flex bg-zinc-800/50 rounded-lg p-1">
-          {['smc', 'confluence'].map(t => (
-            <button key={t} onClick={() => setActiveTab(t)}
-              className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-md text-xs sm:text-sm font-medium transition-all ${
-                activeTab === t ? 'bg-orange-500 text-white' : 'text-zinc-400 hover:text-white'
-              }`}
-              data-testid={`tab-${t}`}
-            >
-              {t === 'smc' ? 'SMC Analysis' : 'Confluence'}
-            </button>
-          ))}
+          <button onClick={() => setActiveTab('smc')}
+            className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-md text-xs sm:text-sm font-medium ${
+              activeTab === 'smc' ? 'bg-orange-500 text-white' : 'text-zinc-400 hover:text-white'
+            }`}
+          >
+            SMC Analysis
+          </button>
+          <button onClick={() => setActiveTab('confluence')}
+            className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-md text-xs sm:text-sm font-medium ${
+              activeTab === 'confluence' ? 'bg-orange-500 text-white' : 'text-zinc-400 hover:text-white'
+            }`}
+          >
+            Confluence
+          </button>
         </div>
         
         <div className="flex items-center gap-2 w-full sm:w-auto">
@@ -79,9 +72,7 @@ export default function SMCAnalysis() {
             onChange={(e) => setSelectedSymbol(e.target.value)}
             className="flex-1 sm:flex-none bg-zinc-800/50 border border-zinc-700 rounded-lg px-3 py-2 text-white text-sm"
           >
-            {symbols.map(s => (
-              <option key={s} value={s}>{s}/USDT</option>
-            ))}
+            {symbols.map(s => <option key={s} value={s}>{s}/USDT</option>)}
           </select>
           
           <select
@@ -89,9 +80,7 @@ export default function SMCAnalysis() {
             onChange={(e) => setSelectedTimeframe(e.target.value)}
             className="bg-zinc-800/50 border border-zinc-700 rounded-lg px-3 py-2 text-white text-sm"
           >
-            {timeframes.map(tf => (
-              <option key={tf} value={tf}>{tf}</option>
-            ))}
+            {timeframes.map(tf => <option key={tf} value={tf}>{tf}</option>)}
           </select>
           
           <button onClick={fetchData} className="p-2 bg-zinc-800/50 rounded-lg text-zinc-400 hover:text-white">
@@ -100,10 +89,10 @@ export default function SMCAnalysis() {
         </div>
       </div>
 
-      {/* SMC Analysis Tab */}
+      {/* SMC Tab */}
       {activeTab === 'smc' && smc && !smc.error && (
         <div className="space-y-4">
-          {/* Overall Signal Card */}
+          {/* Signal Card */}
           <div className={`rounded-xl p-4 sm:p-6 border ${getSignalBg(smc.overall_signal)} border-zinc-700/50`}>
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div>
@@ -130,196 +119,104 @@ export default function SMCAnalysis() {
             </div>
           </div>
 
-          {/* Collapsible Sections */}
-          <div className="space-y-3">
-            {/* Market Structure */}
-            <div className="bg-zinc-800/30 rounded-xl border border-zinc-700/50 overflow-hidden">
-              <button 
-                onClick={() => toggleSection('structure')}
-                className="w-full flex items-center justify-between p-4 text-left"
-              >
-                <div className="flex items-center gap-3">
-                  <BarChart3 className="w-5 h-5 text-blue-400" />
-                  <span className="text-white font-medium">Market Structure</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className={`text-sm ${
+          {/* Info Cards */}
+          <div className="grid md:grid-cols-2 gap-4">
+            <div className="bg-zinc-800/30 rounded-xl p-4 border border-zinc-700/50">
+              <div className="flex items-center gap-2 mb-3">
+                <BarChart3 className="w-5 h-5 text-blue-400" />
+                <span className="text-white font-medium">Market Structure</span>
+              </div>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-zinc-400">Trend</span>
+                  <span className={`${
                     smc.market_structure?.trend === 'BULLISH' ? 'text-green-400' :
                     smc.market_structure?.trend === 'BEARISH' ? 'text-red-400' : 'text-zinc-400'
-                  }`}>
-                    {smc.market_structure?.trend || 'N/A'}
-                  </span>
-                  {expandedSection === 'structure' ? 
-                    <ChevronUp className="w-4 h-4 text-zinc-400" /> : 
-                    <ChevronDown className="w-4 h-4 text-zinc-400" />
-                  }
+                  }`}>{smc.market_structure?.trend || 'N/A'}</span>
                 </div>
-              </button>
-              
-              {expandedSection === 'structure' && (
-                <div className="px-4 pb-4 space-y-2 border-t border-zinc-700/50 pt-3">
-                  <div className="grid grid-cols-2 gap-2 text-sm">
-                    <div className="bg-zinc-900/50 rounded-lg p-2">
-                      <p className="text-zinc-500 text-xs">Higher Highs/Lows</p>
-                      <p className="text-green-400">{smc.market_structure?.hh_hl || 'N/A'}</p>
-                    </div>
-                    <div className="bg-zinc-900/50 rounded-lg p-2">
-                      <p className="text-zinc-500 text-xs">Lower Highs/Lows</p>
-                      <p className="text-red-400">{smc.market_structure?.lh_ll || 'N/A'}</p>
-                    </div>
+                <div className="flex justify-between">
+                  <span className="text-zinc-400">HH/HL</span>
+                  <span className="text-green-400">{smc.market_structure?.hh_hl || 'N/A'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-zinc-400">LH/LL</span>
+                  <span className="text-red-400">{smc.market_structure?.lh_ll || 'N/A'}</span>
+                </div>
+                {smc.market_structure?.bos && (
+                  <div className="bg-orange-500/20 rounded-lg p-2 mt-2">
+                    <span className="text-orange-400 text-xs">BOS: {smc.market_structure.bos}</span>
                   </div>
-                  {smc.market_structure?.bos && (
-                    <div className="bg-orange-500/20 rounded-lg p-2 text-sm">
-                      <p className="text-orange-400">BOS: {smc.market_structure.bos}</p>
-                    </div>
-                  )}
-                  {smc.market_structure?.choch && (
-                    <div className="bg-purple-500/20 rounded-lg p-2 text-sm">
-                      <p className="text-purple-400">CHoCH: {smc.market_structure.choch}</p>
-                    </div>
-                  )}
-                </div>
-              )}
+                )}
+              </div>
             </div>
 
-            {/* Premium/Discount */}
-            <div className="bg-zinc-800/30 rounded-xl border border-zinc-700/50 overflow-hidden">
-              <button 
-                onClick={() => toggleSection('zones')}
-                className="w-full flex items-center justify-between p-4 text-left"
-              >
-                <div className="flex items-center gap-3">
-                  <Layers className="w-5 h-5 text-purple-400" />
-                  <span className="text-white font-medium">Premium/Discount</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className={`text-sm ${
+            <div className="bg-zinc-800/30 rounded-xl p-4 border border-zinc-700/50">
+              <div className="flex items-center gap-2 mb-3">
+                <Layers className="w-5 h-5 text-purple-400" />
+                <span className="text-white font-medium">Premium/Discount</span>
+              </div>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-zinc-400">Zone</span>
+                  <span className={`${
                     smc.premium_discount?.zone?.includes('DISCOUNT') ? 'text-green-400' :
                     smc.premium_discount?.zone?.includes('PREMIUM') ? 'text-red-400' : 'text-zinc-400'
-                  }`}>
-                    {smc.premium_discount?.zone || 'N/A'}
-                  </span>
-                  {expandedSection === 'zones' ? 
-                    <ChevronUp className="w-4 h-4 text-zinc-400" /> : 
-                    <ChevronDown className="w-4 h-4 text-zinc-400" />
-                  }
+                  }`}>{smc.premium_discount?.zone || 'N/A'}</span>
                 </div>
-              </button>
-              
-              {expandedSection === 'zones' && (
-                <div className="px-4 pb-4 border-t border-zinc-700/50 pt-3">
-                  <div className="grid grid-cols-3 gap-2 text-sm text-center">
-                    <div className="bg-zinc-900/50 rounded-lg p-2">
-                      <p className="text-zinc-500 text-xs">Position</p>
-                      <p className="text-white">{smc.premium_discount?.position || '50%'}</p>
-                    </div>
-                    <div className="bg-zinc-900/50 rounded-lg p-2">
-                      <p className="text-zinc-500 text-xs">Equilibrium</p>
-                      <p className="text-white">${smc.premium_discount?.equilibrium?.toLocaleString() || 'N/A'}</p>
-                    </div>
-                    <div className="bg-zinc-900/50 rounded-lg p-2">
-                      <p className="text-zinc-500 text-xs">Bias</p>
-                      <p className={getSignalColor(smc.premium_discount?.bias)}>{smc.premium_discount?.bias || 'N/A'}</p>
-                    </div>
-                  </div>
+                <div className="flex justify-between">
+                  <span className="text-zinc-400">Position</span>
+                  <span className="text-white">{smc.premium_discount?.position || '50%'}</span>
                 </div>
-              )}
-            </div>
-
-            {/* Order Blocks */}
-            <div className="bg-zinc-800/30 rounded-xl border border-zinc-700/50 overflow-hidden">
-              <button 
-                onClick={() => toggleSection('orderblocks')}
-                className="w-full flex items-center justify-between p-4 text-left"
-              >
-                <div className="flex items-center gap-3">
-                  <Target className="w-5 h-5 text-orange-400" />
-                  <span className="text-white font-medium">Order Blocks</span>
+                <div className="flex justify-between">
+                  <span className="text-zinc-400">Equilibrium</span>
+                  <span className="text-white">${smc.premium_discount?.equilibrium?.toLocaleString() || 'N/A'}</span>
                 </div>
-                <div className="flex items-center gap-3">
-                  <span className="text-sm text-zinc-400">
-                    {(smc.order_blocks?.bullish || 0) + (smc.order_blocks?.bearish || 0)} active
-                  </span>
-                  {expandedSection === 'orderblocks' ? 
-                    <ChevronUp className="w-4 h-4 text-zinc-400" /> : 
-                    <ChevronDown className="w-4 h-4 text-zinc-400" />
-                  }
-                </div>
-              </button>
-              
-              {expandedSection === 'orderblocks' && (
-                <div className="px-4 pb-4 border-t border-zinc-700/50 pt-3">
-                  <div className="grid grid-cols-2 gap-2 text-sm">
-                    <div className="bg-green-500/10 rounded-lg p-2 border border-green-500/30">
-                      <p className="text-green-400 font-medium">{smc.order_blocks?.bullish || 0} Bullish OBs</p>
-                    </div>
-                    <div className="bg-red-500/10 rounded-lg p-2 border border-red-500/30">
-                      <p className="text-red-400 font-medium">{smc.order_blocks?.bearish || 0} Bearish OBs</p>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Liquidity */}
-            <div className="bg-zinc-800/30 rounded-xl border border-zinc-700/50 overflow-hidden">
-              <button 
-                onClick={() => toggleSection('liquidity')}
-                className="w-full flex items-center justify-between p-4 text-left"
-              >
-                <div className="flex items-center gap-3">
-                  <Droplets className="w-5 h-5 text-cyan-400" />
-                  <span className="text-white font-medium">Liquidity Zones</span>
-                </div>
-                {expandedSection === 'liquidity' ? 
-                  <ChevronUp className="w-4 h-4 text-zinc-400" /> : 
-                  <ChevronDown className="w-4 h-4 text-zinc-400" />
-                }
-              </button>
-              
-              {expandedSection === 'liquidity' && (
-                <div className="px-4 pb-4 border-t border-zinc-700/50 pt-3 space-y-2">
-                  {smc.liquidity?.nearest_buy_side && (
-                    <div className="bg-green-500/10 rounded-lg p-2 border border-green-500/30 text-sm">
-                      <p className="text-zinc-400 text-xs">Buy-side Liquidity</p>
-                      <p className="text-green-400">${smc.liquidity.nearest_buy_side.price?.toLocaleString()}</p>
-                    </div>
-                  )}
-                  {smc.liquidity?.nearest_sell_side && (
-                    <div className="bg-red-500/10 rounded-lg p-2 border border-red-500/30 text-sm">
-                      <p className="text-zinc-400 text-xs">Sell-side Liquidity</p>
-                      <p className="text-red-400">${smc.liquidity.nearest_sell_side.price?.toLocaleString()}</p>
-                    </div>
-                  )}
-                </div>
-              )}
+              </div>
             </div>
           </div>
 
-          {/* Entry Points */}
-          {smc.entry_points && smc.entry_points.length > 0 && (
-            <div className="bg-zinc-800/30 rounded-xl p-4 border border-orange-500/30">
-              <h3 className="text-orange-400 font-medium mb-3 flex items-center gap-2">
-                <Target className="w-5 h-5" />
-                Entry Points
-              </h3>
-              <div className="space-y-2">
-                {smc.entry_points.map((ep, i) => (
-                  <div key={i} className="bg-zinc-900/50 rounded-lg p-3 text-sm">
-                    <p className="text-white font-medium">{ep.type?.replace('_', ' ')}</p>
-                    <p className="text-zinc-400">Zone: {ep.zone}</p>
-                  </div>
-                ))}
+          {/* Order Blocks & FVG */}
+          <div className="grid md:grid-cols-2 gap-4">
+            <div className="bg-zinc-800/30 rounded-xl p-4 border border-zinc-700/50">
+              <div className="flex items-center gap-2 mb-3">
+                <Target className="w-5 h-5 text-orange-400" />
+                <span className="text-white font-medium">Order Blocks</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="bg-green-500/10 rounded-lg p-2 border border-green-500/30 text-center">
+                  <p className="text-green-400 font-medium">{smc.order_blocks?.bullish || 0}</p>
+                  <p className="text-zinc-500 text-xs">Bullish OBs</p>
+                </div>
+                <div className="bg-red-500/10 rounded-lg p-2 border border-red-500/30 text-center">
+                  <p className="text-red-400 font-medium">{smc.order_blocks?.bearish || 0}</p>
+                  <p className="text-zinc-500 text-xs">Bearish OBs</p>
+                </div>
               </div>
             </div>
-          )}
+
+            <div className="bg-zinc-800/30 rounded-xl p-4 border border-zinc-700/50">
+              <div className="flex items-center gap-2 mb-3">
+                <Layers className="w-5 h-5 text-cyan-400" />
+                <span className="text-white font-medium">Fair Value Gaps</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="bg-green-500/10 rounded-lg p-2 border border-green-500/30 text-center">
+                  <p className="text-green-400 font-medium">{smc.fvgs?.bullish || 0}</p>
+                  <p className="text-zinc-500 text-xs">Bullish FVGs</p>
+                </div>
+                <div className="bg-red-500/10 rounded-lg p-2 border border-red-500/30 text-center">
+                  <p className="text-red-400 font-medium">{smc.fvgs?.bearish || 0}</p>
+                  <p className="text-zinc-500 text-xs">Bearish FVGs</p>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
       {/* Confluence Tab */}
       {activeTab === 'confluence' && confluence && !confluence.error && (
         <div className="space-y-4">
-          {/* Signal Card */}
           <div className={`rounded-xl p-4 sm:p-6 border ${getSignalBg(confluence.final_signal)} border-zinc-700/50`}>
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div>
@@ -329,7 +226,7 @@ export default function SMCAnalysis() {
                 </p>
               </div>
               <div className="text-left sm:text-right">
-                <p className="text-zinc-500 text-xs">Confluence Score</p>
+                <p className="text-zinc-500 text-xs">Score</p>
                 <p className="text-xl sm:text-2xl font-bold text-white">{confluence.confluence_score || 0}/100</p>
               </div>
             </div>
@@ -346,16 +243,14 @@ export default function SMCAnalysis() {
                     : factor.status === 'PARTIAL' ? 'bg-yellow-500/10 border-yellow-500/30'
                     : 'bg-zinc-900/50 border-zinc-700/50'
                 }`}>
-                  <div className="flex items-center justify-between">
-                    <span className="text-white text-sm font-medium">{factor.factor}</span>
+                  <div className="flex justify-between items-center">
+                    <span className="text-white text-sm">{factor.factor}</span>
                     <span className={`text-xs px-2 py-0.5 rounded ${
                       factor.status === 'ALIGNED' || factor.status === 'OPTIMAL' || factor.status === 'PRESENT'
                         ? 'bg-green-500/20 text-green-400'
                         : factor.status === 'PARTIAL' ? 'bg-yellow-500/20 text-yellow-400'
                         : 'bg-zinc-700/50 text-zinc-400'
-                    }`}>
-                      +{factor.score}
-                    </span>
+                    }`}>+{factor.score}</span>
                   </div>
                   <p className="text-zinc-400 text-xs mt-1">{factor.detail}</p>
                 </div>
@@ -375,11 +270,11 @@ export default function SMCAnalysis() {
               </h3>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
                 <div>
-                  <p className="text-zinc-500 text-xs">Entry Zone</p>
+                  <p className="text-zinc-500 text-xs">Entry</p>
                   <p className="text-white">{confluence.trade_setup.entry_zone}</p>
                 </div>
                 <div>
-                  <p className="text-zinc-500 text-xs">Stop Loss</p>
+                  <p className="text-zinc-500 text-xs">Stop</p>
                   <p className="text-red-400">{confluence.trade_setup.stop_loss}</p>
                 </div>
                 <div>
@@ -387,11 +282,10 @@ export default function SMCAnalysis() {
                   <p className="text-green-400">{confluence.trade_setup.target}</p>
                 </div>
                 <div>
-                  <p className="text-zinc-500 text-xs">Risk/Reward</p>
+                  <p className="text-zinc-500 text-xs">R:R</p>
                   <p className="text-white">{confluence.trade_setup.risk_reward}</p>
                 </div>
               </div>
-              <p className="text-zinc-400 text-xs mt-3">{confluence.trade_setup.reason}</p>
             </div>
           )}
         </div>
