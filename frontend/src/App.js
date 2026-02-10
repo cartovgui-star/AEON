@@ -104,10 +104,72 @@ function App() {
     return `${Math.floor(diff / 86400)}d ago`;
   };
 
+  // WebSocket connection for real-time alerts
+  useEffect(() => {
+    const connectWebSocket = () => {
+      try {
+        wsRef.current = new WebSocket(WS_URL);
+        
+        wsRef.current.onopen = () => {
+          console.log('WebSocket connected');
+          setWsConnected(true);
+        };
+        
+        wsRef.current.onmessage = (event) => {
+          const data = JSON.parse(event.data);
+          
+          if (data.type === 'alert') {
+            setUnreadAlerts(prev => prev + 1);
+            
+            // Show browser notification if enabled
+            if (notificationsEnabled) {
+              playNotificationSound();
+              showNotification(
+                `${data.alert_type.replace('_', ' ').toUpperCase()}: ${data.symbol?.replace('/USDT', '')}`,
+                data.message?.substring(0, 100)
+              );
+            }
+          }
+        };
+        
+        wsRef.current.onclose = () => {
+          console.log('WebSocket disconnected, reconnecting...');
+          setWsConnected(false);
+          setTimeout(connectWebSocket, 5000);
+        };
+        
+        wsRef.current.onerror = (error) => {
+          console.error('WebSocket error:', error);
+        };
+      } catch (e) {
+        console.error('WebSocket connection failed:', e);
+      }
+    };
+    
+    connectWebSocket();
+    
+    return () => {
+      if (wsRef.current) {
+        wsRef.current.close();
+      }
+    };
+  }, [notificationsEnabled]);
+  
+  // Request notification permission on mount
+  useEffect(() => {
+    requestNotificationPermission().then(() => {
+      if ('Notification' in window && Notification.permission === 'granted') {
+        setNotificationsEnabled(true);
+      }
+    });
+  }, []);
+
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: Home },
     { id: 'trades', label: 'Trades', icon: History },
     { id: 'analytics', label: 'Analytics', icon: PieChart },
+    { id: 'smc', label: 'SMC', icon: Layers },
+    { id: 'journal', label: 'Journal', icon: BookOpen },
     { id: 'settings', label: 'Settings', icon: Settings },
   ];
 
