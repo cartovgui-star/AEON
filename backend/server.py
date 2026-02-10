@@ -3100,46 +3100,6 @@ They mentioned crypto casually. Don't overload them with data unless they ask.""
                 chat = LlmChat(api_key=emergent_key, session_id=f"aeon-{chat_id}",
                               system_message=system).with_model("openai", "gpt-4o-mini")
                 response = await chat.send_message(UserMessage(text=prompt))
-                        prompt += recent_context
-                    
-                    # Choose system based on mode
-                    if current_mode == "alchemy":
-                        system = ALCHEMY_MODE_SYSTEM
-                        context = "alchemy"
-                    else:
-                        system = AEON_CASUAL_SYSTEM
-                        context = "chat"
-                    
-                    chat = LlmChat(api_key=emergent_key, session_id=f"aeon-chat-{chat_id}",
-                                  system_message=system).with_model("openai", "gpt-4o-mini")
-                    response = await chat.send_message(UserMessage(text=prompt))
-                
-                else:
-                    # Mixed - user mentioned crypto casually, balance both
-                    prompt = f"USER: {text}"
-                    
-                    # If coins mentioned, get quick price info
-                    if classification["detected_coins"]:
-                        coin = classification["detected_coins"][0]
-                        try:
-                            ticker = mexc.fetch_ticker(f"{coin}/USDT")
-                            price = ticker.get("last", 0)
-                            change = ticker.get("percentage", 0)
-                            prompt += f"\n\n[{coin} is currently ${price:,.2f} ({change:+.1f}% today)]"
-                        except:
-                            pass
-                    
-                    if insights_str:
-                        prompt += f"\n\nWHAT I KNOW ABOUT THIS USER:\n{insights_str}"
-                    if recent_context:
-                        prompt += recent_context
-                    
-                    system = AEON_MIXED_SYSTEM if current_mode != "alchemy" else ALCHEMY_MODE_SYSTEM
-                    context = "mixed"
-                    
-                    chat = LlmChat(api_key=emergent_key, session_id=f"aeon-{chat_id}",
-                                  system_message=system).with_model("openai", "gpt-4o-mini")
-                    response = await chat.send_message(UserMessage(text=prompt))
         
         # Send response
         await send_telegram_message(chat_id, response)
