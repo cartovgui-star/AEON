@@ -38,6 +38,14 @@ from options_data import options_analyzer, OptionsAnalyzer
 from free_will_v2 import FreeWillEngineV2, init_free_will_v2
 from backtesting import backtest_engine, BacktestEngine
 from coinglass_intel import coinglass_intel, CoinglassIntel
+from smc_analyzer import smc_analyzer, SMCAnalyzer
+from memory_system import init_memory_system, AeonMemorySystem
+
+# Import route modules
+from routes import (
+    derivatives_router, freewill_router, intelligence_router,
+    smc_router, memory_router, strategies_router, alerts_router
+)
 from voice_tts import generate_speech, VOICES
 from price_alerts import price_alert_system, PriceAlertSystem
 from strategy_engine import StrategyEngine
