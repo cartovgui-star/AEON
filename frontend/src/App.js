@@ -69,6 +69,7 @@ function App() {
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: Home },
     { id: 'trades', label: 'Trades', icon: History },
+    { id: 'analytics', label: 'Analytics', icon: PieChart },
     { id: 'settings', label: 'Settings', icon: Settings },
   ];
 
