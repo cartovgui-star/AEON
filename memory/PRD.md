@@ -1,229 +1,164 @@
-# Aeon Telegram Chatbot PRD
+# Aeon Trading Bot PRD
 
 ## Original Problem Statement
-Build a Telegram chatbot "Aeon" that serves as an AI business partner, crypto trading buddy, and "second brain." The bot should have:
-- Switchable persona: casual trading buddy (default) vs philosophical "Alchemy" mode
-- Integration with free real-time data APIs for market awareness
-- Autonomous trading with paper trading capabilities
-- Proactive "Free Will" mode for 24/7 market monitoring
+Build a sophisticated trading bot named "Aeon" with:
+- Autonomous trading engine (v2)
+- Multi-strategy analysis
+- Real-time price alerts
+- Dashboard with analytics
+- Telegram bot integration
+- Voice conversation capability
+
+## User Personas
+- **Crypto Traders**: Need real-time market analysis, alerts, and trading signals
+- **Telegram Users**: Want to interact with Aeon via chat commands
+- **Dashboard Users**: Need visual analytics and strategy insights
+
+## Core Requirements
+1. Multi-strategy trading engine
+2. Real-time price alerts (Telegram + Dashboard)
+3. Voice conversation with Aeon
+4. Multi-page dashboard (Dashboard, Trades, Analytics, Settings)
+5. Telegram bot with comprehensive commands
+
+---
 
 ## What's Been Implemented
 
-### Core Features (All Complete)
-- [x] Telegram bot webhook with full command system
-- [x] OpenAI GPT-4o-mini integration (via Emergent LLM key)
-- [x] Dual mode persona (Casual + Alchemy)
-- [x] React dashboard for monitoring
-- [x] MongoDB for conversation/trade history
+### Feb 10, 2026 - Multi-Strategy & Price Alerts
+**New Features:**
+- ✅ **Multi-Strategy Engine** (6 strategies)
+  - MA Crossover (EMA 9/21)
+  - RSI Momentum (oversold/overbought)
+  - Breakout Detection (support/resistance)
+  - Bollinger Band Squeeze
+  - MACD Histogram Reversal
+  - Trend Pullback (EMA 21/50)
+  
+- ✅ **Real-Time Price Alert System**
+  - Auto-alerts for 10 symbols (BTC, ETH, SOL, etc.)
+  - 5-minute price change alerts (2%+ moves)
+  - 1-hour price change alerts (5%+ moves)
+  - RSI extreme alerts (oversold <25, overbought >75)
+  - Volume spike alerts (3x+ normal volume)
+  - Breakout alerts (support/resistance breaks)
+  - Custom price target alerts (above/below)
+  
+- ✅ **Analytics Page**
+  - Alerts tab with real-time alerts
+  - Strategies tab with multi-strategy analysis
+  - Symbol selector (BTC, ETH, SOL, etc.)
+  - Overall signal display
+  - Best strategy recommendation
+  - Entry/Stop/Target for each strategy
 
-### Market Intelligence (All Complete)
-- [x] Live prices from MEXC via ccxt
-- [x] Technical Analysis (RSI, MACD, BB, EMA, Stoch, ATR)
-- [x] Real funding rates from OKX, Bitget, KuCoin, Gate.io
-- [x] Real Open Interest from multiple exchanges
-- [x] Real Long/Short Ratio from OKX Public API
-- [x] Fear & Greed Index from Alternative.me
-- [x] Options data (Max Pain, PCR) from Deribit
-- [x] Order Flow / CVD analysis
-- [x] News & sentiment analysis
-- [x] Whale tracking
-- [x] BTC on-chain data
+- ✅ **Telegram Commands**
+  - `/strat [symbol] [timeframe]` - Multi-strategy scan
+  - `/alerts` - View alert status
+  - `/alert add [symbol] above/below [price]` - Add custom alert
+  - `/alert remove [id]` - Remove alert
 
-### Advanced Analysis (All Complete)
-- [x] Divergence Detection (RSI/MACD)
-- [x] Market Structure (HH/HL/LH/LL, BOS)
-- [x] VWAP calculations with bands
-- [x] Multi-timeframe confluence analysis
-- [x] Backtesting framework (RSI, BB, EMA strategies)
+### Previous Work (Feb 2026)
+- ✅ Autonomous Trader v2 integration
+- ✅ Multi-page dashboard with navigation
+- ✅ Voice conversation with Aeon (continuous mode)
+- ✅ Trade History page
+- ✅ Settings page
+- ✅ Telegram bot with 30+ commands
 
-### Autonomous Trading v2 (JUST COMPLETED - Feb 2026)
-- [x] **AutonomousTraderV2** - Elite trading engine
-- [x] Uses ALL 8 data sources for signal generation
-- [x] 85% minimum confidence threshold
-- [x] 4+ confirmation requirement from different sources
-- [x] Smart entry timing (pullbacks to key levels)
-- [x] Market regime detection (TRENDING/RANGING/VOLATILE)
-- [x] BTC correlation filter for alts
-- [x] Session awareness (Asia/London/NY overlap)
-- [x] Dynamic position sizing by confidence
-- [x] Trail stops and partial profit taking
-- [x] "Unlimited" signals (quality-filtered)
-
-### Free Will v2 (Complete)
-- [x] Ultra-selective alerting (80%+ confidence)
-- [x] 3+ source confirmations required
-- [x] 30-minute cooldown per symbol
-- [x] Max 10 alerts per day
-- [x] All 8 data sources integrated
-
-### Coinglass Integration (NEW - Feb 2026)
-- [x] API module created (`coinglass_intel.py`)
-- [x] API routes added (`/api/coinglass/*`)
-- [x] Telegram command `/coinglass btc` or `/cg btc`
-- [x] Requires API key (free tier available at coinglass.com/api)
-- [x] Supports: funding, OI, L/S ratio, liquidation heatmaps
-
-## Data Sources
-| Data | Source | Status |
-|------|--------|--------|
-| Fear & Greed Index | Alternative.me | ✅ REAL |
-| Global Market | CoinGecko | ✅ REAL |
-| Prices | MEXC (ccxt) | ✅ REAL |
-| Technical Analysis | MEXC (ccxt) | ✅ REAL |
-| Funding Rate | OKX, Bitget, KuCoin, Gate.io | ✅ REAL |
-| Open Interest | OKX, Bitget | ✅ REAL |
-| L/S Ratio | OKX Public API | ✅ REAL |
-| Order Flow / CVD | MEXC Trades | ✅ REAL |
-| Options (Max Pain/PCR) | Deribit | ✅ REAL |
-| News | RSS feeds | ✅ REAL |
-| Whale Activity | Whale Alert | ✅ REAL |
-| On-Chain | mempool.space | ✅ REAL |
-| Coinglass Data | Coinglass API | ⚠️ Requires API key |
-
-## Key Files
-```
-/app/backend/
-├── server.py                 # Main FastAPI app (~2200 lines)
-├── autonomous_trader_v2.py   # NEW Elite trading engine
-├── autonomous_trader.py      # Legacy (kept for backward compat)
-├── free_will_v2.py           # Ultra-selective alerts
-├── advanced_strategies.py    # Divergence, Structure, VWAP
-├── order_flow.py             # CVD analysis
-├── options_data.py           # Max Pain, PCR from Deribit
-├── coinglass_intel.py        # NEW Coinglass API module
-├── derivatives_intel.py      # Funding, OI, L/S from exchanges
-├── market_intelligence.py    # Core TA and market data
-├── backtesting.py            # Strategy backtesting
-└── routes/, telegram/, tasks/ # Modular structure (partial)
-```
-
-## API Endpoints
-
-### Trading v2 APIs (NEW)
-- `GET /api/trading/summary` - v2 stats with market context
-- `GET /api/trading/opportunities` - Elite signals (85%+ conf)
-- `GET /api/trading/v2/stats` - Comprehensive v2 statistics
-- `GET /api/trading/v2/open` - Open trades
-- `GET /api/trading/v2/closed` - Closed trades (last 20)
-- `POST /api/trading/toggle` - Toggle v2 engine
-- `POST /api/trading/v2/confidence` - Set min confidence
-
-### Coinglass APIs (NEW)
-- `GET /api/coinglass/funding/{symbol}` - Funding rates
-- `GET /api/coinglass/oi/{symbol}` - Open interest
-- `GET /api/coinglass/ls/{symbol}` - Long/short ratio
-- `GET /api/coinglass/liquidations/{symbol}` - Liquidation heatmap (paid)
-- `GET /api/coinglass/full/{symbol}` - Combined report
-
-### Free Will v2 APIs
-- `GET /api/freewill/stats` - Engine statistics
-- `GET /api/freewill/scan/{symbol}` - Manual scan
-- `POST /api/freewill/toggle` - Toggle engine
-- `POST /api/freewill/confidence` - Set threshold
-
-## Telegram Commands
-
-### Trading v2
-- `/auto` - v2 trading status & elite stats
-- `/auto on/off` - Toggle v2 engine
-- `/opps` - View top elite signals
-- `/open` - View open positions
-
-### Analysis
-- `/scan btc` - Full AI analysis
-- `/ta btc 4h` - Technical indicators
-- `/deriv btc` - Derivatives report
-- `/coinglass btc` or `/cg btc` - Coinglass data (NEW)
-
-### Advanced
-- `/divergence btc` - RSI/MACD divergence
-- `/structure btc` - Market structure (HH/HL)
-- `/vwap btc` - VWAP with bands
-- `/cvd btc` - Order flow analysis
-- `/options btc` - Max pain & PCR
-- `/adv btc` - Combined advanced analysis
-
-### Market Intel
-- `/market` - Global summary
-- `/fear` - Fear & Greed Index
-- `/news` - Crypto news
-- `/whales` - Whale activity
-- `/onchain` - BTC on-chain
-
-### Tools
-- `/calc entry exit size lev dir` - PnL calculator
-- `/calcsize bal risk% entry stop lev` - Position size
-- `/backtest btc` or `/bt btc` - Strategy backtest
-
-## Voice Chat Feature (NEW - Feb 2026)
-- **Web Dashboard**: "Talk to Aeon" button opens voice chat modal
-- **Telegram**: Send voice messages, Aeon transcribes and responds
-- **Speech-to-Text**: OpenAI Whisper (via Emergent key)
-- **Text-to-Speech**: Edge TTS (free, Microsoft neural voices)
-- **8 Voice Options**: Guy (default), Davis, Tony, Jason, Aria, Jenny, British, Australian
-
-### Voice API Endpoints
-- `GET /api/voice/voices` - List available voices
-- `POST /api/voice/set?voice=guy` - Change Aeon's voice
-- `POST /api/voice/transcribe` - Transcribe audio to text
-- `POST /api/voice/speak?text=Hello` - Generate speech from text
-- `POST /api/voice/chat` - Full voice chat (audio in → text + audio out)
-
-## Current Performance (Feb 2026)
-- **Auto Trader v2**: ACTIVE (85% min conf, 4+ confirmations)
-- **Free Will v2**: ACTIVE (80% min conf, 3+ confirmations)
-- **Market Regime**: VOLATILE (Fear & Greed: 7 - Extreme Fear)
-- **Pairs Monitored**: 25 (top liquidity)
-- **Timeframes**: 4h, 1h, 1d
-- **Test Success Rate**: 97%+ (29/30 tests passing)
-
-## New Position Management Commands (Feb 2026)
-- `/close btc` - Manually close v2 paper trade
-- `/trail btc 5` - Set trailing stop to 5%
-- `/tp btc 72000` - Set take profit to $72,000
-- `/open` - View all open positions
-
-## Coinglass Integration
-- Module: `/app/backend/coinglass_intel.py`
-- API Routes: `/api/coinglass/funding`, `/api/coinglass/oi`, `/api/coinglass/ls`, `/api/coinglass/liquidations`
-- Telegram: `/cg btc` or `/coinglass btc`
-- **Status**: ⚠️ Requires paid plan ($29/month+) - visit coinglass.com/pricing
+---
 
 ## Prioritized Backlog
 
-### P0 (COMPLETED)
-- [x] Autonomous Trader v2 implementation
-- [x] v2 integration into server.py
-- [x] All trading endpoints updated
+### P0 - Completed
+- [x] Multi-strategy engine
+- [x] Real-time price alerts
+- [x] Analytics page
+- [x] Telegram alert commands
 
-### P1 (Next)
-- [ ] Complete server.py refactoring (move webhook logic to telegram/handlers.py)
-- [ ] Enhance Coinglass integration when API key added
+### P1 - Next Up
+- [ ] Fix Coinglass API (requires paid API key from user)
+- [ ] Implement Smart Money Concepts (SMC) from `smc_v1.py`
+- [ ] Implement Memory/Journaling from `memory_v1.py`
 
-### P2 (Future)
-- [ ] Smart Money Concepts (Order Blocks, FVG)
-- [ ] Wyckoff Analysis
-- [ ] Session-based strategies (Asia/London/NY)
+### P2 - Future
+- [ ] Refactor `server.py` (~2600 lines) into modular components
+- [ ] Add more advanced charting to Analytics
+- [ ] Implement trading journal with performance tracking
+- [ ] Add portfolio management features
+- [ ] Implement backtesting visualization
 
-### P3 (Backlog)
-- [ ] Cross-session conversation memory
-- [ ] ML-based strategy optimization
-- [ ] Real trading execution (beyond paper trading)
+---
 
-## How to Get Coinglass API Key
-1. Visit https://www.coinglass.com/api
-2. Sign up for an account
-3. Navigate to API section
-4. Generate your API key
-5. Add `COINGLASS_API_KEY=your_key` to `/app/backend/.env`
-6. Restart backend: `sudo supervisorctl restart backend`
+## Technical Architecture
 
-Pricing: Free tier available (limited calls), paid plans ~$30-50/month
+### Backend (FastAPI)
+```
+/app/backend/
+├── server.py          # Main server (2600+ lines) - needs refactoring
+├── strategy_engine.py # Multi-strategy analysis engine
+├── price_alerts.py    # Real-time price alert system
+├── autonomous_trader_v2.py # Elite trading engine
+├── free_will_v2.py    # Free will alert engine
+├── market_intelligence.py # Market data aggregation
+├── advanced_strategies.py # Technical analysis
+└── coinglass_intel.py # Coinglass API (blocked on paid key)
+```
 
-## Credentials
-- Telegram Bot: https://t.me/ObsidianCabalbot
-- Webhook: https://autonomous-trader-9.preview.emergentagent.com/api/webhook
-- Dashboard: https://autonomous-trader-9.preview.emergentagent.com
+### Frontend (React)
+```
+/app/frontend/src/
+├── App.js            # Main app with navigation
+├── components/
+│   ├── Analytics.jsx # NEW: Alerts + Strategies tabs
+│   ├── TradeHistory.jsx
+│   ├── SettingsPanel.jsx
+│   └── VoiceConversation.jsx
+└── components/ui/    # Shadcn components
+```
+
+---
+
+## API Endpoints
+
+### Price Alerts
+- `GET /api/alerts/stats` - Alert system statistics
+- `GET /api/alerts/dashboard` - Dashboard alerts list
+- `POST /api/alerts/add` - Add custom price alert
+- `DELETE /api/alerts/{id}` - Remove custom alert
+- `GET /api/alerts/custom` - List custom alerts
+
+### Multi-Strategy
+- `GET /api/strategies/all/{symbol}` - Run all 6 strategies
+- `GET /api/strategies/ma/{symbol}` - MA Crossover
+- `GET /api/strategies/rsi/{symbol}` - RSI Momentum
+- `GET /api/strategies/breakout/{symbol}` - Breakout
+- `GET /api/strategies/bb/{symbol}` - Bollinger Squeeze
+- `GET /api/strategies/macd/{symbol}` - MACD Reversal
+- `GET /api/strategies/pullback/{symbol}` - Trend Pullback
+
+### Existing Endpoints
+- `/api/v2/stats` - Autonomous trader stats
+- `/api/v2/opportunities` - Trading signals
+- `/api/voice_chat` - Voice conversation
+- `/api/trades` - Trade history
+- `/api/settings` - User settings
+
+---
 
 ## Test Reports
-- `/app/test_reports/iteration_11.json` - Latest test results
+- `/app/test_reports/iteration_11.json` - All tests passed (24/24 backend, 100% frontend)
+
+---
+
+## Known Issues
+1. **Coinglass API** - Blocked on paid API key (user's free key doesn't work)
+2. **MATIC Symbol** - Deprecated on MEXC, shows error in logs (non-critical)
+3. **server.py Size** - 2600+ lines, needs refactoring for maintainability
+
+---
+
+## Deployment
+- Preview: https://autonomous-trader-9.preview.emergentagent.com
+- Backend: Port 8001 (supervisor managed)
+- Frontend: Port 3000 (hot reload)
