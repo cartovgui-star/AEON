@@ -458,6 +458,12 @@ function App() {
 
         {/* Page: Settings */}
         {currentPage === 'settings' && <SettingsPanel />}
+
+        {/* Page: SMC Analysis */}
+        {currentPage === 'smc' && <SMCAnalysis />}
+
+        {/* Page: Journal */}
+        {currentPage === 'journal' && <Journal />}
       </main>
 
       {/* Voice Modal */}
