@@ -123,7 +123,7 @@ class TradeJournal:
             "total_pnl_pct": round(sum(t.get("pnl_pct", 0) for t in trades), 2),
             "average_win": round(total_wins / len(wins), 2) if wins else 0,
             "average_loss": round(total_losses / len(losses), 2) if losses else 0,
-            "profit_factor": round(total_wins / total_losses, 2) if total_losses > 0 else float('inf'),
+            "profit_factor": round(total_wins / total_losses, 2) if total_losses > 0 else 999.0,
             "best_trade": {
                 "symbol": sorted_trades[-1]["symbol"],
                 "pnl_pct": sorted_trades[-1].get("pnl_pct", 0),
