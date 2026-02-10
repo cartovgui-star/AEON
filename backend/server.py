@@ -2403,6 +2403,128 @@ Commands:
 /alerts - View all alerts"""
             context = "settings"
         
+        # ═══════════════════════════════════════════════════════════════════
+        # SMC (Smart Money Concepts) COMMANDS
+        # ═══════════════════════════════════════════════════════════════════
+        
+        elif text_lower.startswith('/smc'):
+            parts = text_lower.split()
+            symbol = parts[1].upper() if len(parts) > 1 else "BTC"
+            timeframe = parts[2] if len(parts) > 2 else "4h"
+            
+            result = await smc_analyzer.full_analysis(symbol + "/USDT", timeframe)
+            
+            if "error" in result:
+                response = f"Error: {result['error']}"
+            else:
+                sig_emoji = "🟢" if "BUY" in result.get("overall_signal", "") else "🔴" if "SELL" in result.get("overall_signal", "") else "⚪"
+                
+                ms = result.get("market_structure", {})
+                pd = result.get("premium_discount", {})
+                obs = result.get("order_blocks", {})
+                fvgs = result.get("fvgs", {})
+                liq = result.get("liquidity", {})
+                
+                response = f"""{sig_emoji} {symbol} SMART MONEY ANALYSIS ({timeframe})
+
+💰 SIGNAL: {result.get('overall_signal', 'NEUTRAL')}
+Confidence: {result.get('confidence', 50)}%
+Bullish: {result.get('bullish_factors', 0)} | Bearish: {result.get('bearish_factors', 0)}
+
+📊 MARKET STRUCTURE
+Trend: {ms.get('trend', 'N/A')}
+{ms.get('hh_hl', '')} | {ms.get('lh_ll', '')}
+BOS: {ms.get('bos') or 'None'}
+CHoCH: {ms.get('choch') or 'None'}
+
+📍 PREMIUM/DISCOUNT
+Zone: {pd.get('zone', 'N/A')} ({pd.get('position', '50%')})
+Equilibrium: ${pd.get('equilibrium', 0):,.0f}
+Bias: {pd.get('bias', 'N/A')}
+
+🧱 ORDER BLOCKS
+Bullish: {obs.get('bullish', 0)} | Bearish: {obs.get('bearish', 0)}
+
+📐 FAIR VALUE GAPS
+Bullish: {fvgs.get('bullish', 0)} | Bearish: {fvgs.get('bearish', 0)}
+
+💧 LIQUIDITY"""
+                
+                if liq.get('nearest_buy_side'):
+                    response += f"\nBuy-side: ${liq['nearest_buy_side'].get('price', 0):,.0f}"
+                if liq.get('nearest_sell_side'):
+                    response += f"\nSell-side: ${liq['nearest_sell_side'].get('price', 0):,.0f}"
+                
+                if result.get('entry_points'):
+                    response += "\n\n🎯 ENTRY POINTS"
+                    for ep in result['entry_points'][:3]:
+                        response += f"\n• {ep.get('type', 'N/A')}: {ep.get('zone', 'N/A')}"
+                
+                response += f"""
+
+Use /smc [coin] [tf] for other pairs"""
+            
+            context = "trading"
+        
+        # ═══════════════════════════════════════════════════════════════════
+        # JOURNAL & MEMORY COMMANDS
+        # ═══════════════════════════════════════════════════════════════════
+        
+        elif text_lower == '/journal' or text_lower == '/journal stats':
+            stats = await memory_system.journal.get_performance_stats(30)
+            patterns = await memory_system.journal.get_best_patterns(3)
+            
+            response = f"""📓 TRADING JOURNAL (30 Days)
+
+📊 PERFORMANCE
+Total Trades: {stats.get('total_trades', 0)}
+Win Rate: {stats.get('win_rate', 0)}%
+Total PnL: {stats.get('total_pnl_pct', 0):+.2f}%
+Profit Factor: {stats.get('profit_factor', 0):.2f}
+
+💰 AVERAGES
+Avg Win: +{stats.get('average_win', 0):.2f}%
+Avg Loss: -{stats.get('average_loss', 0):.2f}%"""
+            
+            if stats.get('best_trade'):
+                bt = stats['best_trade']
+                response += f"\n\n🏆 Best: {bt.get('symbol', 'N/A')} +{bt.get('pnl_pct', 0):.2f}%"
+            
+            if stats.get('worst_trade'):
+                wt = stats['worst_trade']
+                response += f"\n💀 Worst: {wt.get('symbol', 'N/A')} {wt.get('pnl_pct', 0):.2f}%"
+            
+            if patterns:
+                response += "\n\n📈 BEST PATTERNS:"
+                for p in patterns[:3]:
+                    response += f"\n• {p.get('setup_type', 'Unknown')} ({p.get('timeframe', 'N/A')}): {p.get('win_rate', 0)}% WR"
+            
+            response += """
+
+Commands:
+/journal - Stats
+/journal log - Log a trade
+/insights - AI insights"""
+            context = "trading"
+        
+        elif text_lower == '/insights':
+            insights = await memory_system.insights.get_latest_insights()
+            
+            if not insights:
+                # Generate new insights
+                insights = await memory_system.insights.generate_insights()
+            
+            response = "🧠 AI TRADING INSIGHTS\n\n"
+            
+            for insight in insights.get('insights', []):
+                emoji = "✅" if insight.get('type') == 'POSITIVE' else "⚠️" if insight.get('type') == 'WARNING' else "💡"
+                response += f"{emoji} {insight.get('message', '')}\n\n"
+            
+            if not insights.get('insights'):
+                response += "Not enough trading data yet. Log more trades to generate insights."
+            
+            context = "trading"
+        
         elif text_lower.startswith('/adv') or text_lower.startswith('/advanced'):
             parts = text_lower.split()
             symbol = parts[1].upper() if len(parts) > 1 else "BTC"
