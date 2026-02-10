@@ -675,19 +675,25 @@ async def lifespan(app: FastAPI):
     # Load strategy weights for backward compatibility
     await autonomous_trader.load_strategy_weights()
     
+    # Configure price alert system
+    price_alert_system.set_dependencies(send_telegram_message, chat_ids)
+    
     # Start background tasks
     ritual_task = asyncio.create_task(eternal_rituals())
     trading_task = asyncio.create_task(autonomous_trading_loop())
     freewill_task = asyncio.create_task(free_will_scanner())
+    alert_task = asyncio.create_task(price_alert_system.run_forever())
     
     logger.info("🚀 AEON AUTONOMOUS TRADER v2 ACTIVATED - Elite trades only (85%+ conf, 4+ confirmations)")
     logger.info("🎯 AEON FREE WILL v2 ACTIVATED - Elite alerts only (80%+ conf, 3+ confirmations)")
+    logger.info("🔔 AEON PRICE ALERT SYSTEM ACTIVATED - Real-time monitoring")
     
     yield
     
     ritual_task.cancel()
     trading_task.cancel()
     freewill_task.cancel()
+    alert_task.cancel()
     client.close()
 
 
