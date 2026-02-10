@@ -161,11 +161,39 @@ export default function VoiceConversation({ onClose }) {
   const playAudio = (base64Audio) => {
     return new Promise((resolve) => {
       setIsSpeaking(true);
-      const audio = new Audio(`data:audio/mp3;base64,${base64Audio}`);
+      
+      // Create audio element
+      const audio = new Audio();
       audioRef.current = audio;
-      audio.onended = () => { setIsSpeaking(false); setAeonResponse(''); resolve(); };
-      audio.onerror = () => { setIsSpeaking(false); resolve(); };
-      audio.play().catch(() => { setIsSpeaking(false); resolve(); });
+      
+      // Set up event handlers before setting src
+      audio.onended = () => { 
+        console.log('Audio ended');
+        setIsSpeaking(false); 
+        setAeonResponse(''); 
+        resolve(); 
+      };
+      
+      audio.onerror = (e) => { 
+        console.error('Audio error:', e);
+        setIsSpeaking(false); 
+        resolve(); 
+      };
+      
+      audio.oncanplaythrough = () => {
+        console.log('Audio ready, playing...');
+        audio.play().then(() => {
+          console.log('Audio playing');
+        }).catch((err) => { 
+          console.error('Play failed:', err);
+          setIsSpeaking(false); 
+          resolve(); 
+        });
+      };
+      
+      // Set source - this triggers loading
+      audio.src = `data:audio/mp3;base64,${base64Audio}`;
+      audio.load();
     });
   };
 
