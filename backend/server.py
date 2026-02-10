@@ -42,6 +42,10 @@ from smc_analyzer import smc_analyzer, SMCAnalyzer
 from memory_system import init_memory_system, AeonMemorySystem
 from websocket_manager import ws_manager, WebSocketManager
 from confluence_analyzer import create_confluence_analyzer, ConfluenceAnalyzer
+from conversation_intelligence import (
+    conversation_classifier, ConversationClassifier,
+    AEON_CASUAL_SYSTEM, AEON_TRADING_SYSTEM, AEON_MIXED_SYSTEM
+)
 
 # Import route modules
 from routes import (
