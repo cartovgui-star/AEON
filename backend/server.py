@@ -2274,6 +2274,116 @@ Max DD: -{strat.get('max_drawdown_pct', 0):.2f}%
 Use /bt [coin] [tf] to backtest different pairs/timeframes"""
             context = "trading"
         
+        # ═══════════════════════════════════════════════════════════════════
+        # NEW: MULTI-STRATEGY SCAN
+        # ═══════════════════════════════════════════════════════════════════
+        
+        elif text_lower.startswith('/strat') or text_lower.startswith('/strategies'):
+            parts = text_lower.split()
+            symbol = parts[1].upper() if len(parts) > 1 else "BTC"
+            timeframe = parts[2] if len(parts) > 2 else "4h"
+            
+            result = await strategy_engine.scan_all_strategies(symbol + "/USDT", timeframe)
+            
+            signal_emoji = "🟢" if "BUY" in result.get("overall_signal", "") else "🔴" if "SELL" in result.get("overall_signal", "") else "⚪"
+            
+            response = f"""{signal_emoji} {symbol} MULTI-STRATEGY SCAN ({timeframe})
+
+Overall: {result.get('overall_signal', 'NEUTRAL')}
+Confidence: {result.get('average_confidence', 50):.0f}%
+Buy: {result.get('buy_signals', 0)} | Sell: {result.get('sell_signals', 0)} | Neutral: {result.get('neutral_signals', 0)}
+
+📍 BEST STRATEGY"""
+            
+            best = result.get("best_strategy")
+            if best:
+                response += f"""
+{best.get('strategy', 'N/A')} ({best.get('confidence', 0)}%)
+Signal: {best.get('signal', 'N/A')}
+Entry: ${best.get('entry', 0):,.2f}
+Stop: ${best.get('stop', 0):,.2f}
+Target: ${best.get('target', 0):,.2f}
+{best.get('explanation', '')}"""
+            
+            response += """
+
+📊 ALL STRATEGIES:"""
+            for s in result.get("strategies", [])[:5]:
+                sig_em = "🟢" if s.get("signal") == "BUY" else "🔴" if s.get("signal") == "SELL" else "⚪"
+                response += f"""
+{sig_em} {s.get('strategy', 'N/A')}: {s.get('signal', 'N/A')} ({s.get('confidence', 0)}%)"""
+            
+            response += f"""
+
+Use /strat [coin] [tf] to scan different pairs"""
+            context = "trading"
+        
+        # ═══════════════════════════════════════════════════════════════════
+        # NEW: PRICE ALERT COMMANDS
+        # ═══════════════════════════════════════════════════════════════════
+        
+        elif text_lower.startswith('/alert') and 'add' in text_lower:
+            # /alert add btc above 70000 or /alert add eth below 3000
+            parts = text_lower.split()
+            if len(parts) >= 5:
+                symbol = parts[2].upper() + "/USDT"
+                direction = parts[3]  # above/below
+                try:
+                    target_price = float(parts[4])
+                    result = price_alert_system.add_price_alert(symbol, target_price, direction, chat_id)
+                    response = f"""✅ PRICE ALERT SET
+
+Symbol: {symbol.replace('/USDT', '')}
+Target: ${target_price:,.2f}
+Direction: {direction.upper()}
+ID: {result.get('alert_id', 'N/A')}
+
+You'll be notified when price goes {direction} ${target_price:,.2f}"""
+                except:
+                    response = "Usage: /alert add btc above 70000"
+            else:
+                response = "Usage: /alert add [symbol] [above/below] [price]\nExample: /alert add btc above 70000"
+            context = "settings"
+        
+        elif text_lower.startswith('/alert') and 'remove' in text_lower:
+            parts = text_lower.split()
+            if len(parts) >= 3:
+                alert_id = parts[2]
+                result = price_alert_system.remove_alert(alert_id)
+                response = f"{'✅ Alert removed' if result.get('success') else '❌ Alert not found'}"
+            else:
+                response = "Usage: /alert remove [alert_id]"
+            context = "settings"
+        
+        elif text_lower == '/alerts' or text_lower == '/alert list':
+            alerts = price_alert_system.list_alerts(chat_id)
+            stats = price_alert_system.get_stats()
+            
+            response = f"""🔔 PRICE ALERT STATUS
+
+System: {'🟢 Active' if stats.get('active') else '🔴 Inactive'}
+Symbols Tracked: {stats.get('tracked_symbols', 0)}
+Alerts Today: {stats.get('alerts_today', 0)}
+Total Alerts: {stats.get('total_alerts_sent', 0)}
+
+📋 YOUR CUSTOM ALERTS ({len(alerts)}):"""
+            
+            if alerts:
+                for a in alerts[:5]:
+                    status = "✅ Active" if a.get('active') else "⏸ Triggered"
+                    response += f"""
+• {a.get('symbol', 'N/A').replace('/USDT', '')} {a.get('condition', {}).get('direction', '')} ${a.get('condition', {}).get('target_price', 0):,.0f} [{status}]"""
+            else:
+                response += "\nNo custom alerts set."
+            
+            response += """
+
+Commands:
+/alert add btc above 70000
+/alert remove [id]
+/alerts - View all alerts"""
+            context = "settings"
+        
         elif text_lower.startswith('/adv') or text_lower.startswith('/advanced'):
             parts = text_lower.split()
             symbol = parts[1].upper() if len(parts) > 1 else "BTC"
