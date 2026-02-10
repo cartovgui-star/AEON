@@ -1217,29 +1217,17 @@ async def api_voice_chat(request: Request):
         # Use the same LlmChat as the rest of the app
         emergent_key = os.environ.get("EMERGENT_LLM_KEY")
         
-        # Build conversation context
-        history_msgs = []
-        for msg in aeon_voice.get_history()[-6:]:
-            history_msgs.append({"role": msg["role"], "content": msg["content"]})
-        
         voice_chat = LlmChat(
             api_key=emergent_key,
-            session_id=f"voice-chat",
+            session_id=f"voice-chat-{chat_id if 'chat_id' in dir() else 'web'}",
             system_message="""You are Aeon, a confident trading buddy and life coach.
 Keep responses concise (2-4 sentences max) for voice conversation.
 Be direct, insightful, and occasionally philosophical.
 You help with crypto trading, market analysis, and life advice."""
         ).with_model("openai", "gpt-4o-mini")
         
-        # Add history
-        for hist_msg in history_msgs:
-            if hist_msg["role"] == "user":
-                voice_chat.messages.append(UserMessage(text=hist_msg["content"]))
-            else:
-                voice_chat.messages.append({"role": "assistant", "content": hist_msg["content"]})
-        
-        # Get response
-        response = await voice_chat.chat(user_text)
+        # Get response using send_message (correct method)
+        response = await voice_chat.send_message(UserMessage(text=user_text))
         aeon_text = response
         aeon_voice.add_to_history("assistant", aeon_text)
         
