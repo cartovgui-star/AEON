@@ -1409,6 +1409,13 @@ async def api_open_predictions():
     return await learning_system.get_open_predictions()
 
 
+@api_router.post("/trading/toggle")
+async def api_trading_toggle(active: bool = True):
+    """Toggle autonomous trading on/off"""
+    autonomous_trader_v2.active = active
+    return {"active": autonomous_trader_v2.active, "message": f"Trading {'activated' if active else 'paused'}"}
+
+
 @api_router.get("/trading/summary")
 async def api_trading_summary():
     """Get comprehensive autonomous trading v2 summary."""
