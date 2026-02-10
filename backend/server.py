@@ -39,6 +39,8 @@ from free_will_v2 import FreeWillEngineV2, init_free_will_v2
 from backtesting import backtest_engine, BacktestEngine
 from coinglass_intel import coinglass_intel, CoinglassIntel
 from voice_tts import generate_speech, VOICES
+from price_alerts import price_alert_system, PriceAlertSystem
+from strategy_engine import StrategyEngine
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
