@@ -350,14 +350,10 @@ function App() {
         )}
 
         {/* Page: Trade History */}
-        {currentPage === 'trades' && (
-          <div className="text-center py-8 text-zinc-400">Trade History - Coming Soon</div>
-        )}
+        {currentPage === 'trades' && <TradeHistory />}
 
         {/* Page: Settings */}
-        {currentPage === 'settings' && (
-          <div className="text-center py-8 text-zinc-400">Settings - Coming Soon</div>
-        )}
+        {currentPage === 'settings' && <SettingsPanel />}
       </main>
 
       {/* Voice Modal */}
