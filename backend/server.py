@@ -1651,8 +1651,15 @@ Total PnL: {stats['total_pnl_pct']:+.2f}%"""
 🔔 PRICE ALERTS:
 /alerts - View alert status
 /alert add btc above 70000
-/alert add eth below 3000
 /alert remove [id]
+
+💎 SMART MONEY (SMC):
+/smc btc - Full SMC analysis
+/smc eth 1h - Order blocks, FVG, liquidity
+
+📓 JOURNAL & MEMORY:
+/journal - Performance stats
+/insights - AI trading insights
 
 🧠 ADVANCED:
 /divergence btc - RSI/MACD divergence
