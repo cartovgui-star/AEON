@@ -6,7 +6,6 @@ const API_URL = process.env.REACT_APP_BACKEND_URL;
 export default function Analytics() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [timeframe, setTimeframe] = useState('all');
 
   useEffect(() => {
     fetchAnalytics();
@@ -27,12 +26,10 @@ export default function Analytics() {
       const freeWill = await freeWillRes.json();
       
       const trades = closed.closed_trades || [];
-      
-      // Calculate analytics
       const winners = trades.filter(t => (t.pnl_pct || 0) > 0);
       const losers = trades.filter(t => (t.pnl_pct || 0) < 0);
       
-      const analytics = {
+      setData({
         ...stats,
         totalTrades: trades.length,
         winCount: winners.length,
@@ -48,30 +45,13 @@ export default function Analytics() {
           : 0,
         freeWillAlerts: freeWill.alerts_sent_today || 0,
         signalsAnalyzed: stats.total_signals_analyzed || 0,
-        trades: trades.slice(-20).reverse() // Last 20 trades for chart
-      };
-      
-      setData(analytics);
+        trades: trades.slice(-20).reverse()
+      });
     } catch (err) {
       console.error('Failed to fetch analytics:', err);
     }
     setLoading(false);
   };
-
-  const StatCard = ({ icon: Icon, label, value, subValue, colorClass = 'text-orange-400' }) => (
-    <div className="bg-zinc-800/30 rounded-xl border border-zinc-700/50 p-6">
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-zinc-500 text-sm">{label}</p>
-          <p className={`text-3xl font-bold mt-1 ${colorClass}`}>{value}</p>
-          {subValue && <p className="text-xs text-zinc-600 mt-1">{subValue}</p>}
-        </div>
-        <div className="p-3 rounded-lg bg-zinc-800">
-          <Icon className={`w-6 h-6 ${colorClass}`} />
-        </div>
-      </div>
-    </div>
-  );
 
   if (loading) {
     return (
@@ -81,43 +61,69 @@ export default function Analytics() {
     );
   }
 
+  const pnlColor = (data?.totalPnl || 0) >= 0 ? 'text-green-400' : 'text-red-400';
+
   return (
     <div className="space-y-6">
       {/* Key Metrics */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatCard
-          icon={Target}
-          label="Win Rate"
-          value={`${data?.winRate || 0}%`}
-          subValue={`${data?.winCount || 0}W / ${data?.lossCount || 0}L`}
-          colorClass="text-green-400"
-        />
-        <StatCard
-          icon={TrendingUp}
-          label="Total PnL"
-          value={`${(data?.totalPnl || 0) >= 0 ? '+' : ''}${(data?.totalPnl || 0).toFixed(2)}%`}
-          subValue={`${data?.totalTrades || 0} trades`}
-          colorClass={(data?.totalPnl || 0) >= 0 ? 'text-green-400' : 'text-red-400'}
-        />
-        <StatCard
-          icon={Award}
-          label="Profit Factor"
-          value={(data?.profitFactor || 0).toFixed(2)}
-          subValue="Gross profit / Gross loss"
-          colorClass="text-orange-400"
-        />
-        <StatCard
-          icon={Activity}
-          label="Signals Analyzed"
-          value={(data?.signalsAnalyzed || 0).toLocaleString()}
-          subValue="By v2 engine"
-          colorClass="text-blue-400"
-        />
+        <div className="bg-zinc-800/30 rounded-xl border border-zinc-700/50 p-6">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-zinc-500 text-sm">Win Rate</p>
+              <p className="text-3xl font-bold mt-1 text-green-400">{data?.winRate || 0}%</p>
+              <p className="text-xs text-zinc-600 mt-1">{data?.winCount || 0}W / {data?.lossCount || 0}L</p>
+            </div>
+            <div className="p-3 rounded-lg bg-zinc-800">
+              <Target className="w-6 h-6 text-green-400" />
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-zinc-800/30 rounded-xl border border-zinc-700/50 p-6">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-zinc-500 text-sm">Total PnL</p>
+              <p className={`text-3xl font-bold mt-1 ${pnlColor}`}>
+                {(data?.totalPnl || 0) >= 0 ? '+' : ''}{(data?.totalPnl || 0).toFixed(2)}%
+              </p>
+              <p className="text-xs text-zinc-600 mt-1">{data?.totalTrades || 0} trades</p>
+            </div>
+            <div className="p-3 rounded-lg bg-zinc-800">
+              <TrendingUp className={`w-6 h-6 ${pnlColor}`} />
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-zinc-800/30 rounded-xl border border-zinc-700/50 p-6">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-zinc-500 text-sm">Profit Factor</p>
+              <p className="text-3xl font-bold mt-1 text-orange-400">{(data?.profitFactor || 0).toFixed(2)}</p>
+              <p className="text-xs text-zinc-600 mt-1">Gross profit / loss</p>
+            </div>
+            <div className="p-3 rounded-lg bg-zinc-800">
+              <Award className="w-6 h-6 text-orange-400" />
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-zinc-800/30 rounded-xl border border-zinc-700/50 p-6">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-zinc-500 text-sm">Signals Analyzed</p>
+              <p className="text-3xl font-bold mt-1 text-blue-400">{(data?.signalsAnalyzed || 0).toLocaleString()}</p>
+              <p className="text-xs text-zinc-600 mt-1">By v2 engine</p>
+            </div>
+            <div className="p-3 rounded-lg bg-zinc-800">
+              <Activity className="w-6 h-6 text-blue-400" />
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Performance Details */}
       <div className="grid md:grid-cols-2 gap-6">
-        {/* Win/Loss Breakdown */}
         <div className="bg-zinc-800/30 rounded-xl border border-zinc-700/50 p-6">
           <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
             <PieChart className="w-5 h-5 text-orange-400" />
@@ -149,7 +155,6 @@ export default function Analytics() {
             </div>
           </div>
           
-          {/* Win/Loss Bar */}
           <div className="mt-6">
             <div className="flex justify-between text-sm text-zinc-500 mb-2">
               <span>Wins: {data?.winCount || 0}</span>
@@ -168,7 +173,6 @@ export default function Analytics() {
           </div>
         </div>
 
-        {/* Recent PnL Chart */}
         <div className="bg-zinc-800/30 rounded-xl border border-zinc-700/50 p-6">
           <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
             <Activity className="w-5 h-5 text-orange-400" />
