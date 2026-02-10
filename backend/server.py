@@ -1635,7 +1635,17 @@ Total PnL: {stats['total_pnl_pct']:+.2f}%"""
 /trail btc 5 - Adjust trail stop
 /tp btc 72000 - Adjust take profit
 
-🎯 ADVANCED:
+🎯 MULTI-STRATEGY:
+/strat btc - Run all strategies on BTC
+/strat eth 1h - Multi-strategy scan (any coin/tf)
+
+🔔 PRICE ALERTS:
+/alerts - View alert status
+/alert add btc above 70000
+/alert add eth below 3000
+/alert remove [id]
+
+🧠 ADVANCED:
 /divergence btc - RSI/MACD divergence
 /structure btc - HH/HL/LH/LL analysis
 /vwap btc - VWAP levels
