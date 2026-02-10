@@ -75,6 +75,7 @@ free_will = init_free_will(db)
 free_will_v2 = init_free_will_v2(db)  # New ultra-selective engine
 strategy_engine = StrategyEngine()  # Multi-strategy engine
 memory_system = init_memory_system(db)  # Memory & journaling system
+confluence_analyzer = create_confluence_analyzer(smc_analyzer, strategy_engine)  # SMC+Strategy confluence
 
 # Set derivatives_intel reference for autonomous trader
 from autonomous_trader import set_derivatives_intel
