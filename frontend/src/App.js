@@ -10,6 +10,8 @@ import {
   Settings, History, PieChart, Home, Menu, X
 } from "lucide-react";
 import VoiceConversation from "./components/VoiceConversation";
+import TradeHistory from "./components/TradeHistory";
+import SettingsPanel from "./components/SettingsPanel";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
