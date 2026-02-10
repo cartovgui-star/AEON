@@ -211,7 +211,34 @@ function App() {
             </div>
 
             {/* Right Actions */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3">
+              {/* WebSocket Status */}
+              <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-zinc-800/50 rounded-lg">
+                <div className={`w-2 h-2 rounded-full ${wsConnected ? 'bg-green-500' : 'bg-yellow-500 animate-pulse'}`} />
+                <span className="text-xs text-zinc-400">
+                  {wsConnected ? 'Live' : 'Connecting'}
+                </span>
+              </div>
+              
+              {/* Notification Toggle */}
+              <button
+                onClick={() => {
+                  if (notificationsEnabled) {
+                    setNotificationsEnabled(false);
+                  } else {
+                    requestNotificationPermission().then(() => {
+                      setNotificationsEnabled(Notification.permission === 'granted');
+                    });
+                  }
+                }}
+                className={`p-2 rounded-lg transition-all ${
+                  notificationsEnabled ? 'bg-orange-500/20 text-orange-400' : 'bg-zinc-800/50 text-zinc-400'
+                }`}
+                title={notificationsEnabled ? 'Notifications On' : 'Enable Notifications'}
+              >
+                {notificationsEnabled ? <BellRing className="w-4 h-4" /> : <Bell className="w-4 h-4" />}
+              </button>
+              
               {/* Status Indicator */}
               <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-zinc-800/50 rounded-lg">
                 <div className={`w-2 h-2 rounded-full ${botStatus?.status === 'success' ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
@@ -222,7 +249,7 @@ function App() {
               
               <button
                 onClick={() => setShowVoice(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-600 hover:to-amber-700 rounded-lg transition-all text-white shadow-lg shadow-orange-500/20"
+                className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-600 hover:to-amber-700 rounded-lg transition-all text-white shadow-lg shadow-orange-500/20"
               >
                 <Phone className="w-4 h-4" />
                 <span className="hidden sm:inline text-sm font-medium">Talk to Aeon</span>
