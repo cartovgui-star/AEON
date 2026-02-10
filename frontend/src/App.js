@@ -354,6 +354,9 @@ function App() {
         {/* Page: Trade History */}
         {currentPage === 'trades' && <TradeHistory />}
 
+        {/* Page: Analytics */}
+        {currentPage === 'analytics' && <Analytics />}
+
         {/* Page: Settings */}
         {currentPage === 'settings' && <SettingsPanel />}
       </main>
