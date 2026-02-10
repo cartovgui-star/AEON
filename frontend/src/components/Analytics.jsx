@@ -58,16 +58,16 @@ export default function Analytics() {
     setLoading(false);
   };
 
-  const StatCard = ({ icon: Icon, label, value, subValue, color = 'orange' }) => (
+  const StatCard = ({ icon: Icon, label, value, subValue, colorClass = 'text-orange-400' }) => (
     <div className="bg-zinc-800/30 rounded-xl border border-zinc-700/50 p-6">
       <div className="flex items-start justify-between">
         <div>
           <p className="text-zinc-500 text-sm">{label}</p>
-          <p className={`text-3xl font-bold mt-1 text-${color}-400`}>{value}</p>
+          <p className={`text-3xl font-bold mt-1 ${colorClass}`}>{value}</p>
           {subValue && <p className="text-xs text-zinc-600 mt-1">{subValue}</p>}
         </div>
-        <div className={`p-3 rounded-lg bg-${color}-500/10`}>
-          <Icon className={`w-6 h-6 text-${color}-400`} />
+        <div className="p-3 rounded-lg bg-zinc-800">
+          <Icon className={`w-6 h-6 ${colorClass}`} />
         </div>
       </div>
     </div>
