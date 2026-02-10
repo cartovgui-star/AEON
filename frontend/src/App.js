@@ -590,11 +590,6 @@ function App() {
           <p className="text-xs mt-1 text-zinc-700">Paper Trading Active | Strategy Self-Learning | 5-Minute Scan Interval</p>
         </footer>
       </main>
-
-      {/* Voice Chat Modal */}
-      {showVoiceChat && (
-        <VoiceChat onClose={() => setShowVoiceChat(false)} />
-      )}
     </div>
   );
 }
