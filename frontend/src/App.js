@@ -18,7 +18,6 @@ function App() {
   const [tradingStats, setTradingStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("all");
-  const [showVoiceChat, setShowVoiceChat] = useState(false);
 
   const fetchData = async () => {
     try {
