@@ -3014,34 +3014,55 @@ R:R: 1:{rr:.1f}
                 # Check current mode
                 current_mode = settings.get("mode", "default")
                 
-                # Smart routing for trading keywords
-                trading_kw = ['btc', 'eth', 'sol', 'doge', 'xrp', 'avax', 'price', 'trade', 'long', 'short', 'market', 'chart', 'analysis']
+                # ═══════════════════════════════════════════════════════════════════
+                # SMART CONVERSATION CLASSIFICATION
+                # ═══════════════════════════════════════════════════════════════════
                 
-                if any(kw in text_lower for kw in trading_kw):
-                    # Extract symbol if mentioned
-                    symbol = "BTCUSDT"
-                    for s in ["btc", "eth", "sol", "doge", "xrp", "avax"]:
-                        if s in text_lower:
-                            symbol = s.upper() + "USDT"
-                            break
+                # Classify the message using AI
+                classification = conversation_classifier.classify(text)
+                logger.info(f"Message classified: {classification['type']} ({classification['confidence']}%) - coins: {classification['detected_coins']}")
+                
+                # Get user context
+                insights = await get_user_insights(chat_id, 5)
+                insights_str = "\n".join([f"• {i['insight']}" for i in insights]) if insights else ""
+                
+                # Get recent conversation for continuity
+                recent = await db.chat_messages.find({"chat_id": chat_id}).sort("timestamp", -1).limit(5).to_list(5)
+                recent_context = ""
+                if recent:
+                    recent_context = "\n\nRECENT CONVERSATION:\n" + "\n".join([
+                        f"User: {m.get('user_message', '')[:80]}\nAeon: {m.get('bot_response', '')[:80]}" 
+                        for m in reversed(recent[-3:])
+                    ])
+                
+                # Route based on classification
+                if classification["type"] == "trading" and classification["should_fetch_data"]:
+                    # User clearly wants trading info - give them data
+                    symbol = (classification["detected_coins"][0] if classification["detected_coins"] else "BTC") + "USDT"
                     
-                    response = await generate_trade_analysis(symbol, chat_id)
+                    # Get market data
+                    market_data = await generate_trade_analysis(symbol, chat_id)
+                    
+                    # Build prompt with context
+                    prompt = f"""USER MESSAGE: {text}
+
+MARKET DATA FOR {symbol}:
+{market_data[:1500]}
+
+{insights_str if insights_str else ''}
+{recent_context}
+
+Respond to the user's trading question with the data above. Be direct and helpful."""
+                    
+                    system = AEON_TRADING_SYSTEM
                     context = "trading"
-                else:
-                    # Get user insights for context
-                    insights = await get_user_insights(chat_id, 5)
-                    insights_str = "\n".join([f"• {i['insight']}" for i in insights]) if insights else ""
                     
-                    # Get recent conversation for continuity
-                    recent = await db.chat_messages.find({"chat_id": chat_id}).sort("timestamp", -1).limit(3).to_list(3)
-                    recent_context = ""
-                    if recent:
-                        recent_context = "\n\nRECENT CONVERSATION:\n" + "\n".join([
-                            f"User: {m.get('user_message', '')[:100]}\nAeon: {m.get('bot_response', '')[:100]}" 
-                            for m in reversed(recent)
-                        ])
-                    
-                    # Build prompt
+                    chat = LlmChat(api_key=emergent_key, session_id=f"aeon-trade-{chat_id}",
+                                  system_message=system).with_model("openai", "gpt-4o-mini")
+                    response = await chat.send_message(UserMessage(text=prompt))
+                
+                elif classification["type"] == "casual":
+                    # User just wants to chat - be a friend
                     prompt = f"USER: {text}"
                     if insights_str:
                         prompt += f"\n\nWHAT I KNOW ABOUT THIS USER:\n{insights_str}"
@@ -3053,8 +3074,35 @@ R:R: 1:{rr:.1f}
                         system = ALCHEMY_MODE_SYSTEM
                         context = "alchemy"
                     else:
-                        system = AEON_DEFAULT_SYSTEM
+                        system = AEON_CASUAL_SYSTEM
                         context = "chat"
+                    
+                    chat = LlmChat(api_key=emergent_key, session_id=f"aeon-chat-{chat_id}",
+                                  system_message=system).with_model("openai", "gpt-4o-mini")
+                    response = await chat.send_message(UserMessage(text=prompt))
+                
+                else:
+                    # Mixed - user mentioned crypto casually, balance both
+                    prompt = f"USER: {text}"
+                    
+                    # If coins mentioned, get quick price info
+                    if classification["detected_coins"]:
+                        coin = classification["detected_coins"][0]
+                        try:
+                            ticker = mexc.fetch_ticker(f"{coin}/USDT")
+                            price = ticker.get("last", 0)
+                            change = ticker.get("percentage", 0)
+                            prompt += f"\n\n[{coin} is currently ${price:,.2f} ({change:+.1f}% today)]"
+                        except:
+                            pass
+                    
+                    if insights_str:
+                        prompt += f"\n\nWHAT I KNOW ABOUT THIS USER:\n{insights_str}"
+                    if recent_context:
+                        prompt += recent_context
+                    
+                    system = AEON_MIXED_SYSTEM if current_mode != "alchemy" else ALCHEMY_MODE_SYSTEM
+                    context = "mixed"
                     
                     chat = LlmChat(api_key=emergent_key, session_id=f"aeon-{chat_id}",
                                   system_message=system).with_model("openai", "gpt-4o-mini")
