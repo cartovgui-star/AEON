@@ -182,6 +182,8 @@ class SMCAnalyzer:
             
             # Check for impulsive move (candle body > 1.5x average)
             avg_body = sum(abs(c[4] - c[1]) for c in ohlcv[i-10:i]) / 10
+            if avg_body == 0:
+                avg_body = 0.0001  # Prevent division by zero
             current_body = abs(current[4] - current[1])
             
             if current_body > avg_body * 1.5:
