@@ -63,6 +63,7 @@ autonomous_trader = init_autonomous_trader(db, learning_system)  # Keep for back
 autonomous_trader_v2 = init_autonomous_trader_v2(db)  # New elite trading engine
 free_will = init_free_will(db)
 free_will_v2 = init_free_will_v2(db)  # New ultra-selective engine
+strategy_engine = StrategyEngine()  # Multi-strategy engine
 
 # Set derivatives_intel reference for autonomous trader
 from autonomous_trader import set_derivatives_intel
