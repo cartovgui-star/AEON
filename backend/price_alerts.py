@@ -103,11 +103,15 @@ class PriceAlertSystem:
         self.total_alerts_sent = 0
         self.alerts_today = 0
         self.last_scan = None
+        
+        # WebSocket manager reference
+        self.ws_manager = None
     
-    def set_dependencies(self, send_telegram: Callable, chat_ids: Set[int]):
+    def set_dependencies(self, send_telegram: Callable, chat_ids: Set[int], ws_manager=None):
         """Set external dependencies"""
         self.send_telegram = send_telegram
         self.chat_ids = chat_ids
+        self.ws_manager = ws_manager
     
     def _can_send_alert(self, alert_key: str) -> bool:
         """Check if alert is not in cooldown"""
