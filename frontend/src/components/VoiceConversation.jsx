@@ -130,13 +130,16 @@ export default function VoiceConversation({ onClose }) {
     setMessages(prev => [...prev, { role: 'user', text }]);
 
     try {
+      console.log('Sending to:', `${API_URL}/api/voice/respond`);
       const response = await fetch(`${API_URL}/api/voice/respond`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text, voice: selectedVoice })
       });
 
+      console.log('Response status:', response.status);
       const data = await response.json();
+      console.log('Response data:', data);
 
       if (data.error) {
         setError(data.error);
@@ -148,7 +151,8 @@ export default function VoiceConversation({ onClose }) {
         }
       }
     } catch (err) {
-      setError('Connection error. Try again.');
+      console.error('Fetch error:', err);
+      setError('Connection error: ' + err.message);
     }
 
     isProcessingRef.current = false;
