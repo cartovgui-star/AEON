@@ -90,28 +90,28 @@ export default function Analytics() {
           label="Win Rate"
           value={`${data?.winRate || 0}%`}
           subValue={`${data?.winCount || 0}W / ${data?.lossCount || 0}L`}
-          color="green"
+          colorClass="text-green-400"
         />
         <StatCard
           icon={TrendingUp}
           label="Total PnL"
           value={`${(data?.totalPnl || 0) >= 0 ? '+' : ''}${(data?.totalPnl || 0).toFixed(2)}%`}
           subValue={`${data?.totalTrades || 0} trades`}
-          color={(data?.totalPnl || 0) >= 0 ? 'green' : 'red'}
+          colorClass={(data?.totalPnl || 0) >= 0 ? 'text-green-400' : 'text-red-400'}
         />
         <StatCard
           icon={Award}
           label="Profit Factor"
           value={(data?.profitFactor || 0).toFixed(2)}
           subValue="Gross profit / Gross loss"
-          color="orange"
+          colorClass="text-orange-400"
         />
         <StatCard
           icon={Activity}
           label="Signals Analyzed"
           value={(data?.signalsAnalyzed || 0).toLocaleString()}
           subValue="By v2 engine"
-          color="blue"
+          colorClass="text-blue-400"
         />
       </div>
 
