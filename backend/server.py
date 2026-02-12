@@ -3099,94 +3099,41 @@ R:R: 1:{rr:.1f}
                 context = "chat"
             
             else:
-                # Check current mode
-                current_mode = settings.get("mode", "default")
-                
                 # ═══════════════════════════════════════════════════════════════════
-                # SMART CONVERSATION - Natural flow, no repetition
+                # AEON PERSONALITY v3 - Life coach + Crypto + Mystical blend
                 # ═══════════════════════════════════════════════════════════════════
                 
-                classification = conversation_classifier.classify(text)
-                logger.info(f"Classified: {classification['type']} - coins: {classification.get('coins', [])}")
-                
-                # Get recent messages for context and anti-repetition
+                # Get recent messages for context
                 recent = await db.chat_messages.find({"chat_id": chat_id}).sort("timestamp", -1).limit(5).to_list(5)
                 
-                # Get anti-repetition prompt
-                anti_repeat = get_anti_repetition_prompt(recent)
+                # Deep analysis of what they need
+                analysis = aeon_mind.analyze_message(text, recent)
+                logger.info(f"Aeon analysis: mode={analysis['primary_mode']}, mystic={analysis['blend_mystic']}, emotion={analysis['emotional_state']}")
                 
-                # Get flow prompt (matches their energy)
-                flow = get_flow_prompt(text, recent)
-                
-                # Build recent context (shorter)
-                recent_context = ""
-                if recent:
-                    recent_context = "\n\nLAST FEW MESSAGES:\n" + "\n".join([
-                        f"them: {m.get('user_message', '')[:60]}\nyou: {m.get('bot_response', '')[:60]}" 
-                        for m in reversed(recent[-2:])
-                    ])
-                
-                # Route based on type
-                if classification["type"] == "trading" and classification.get("fetch_data"):
-                    symbol = (classification.get("coins", ["BTC"])[0] if classification.get("coins") else "BTC") + "USDT"
-                    
-                    # Get quick market data
+                # Get market data if trading
+                market_data = ""
+                if analysis["needs_data"] and analysis["coins"]:
+                    coin = analysis["coins"][0]
                     try:
-                        ticker = mexc.fetch_ticker(symbol)
+                        ticker = mexc.fetch_ticker(f"{coin}/USDT")
                         price = ticker.get("last", 0)
                         change = ticker.get("percentage", 0)
                         high = ticker.get("high", 0)
                         low = ticker.get("low", 0)
-                        market_info = f"{symbol.replace('USDT','')} ${price:,.0f} ({change:+.1f}%) | H: ${high:,.0f} L: ${low:,.0f}"
+                        market_data = f"{coin} ${price:,.0f} ({change:+.1f}%) | H: ${high:,.0f} L: ${low:,.0f}"
                     except:
-                        market_info = "couldn't fetch price rn"
-                    
-                    prompt = f"""{flow}
-{anti_repeat}
-{recent_context}
-
-CURRENT DATA: {market_info}
-
-Reply naturally. Don't repeat yourself."""
-                    
-                    system = AEON_TRADING_SYSTEM
-                    context = "trading"
+                        market_data = ""
                 
-                elif classification["type"] == "casual":
-                    prompt = f"""{flow}
-{anti_repeat}
-{recent_context}
-
-Just chat. Be real."""
-                    
-                    system = AEON_CASUAL_SYSTEM if current_mode != "alchemy" else ALCHEMY_MODE_SYSTEM
-                    context = "chat"
+                # Build prompts using new personality system
+                system_prompt = build_system_prompt(analysis)
+                user_prompt = build_user_prompt(text, analysis, recent, market_data)
                 
-                else:  # mixed
-                    # Quick price if coin mentioned
-                    price_note = ""
-                    if classification.get("coins"):
-                        coin = classification["coins"][0]
-                        try:
-                            ticker = mexc.fetch_ticker(f"{coin}/USDT")
-                            price_note = f"\n[{coin} is at ${ticker.get('last', 0):,.0f} rn]"
-                        except:
-                            pass
-                    
-                    prompt = f"""{flow}
-{anti_repeat}
-{recent_context}
-{price_note}
-
-They mentioned crypto casually. Don't overload them with data unless they ask."""
-                    
-                    system = AEON_MIXED_SYSTEM
-                    context = "mixed"
+                context = analysis["primary_mode"]
                 
-                # Generate response
-                chat = LlmChat(api_key=emergent_key, session_id=f"aeon-{chat_id}",
-                              system_message=system).with_model("openai", "gpt-4o-mini")
-                response = await chat.send_message(UserMessage(text=prompt))
+                # Generate response with Aeon's unified personality
+                chat = LlmChat(api_key=emergent_key, session_id=f"aeon-v3-{chat_id}",
+                              system_message=system_prompt).with_model("openai", "gpt-4o-mini")
+                response = await chat.send_message(UserMessage(text=user_prompt))
         
         # Send response
         await send_telegram_message(chat_id, response)
