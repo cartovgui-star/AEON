@@ -1,46 +1,106 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Activity, TrendingUp, TrendingDown, DollarSign, Target, 
-  AlertTriangle, Play, Pause, RefreshCw, X, Settings2, Zap
+  Play, Pause, RefreshCw, X, Settings2, Zap, Radio, BarChart3
 } from 'lucide-react';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
+// Simple PnL Chart Component
+const PnLChart = ({ data }) => {
+  if (!data || data.length === 0) {
+    return (
+      <div className="h-32 flex items-center justify-center text-zinc-500 text-sm">
+        No trade history yet
+      </div>
+    );
+  }
+
+  const maxPnl = Math.max(...data.map(d => d.cumulative_pnl), 0);
+  const minPnl = Math.min(...data.map(d => d.cumulative_pnl), 0);
+  const range = Math.max(maxPnl - minPnl, 1);
+  const height = 120;
+  const width = 100;
+
+  const points = data.map((d, i) => {
+    const x = (i / (data.length - 1 || 1)) * width;
+    const y = height - ((d.cumulative_pnl - minPnl) / range) * height;
+    return `${x},${y}`;
+  }).join(' ');
+
+  const isPositive = data[data.length - 1]?.cumulative_pnl >= 0;
+
+  return (
+    <div className="relative h-32">
+      <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full" preserveAspectRatio="none">
+        {/* Zero line */}
+        <line 
+          x1="0" 
+          y1={height - ((0 - minPnl) / range) * height} 
+          x2={width} 
+          y2={height - ((0 - minPnl) / range) * height} 
+          stroke="#52525b" 
+          strokeWidth="0.5" 
+          strokeDasharray="2,2"
+        />
+        {/* PnL line */}
+        <polyline
+          fill="none"
+          stroke={isPositive ? "#22c55e" : "#ef4444"}
+          strokeWidth="2"
+          points={points}
+        />
+        {/* Area fill */}
+        <polygon
+          fill={isPositive ? "rgba(34, 197, 94, 0.1)" : "rgba(239, 68, 68, 0.1)"}
+          points={`0,${height} ${points} ${width},${height}`}
+        />
+      </svg>
+      {/* Labels */}
+      <div className="absolute top-0 right-0 text-xs text-zinc-500">
+        {maxPnl > 0 && `+${maxPnl.toFixed(1)}%`}
+      </div>
+      <div className="absolute bottom-0 right-0 text-xs text-zinc-500">
+        {minPnl < 0 && `${minPnl.toFixed(1)}%`}
+      </div>
+    </div>
+  );
+};
+
 export default function Trading() {
   const [stats, setStats] = useState(null);
-  const [openTrades, setOpenTrades] = useState([]);
+  const [livePositions, setLivePositions] = useState([]);
   const [closedTrades, setClosedTrades] = useState([]);
   const [opportunities, setOpportunities] = useState([]);
+  const [pnlHistory, setPnlHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('positions');
-  const [confidence, setConfidence] = useState(75);
+  const [confidence, setConfidence] = useState(70);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const [statsRes, openRes, closedRes, oppsRes] = await Promise.all([
+      // Fetch all data in parallel
+      const [statsRes, liveRes, closedRes, oppsRes, historyRes] = await Promise.all([
         fetch(`${API_URL}/api/trading/v2/stats`),
-        fetch(`${API_URL}/api/trading/v2/open`),
+        fetch(`${API_URL}/api/trading/v2/live-positions`),
         fetch(`${API_URL}/api/trading/v2/closed`),
-        fetch(`${API_URL}/api/trading/opportunities`)
+        fetch(`${API_URL}/api/trading/opportunities`).catch(() => ({ json: () => [] })),
+        fetch(`${API_URL}/api/trading/v2/pnl-history`)
       ]);
       
-      // Check response status
-      if (!statsRes.ok) console.error('Stats fetch failed:', statsRes.status);
-      if (!openRes.ok) console.error('Open trades fetch failed:', openRes.status);
-      
       const statsData = await statsRes.json();
-      const openData = await openRes.json();
+      const liveData = await liveRes.json();
       const closedData = await closedRes.json();
       const oppsData = await oppsRes.json();
-      
-      console.log('Trading data loaded:', { stats: statsData?.active, open: openData?.total_open });
+      const historyData = await historyRes.json();
       
       setStats(statsData);
-      setOpenTrades(openData.open_trades || []);
+      setLivePositions(liveData.positions || []);
       setClosedTrades(closedData.closed_trades || []);
-      setOpportunities(oppsData || []);
-      setConfidence(statsData.min_confidence || 75);
+      setOpportunities(Array.isArray(oppsData) ? oppsData : []);
+      setPnlHistory(historyData.history || []);
+      setConfidence(statsData.min_confidence || 70);
     } catch (err) {
       console.error('Failed to fetch trading data:', err);
     }
@@ -49,7 +109,7 @@ export default function Trading() {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 30000); // Refresh every 30s
+    const interval = setInterval(fetchData, 15000); // Refresh every 15s for live data
     return () => clearInterval(interval);
   }, [fetchData]);
 
@@ -82,8 +142,18 @@ export default function Trading() {
     }
   };
 
+  // Calculate total live PnL
+  const totalLivePnl = livePositions.reduce((sum, p) => sum + (p.pnl_pct || 0), 0);
+
   return (
     <div className="space-y-4 md:space-y-6" data-testid="trading-page">
+      {/* Live Data Banner */}
+      <div className="flex items-center gap-2 px-3 py-2 bg-green-500/10 border border-green-500/20 rounded-lg">
+        <Radio className="w-4 h-4 text-green-400 animate-pulse" />
+        <span className="text-green-400 text-sm font-medium">Live MEXC Data</span>
+        <span className="text-zinc-400 text-xs ml-auto">Paper Trading Mode</span>
+      </div>
+
       {/* Header Stats */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <div className="bg-zinc-800/30 rounded-xl p-3 sm:p-4 border border-zinc-700/50">
@@ -96,7 +166,8 @@ export default function Trading() {
             </div>
             <button 
               onClick={toggleTrading}
-              className={`p-2 rounded-lg ${stats?.active ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}
+              data-testid="toggle-trading-btn"
+              className={`p-2 rounded-lg transition-all ${stats?.active ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30' : 'bg-red-500/20 text-red-400 hover:bg-red-500/30'}`}
             >
               {stats?.active ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
             </button>
@@ -104,30 +175,46 @@ export default function Trading() {
         </div>
 
         <div className="bg-zinc-800/30 rounded-xl p-3 sm:p-4 border border-zinc-700/50">
-          <p className="text-zinc-500 text-xs">Open Trades</p>
-          <p className="text-lg sm:text-xl font-bold text-white">{stats?.open_trades || 0}</p>
+          <p className="text-zinc-500 text-xs">Open Positions</p>
+          <p className="text-lg sm:text-xl font-bold text-white">{livePositions.length}</p>
+        </div>
+
+        <div className="bg-zinc-800/30 rounded-xl p-3 sm:p-4 border border-zinc-700/50">
+          <p className="text-zinc-500 text-xs">Live PnL</p>
+          <p className={`text-lg sm:text-xl font-bold ${totalLivePnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+            {totalLivePnl >= 0 ? '+' : ''}{totalLivePnl.toFixed(2)}%
+          </p>
         </div>
 
         <div className="bg-zinc-800/30 rounded-xl p-3 sm:p-4 border border-zinc-700/50">
           <p className="text-zinc-500 text-xs">Win Rate</p>
-          <p className={`text-lg sm:text-xl font-bold ${(stats?.win_rate || 0) >= 50 ? 'text-green-400' : 'text-red-400'}`}>
+          <p className={`text-lg sm:text-xl font-bold ${(stats?.win_rate || 0) >= 50 ? 'text-green-400' : 'text-orange-400'}`}>
             {stats?.win_rate || 0}%
           </p>
         </div>
 
         <div className="bg-zinc-800/30 rounded-xl p-3 sm:p-4 border border-zinc-700/50">
-          <p className="text-zinc-500 text-xs">Total PnL</p>
-          <p className={`text-lg sm:text-xl font-bold ${(stats?.total_pnl_pct || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-            {(stats?.total_pnl_pct || 0) >= 0 ? '+' : ''}{(stats?.total_pnl_pct || 0).toFixed(2)}%
-          </p>
-        </div>
-
-        <div className="bg-zinc-800/30 rounded-xl p-3 sm:p-4 border border-zinc-700/50">
-          <p className="text-zinc-500 text-xs">Trades</p>
+          <p className="text-zinc-500 text-xs">Total Trades</p>
           <p className="text-lg sm:text-xl font-bold text-white">
-            {stats?.wins || 0}W / {stats?.losses || 0}L
+            <span className="text-green-400">{stats?.wins || 0}W</span>
+            <span className="text-zinc-500 mx-1">/</span>
+            <span className="text-red-400">{stats?.losses || 0}L</span>
           </p>
         </div>
+      </div>
+
+      {/* PnL Chart */}
+      <div className="bg-zinc-800/30 rounded-xl p-4 border border-zinc-700/50">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <BarChart3 className="w-4 h-4 text-orange-400" />
+            <span className="text-white text-sm font-medium">Performance</span>
+          </div>
+          <span className={`text-sm font-bold ${(stats?.total_pnl_pct || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+            {(stats?.total_pnl_pct || 0) >= 0 ? '+' : ''}{(stats?.total_pnl_pct || 0).toFixed(2)}% Total
+          </span>
+        </div>
+        <PnLChart data={pnlHistory} />
       </div>
 
       {/* Market Conditions */}
@@ -135,7 +222,7 @@ export default function Trading() {
         <div className="bg-zinc-800/30 rounded-xl p-3 border border-zinc-700/50">
           <p className="text-zinc-500 text-xs">Market Regime</p>
           <p className={`font-medium ${
-            stats?.market_regime === 'TRENDING' ? 'text-green-400' :
+            stats?.market_regime === 'TRENDING_UP' || stats?.market_regime === 'TRENDING_DOWN' ? 'text-green-400' :
             stats?.market_regime === 'VOLATILE' ? 'text-orange-400' : 'text-zinc-400'
           }`}>{stats?.market_regime || 'UNKNOWN'}</p>
         </div>
@@ -177,6 +264,7 @@ export default function Trading() {
           onMouseUp={(e) => updateConfidence(parseInt(e.target.value))}
           onTouchEnd={(e) => updateConfidence(parseInt(e.target.value))}
           className="w-full h-2 bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-orange-500"
+          data-testid="confidence-slider"
         />
         <div className="flex justify-between text-xs text-zinc-500 mt-1">
           <span>More trades (60%)</span>
@@ -188,8 +276,11 @@ export default function Trading() {
       <div className="flex items-center gap-2">
         <div className="flex bg-zinc-800/50 rounded-lg p-1">
           {['positions', 'opportunities', 'history'].map(t => (
-            <button key={t} onClick={() => setActiveTab(t)}
-              className={`px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium ${
+            <button 
+              key={t} 
+              onClick={() => setActiveTab(t)}
+              data-testid={`tab-${t}`}
+              className={`px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium transition-all ${
                 activeTab === t ? 'bg-orange-500 text-white' : 'text-zinc-400 hover:text-white'
               }`}
             >
@@ -197,56 +288,77 @@ export default function Trading() {
             </button>
           ))}
         </div>
-        <button onClick={fetchData} className="p-2 bg-zinc-800/50 rounded-lg text-zinc-400 hover:text-white">
+        <button 
+          onClick={fetchData} 
+          data-testid="refresh-btn"
+          className="p-2 bg-zinc-800/50 rounded-lg text-zinc-400 hover:text-white transition-all"
+        >
           <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
         </button>
       </div>
 
-      {/* Open Positions Tab */}
+      {/* Live Positions Tab */}
       {activeTab === 'positions' && (
-        <div className="space-y-3">
-          {openTrades.length > 0 ? (
-            openTrades.map((trade, i) => (
-              <div key={i} className={`bg-zinc-800/30 rounded-xl p-4 border ${
-                trade.direction === 'LONG' ? 'border-green-500/30' : 'border-red-500/30'
-              }`}>
+        <div className="space-y-3" data-testid="positions-list">
+          {livePositions.length > 0 ? (
+            livePositions.map((position, i) => (
+              <div 
+                key={position.id || i} 
+                data-testid={`position-${position.symbol?.replace('/USDT', '')}`}
+                className={`bg-zinc-800/30 rounded-xl p-4 border ${
+                  position.direction === 'LONG' ? 'border-green-500/30' : 'border-red-500/30'
+                }`}
+              >
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-3">
                     <span className={`px-2 py-1 rounded text-xs font-bold ${
-                      trade.direction === 'LONG' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
+                      position.direction === 'LONG' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
                     }`}>
-                      {trade.direction}
+                      {position.direction}
                     </span>
-                    <span className="text-white font-medium text-lg">{trade.symbol?.replace('/USDT', '')}</span>
+                    <span className="text-white font-medium text-lg">{position.symbol?.replace('/USDT', '')}</span>
+                    <span className={`text-sm font-bold ${position.pnl_pct >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                      {position.pnl_pct >= 0 ? '+' : ''}{position.pnl_pct?.toFixed(2)}%
+                    </span>
                   </div>
                   <button 
-                    onClick={() => closeTrade(trade.symbol)}
-                    className="p-2 bg-red-500/20 rounded-lg text-red-400 hover:bg-red-500/30"
+                    onClick={() => closeTrade(position.symbol)}
+                    className="p-2 bg-red-500/20 rounded-lg text-red-400 hover:bg-red-500/30 transition-all"
                     title="Close Position"
                   >
                     <X className="w-4 h-4" />
                   </button>
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-sm">
                   <div>
                     <p className="text-zinc-500 text-xs">Entry</p>
-                    <p className="text-white">${trade.entry_price?.toLocaleString()}</p>
+                    <p className="text-white">${position.entry_price?.toLocaleString()}</p>
+                  </div>
+                  <div>
+                    <p className="text-zinc-500 text-xs">Current</p>
+                    <p className={position.pnl_pct >= 0 ? 'text-green-400' : 'text-red-400'}>
+                      ${position.current_price?.toLocaleString()}
+                    </p>
                   </div>
                   <div>
                     <p className="text-zinc-500 text-xs">Stop Loss</p>
-                    <p className="text-red-400">${trade.stop_loss?.toLocaleString()}</p>
+                    <p className="text-red-400">${position.stop_price?.toLocaleString()}</p>
                   </div>
                   <div>
-                    <p className="text-zinc-500 text-xs">Take Profit</p>
-                    <p className="text-green-400">${trade.take_profit?.toLocaleString()}</p>
+                    <p className="text-zinc-500 text-xs">Target</p>
+                    <p className="text-green-400">${position.target_price?.toLocaleString()}</p>
                   </div>
                   <div>
                     <p className="text-zinc-500 text-xs">Confidence</p>
-                    <p className="text-orange-400">{trade.confidence}%</p>
+                    <p className="text-orange-400">{position.confidence}%</p>
                   </div>
                 </div>
-                {trade.reason && (
-                  <p className="text-zinc-500 text-xs mt-2 border-t border-zinc-700/50 pt-2">{trade.reason}</p>
+                {position.confirmations && position.confirmations.length > 0 && (
+                  <div className="mt-2 pt-2 border-t border-zinc-700/50">
+                    <p className="text-zinc-500 text-xs">
+                      {position.confirmations.slice(0, 3).join(' • ')}
+                    </p>
+                  </div>
                 )}
               </div>
             ))
@@ -254,7 +366,7 @@ export default function Trading() {
             <div className="bg-zinc-800/30 rounded-xl p-8 border border-zinc-700/50 text-center">
               <Activity className="w-12 h-12 text-zinc-600 mx-auto mb-3" />
               <p className="text-zinc-500">No open positions</p>
-              <p className="text-zinc-600 text-sm">Aeon is scanning for opportunities...</p>
+              <p className="text-zinc-600 text-sm">Aeon is scanning MEXC for opportunities...</p>
             </div>
           )}
         </div>
@@ -262,27 +374,40 @@ export default function Trading() {
 
       {/* Opportunities Tab */}
       {activeTab === 'opportunities' && (
-        <div className="space-y-3">
+        <div className="space-y-3" data-testid="opportunities-list">
           {opportunities.length > 0 ? (
-            opportunities.map((opp, i) => (
-              <div key={i} className={`bg-zinc-800/30 rounded-xl p-4 border ${
-                opp.direction === 'LONG' ? 'border-green-500/30' : 'border-red-500/30'
-              }`}>
+            opportunities.slice(0, 10).map((opp, i) => (
+              <div 
+                key={i} 
+                className={`bg-zinc-800/30 rounded-xl p-4 border ${
+                  opp.direction === 'LONG' ? 'border-green-500/30' : 'border-red-500/30'
+                }`}
+              >
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-3">
                     <Zap className={`w-5 h-5 ${opp.direction === 'LONG' ? 'text-green-400' : 'text-red-400'}`} />
                     <span className="text-white font-medium">{opp.symbol?.replace('/USDT', '')}</span>
-                    <span className={`text-xs ${opp.direction === 'LONG' ? 'text-green-400' : 'text-red-400'}`}>
+                    <span className={`text-xs px-2 py-0.5 rounded ${
+                      opp.direction === 'LONG' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
+                    }`}>
                       {opp.direction}
                     </span>
                   </div>
                   <span className="text-orange-400 font-bold">{opp.confidence}%</span>
                 </div>
-                <p className="text-zinc-400 text-sm">{opp.reason}</p>
-                <div className="flex gap-4 mt-2 text-xs text-zinc-500">
-                  <span>Entry: ${opp.entry?.toLocaleString()}</span>
-                  <span>Target: ${opp.target?.toLocaleString()}</span>
-                  <span>{opp.confirmations} confirmations</span>
+                <div className="grid grid-cols-3 gap-4 mt-2 text-xs">
+                  <div>
+                    <span className="text-zinc-500">Entry:</span>
+                    <span className="text-white ml-1">${opp.entry?.toLocaleString()}</span>
+                  </div>
+                  <div>
+                    <span className="text-zinc-500">Target:</span>
+                    <span className="text-green-400 ml-1">${opp.target?.toLocaleString()}</span>
+                  </div>
+                  <div>
+                    <span className="text-zinc-500">Confirms:</span>
+                    <span className="text-orange-400 ml-1">{opp.confirmation_count || opp.confirmations?.length || 0}</span>
+                  </div>
                 </div>
               </div>
             ))
@@ -290,7 +415,7 @@ export default function Trading() {
             <div className="bg-zinc-800/30 rounded-xl p-8 border border-zinc-700/50 text-center">
               <Target className="w-12 h-12 text-zinc-600 mx-auto mb-3" />
               <p className="text-zinc-500">No opportunities right now</p>
-              <p className="text-zinc-600 text-sm">Try lowering the confidence threshold or wait for better setups</p>
+              <p className="text-zinc-600 text-sm">Lower confidence threshold or wait for setups</p>
             </div>
           )}
         </div>
@@ -298,27 +423,34 @@ export default function Trading() {
 
       {/* History Tab */}
       {activeTab === 'history' && (
-        <div className="space-y-3">
+        <div className="space-y-3" data-testid="history-list">
           {closedTrades.length > 0 ? (
             closedTrades.slice().reverse().map((trade, i) => (
-              <div key={i} className={`bg-zinc-800/30 rounded-xl p-4 border ${
-                (trade.pnl_pct || 0) >= 0 ? 'border-green-500/30' : 'border-red-500/30'
-              }`}>
+              <div 
+                key={i} 
+                className={`bg-zinc-800/30 rounded-xl p-4 border ${
+                  (trade.pnl_pct || 0) >= 0 ? 'border-green-500/30' : 'border-red-500/30'
+                }`}
+              >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <span className={`px-2 py-1 rounded text-xs ${
+                    <span className={`px-2 py-1 rounded text-xs font-bold ${
                       trade.direction === 'LONG' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
                     }`}>{trade.direction}</span>
                     <span className="text-white font-medium">{trade.symbol?.replace('/USDT', '')}</span>
+                    <span className={`px-2 py-0.5 rounded text-xs ${
+                      (trade.pnl_pct || 0) >= 0 ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
+                    }`}>
+                      {trade.exit_reason}
+                    </span>
                   </div>
                   <span className={`text-lg font-bold ${(trade.pnl_pct || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                     {(trade.pnl_pct || 0) >= 0 ? '+' : ''}{(trade.pnl_pct || 0).toFixed(2)}%
                   </span>
                 </div>
-                <div className="flex gap-4 mt-2 text-xs text-zinc-500">
-                  <span>Entry: ${trade.entry_price?.toLocaleString()}</span>
-                  <span>Exit: ${trade.exit_price?.toLocaleString()}</span>
-                  <span>{trade.exit_reason}</span>
+                <div className="grid grid-cols-2 gap-4 mt-2 text-xs text-zinc-500">
+                  <div>Entry: ${trade.entry_price?.toLocaleString()}</div>
+                  <div>Exit: ${trade.exit_price?.toLocaleString()}</div>
                 </div>
               </div>
             ))
@@ -326,6 +458,7 @@ export default function Trading() {
             <div className="bg-zinc-800/30 rounded-xl p-8 border border-zinc-700/50 text-center">
               <DollarSign className="w-12 h-12 text-zinc-600 mx-auto mb-3" />
               <p className="text-zinc-500">No trade history yet</p>
+              <p className="text-zinc-600 text-sm">Completed trades will appear here</p>
             </div>
           )}
         </div>
