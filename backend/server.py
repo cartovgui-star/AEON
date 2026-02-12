@@ -1481,6 +1481,7 @@ async def api_trading_v2_closed():
 async def api_trading_v2_confidence(min_conf: int = 85):
     """Set v2 minimum confidence threshold (70-98)."""
     autonomous_trader_v2.min_confidence = max(70, min(98, min_conf))
+    await autonomous_trader_v2.save_settings()  # Persist to DB
     return {"min_confidence": autonomous_trader_v2.min_confidence}
 
 
