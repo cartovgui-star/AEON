@@ -51,6 +51,9 @@ from conversation_intelligence import (
 # New personality engine v3
 from aeon_personality import aeon_mind, build_system_prompt, build_user_prompt
 
+# User profiling system
+from user_profiler import init_user_profiler, UserProfiler
+
 # Import route modules
 from routes import (
     derivatives_router, freewill_router, intelligence_router,
@@ -84,6 +87,7 @@ free_will_v2 = init_free_will_v2(db)  # New ultra-selective engine
 strategy_engine = StrategyEngine()  # Multi-strategy engine
 memory_system = init_memory_system(db)  # Memory & journaling system
 confluence_analyzer = create_confluence_analyzer(smc_analyzer, strategy_engine)  # SMC+Strategy confluence
+user_profiler = init_user_profiler(db)  # User profiling system
 
 # Set derivatives_intel reference for autonomous trader
 from autonomous_trader import set_derivatives_intel
