@@ -218,17 +218,114 @@ export default function SettingsPanel() {
 
       {/* Alerts Tab */}
       {activeTab === 'alerts' && (
-        <div className="grid md:grid-cols-2 gap-6">
+        <div className="space-y-6">
+          {/* Dual Trading Engine - Day Trader + Long Term */}
+          <div className="grid md:grid-cols-2 gap-6">
+            {/* Day Trader */}
+            <div className="bg-zinc-800/30 rounded-xl border border-yellow-500/30 overflow-hidden">
+              <div className="flex items-center gap-3 px-6 py-4 bg-yellow-500/10 border-b border-yellow-500/30">
+                <Zap className="w-5 h-5 text-yellow-400" />
+                <h3 className="font-semibold text-white">Day Trader</h3>
+                <span className="ml-auto px-2 py-0.5 bg-yellow-500/20 text-yellow-400 text-xs rounded">AGGRESSIVE</span>
+              </div>
+              <div className="p-6 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium text-white">Enable Day Trading</p>
+                    <p className="text-sm text-zinc-500">Scalps & swings on 15m, 1h, 4h</p>
+                  </div>
+                  <button onClick={() => setSettings(s => ({ ...s, dayTraderEnabled: !s.dayTraderEnabled }))}
+                    className={`w-14 h-7 rounded-full transition-colors ${settings.dayTraderEnabled ? 'bg-yellow-500' : 'bg-zinc-700'}`}>
+                    <div className={`w-5 h-5 rounded-full bg-white transition-transform ${settings.dayTraderEnabled ? 'translate-x-8' : 'translate-x-1'}`} />
+                  </button>
+                </div>
+                <div>
+                  <div className="flex justify-between mb-2">
+                    <span className="text-white text-sm">Min Confidence</span>
+                    <span className="text-yellow-400 font-semibold">{settings.dayTraderConf}%</span>
+                  </div>
+                  <input type="range" min={65} max={90} value={settings.dayTraderConf}
+                    onChange={e => setSettings(s => ({ ...s, dayTraderConf: Number(e.target.value) }))}
+                    className="w-full h-2 bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-yellow-500" />
+                </div>
+                {dualStats?.day_trader && (
+                  <div className="grid grid-cols-3 gap-2 pt-2 border-t border-zinc-700/50">
+                    <div className="text-center">
+                      <p className="text-xs text-zinc-500">Today</p>
+                      <p className="font-bold text-white">{dualStats.day_trader.daily_alerts}/{dualStats.day_trader.max_daily_alerts}</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-xs text-zinc-500">Analyzed</p>
+                      <p className="font-bold text-white">{dualStats.day_trader.setups_analyzed}</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-xs text-zinc-500">Lock</p>
+                      <p className="font-bold text-white">{dualStats.day_trader.direction_lock_hours}h</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Long Term */}
+            <div className="bg-zinc-800/30 rounded-xl border border-blue-500/30 overflow-hidden">
+              <div className="flex items-center gap-3 px-6 py-4 bg-blue-500/10 border-b border-blue-500/30">
+                <Target className="w-5 h-5 text-blue-400" />
+                <h3 className="font-semibold text-white">Long Term</h3>
+                <span className="ml-auto px-2 py-0.5 bg-blue-500/20 text-blue-400 text-xs rounded">SMART</span>
+              </div>
+              <div className="p-6 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium text-white">Enable Long Term</p>
+                    <p className="text-sm text-zinc-500">Position trades on 4h, 1d</p>
+                  </div>
+                  <button onClick={() => setSettings(s => ({ ...s, longTermEnabled: !s.longTermEnabled }))}
+                    className={`w-14 h-7 rounded-full transition-colors ${settings.longTermEnabled ? 'bg-blue-500' : 'bg-zinc-700'}`}>
+                    <div className={`w-5 h-5 rounded-full bg-white transition-transform ${settings.longTermEnabled ? 'translate-x-8' : 'translate-x-1'}`} />
+                  </button>
+                </div>
+                <div>
+                  <div className="flex justify-between mb-2">
+                    <span className="text-white text-sm">Min Confidence</span>
+                    <span className="text-blue-400 font-semibold">{settings.longTermConf}%</span>
+                  </div>
+                  <input type="range" min={80} max={95} value={settings.longTermConf}
+                    onChange={e => setSettings(s => ({ ...s, longTermConf: Number(e.target.value) }))}
+                    className="w-full h-2 bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-blue-500" />
+                </div>
+                {dualStats?.long_term && (
+                  <div className="grid grid-cols-3 gap-2 pt-2 border-t border-zinc-700/50">
+                    <div className="text-center">
+                      <p className="text-xs text-zinc-500">Today</p>
+                      <p className="font-bold text-white">{dualStats.long_term.daily_alerts}/{dualStats.long_term.max_daily_alerts}</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-xs text-zinc-500">Analyzed</p>
+                      <p className="font-bold text-white">{dualStats.long_term.setups_analyzed}</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-xs text-zinc-500">Lock</p>
+                      <p className="font-bold text-white">{dualStats.long_term.direction_lock_hours}h</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Original Free Will section */}
+          <div className="grid md:grid-cols-2 gap-6">
           <div className="bg-zinc-800/30 rounded-xl border border-zinc-700/50 overflow-hidden">
             <div className="flex items-center gap-3 px-6 py-4 bg-zinc-800/50 border-b border-zinc-700/50">
               <Bell className="w-5 h-5 text-orange-400" />
-              <h3 className="font-semibold text-white">Free Will Alerts</h3>
+              <h3 className="font-semibold text-white">Elite Alerts (Legacy)</h3>
             </div>
             <div className="p-6 space-y-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="font-medium text-white">Enable Alerts</p>
-                  <p className="text-sm text-zinc-500">Receive proactive trading alerts</p>
+                  <p className="font-medium text-white">Enable Elite Alerts</p>
+                  <p className="text-sm text-zinc-500">80%+ confidence setups</p>
                 </div>
                 <button onClick={() => setSettings(s => ({ ...s, freeWillEnabled: !s.freeWillEnabled }))}
                   data-testid="freewill-toggle"
