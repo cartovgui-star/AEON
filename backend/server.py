@@ -3122,12 +3122,15 @@ Commands:
             
             if v2_trades:
                 response = "📊 OPEN TRADES (v2 ENGINE)\n\n"
+                total_pnl_usd = 0
                 for trade in v2_trades[:10]:
                     # Get current price for PnL calc
                     ticker = await market_intel.get_ticker(trade.get("symbol", ""))
                     current = ticker.get("price", 0) if "error" not in ticker else 0
                     entry = trade.get("entry_price", 0)
                     direction = trade.get("direction", "")
+                    position_size = trade.get("position_size", 1000)
+                    trade_type = trade.get("trade_type", "SWING")
                     
                     pnl = 0
                     if entry and current:
@@ -3136,17 +3139,20 @@ Commands:
                         elif direction == "SHORT":
                             pnl = ((entry - current) / entry) * 100
                     
+                    pnl_usd = (pnl / 100) * position_size
+                    total_pnl_usd += pnl_usd
+                    
                     emoji = "🟢" if pnl > 0 else "🔴" if pnl < 0 else "⚪"
+                    type_emoji = "⚡" if trade_type == "SCALP" else "📅" if trade_type == "DAY" else "🌊"
                     partial = " (partial)" if trade.get("partial_closed") else ""
                     
-                    response += f"""{emoji} {trade.get('symbol')} {direction}{partial}
-Entry: ${entry:,.2f} | Now: ${current:,.2f}
-PnL: {pnl:+.2f}%
+                    response += f"""{emoji} {trade.get('symbol')} {direction} {type_emoji}{trade_type}{partial}
+Entry: ${entry:,.2f} → ${current:,.2f}
+PnL: {pnl:+.2f}% (${pnl_usd:+.2f})
 TP: ${trade.get('target_price', 0):,.2f} | SL: ${trade.get('trail_stop', 0):,.2f}
-Conf: {trade.get('confidence', 0)}%
 
 """
-                response += "👁️ «The positions evolve. Watch them.»"
+                response += f"━━━━━━━━━━━\n💰 Total: ${total_pnl_usd:+.2f} USD"
             else:
                 # Fall back to old system
                 open_preds = await learning_system.get_open_predictions()
