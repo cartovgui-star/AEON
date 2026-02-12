@@ -10,7 +10,7 @@ Build a sophisticated trading bot named "Aeon" with:
 
 ---
 
-## Latest Session (Feb 12, 2026) - Memory Fix + Verification
+## Latest Session (Feb 12, 2026) - Memory Fix + Commands Reference
 
 ### Memory Leak Fix ✅
 **Issue**: System crashed due to memory limit exceeded after enabling dual trading engines.
@@ -22,7 +22,13 @@ Build a sophisticated trading bot named "Aeon" with:
 4. Added `_cleanup_old_cooldowns()` to `price_alerts.py` - removes stale cooldown data >2h
 5. Added cap on `closed_trades` list in `autonomous_trader_v2.py` (max 200, keeps most recent 150)
 
-**Verification**: All APIs tested working, anti-contradiction logic blocking flip-flop signals correctly.
+### Commands Reference Page ✅
+- Created comprehensive Commands Reference page (`/app/frontend/src/components/CommandsReference.jsx`)
+- All 40+ commands organized into 12 categories with copy buttons
+- Enhanced /news command with clickable links (Markdown formatting)
+- Added /help and /commands aliases to /start
+- Added /liqs command for liquidation data
+- Updated /start to show dual engine status
 
 ---
 
