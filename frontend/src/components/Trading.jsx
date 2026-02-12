@@ -78,7 +78,6 @@ export default function Trading() {
   const [confidence, setConfidence] = useState(70);
 
   const fetchData = useCallback(async () => {
-    console.log('[Trading] fetchData starting...');
     setLoading(true);
     try {
       // Fetch critical data first (fast endpoints)
@@ -94,9 +93,6 @@ export default function Trading() {
       const closedData = await closedRes.json();
       const historyData = await historyRes.json();
       
-      console.log('[Trading] statsData:', statsData?.active, statsData?.open_trades);
-      console.log('[Trading] liveData positions:', liveData?.positions?.length);
-      
       // Update state with critical data immediately
       setStats(statsData);
       setLivePositions(liveData.positions || []);
@@ -105,22 +101,18 @@ export default function Trading() {
       setConfidence(statsData.min_confidence || 70);
       setLoading(false);
       
-      console.log('[Trading] State updated successfully');
-      
-      // Fetch opportunities in background (slow endpoint)
+      // Fetch opportunities in background (slow endpoint - can take 30-50s)
       fetch(`${API_URL}/api/trading/opportunities`)
         .then(res => res.json())
         .then(oppsData => {
           setOpportunities(Array.isArray(oppsData) ? oppsData : []);
-          console.log('[Trading] Opportunities loaded:', oppsData?.length || 0);
         })
-        .catch(err => {
-          console.warn('[Trading] Opportunities fetch failed:', err);
+        .catch(() => {
           setOpportunities([]);
         });
         
     } catch (err) {
-      console.error('[Trading] Failed to fetch trading data:', err);
+      console.error('Failed to fetch trading data:', err);
       setLoading(false);
     }
   }, []);
