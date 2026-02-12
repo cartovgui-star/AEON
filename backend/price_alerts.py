@@ -116,11 +116,25 @@ class PriceAlertSystem:
     def _can_send_alert(self, alert_key: str) -> bool:
         """Check if alert is not in cooldown"""
         now = datetime.now(timezone.utc)
+        
+        # Periodic cleanup of old cooldowns (every 100 checks)
+        if self.total_alerts_sent % 100 == 0:
+            self._cleanup_old_cooldowns()
+        
         if alert_key in self.alert_cooldowns:
             elapsed = (now - self.alert_cooldowns[alert_key]).total_seconds()
             if elapsed < self.cooldown_seconds:
                 return False
         return True
+    
+    def _cleanup_old_cooldowns(self):
+        """Remove stale cooldown entries to prevent memory growth"""
+        now = datetime.now(timezone.utc)
+        cutoff = now - timedelta(hours=2)
+        self.alert_cooldowns = {
+            k: v for k, v in self.alert_cooldowns.items()
+            if v > cutoff
+        }
     
     def _mark_alert_sent(self, alert_key: str):
         """Mark alert as sent"""
