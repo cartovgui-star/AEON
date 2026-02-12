@@ -194,6 +194,9 @@ export default function Trading() {
           <p className={`text-lg sm:text-xl font-bold ${totalLivePnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
             {totalLivePnl >= 0 ? '+' : ''}{totalLivePnl.toFixed(2)}%
           </p>
+          <p className={`text-xs ${totalLivePnl >= 0 ? 'text-green-400/60' : 'text-red-400/60'}`}>
+            {totalLivePnl >= 0 ? '+' : ''}${(totalLivePnl * 10).toFixed(2)} USD
+          </p>
         </div>
 
         <div className="bg-zinc-800/30 rounded-xl p-3 sm:p-4 border border-zinc-700/50">
