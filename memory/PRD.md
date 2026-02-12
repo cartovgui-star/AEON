@@ -144,15 +144,20 @@ Build a sophisticated trading bot named "Aeon" with:
 | User Profiling | ✅ ACTIVE | Learning preferences |
 | Telegram Chat | ✅ ACTIVE | Responding |
 | All Alerts | ✅ RUNNING | No contradictions |
+| Memory Mgmt | ✅ FIXED | Cleanup routines active |
 
 ---
 
 ## Backlog
 
-### P1 (When Ready)
-- Enable real-money trading
+### P1 - Voice Integration
+- Implement Voice tab functionality in Settings
+- User approved but not yet started
 
-### P2 (Future)
+### P2 (When Ready)
+- Enable real-money trading (user deferred)
+
+### P3 (Future)
 - Trade logging form UI
 - More exchange integrations
 - Advanced backtesting
