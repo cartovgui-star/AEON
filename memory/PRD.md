@@ -2,214 +2,145 @@
 
 ## Original Problem Statement
 Build a sophisticated trading bot named "Aeon" with:
-- Autonomous trading engine (v2) - PAPER TRADING MODE
-- Multi-strategy analysis
-- Real-time price alerts with NO CONTRADICTING SIGNALS
-- Smart Money Concepts (SMC) analysis
-- Trade journaling and memory system
-- Dashboard with analytics
-- Telegram bot integration
-- Voice conversation capability
-- User profiling system (Aeon learns your preferences)
+- **Dual Trading Engine** - Day Trader (aggressive) + Long Term (smart) running simultaneously
+- Autonomous paper trading with live MEXC data
+- No contradicting signals (direction lock prevents flip-flopping)
+- Smart alerts that are only the best setups
+- User profiling (Aeon learns your preferences)
 
 ---
 
-## Latest Session (Feb 12, 2026) - Major Feature Additions
+## Latest Session (Feb 12, 2026) - Dual Trading Engine
 
-### 1. Anti-Contradiction Alert System ✅
-**User Request**: No flip-flopping signals - if LONG sent, won't send SHORT within hours
+### Dual Trading Engine v3 ✅
+**User Request**: Day trader style (scalps/swings - aggressive) + Long term (smart/cautious) running at the same time
 
 **Implementation**:
-- Added `direction_lock_time = 7200` (2 hours) to Free Will v2
-- `last_direction` dict tracks last signal direction per symbol
-- `_can_alert()` checks if opposite direction within lock time → blocks it
-- `contradictions_blocked` stat tracks how many flip-flops were prevented
-- Logs show: "Blocked contradicting signal: DOGE/USDT was SHORT, now LONG"
 
-### 2. Enhanced Settings UI ✅
-**Implementation**: Added 4-tab Settings page
+**Day Trader (AGGRESSIVE)**:
+- Timeframes: 15m, 1h, 4h
+- Min Confidence: 75%
+- Direction Lock: 1 hour
+- Max Daily Alerts: 20
+- Cooldown: 15 min per symbol
+- R:R: 1.5:2.5 (tighter stops)
 
-**Trading Tab**:
-- Enable Auto Trading toggle
-- Min Confidence slider (70-95%)
-- Trading Stats card (Open Trades, Mode: Paper)
-
-**Alerts Tab**:
-- Enable Alerts toggle
-- Alert Confidence slider (65-95%)
-- Alert System Status (Today/Max, Total, Blocked)
-- Direction lock info (2h no flip-flop)
-- Recent Signal Directions (e.g., XRP: SHORT, DOGE: SHORT)
-- Data Sources list (8 sources)
-
-**Your Profile Tab**:
-- Trading Style (scalper/swing/hodler or "Learning...")
-- Risk Tolerance (low/medium/high)
-- Favorite Coins
-- Messages Analyzed count
-- Aeon's Understanding section
-
-**Voice Tab**:
-- 4 voice options (Guy, Davis, Ryan, William)
-
-### 3. User Profiling System ✅
-**File**: `/app/backend/user_profiler.py`
-
-**Features**:
-- Tracks coin mentions → builds `favorite_coins` list
-- Detects trading style from keywords (scalp/swing/hodl)
-- Detects risk tolerance from language (yolo/degen vs cautious/dca)
-- Stores key facts about user
-- Injects user context into LLM prompts for personalization
+**Long Term (SMART)**:
+- Timeframes: 4h, 1d
+- Min Confidence: 88%
+- Direction Lock: 4 hours
+- Max Daily Alerts: 6
+- Cooldown: 2 hours per symbol
+- R:R: 2.0:5.0 (wider stops, bigger moves)
 
 **API Endpoints**:
-- `GET /api/user/profile` - Get user profile summary
-- `GET /api/user/profile/{chat_id}` - Get specific user's profile
-- `POST /api/user/profile/{chat_id}/fact` - Add key fact
+- `GET /api/dual/stats` - Get both engines' statistics
+- `POST /api/dual/toggle` - Toggle entire system
+- `POST /api/dual/day-trader/toggle` - Toggle day trader
+- `POST /api/dual/long-term/toggle` - Toggle long term
+- `POST /api/dual/day-trader/confidence` - Set day trader confidence
+- `POST /api/dual/long-term/confidence` - Set long term confidence
 
-### 4. Additional Free Data Sources ✅
-**File**: `/app/backend/additional_data.py`
-
-**New APIs integrated**:
-- **Blockchain.com** - BTC on-chain: hash rate, difficulty, mempool
-- **mempool.space** - BTC fee estimates (fastest/economy)
-- **gasprice.io/blocknative** - ETH gas prices
-- **DefiLlama** - DeFi TVL data
-- **CryptoCompare** - Social stats (Reddit, Twitter, GitHub)
-
-**API Endpoints**:
-- `GET /api/data/btc/onchain` - BTC on-chain stats
-- `GET /api/data/btc/fees` - Mempool fee estimates
-- `GET /api/data/eth/gas` - ETH gas prices
-- `GET /api/data/defi/tvl` - DeFi TVL
-- `GET /api/data/social/{symbol}` - Social stats
-- `GET /api/data/all/{symbol}` - All combined
-
-### 5. Conversational AI v4 ✅
-**Previous session improvement**:
-- Unified personality (no mode switching)
-- Follow-up questions in 70%+ of responses
-- Response length matches user input
-- Anti-repetition system
-- Natural proactive messages
-
-**Test Results**: 21/21 tests passed (iteration_17.json)
+**UI**: Settings > Alerts tab now shows:
+- Day Trader card (yellow) with toggle, confidence slider, stats
+- Long Term card (blue) with toggle, confidence slider, stats
+- Legacy Free Will alerts
+- Alert System Status with recent signal directions
 
 ---
 
-## What's Been Implemented - Complete List
+## Previous Sessions Summary
 
-### Session 5 (Feb 12, 2026) - This Session
-- ✅ Anti-contradiction alert system (2hr direction lock)
-- ✅ Enhanced Settings UI (4 tabs)
-- ✅ User profiling system
-- ✅ Additional free APIs (5 new sources)
+### Anti-Contradiction System ✅
+- Direction lock prevents flip-flopping (no LONG → SHORT within lock period)
+- Contradictions blocked count tracked
 
-### Session 4 (Feb 12, 2026)
-- ✅ Conversational AI v4 (unified personality)
-- ✅ Telegram webhook fix
+### User Profiling System ✅
+- Tracks favorite coins from conversations
+- Detects trading style (scalper/swing/hodler)
+- Detects risk tolerance (low/medium/high)
+- Personalizes Aeon's responses
 
-### Session 3 (Feb 12, 2026)
-- ✅ Autonomous trading bug fix
-- ✅ Live MEXC data integration
-- ✅ Trading dashboard enhancements
+### Additional Free APIs ✅
+- Blockchain.com (BTC on-chain)
+- mempool.space (BTC fees)
+- ETH gas prices
+- DefiLlama (DeFi TVL)
+- CryptoCompare (social stats)
 
-### Session 2 (Feb 10, 2026)
-- ✅ WebSocket real-time alerts
-- ✅ Browser push notifications
-- ✅ SMC Dashboard page
-- ✅ Journal Dashboard page
-- ✅ Mobile responsiveness
-- ✅ SMC + Strategy confluence
-
-### Session 1 Features
-- ✅ Multi-Strategy Engine (6 strategies)
-- ✅ Real-Time Price Alert System
-- ✅ Analytics Page
-- ✅ SMC Analyzer module
-- ✅ Memory/Journal system
-
-### Original Features
-- ✅ Autonomous Trader v2
-- ✅ Multi-page dashboard
-- ✅ Voice conversation with Aeon
-- ✅ Trade History page
-- ✅ Telegram bot with 40+ commands
+### Conversational AI v4 ✅
+- Unified personality (no mode switching)
+- Asks follow-up questions
+- Response length matches input
+- Never repetitive
 
 ---
 
 ## Key Files
 
-### New This Session
-- `/app/backend/user_profiler.py` - User profiling system
-- `/app/backend/additional_data.py` - Additional data sources
-- `/app/frontend/src/components/SettingsPanel.jsx` - Enhanced settings UI
+### Dual Trading Engine
+- `/app/backend/dual_trading_engine.py` - DualTradingEngine class
+- `/app/backend/server.py` - Background task `dual_trading_scanner()`
 
-### Core Files
-- `/app/backend/free_will_v2.py` - Alert engine with anti-contradiction
-- `/app/backend/aeon_personality.py` - Conversational AI v4
-- `/app/backend/autonomous_trader_v2.py` - Paper trading engine
-- `/app/backend/server.py` - Main FastAPI server
+### Settings UI
+- `/app/frontend/src/components/SettingsPanel.jsx` - 4-tab settings with dual engine
+
+### Other Key Files
+- `/app/backend/free_will_v2.py` - Legacy alert engine
+- `/app/backend/user_profiler.py` - User learning system
+- `/app/backend/aeon_personality.py` - Conversational AI
+- `/app/backend/autonomous_trader_v2.py` - Paper trading
 
 ---
 
 ## API Endpoints Summary
 
-### Settings & Configuration
-- `GET /api/trading/v2/stats` - Trading engine stats
-- `POST /api/trading/toggle` - Toggle auto trading
-- `POST /api/trading/v2/confidence` - Set confidence
-- `GET /api/freewill/stats` - Alert system stats
-- `POST /api/freewill/toggle` - Toggle alerts
+### Dual Trading Engine
+- `GET /api/dual/stats`
+- `POST /api/dual/toggle`
+- `POST /api/dual/day-trader/toggle`
+- `POST /api/dual/day-trader/confidence`
+- `POST /api/dual/long-term/toggle`
+- `POST /api/dual/long-term/confidence`
 
-### User Profiling
-- `GET /api/user/profile` - Get user profile
-- `GET /api/user/profile/{chat_id}` - Get specific profile
-- `POST /api/user/profile/{chat_id}/fact` - Add fact
+### Legacy Free Will
+- `GET /api/freewill/stats`
+- `POST /api/freewill/toggle`
+
+### User Profile
+- `GET /api/user/profile`
+- `GET /api/user/profile/{chat_id}`
 
 ### Additional Data
-- `GET /api/data/btc/onchain` - BTC on-chain
-- `GET /api/data/btc/fees` - Mempool fees
-- `GET /api/data/eth/gas` - ETH gas
-- `GET /api/data/defi/tvl` - DeFi TVL
-- `GET /api/data/social/{symbol}` - Social stats
-
-### Trading
-- `GET /api/trading/v2/live-positions` - Open trades
-- `GET /api/trading/v2/pnl-history` - Closed trades
-- `POST /api/webhook` - Telegram webhook
+- `GET /api/data/btc/onchain`
+- `GET /api/data/btc/fees`
+- `GET /api/data/eth/gas`
+- `GET /api/data/defi/tvl`
 
 ---
 
-## Feature Status
+## System Status
 
-| Feature | Status | Notes |
-|---------|--------|-------|
-| Dashboard | ✅ | Main page with stats |
-| Trading | ✅ | Live paper trading |
-| Settings | ✅ | 4-tab configuration |
-| Alerts | ✅ | No contradicting signals |
-| User Profiling | ✅ | Learns preferences |
-| Conversational AI | ✅ | v4 unified personality |
-| Analytics | ✅ | Alerts + Strategies |
-| SMC Analysis | ✅ | Market structure |
-| Journal | ✅ | Performance tracking |
-| Voice Chat | ✅ | Talk to Aeon |
-| Telegram Bot | ✅ | 40+ commands |
+| Component | Status | Notes |
+|-----------|--------|-------|
+| Day Trader | ✅ ACTIVE | 75% conf, 15m/1h/4h |
+| Long Term | ✅ ACTIVE | 88% conf, 4h/1d |
+| Free Will v2 | ✅ ACTIVE | 80% conf, legacy |
+| Paper Trading | ✅ ACTIVE | 10 open trades |
+| User Profiling | ✅ ACTIVE | Learning preferences |
+| Telegram Chat | ✅ ACTIVE | Responding |
+| All Alerts | ✅ RUNNING | No contradictions |
 
 ---
 
-## Backlog / Future Tasks
+## Backlog
 
-### P1 (High Priority)
-- Enable real-money trading when user is ready
+### P1 (When Ready)
+- Enable real-money trading
 
-### P2 (Medium Priority)
-- Enhanced trade logging form UI
+### P2 (Future)
+- Trade logging form UI
 - More exchange integrations
-
-### P3 (Low Priority)
-- Coinglass premium integration
 - Advanced backtesting
 
 ---
