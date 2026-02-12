@@ -22,13 +22,13 @@ import pytz
 
 logger = logging.getLogger(__name__)
 
-# Trading pairs - prioritized by liquidity
+# Trading pairs - prioritized by liquidity (MEXC supported)
 TRADING_PAIRS = [
     "BTC/USDT", "ETH/USDT", "SOL/USDT", "BNB/USDT", "XRP/USDT",
     "DOGE/USDT", "ADA/USDT", "AVAX/USDT", "LINK/USDT", "DOT/USDT",
     "ATOM/USDT", "UNI/USDT", "LTC/USDT", "ARB/USDT", "OP/USDT",
     "INJ/USDT", "NEAR/USDT", "APT/USDT", "FIL/USDT", "TRX/USDT",
-    "MATIC/USDT", "SHIB/USDT", "BCH/USDT", "ETC/USDT", "XLM/USDT"
+    "POL/USDT", "SHIB/USDT", "BCH/USDT", "ETC/USDT", "XLM/USDT"
 ]
 
 # Priority timeframes for quality signals
