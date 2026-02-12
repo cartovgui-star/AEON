@@ -761,6 +761,9 @@ class AutonomousTraderV2:
         self.open_trades.append(trade)
         self.total_trades += 1
         
+        # Persist trade to database
+        await self.save_open_trade(trade)
+        
         # Store in DB (use chat_id=0 for autonomous trader)
         if self.learning_system:
             try:
