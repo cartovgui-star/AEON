@@ -659,6 +659,7 @@ async def free_will_scanner():
     ELITE FREE WILL v2 - Ultra-selective alerting
     Only alerts on 80%+ confidence setups with 3+ confirmations
     Uses ALL data sources: TA, Divergence, Structure, VWAP, CVD, Options, Derivatives
+    Now with price validation to prevent stale/wrong prices in alerts
     """
     # Set dependencies for v2 engine
     free_will_v2.set_dependencies(
@@ -686,7 +687,12 @@ async def free_will_scanner():
                     if not free_will_v2._can_alert(setup["symbol"], direction):
                         continue
                     
-                    alert_msg = free_will_v2.format_alert(setup)
+                    # Validate price and format alert with fresh data
+                    alert_msg, is_valid = await free_will_v2.validate_and_format_alert(setup)
+                    
+                    if not is_valid:
+                        logger.info(f"🎯 ELITE ALERT SKIPPED (price moved): {setup['symbol']}")
+                        continue
                     
                     # Send to users with free_will enabled
                     for chat_id in list(chat_ids):
