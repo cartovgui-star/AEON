@@ -1711,6 +1711,42 @@ async def api_test():
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# USER PROFILE API
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@api_router.get("/user/profile")
+async def api_user_profile(chat_id: int = None):
+    """Get user profile summary"""
+    # For web dashboard, use a default profile or first user
+    if not chat_id and chat_ids:
+        chat_id = list(chat_ids)[0]
+    elif not chat_id:
+        return {"error": "No users found"}
+    
+    return await user_profiler.get_profile_summary(chat_id)
+
+
+@api_router.get("/user/profile/{chat_id}")
+async def api_user_profile_by_id(chat_id: int):
+    """Get user profile by chat ID"""
+    return await user_profiler.get_profile_summary(chat_id)
+
+
+@api_router.post("/user/profile/{chat_id}/fact")
+async def api_add_user_fact(chat_id: int, request: Request):
+    """Add a key fact about the user"""
+    data = await request.json()
+    fact = data.get("fact", "")
+    category = data.get("category", "general")
+    
+    if not fact:
+        return {"error": "Fact is required"}
+    
+    await user_profiler.add_key_fact(chat_id, fact, category)
+    return {"status": "ok", "fact": fact}
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # TELEGRAM WEBHOOK
 # ═══════════════════════════════════════════════════════════════════════════════
 
