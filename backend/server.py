@@ -656,12 +656,14 @@ async def free_will_scanner():
     while True:
         try:
             if free_will_v2.active:
-                # Scan for elite setups (80%+ confidence, 3+ confirmations)
+                # Scan for elite setups (80%+ confidence, 3+ confirmations, no contradictions)
                 setups = await free_will_v2.scan_all()
                 
                 # Send alerts (max 3 per scan, already filtered)
                 for setup in setups:
-                    if not free_will_v2._can_alert(setup["symbol"]):
+                    direction = setup.get("direction")
+                    
+                    if not free_will_v2._can_alert(setup["symbol"], direction):
                         continue
                     
                     alert_msg = free_will_v2.format_alert(setup)
@@ -681,12 +683,12 @@ async def free_will_scanner():
                         
                         await asyncio.sleep(0.5)
                     
-                    # Mark alerted
-                    free_will_v2._mark_alerted(setup["symbol"])
+                    # Mark alerted with direction for anti-contradiction
+                    free_will_v2._mark_alerted(setup["symbol"], direction)
                     logger.info(f"🎯 ELITE ALERT: {setup['symbol']} {setup['timeframe']} {setup['direction']} ({setup['confidence']}%)")
             
-            # Scan every 60 seconds (less frequent = higher quality)
-            await asyncio.sleep(60)
+            # Scan every 45 seconds for faster alerts
+            await asyncio.sleep(45)
             
         except Exception as e:
             logger.error(f"Free Will v2 error: {e}")
