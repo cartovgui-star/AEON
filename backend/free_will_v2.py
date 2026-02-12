@@ -104,7 +104,7 @@ class FreeWillEngineV2:
             self.daily_alerts = 0
             self.last_reset = today
     
-    def _can_alert(self, symbol: str) -> bool:
+    def _can_alert(self, symbol: str, direction: str = None) -> bool:
         """Check if we can send alert for this symbol"""
         self._reset_daily_counter()
         
@@ -112,20 +112,37 @@ class FreeWillEngineV2:
         if self.daily_alerts >= self.max_daily_alerts:
             return False
         
-        # Check cooldown
         now = datetime.now(timezone.utc)
+        
+        # Check cooldown
         if symbol in self.recent_alerts:
             elapsed = (now - self.recent_alerts[symbol]).total_seconds()
             if elapsed < self.alert_cooldown:
                 return False
         
+        # ANTI-CONTRADICTION CHECK
+        if direction and symbol in self.last_direction:
+            last_dir, last_time = self.last_direction[symbol]
+            elapsed = (now - last_time).total_seconds()
+            
+            # If same symbol had opposite direction within lock time, block it
+            if elapsed < self.direction_lock_time and last_dir != direction:
+                logger.info(f"⚠️ Blocked contradicting signal: {symbol} was {last_dir}, now {direction}")
+                self.contradictions_blocked += 1
+                return False
+        
         return True
     
-    def _mark_alerted(self, symbol: str):
+    def _mark_alerted(self, symbol: str, direction: str = None):
         """Mark symbol as alerted"""
-        self.recent_alerts[symbol] = datetime.now(timezone.utc)
+        now = datetime.now(timezone.utc)
+        self.recent_alerts[symbol] = now
         self.daily_alerts += 1
         self.total_alerts_sent += 1
+        
+        # Track direction for anti-contradiction
+        if direction:
+            self.last_direction[symbol] = (direction, now)
     
     async def analyze_setup_full(self, symbol: str, timeframe: str) -> Optional[Dict]:
         """
