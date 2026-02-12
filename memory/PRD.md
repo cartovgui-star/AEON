@@ -51,6 +51,19 @@ Added methods to persist trading settings across restarts:
 - Added trade persistence (open/closed trades)
 - Verified with 21 passing tests
 
+**2. Live MEXC Data Integration ✅**
+- Connected to MEXC exchange for real-time market prices
+- Paper trading mode: simulated trades with REAL prices
+- New endpoints: /api/trading/v2/live-positions, /api/trading/v2/pnl-history
+- Real-time PnL calculation per position
+
+**3. Trading Dashboard Enhancements ✅**
+- Added "Live MEXC Data" banner with "Paper Trading Mode" indicator
+- Added PnL Performance chart component
+- Fixed slow data loading (separated fast/slow API calls)
+- Shows: Status, Open Positions, Live PnL, Win Rate, Total Trades
+- Position cards with Entry, Current Price, Stop Loss, Target, Confidence, Confirmations
+
 ### Session 2 Additions (Feb 10, 2026)
 
 **1. WebSocket Real-time Alerts ✅**
