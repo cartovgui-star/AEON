@@ -721,6 +721,7 @@ async def dual_trading_scanner():
     - Day Trader: Aggressive scalps/swings (15m, 1h, 4h)
     - Long Term: Smart cautious positions (4h, 1d)
     Both run continuously, never contradicting
+    Now with price validation to prevent stale/wrong prices in alerts
     """
     await asyncio.sleep(20)  # Initial delay
     
@@ -742,7 +743,12 @@ async def dual_trading_scanner():
                 
                 # Process Day Trader setups
                 for setup in all_setups.get("day_trader", []):
-                    alert_msg = dual_engine.format_alert(setup)
+                    # Validate price and format alert with fresh data
+                    alert_msg, is_valid = await dual_engine.validate_and_format_alert(setup)
+                    
+                    if not is_valid:
+                        logger.info(f"⚡ DAY TRADE SKIPPED (price moved): {setup['symbol']}")
+                        continue
                     
                     for chat_id in list(chat_ids):
                         settings = await get_user_settings(chat_id)
@@ -762,7 +768,12 @@ async def dual_trading_scanner():
                 
                 # Process Long Term setups
                 for setup in all_setups.get("long_term", []):
-                    alert_msg = dual_engine.format_alert(setup)
+                    # Validate price and format alert with fresh data
+                    alert_msg, is_valid = await dual_engine.validate_and_format_alert(setup)
+                    
+                    if not is_valid:
+                        logger.info(f"🎯 LONG TERM SKIPPED (price moved): {setup['symbol']}")
+                        continue
                     
                     for chat_id in list(chat_ids):
                         settings = await get_user_settings(chat_id)
