@@ -237,14 +237,26 @@ async def get_user_insights(chat_id: int, limit: int = 10) -> List[Dict]:
     return await db.user_insights.find({"chat_id": chat_id}).sort("timestamp", -1).limit(limit).to_list(limit)
 
 
-async def send_telegram_message(chat_id: int, text: str, retry: int = 2):
-    """Send telegram message with retry and rate limit handling"""
+async def send_telegram_message(chat_id: int, text: str, retry: int = 2, parse_mode: str = None):
+    """Send telegram message with retry and rate limit handling
+    
+    Args:
+        chat_id: Telegram chat ID
+        text: Message text
+        retry: Number of retries
+        parse_mode: 'Markdown' or 'HTML' for rich text formatting
+    """
     for attempt in range(retry + 1):
         try:
             async with httpx.AsyncClient(timeout=10) as c:
+                payload = {'chat_id': chat_id, 'text': text}
+                if parse_mode:
+                    payload['parse_mode'] = parse_mode
+                    payload['disable_web_page_preview'] = True  # Don't preview links
+                
                 resp = await c.post(
                     f"https://api.telegram.org/bot{telegram_token}/sendMessage",
-                    json={'chat_id': chat_id, 'text': text}
+                    json=payload
                 )
                 if resp.status_code == 429:  # Rate limited
                     retry_after = resp.json().get('parameters', {}).get('retry_after', 5)
