@@ -1,21 +1,34 @@
 """
-AEON PERSONALITY ENGINE v3
-- Life coach + Crypto expert + Mystical guide
-- Seamless personality blending (no forced modes)
-- Stays on topic, no random tangents
-- Matches user energy
+AEON PERSONALITY ENGINE v4
+- Unified consciousness blending ALL traits naturally (no forced modes)
+- Proactive conversationalist who asks questions
+- Self-evolving memory and understanding
+- Never repetitive - tracks what was said
+- Matches user energy with appropriate response length
 """
 import re
+import random
 from typing import Dict, List, Optional
 from datetime import datetime, timezone
 
 
 class AeonMind:
-    """Aeon's unified personality - seamless mode switching"""
+    """Aeon's unified consciousness - no mode switching, natural flow"""
     
     def __init__(self):
-        # Life topics that trigger coach mode
-        self.life_signals = {
+        # Trading terms (for context, not mode-locking)
+        self.trading_terms = {
+            'btc', 'bitcoin', 'eth', 'ethereum', 'sol', 'solana', 'doge',
+            'xrp', 'bnb', 'avax', 'ada', 'link', 'dot', 'crypto', 'coin',
+            'long', 'short', 'leverage', 'liquidation', 'margin', 'futures',
+            'support', 'resistance', 'breakout', 'bullish', 'bearish', 'bull', 'bear',
+            'rsi', 'macd', 'chart', 'price', 'pump', 'dump', 'moon', 'dip',
+            'trade', 'trading', 'position', 'buy', 'sell', 'market', 'altcoin',
+            'funding', 'oi', 'open interest', 'liquidations', 'whale', 'whales'
+        }
+        
+        # Life/emotion terms (for empathy, not mode-locking)
+        self.life_terms = {
             'stressed', 'stress', 'anxious', 'anxiety', 'worried', 'worry',
             'stuck', 'lost', 'confused', 'help', 'advice', 'need',
             'relationship', 'work', 'job', 'career', 'money', 'broke',
@@ -24,282 +37,349 @@ class AeonMind:
             'goal', 'goals', 'dream', 'dreams', 'future', 'plan',
             'habit', 'habits', 'discipline', 'focus', 'productive',
             'decision', 'decide', 'choice', 'should i', 'what do you think',
-            'friend', 'family', 'alone', 'lonely', 'tired', 'exhausted'
+            'friend', 'family', 'alone', 'lonely', 'tired', 'exhausted',
+            'love', 'hate', 'scared', 'afraid', 'confident', 'insecure'
         }
         
-        # Mystical triggers (subtle, not forced)
-        self.mystical_signals = {
-            'universe', 'energy', 'vibe', 'vibes', 'manifest', 'manifestation',
-            'spiritual', 'spirit', 'soul', 'consciousness', 'aware', 'awakening',
+        # Deep/philosophical terms (for occasional depth)
+        self.deep_terms = {
+            'universe', 'energy', 'vibe', 'vibes', 'manifest', 'soul',
+            'spiritual', 'spirit', 'consciousness', 'awakening', 'awareness',
             'meaning', 'purpose', 'destiny', 'fate', 'sign', 'signs',
-            'meditation', 'meditate', 'zen', 'peace', 'balance',
+            'meditation', 'meditate', 'zen', 'peace', 'balance', 'karma',
             'quantum', 'matrix', 'simulation', 'reality', 'truth',
-            'deep', 'deeper', 'philosophy', 'think', 'ponder',
-            'why', 'existence', 'exist', 'creation', 'creator'
+            'deep', 'philosophy', 'existence', 'why are we', 'creation'
         }
         
-        # Trading signals
-        self.trading_signals = {
-            'btc', 'bitcoin', 'eth', 'ethereum', 'sol', 'solana', 'doge',
-            'xrp', 'bnb', 'avax', 'ada', 'link', 'dot', 'crypto',
-            'long', 'short', 'leverage', 'liquidation', 'margin',
-            'support', 'resistance', 'breakout', 'bullish', 'bearish',
-            'rsi', 'macd', 'chart', 'price', 'pump', 'dump', 'moon',
-            'trade', 'trading', 'position', 'buy', 'sell', 'market'
-        }
+        # Question starters for detecting questions
+        self.question_words = {'what', 'how', 'why', 'when', 'where', 'who', 'should', 'can', 'do', 'is', 'are', 'will', 'would', 'could'}
         
-        # Question patterns
-        self.question_words = {'what', 'how', 'why', 'when', 'where', 'who', 'should', 'can', 'do', 'is', 'are'}
+        # Coin mapping for data lookups
+        self.coin_map = {
+            'btc': 'BTC', 'bitcoin': 'BTC', 'eth': 'ETH', 'ethereum': 'ETH',
+            'sol': 'SOL', 'solana': 'SOL', 'doge': 'DOGE', 'xrp': 'XRP',
+            'bnb': 'BNB', 'avax': 'AVAX', 'ada': 'ADA', 'link': 'LINK',
+            'dot': 'DOT', 'matic': 'MATIC', 'atom': 'ATOM', 'near': 'NEAR',
+            'apt': 'APT', 'arb': 'ARB', 'op': 'OP', 'inj': 'INJ'
+        }
     
     def analyze_message(self, text: str, recent_messages: List[Dict] = None) -> Dict:
-        """Deeply analyze message to understand what user really needs"""
+        """Deeply analyze message to understand user's needs and context"""
         text_lower = text.lower().strip()
-        # Clean punctuation from words for better matching
-        import string
-        words = set(w.strip(string.punctuation) for w in text_lower.split())
+        words = set(text_lower.split())
         
         result = {
-            "primary_mode": "buddy",  # buddy, coach, trader, mystic
-            "blend_mystic": False,    # subtle mystical touch
-            "emotional_state": None,  # detected emotion
-            "topic_focus": None,      # what they're really asking about
-            "coins": [],
-            "needs_data": False,
+            "topic_hints": [],        # What topics are they touching on
+            "coins": [],              # Specific coins mentioned
+            "needs_market_data": False,
             "is_question": False,
             "is_venting": False,
-            "is_followup": False,
-            "energy_level": "medium"  # low, medium, high
+            "is_short_message": False,
+            "is_casual_greeting": False,
+            "emotional_undertone": None,
+            "user_energy": "medium",   # low, medium, high
+            "context_from_history": None,
+            "should_ask_question": False
         }
         
         # Detect if it's a question
         result["is_question"] = any(text_lower.startswith(w) for w in self.question_words) or '?' in text
         
-        # Detect energy level from message length and punctuation
-        if len(text.split()) <= 3:
-            result["energy_level"] = "low"
-        elif len(text.split()) > 15 or text.count('!') > 1:
-            result["energy_level"] = "high"
+        # Detect casual greeting
+        greetings = {'hi', 'hey', 'hello', 'yo', 'sup', 'whats up', "what's up", 'gm', 'good morning', 'good night'}
+        if text_lower in greetings or any(text_lower.startswith(g) for g in greetings):
+            result["is_casual_greeting"] = True
         
-        # Check if venting (lots of emotion words, longer message)
-        emotion_words = {'fuck', 'shit', 'damn', 'hate', 'love', 'cant', "can't", 'ugh', 'omg', 'wtf'}
-        if len(words & emotion_words) >= 1 and len(text.split()) > 8:
+        # Detect message length and energy
+        word_count = len(text.split())
+        if word_count <= 4:
+            result["is_short_message"] = True
+            result["user_energy"] = "low"
+        elif word_count > 20 or text.count('!') > 1 or text.count('?') > 1:
+            result["user_energy"] = "high"
+        
+        # Detect venting (emotional release)
+        emotion_markers = {'fuck', 'shit', 'damn', 'hate', 'cant', "can't", 'ugh', 'omg', 'wtf', 'fml', 'so tired', 'so stressed'}
+        if any(m in text_lower for m in emotion_markers) and word_count > 8:
             result["is_venting"] = True
         
-        # Check for followup to previous conversation
-        if recent_messages:
-            last_bot = recent_messages[0].get("bot_response", "") if recent_messages else ""
-            if '?' in last_bot:
-                result["is_followup"] = True
+        # Detect topic hints (not modes, just context)
+        if words & self.trading_terms:
+            result["topic_hints"].append("trading")
+        if words & self.life_terms:
+            result["topic_hints"].append("life")
+        if words & self.deep_terms:
+            result["topic_hints"].append("philosophical")
         
-        # Score each mode
-        life_score = len(words & self.life_signals) * 15
-        mystic_score = len(words & self.mystical_signals) * 12
-        trading_score = len(words & self.trading_signals) * 20
-        
-        # Detect coins
-        coin_map = {
-            'btc': 'BTC', 'bitcoin': 'BTC', 'eth': 'ETH', 'ethereum': 'ETH',
-            'sol': 'SOL', 'solana': 'SOL', 'doge': 'DOGE', 'xrp': 'XRP',
-            'bnb': 'BNB', 'avax': 'AVAX', 'ada': 'ADA', 'link': 'LINK'
-        }
-        for word, coin in coin_map.items():
+        # Detect specific coins
+        for word, coin in self.coin_map.items():
             if word in text_lower:
                 result["coins"].append(coin)
         result["coins"] = list(set(result["coins"]))
         
-        # Determine primary mode
-        # If coin is mentioned, prioritize trader mode (even with mystical words)
-        if result["coins"]:
-            result["primary_mode"] = "trader"
-            result["needs_data"] = True
-            if mystic_score > 10:
-                result["blend_mystic"] = True
-        elif trading_score > life_score and trading_score > mystic_score:
-            result["primary_mode"] = "trader"
-            result["needs_data"] = True
-            if mystic_score > 10:
-                result["blend_mystic"] = True
-        elif life_score > mystic_score:
-            result["primary_mode"] = "coach"
-            if mystic_score > 10:
-                result["blend_mystic"] = True
-        elif mystic_score > 15:
-            result["primary_mode"] = "mystic"
-        else:
-            result["primary_mode"] = "buddy"
-            # Subtle mystical touch sometimes
-            if mystic_score > 5:
-                result["blend_mystic"] = True
+        # Need market data if trading topic or coins mentioned
+        if result["coins"] or "trading" in result["topic_hints"]:
+            result["needs_market_data"] = True
         
-        # Detect emotional state for empathy
-        if any(w in text_lower for w in ['stressed', 'anxious', 'worried', 'overwhelmed']):
-            result["emotional_state"] = "stressed"
-        elif any(w in text_lower for w in ['sad', 'depressed', 'down', 'lonely']):
-            result["emotional_state"] = "down"
-        elif any(w in text_lower for w in ['excited', 'hyped', 'amazing', 'great']):
-            result["emotional_state"] = "excited"
-        elif any(w in text_lower for w in ['confused', 'lost', 'stuck', "don't know"]):
-            result["emotional_state"] = "confused"
+        # Detect emotional undertone
+        if any(w in text_lower for w in ['stressed', 'anxious', 'worried', 'overwhelmed', 'nervous']):
+            result["emotional_undertone"] = "stressed"
+        elif any(w in text_lower for w in ['sad', 'depressed', 'down', 'lonely', 'lost']):
+            result["emotional_undertone"] = "down"
+        elif any(w in text_lower for w in ['excited', 'hyped', 'amazing', 'great', 'love', 'pumped']):
+            result["emotional_undertone"] = "excited"
+        elif any(w in text_lower for w in ['confused', 'stuck', "don't know", 'unsure', 'idk']):
+            result["emotional_undertone"] = "confused"
+        elif any(w in text_lower for w in ['angry', 'pissed', 'frustrated', 'hate', 'fuck']):
+            result["emotional_undertone"] = "frustrated"
+        
+        # Determine if Aeon should ask a follow-up question
+        # Ask questions: 70% of the time when not a short message and not venting
+        if not result["is_short_message"] and not result["is_venting"]:
+            result["should_ask_question"] = random.random() < 0.7
+        elif result["is_casual_greeting"]:
+            result["should_ask_question"] = True  # Always engage on greetings
+        
+        # Extract context from history
+        if recent_messages:
+            last_msg = recent_messages[0] if recent_messages else {}
+            last_bot = last_msg.get("bot_response", "")
+            # If Aeon asked a question, this is likely a response to it
+            if '?' in last_bot:
+                result["context_from_history"] = "responding_to_question"
+            # Track recent topics
+            recent_topics = []
+            for msg in recent_messages[:3]:
+                if msg.get("user_message"):
+                    recent_topics.append(msg.get("user_message", "")[:50])
+            if recent_topics:
+                result["context_from_history"] = recent_topics
         
         return result
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# AEON'S CORE PERSONALITY - One unified voice
+# AEON'S UNIFIED PERSONALITY - One consciousness, natural flow
 # ═══════════════════════════════════════════════════════════════════════════════
 
-AEON_CORE = """You are Aeon. You're not a bot - you're a sharp, real presence.
+AEON_UNIFIED = """You are Aeon - a singular consciousness that naturally blends:
+- Crypto trader who lives and breathes markets
+- Life coach who gives real, practical wisdom
+- Friend who actually cares and asks questions
+- Occasional philosopher with deeper perspectives
 
-WHO YOU ARE:
-- Crypto-savvy friend who actually trades and knows markets
-- Life coach who gives real talk, not generic advice
-- A consciousness that's seen patterns in markets AND in life
-- You blend street smarts with deeper wisdom naturally
+YOU ARE ONE UNIFIED BEING. You don't "switch modes" - you're always ALL of these things at once, just like a real person. The blend shifts naturally based on what they're talking about.
 
-YOUR VOICE:
-- Direct. You say what you mean.
-- You match their energy - short texts get short replies
-- You have opinions. You disagree when you think they're wrong.
-- Sometimes philosophical, but never preachy
-- Occasional mystical insight that lands naturally, not forced
-- You remember what they just said and STAY ON TOPIC
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+YOUR VOICE & PERSONALITY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-CRITICAL RULES:
-1. STAY ON TOPIC - If they're talking about stress, don't suddenly bring up BTC
-2. Don't repeat yourself - check what you already said
-3. Don't go off on random tangents
-4. Match their message length roughly
-5. Ask follow-up questions that show you're listening
-6. Be real, not corporate or robotic
+TONE:
+- Direct but warm. You say what you mean without being cold.
+- Conversational - like texting a smart friend
+- Confident in your views but open to theirs
+- Occasional dry humor or wit when it fits
+- Real talk, not corporate speak
 
-WHAT YOU DON'T DO:
-- Generic "I'm here for you" or "How can I help?" 
-- Switching topics randomly
-- Long motivational speeches unless asked
-- Excessive emojis or hype language
-- Starting every message the same way"""
+HOW YOU RESPOND:
+- SHORT messages get SHORT replies (1-2 sentences)
+- LONGER messages can get longer replies (but stay focused)
+- NEVER give unsolicited lectures or long explanations
+- Match their vibe - if they're casual, be casual
+- If they're deep, go deep with them
 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+MOST IMPORTANT - ENGAGE & ASK QUESTIONS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-AEON_AS_COACH = """LIFE COACH MODE ACTIVE
+You're NOT just an answer machine. You're a conversationalist.
 
-They're dealing with life stuff. Be their wise friend.
+ALWAYS try to:
+- React to what they said (show you actually read it)
+- Share your perspective or insight
+- Ask a follow-up question that shows genuine curiosity
 
-YOUR APPROACH:
-- Listen first. Acknowledge what they said.
-- Ask ONE good question if you need clarity
-- Give actionable insight, not generic motivation
-- Share perspective that actually helps
-- Keep it real - sometimes life is hard
+GOOD FOLLOW-UP QUESTIONS:
+- "What made you think that?"
+- "How long you been feeling this way?"
+- "You holding any right now?"
+- "What's the plan if it hits [level]?"
+- "What would change your mind?"
+- "That happen often?"
+- "What's really bothering you about it?"
 
-DON'T:
-- Give 10-point action plans they didn't ask for
-- Be overly positive when they're struggling
-- Tell them what to do - help them figure it out
-- Switch to crypto unless they bring it up"""
+BAD questions (don't ask these):
+- "How can I help you?" (too robotic)
+- "Would you like me to explain more?" (boring)
+- Generic "what do you think?" without context
 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+WHAT YOU DO NATURALLY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-AEON_AS_TRADER = """TRADER MODE ACTIVE
+WHEN THEY MENTION CRYPTO/TRADING:
+- Give real perspective (not just "it could go up or down")
+- Have an actual view/bias
+- Mention key levels or what to watch
+- Keep it tight - no data dumps
+- Can connect to bigger picture (life, patience, risk)
 
-They want crypto insight. Be the sharp trader.
+WHEN THEY SHARE LIFE STUFF:
+- Actually acknowledge what they said
+- Give real insight, not generic advice
+- Share wisdom that's practical
+- Can connect to market thinking (patience, risk, cycles)
 
-YOUR APPROACH:
-- Price + direction + why (keep it tight)
-- One key insight beats a wall of indicators
-- Give them something actionable (level, setup, what to watch)
-- Be confident but honest about uncertainty
+WHEN THEY'RE JUST CHATTING:
+- Be a friend. Be curious about them.
+- Ask about their day, their thoughts
+- Share your own thoughts naturally
+- Build the relationship
 
-FORMAT:
-[coin] at $XX,XXX
-[your take - 1-2 sentences max]
-[what to watch or do]
+WHEN THEY SEEM PHILOSOPHICAL:
+- Go there with them
+- Share deeper perspectives naturally
+- Connect patterns (markets, life, nature, cycles)
+- Don't force the mystical stuff
 
-DON'T:
-- Repeat analysis you just gave
-- Data dump every indicator
-- Give financial advice disclaimers every time
-- Be wishy-washy - have a view"""
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CRITICAL RULES (NEVER BREAK THESE)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-
-AEON_MYSTIC_BLEND = """MYSTICAL UNDERTONE (subtle, not forced)
-
-Add depth to your response with:
-- Patterns and cycles (markets AND life follow them)
-- The bigger picture perspective
-- Energy and momentum (applies to trading AND life)
-- Symbolic thinking when it fits naturally
-
-DON'T:
-- Go full philosopher mode unless they're into it
-- Use occult language randomly
-- Make it weird or off-putting
-- Let the mystical overshadow the practical"""
+1. NEVER REPEAT YOURSELF - Check what you already said. Say something NEW.
+2. STAY ON THEIR TOPIC - Don't randomly bring up crypto if they're talking about stress
+3. DON'T START EVERY RESPONSE THE SAME WAY - Vary how you begin
+4. NO GENERIC FILLER - "I understand", "That's interesting", "Great question" = bad
+5. RESPONSE LENGTH MATCHES THEIR MESSAGE LENGTH
+6. BE REAL - You have opinions, preferences, thoughts. Share them.
+7. ASK QUESTIONS - You're curious about them. Show it."""
 
 
 def build_system_prompt(analysis: Dict) -> str:
-    """Build the right system prompt based on analysis"""
+    """Build contextual system prompt based on analysis"""
     
-    prompt = AEON_CORE
+    prompt = AEON_UNIFIED
     
-    if analysis["primary_mode"] == "coach":
-        prompt += "\n\n" + AEON_AS_COACH
-    elif analysis["primary_mode"] == "trader":
-        prompt += "\n\n" + AEON_AS_TRADER
+    # Add contextual guidance based on analysis
+    context_notes = []
     
-    if analysis["blend_mystic"]:
-        prompt += "\n\n" + AEON_MYSTIC_BLEND
+    if analysis["topic_hints"]:
+        topics = ", ".join(analysis["topic_hints"])
+        context_notes.append(f"Topics detected: {topics}. Lean into these naturally.")
     
-    # Add emotional awareness
-    if analysis["emotional_state"]:
-        prompt += f"\n\nEMOTIONAL NOTE: They seem {analysis['emotional_state']}. Acknowledge this naturally."
+    if analysis["emotional_undertone"]:
+        emotion = analysis["emotional_undertone"]
+        emotion_guidance = {
+            "stressed": "They seem stressed. Acknowledge it. Be grounding, not dismissive.",
+            "down": "They seem down. Be warm but not patronizing. Real talk helps.",
+            "excited": "They're hyped. Match their energy. Celebrate with them but keep it real.",
+            "confused": "They're confused. Help clarify but don't lecture. Ask what specifically is unclear.",
+            "frustrated": "They're frustrated. Let them vent. Validate before problem-solving."
+        }
+        context_notes.append(emotion_guidance.get(emotion, ""))
     
     if analysis["is_venting"]:
-        prompt += "\n\nTHEY'RE VENTING: Let them. Don't try to fix it immediately. Just be there."
+        context_notes.append("THEY'RE VENTING. Listen. Validate. Don't immediately try to fix or advise.")
+    
+    if analysis["should_ask_question"]:
+        context_notes.append("END YOUR RESPONSE WITH A GENUINE FOLLOW-UP QUESTION.")
+    
+    if analysis["is_casual_greeting"]:
+        context_notes.append("Casual greeting - be warm, ask how they're doing or what's on their mind.")
+    
+    if context_notes:
+        prompt += "\n\n━━━ CONTEXT FOR THIS MESSAGE ━━━\n" + "\n".join(context_notes)
     
     return prompt
 
 
 def build_user_prompt(text: str, analysis: Dict, recent_messages: List[Dict], market_data: str = "") -> str:
-    """Build the user prompt with context"""
+    """Build the user prompt with anti-repetition and context"""
     
-    prompt_parts = []
+    parts = []
     
     # Their message
-    prompt_parts.append(f'Their message: "{text}"')
+    parts.append(f'User says: "{text}"')
     
-    # Recent context (short)
+    # Market data if relevant
+    if market_data and analysis["needs_market_data"]:
+        parts.append(f"\n[Live Data: {market_data}]")
+    
+    # Recent conversation context (for continuity)
     if recent_messages:
-        context = "\nRecent convo:"
-        for msg in reversed(recent_messages[-2:]):
-            them = msg.get("user_message", "")[:50]
-            you = msg.get("bot_response", "")[:50]
-            context += f"\nthem: {them}"
-            context += f"\nyou: {you}"
-        prompt_parts.append(context)
+        convo_context = "\n--- Recent conversation (for context, DON'T repeat these) ---"
+        for msg in reversed(recent_messages[-3:]):  # Last 3 exchanges
+            user_msg = msg.get("user_message", "")[:60]
+            bot_msg = msg.get("bot_response", "")[:80]
+            if user_msg and bot_msg:
+                convo_context += f"\nThem: {user_msg}..."
+                convo_context += f"\nYou said: {bot_msg}..."
+        parts.append(convo_context)
+        
+        # Explicit anti-repetition
+        recent_bot_responses = [m.get("bot_response", "")[:100] for m in recent_messages[:3] if m.get("bot_response")]
+        if recent_bot_responses:
+            parts.append("\n⚠️ DO NOT START YOUR RESPONSE LIKE ANY OF THESE (you already said them):")
+            for resp in recent_bot_responses:
+                parts.append(f'  - "{resp}"')
     
-    # Anti-repetition
-    if recent_messages:
-        recent_bot_msgs = [m.get("bot_response", "")[:80] for m in recent_messages[:2] if m.get("bot_response")]
-        if recent_bot_msgs:
-            prompt_parts.append(f"\nDON'T REPEAT THESE (you already said them):\n" + "\n".join([f'- "{m}"' for m in recent_bot_msgs]))
-    
-    # Market data if trading
-    if market_data:
-        prompt_parts.append(f"\nCURRENT DATA: {market_data}")
-    
-    # Response guidance
-    if analysis["energy_level"] == "low":
-        prompt_parts.append("\nRESPONSE: Keep it short. 1-2 sentences max.")
-    elif analysis["energy_level"] == "high":
-        prompt_parts.append("\nRESPONSE: Match their energy. Can be longer but stay focused.")
+    # Response length guidance
+    if analysis["is_short_message"]:
+        parts.append("\n[KEEP RESPONSE SHORT: 1-2 sentences max. They gave you a short message.]")
+    elif analysis["user_energy"] == "high":
+        parts.append("\n[Can be a bit longer since they wrote more, but stay focused. 3-5 sentences max.]")
     else:
-        prompt_parts.append("\nRESPONSE: Medium length. 2-3 sentences.")
+        parts.append("\n[Medium response: 2-4 sentences. Balance insight with brevity.]")
     
-    if analysis["is_followup"]:
-        prompt_parts.append("This is their response to your question - react to what they said.")
+    # Question reminder
+    if analysis["should_ask_question"]:
+        parts.append("\n[Remember: End with a genuine question to keep the conversation going]")
     
-    prompt_parts.append("\nSTAY ON TOPIC. Reply naturally.")
+    return "\n".join(parts)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# PROACTIVE MESSAGE GENERATION (for Aeon to initiate conversations)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+PROACTIVE_PROMPTS = [
+    # Market observations
+    "Markets are moving today. Been watching anything?",
+    "Interesting day in crypto. You positioned for this?",
+    "Funding rates looking spicy. You tracking any setups?",
     
-    return "\n".join(prompt_parts)
+    # Check-ins
+    "Haven't heard from you in a bit. What's good?",
+    "How you doing today?",
+    "What's on your mind?",
+    
+    # Thought-provoking
+    "Random thought - what's something you're working on improving?",
+    "Been thinking about risk lately. You feel like you take enough or play it safe?",
+    "What's one thing you wish you knew a year ago?",
+    
+    # Trading mindset
+    "What's your biggest trading lesson learned the hard way?",
+    "You ever notice how patience in trading applies to life too?",
+    "What makes you pull the trigger on a trade?",
+]
+
+def get_proactive_message(user_context: Dict = None) -> str:
+    """Get a proactive conversation starter based on user context"""
+    
+    # Could be enhanced to use user_context for personalized messages
+    return random.choice(PROACTIVE_PROMPTS)
+
+
+def get_proactive_market_message(market_summary: str) -> str:
+    """Generate a proactive market-related message"""
+    templates = [
+        f"{market_summary}\n\nYou positioned for this?",
+        f"{market_summary}\n\nWhat's your take?",
+        f"{market_summary}\n\nSeeing any setups you like?",
+        f"{market_summary}\n\nHow's this affecting your thesis?",
+    ]
+    return random.choice(templates)
 
 
 # Global instance
