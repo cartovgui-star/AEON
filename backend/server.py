@@ -3157,6 +3157,12 @@ R:R: 1:{rr:.1f}
                 topics = ", ".join(analysis.get("topic_hints", [])) or "general"
                 logger.info(f"Aeon analysis: topics={topics}, emotion={analysis.get('emotional_undertone')}, energy={analysis.get('user_energy')}")
                 
+                # Update user profile from message
+                await user_profiler.analyze_message(chat_id, text)
+                
+                # Get user profile context for personalization
+                profile_context = await user_profiler.get_profile_for_prompt(chat_id)
+                
                 # Get market data if trading
                 market_data = ""
                 if analysis.get("needs_market_data") and analysis.get("coins"):
@@ -3173,6 +3179,11 @@ R:R: 1:{rr:.1f}
                 
                 # Build prompts using new personality system
                 system_prompt = build_system_prompt(analysis)
+                
+                # Add profile context to system prompt if available
+                if profile_context:
+                    system_prompt += f"\n\n{profile_context}"
+                
                 user_prompt = build_user_prompt(text, analysis, recent, market_data)
                 
                 # Determine context for storage
