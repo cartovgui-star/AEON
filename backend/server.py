@@ -1413,7 +1413,8 @@ async def api_open_predictions():
 async def api_trading_toggle(active: bool = True):
     """Toggle autonomous trading on/off"""
     autonomous_trader_v2.active = active
-    return {"active": autonomous_trader_v2.active, "message": f"Trading {'activated' if active else 'paused'}"}
+    await autonomous_trader_v2.save_settings()  # Persist to DB
+    return {"active": autonomous_trader_v2.active, "message": f"Trading {'activated' if active else 'paused'}", "engine": "v2"}
 
 
 @api_router.get("/trading/summary")
