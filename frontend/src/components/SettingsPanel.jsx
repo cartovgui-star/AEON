@@ -91,13 +91,24 @@ export default function SettingsPanel() {
     setSaving(true);
     try {
       await Promise.all([
+        // Auto Trader settings
         fetch(`${API_URL}/api/trading/toggle?active=${settings.autoTraderEnabled}`, { method: 'POST' }),
         fetch(`${API_URL}/api/trading/v2/confidence?min_conf=${settings.minConfidence}`, { method: 'POST' }),
+        // Free Will settings
         fetch(`${API_URL}/api/freewill/toggle?active=${settings.freeWillEnabled}`, { method: 'POST' }),
-        fetch(`${API_URL}/api/freewill/confidence?min_conf=${settings.freeWillMinConf}`, { method: 'POST' })
+        fetch(`${API_URL}/api/freewill/confidence?min_conf=${settings.freeWillMinConf}`, { method: 'POST' }),
+        // Day Trader settings
+        fetch(`${API_URL}/api/dual/day-trader/toggle?active=${settings.dayTraderEnabled}`, { method: 'POST' }),
+        fetch(`${API_URL}/api/dual/day-trader/confidence?min_conf=${settings.dayTraderConf}`, { method: 'POST' }),
+        // Long Term settings
+        fetch(`${API_URL}/api/dual/long-term/toggle?active=${settings.longTermEnabled}`, { method: 'POST' }),
+        fetch(`${API_URL}/api/dual/long-term/confidence?min_conf=${settings.longTermConf}`, { method: 'POST' })
       ]);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
+      // Refresh stats after saving
+      fetchDualStats();
+      fetchFreeWillStats();
     } catch (err) {
       console.error('Failed to save:', err);
     }
