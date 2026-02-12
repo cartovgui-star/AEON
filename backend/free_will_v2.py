@@ -1,7 +1,7 @@
 """
-AEON FREE WILL ENGINE v2
+AEON FREE WILL ENGINE v2.1
 Ultra-selective alerting using ALL data sources:
-- Technical Analysis (RSI, MACD, BB, EMA)
+- Technical Analysis (RSI, MACD, BB, EMA, Stochastic)
 - Divergence Detection (RSI/MACD divergence)
 - Market Structure (HH/HL/LH/LL, BOS)
 - VWAP (institutional levels)
@@ -9,8 +9,10 @@ Ultra-selective alerting using ALL data sources:
 - Options Data (max pain, put/call ratio)
 - Derivatives (funding, OI, L/S ratio)
 - Fear & Greed Index
+- Multi-Timeframe Alignment
 
 ONLY alerts on setups with 80%+ confidence AND multiple confirmations
+NO CONTRADICTING SIGNALS - tracks recent direction per symbol
 """
 
 import asyncio
@@ -25,7 +27,7 @@ logger = logging.getLogger(__name__)
 PRIORITY_TIMEFRAMES = ["4h", "1h", "1d"]  # Only alert on these
 SCAN_TIMEFRAMES = ["15m", "1h", "4h", "1d"]  # Scan these for confluence
 
-# Top pairs for scanning (reduced from 44 to 20 for quality)
+# Top pairs for scanning
 TOP_PAIRS = [
     "BTC/USDT", "ETH/USDT", "SOL/USDT", "BNB/USDT", "XRP/USDT",
     "DOGE/USDT", "ADA/USDT", "AVAX/USDT", "LINK/USDT", "DOT/USDT",
@@ -36,15 +38,16 @@ TOP_PAIRS = [
 
 class FreeWillEngineV2:
     """
-    Ultra-selective Free Will Engine
+    Ultra-selective Free Will Engine v2.1
     
     ONLY sends alerts when:
     1. Confidence >= 80%
     2. At least 3 different data sources confirm
     3. Higher timeframe (1h, 4h, 1d) 
-    4. 30-minute cooldown per symbol
+    4. 20-minute cooldown per symbol
+    5. NO CONTRADICTING SIGNALS - won't flip direction within 2 hours
     
-    Uses: TA + Divergence + Structure + VWAP + CVD + Options + Derivatives
+    Uses: TA + Divergence + Structure + VWAP + CVD + Options + Derivatives + MTF
     """
     
     def __init__(self, db: AsyncIOMotorDatabase):
@@ -53,13 +56,17 @@ class FreeWillEngineV2:
         self.min_confidence = 80  # High bar - only the best
         self.min_confirmations = 3  # Need 3+ data sources agreeing
         
-        # Alert tracking - 30 min cooldown per symbol
+        # Alert tracking - 20 min cooldown per symbol
         self.recent_alerts: Dict[str, datetime] = {}
-        self.alert_cooldown = 1800  # 30 minutes between alerts per symbol
+        self.alert_cooldown = 1200  # 20 minutes between alerts per symbol
         
-        # Daily alert limit
+        # ANTI-CONTRADICTION: Track last direction per symbol (2hr memory)
+        self.last_direction: Dict[str, tuple] = {}  # symbol -> (direction, timestamp)
+        self.direction_lock_time = 7200  # 2 hours - don't flip direction
+        
+        # Daily alert limit (increased for better coverage)
         self.daily_alerts = 0
-        self.max_daily_alerts = 10  # Max 10 alerts per day
+        self.max_daily_alerts = 15  # Max 15 alerts per day
         self.last_reset = datetime.now(timezone.utc).date()
         
         # External dependencies
@@ -76,6 +83,7 @@ class FreeWillEngineV2:
         # Stats
         self.total_alerts_sent = 0
         self.setups_analyzed = 0
+        self.contradictions_blocked = 0
     
     def set_dependencies(self, **kwargs):
         """Set all external dependencies"""
