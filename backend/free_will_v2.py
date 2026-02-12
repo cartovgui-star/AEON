@@ -481,6 +481,50 @@ class FreeWillEngineV2:
         
         return setups[:3]  # Max 3 setups per scan
     
+    async def validate_and_format_alert(self, setup: Dict) -> tuple:
+        """
+        Validate setup price is still valid and format alert
+        Returns (message, is_valid)
+        """
+        direction = setup.get("direction", "")
+        symbol = setup.get("symbol", "")
+        entry = setup.get("entry", 0)
+        
+        # Fetch fresh price to validate
+        if self.market_intel:
+            try:
+                ta = await self.market_intel.get_technical_analysis(symbol.replace("/", ""), "1h")
+                current_price = ta.get("price", 0)
+                
+                if current_price:
+                    # Check if price has moved too far from entry (invalidates setup)
+                    price_diff_pct = abs((current_price - entry) / entry * 100)
+                    
+                    if price_diff_pct > 1.5:  # Elite alerts - tighter validation (1.5%)
+                        logger.info(f"Free Will setup invalidated: {symbol} price moved {price_diff_pct:.1f}% from entry")
+                        return None, False
+                    
+                    # Update entry to current price for more accurate alert
+                    setup["entry"] = current_price
+                    
+                    # Recalculate SL/TP based on fresh price
+                    indicators = ta.get("indicators", {})
+                    atr = indicators.get("atr", current_price * 0.02)
+                    
+                    if direction == "LONG":
+                        setup["stop"] = current_price - (atr * 1.5)
+                        setup["target"] = current_price + (atr * 3)
+                    else:
+                        setup["stop"] = current_price + (atr * 1.5)
+                        setup["target"] = current_price - (atr * 3)
+                    
+                    setup["price"] = current_price
+            except Exception as e:
+                logger.error(f"Free Will price validation error: {e}")
+        
+        msg = self.format_alert(setup)
+        return msg, True
+    
     def format_alert(self, setup: Dict) -> str:
         """Format elite alert message"""
         direction = setup.get("direction", "")
