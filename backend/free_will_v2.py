@@ -508,7 +508,7 @@ This is a high-quality setup. DYOR."""
             "max_daily_alerts": self.max_daily_alerts,
             "setups_analyzed": self.setups_analyzed,
             "contradictions_blocked": self.contradictions_blocked,
-            "recent_directions": {k: v[0] for k, v in self.last_direction.items()}
+            "recent_directions": {k: v[0] for k, v in self.last_direction.items()},
             "pairs_monitored": len(TOP_PAIRS),
             "timeframes": PRIORITY_TIMEFRAMES,
             "data_sources": [
