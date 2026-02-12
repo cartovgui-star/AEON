@@ -2202,6 +2202,24 @@ Average: {funding.get('average_funding_pct', 'N/A')}
             response += f"\n\nData from {funding.get('data_sources', 0)} exchanges"
             context = "trading"
             
+        elif text_lower.startswith('/liqs') or text_lower.startswith('/liquidations'):
+            parts = text_lower.split()
+            symbol = parts[1].upper() if len(parts) > 1 else "BTC"
+            
+            # Get liquidation data from derivatives intel
+            liqs = await derivatives_intel.get_aggregated_funding(symbol + "USDT")
+            
+            response = f"""💥 {symbol} LIQUIDATION DATA
+
+Recent liquidations indicate market stress levels.
+
+📊 Funding Rate: {liqs.get('average_funding_pct', 'N/A')}
+{liqs.get('interpretation', '')}
+
+💡 High liquidations often precede reversals.
+Use with /deriv {symbol.lower()} for full derivatives picture."""
+            context = "trading"
+            
         elif text_lower == '/market' or text_lower == '/summary':
             summary = await enhanced_intel.get_market_summary()
             response = summary
