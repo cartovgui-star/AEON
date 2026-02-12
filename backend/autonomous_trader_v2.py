@@ -60,20 +60,26 @@ class AutonomousTraderV2:
     
     def __init__(self, db: AsyncIOMotorDatabase):
         self.db = db
-        self.active = True
+        self.active = True  # Always active
         
-        # Quality thresholds - Lower for paper trading
-        self.min_confidence = 70  # Lowered for more action
-        self.min_confirmations = 3  # Need 3+ data sources agreeing
+        # AGGRESSIVE MODE - High leverage scalping/day trading
+        self.min_confidence = 60  # Lower threshold = more trades
+        self.min_confirmations = 2  # Need 2+ data sources agreeing
         
-        # Position sizing
-        self.base_position_pct = 2  # 2% of capital per trade
-        self.max_position_pct = 5  # Max 5% for highest confidence
+        # LEVERAGE SETTINGS
+        self.max_leverage = 200  # Up to 200x
+        self.min_leverage = 10   # Minimum 10x
+        self.dynamic_leverage = True  # Auto-adjust based on confidence
         
-        # Risk management
-        self.max_open_trades = 10  # Max concurrent positions
-        self.default_stop_atr = 2.0  # 2x ATR for stop
-        self.default_target_atr = 4.0  # 4x ATR for target (2:1 R:R)
+        # Position sizing (aggressive)
+        self.base_position_pct = 5   # 5% of capital per trade
+        self.max_position_pct = 15   # Max 15% for highest confidence
+        self.default_position_size = 1000  # $1000 per trade base
+        
+        # Risk management (aggressive but controlled)
+        self.max_open_trades = 15  # More concurrent positions
+        self.default_stop_atr = 1.5  # Tighter stop 1.5x ATR
+        self.default_target_atr = 3.0  # 3x ATR for target (2:1 R:R)
         
         # Trade tracking
         self.open_trades: List[Dict] = []
