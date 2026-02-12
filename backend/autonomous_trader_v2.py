@@ -62,9 +62,9 @@ class AutonomousTraderV2:
         self.db = db
         self.active = True
         
-        # Quality thresholds
-        self.min_confidence = 85  # High bar for trades
-        self.min_confirmations = 4  # Need 4+ data sources agreeing
+        # Quality thresholds - Lower for paper trading
+        self.min_confidence = 70  # Lowered for more action
+        self.min_confirmations = 3  # Need 3+ data sources agreeing
         
         # Position sizing
         self.base_position_pct = 2  # 2% of capital per trade
