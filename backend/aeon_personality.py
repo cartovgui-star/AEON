@@ -121,7 +121,7 @@ class AeonMind:
             result["primary_mode"] = "coach"
             if mystic_score > 10:
                 result["blend_mystic"] = True
-        elif mystic_score > 20:
+        elif mystic_score > 15:
             result["primary_mode"] = "mystic"
         else:
             result["primary_mode"] = "buddy"
