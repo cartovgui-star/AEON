@@ -103,6 +103,25 @@ class FreeWillEngineV2:
         if today > self.last_reset:
             self.daily_alerts = 0
             self.last_reset = today
+            # Clean up old tracking data to prevent memory growth
+            self._cleanup_old_tracking()
+    
+    def _cleanup_old_tracking(self):
+        """Remove stale entries from tracking dictionaries"""
+        now = datetime.now(timezone.utc)
+        cutoff = now - timedelta(hours=24)  # Remove entries older than 24h
+        
+        # Clean recent_alerts
+        self.recent_alerts = {
+            k: v for k, v in self.recent_alerts.items()
+            if v > cutoff
+        }
+        
+        # Clean last_direction
+        self.last_direction = {
+            k: v for k, v in self.last_direction.items()
+            if v[1] > cutoff
+        }
     
     def _can_alert(self, symbol: str, direction: str = None) -> bool:
         """Check if we can send alert for this symbol"""
