@@ -1474,6 +1474,85 @@ async def api_trading_v2_closed():
     }
 
 
+@api_router.get("/trading/v2/pnl-history")
+async def api_trading_v2_pnl_history():
+    """Get PnL history for chart visualization"""
+    history = []
+    cumulative_pnl = 0
+    
+    # Get closed trades with timestamps
+    for trade in autonomous_trader_v2.closed_trades:
+        cumulative_pnl += trade.get("pnl_pct", 0)
+        history.append({
+            "timestamp": trade.get("exit_time", trade.get("closed_at", datetime.now(timezone.utc))).isoformat() if isinstance(trade.get("exit_time"), datetime) else str(trade.get("exit_time", "")),
+            "symbol": trade.get("symbol", ""),
+            "pnl": trade.get("pnl_pct", 0),
+            "cumulative_pnl": round(cumulative_pnl, 2),
+            "direction": trade.get("direction", ""),
+            "result": "WIN" if trade.get("pnl_pct", 0) > 0 else "LOSS"
+        })
+    
+    return {
+        "history": history,
+        "total_trades": len(history),
+        "total_pnl": round(cumulative_pnl, 2),
+        "wins": len([h for h in history if h["result"] == "WIN"]),
+        "losses": len([h for h in history if h["result"] == "LOSS"])
+    }
+
+
+@api_router.get("/trading/v2/live-positions")
+async def api_trading_v2_live_positions():
+    """Get open positions with real-time PnL from MEXC"""
+    positions = []
+    total_pnl = 0
+    
+    for trade in autonomous_trader_v2.open_trades:
+        try:
+            # Get live price from MEXC
+            ticker = await market_intel.get_ticker(trade["symbol"])
+            current_price = ticker.get("price", 0) if ticker and "error" not in ticker else 0
+            
+            entry = trade.get("entry_price", 0)
+            direction = trade.get("direction", "")
+            
+            # Calculate real-time PnL
+            if entry and current_price:
+                if direction == "LONG":
+                    pnl_pct = ((current_price - entry) / entry) * 100
+                else:
+                    pnl_pct = ((entry - current_price) / entry) * 100
+            else:
+                pnl_pct = 0
+            
+            total_pnl += pnl_pct
+            
+            positions.append({
+                "id": trade.get("id"),
+                "symbol": trade.get("symbol"),
+                "direction": direction,
+                "entry_price": entry,
+                "current_price": current_price,
+                "stop_price": trade.get("stop_price"),
+                "target_price": trade.get("target_price"),
+                "trail_stop": trade.get("trail_stop"),
+                "pnl_pct": round(pnl_pct, 2),
+                "confidence": trade.get("confidence"),
+                "timeframe": trade.get("timeframe"),
+                "entry_time": trade.get("entry_time").isoformat() if isinstance(trade.get("entry_time"), datetime) else str(trade.get("entry_time", "")),
+                "confirmations": trade.get("confirmations", [])[:3]  # Top 3 reasons
+            })
+        except Exception as e:
+            logger.error(f"Error getting live position data: {e}")
+    
+    return {
+        "positions": positions,
+        "total_positions": len(positions),
+        "total_pnl_pct": round(total_pnl, 2),
+        "data_source": "MEXC Live"
+    }
+
+
 @api_router.post("/trading/v2/confidence")
 async def api_trading_v2_confidence(min_conf: int = 85):
     """Set v2 minimum confidence threshold (70-98)."""
