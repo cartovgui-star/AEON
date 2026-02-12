@@ -311,63 +311,89 @@ export default function Trading() {
       {activeTab === 'positions' && (
         <div className="space-y-3" data-testid="positions-list">
           {livePositions.length > 0 ? (
-            livePositions.map((position, i) => (
-              <div 
-                key={position.id || i} 
-                data-testid={`position-${position.symbol?.replace('/USDT', '')}`}
-                className={`bg-zinc-800/30 rounded-xl p-4 border ${
-                  position.direction === 'LONG' ? 'border-green-500/30' : 'border-red-500/30'
-                }`}
-              >
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-3">
-                    <span className={`px-2 py-1 rounded text-xs font-bold ${
-                      position.direction === 'LONG' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
-                    }`}>
-                      {position.direction}
-                    </span>
-                    <span className="text-white font-medium text-lg">{position.symbol?.replace('/USDT', '')}</span>
-                    <span className={`text-sm font-bold ${position.pnl_pct >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                      {position.pnl_pct >= 0 ? '+' : ''}{position.pnl_pct?.toFixed(2)}%
-                    </span>
+            livePositions.map((position, i) => {
+              // Calculate USD PnL (assume $1000 position size if not specified)
+              const positionSize = position.position_size || 1000;
+              const pnlUsd = (position.pnl_pct / 100) * positionSize;
+              const tradeType = position.trade_type || 
+                (position.timeframe === '15m' || position.timeframe === '5m' ? 'SCALP' : 
+                 position.timeframe === '1h' ? 'DAY' : 'SWING');
+              
+              return (
+                <div 
+                  key={position.id || i} 
+                  data-testid={`position-${position.symbol?.replace('/USDT', '')}`}
+                  className={`bg-zinc-800/30 rounded-xl p-4 border ${
+                    position.direction === 'LONG' ? 'border-green-500/30' : 'border-red-500/30'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      <span className={`px-2 py-1 rounded text-xs font-bold ${
+                        position.direction === 'LONG' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
+                      }`}>
+                        {position.direction}
+                      </span>
+                      <span className={`px-2 py-1 rounded text-xs font-medium ${
+                        tradeType === 'SCALP' ? 'bg-purple-500/20 text-purple-400' :
+                        tradeType === 'DAY' ? 'bg-blue-500/20 text-blue-400' : 'bg-amber-500/20 text-amber-400'
+                      }`}>
+                        {tradeType}
+                      </span>
+                      <span className="text-white font-medium text-lg">{position.symbol?.replace('/USDT', '')}</span>
+                    </div>
+                    {/* Live PnL Display */}
+                    <div className="flex items-center gap-4">
+                      <div className="text-right">
+                        <p className={`text-lg font-bold ${position.pnl_pct >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                          {position.pnl_pct >= 0 ? '+' : ''}{position.pnl_pct?.toFixed(2)}%
+                        </p>
+                        <p className={`text-sm ${pnlUsd >= 0 ? 'text-green-400/70' : 'text-red-400/70'}`}>
+                          {pnlUsd >= 0 ? '+' : ''}${pnlUsd.toFixed(2)} USD
+                        </p>
+                      </div>
+                      <button 
+                        onClick={() => closeTrade(position.symbol)}
+                        className="p-2 bg-red-500/20 rounded-lg text-red-400 hover:bg-red-500/30 transition-all"
+                        title="Close Position"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
-                  <button 
-                    onClick={() => closeTrade(position.symbol)}
-                    className="p-2 bg-red-500/20 rounded-lg text-red-400 hover:bg-red-500/30 transition-all"
-                    title="Close Position"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-sm">
-                  <div>
-                    <p className="text-zinc-500 text-xs">Entry</p>
-                    <p className="text-white">${position.entry_price?.toLocaleString()}</p>
+                  <div className="grid grid-cols-2 sm:grid-cols-6 gap-3 text-sm">
+                    <div>
+                      <p className="text-zinc-500 text-xs">Entry</p>
+                      <p className="text-white">${position.entry_price?.toLocaleString()}</p>
+                    </div>
+                    <div>
+                      <p className="text-zinc-500 text-xs">Current</p>
+                      <p className={position.pnl_pct >= 0 ? 'text-green-400' : 'text-red-400'}>
+                        ${position.current_price?.toLocaleString()}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-zinc-500 text-xs">Stop Loss</p>
+                      <p className="text-red-400">${position.stop_price?.toLocaleString()}</p>
+                    </div>
+                    <div>
+                      <p className="text-zinc-500 text-xs">Target</p>
+                      <p className="text-green-400">${position.target_price?.toLocaleString()}</p>
+                    </div>
+                    <div>
+                      <p className="text-zinc-500 text-xs">Confidence</p>
+                      <p className="text-orange-400">{position.confidence}%</p>
+                    </div>
+                    <div>
+                      <p className="text-zinc-500 text-xs">Size</p>
+                      <p className="text-white">${positionSize.toLocaleString()}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-zinc-500 text-xs">Current</p>
-                    <p className={position.pnl_pct >= 0 ? 'text-green-400' : 'text-red-400'}>
-                      ${position.current_price?.toLocaleString()}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-zinc-500 text-xs">Stop Loss</p>
-                    <p className="text-red-400">${position.stop_price?.toLocaleString()}</p>
-                  </div>
-                  <div>
-                    <p className="text-zinc-500 text-xs">Target</p>
-                    <p className="text-green-400">${position.target_price?.toLocaleString()}</p>
-                  </div>
-                  <div>
-                    <p className="text-zinc-500 text-xs">Confidence</p>
-                    <p className="text-orange-400">{position.confidence}%</p>
-                  </div>
-                </div>
-                {position.confirmations && position.confirmations.length > 0 && (
-                  <div className="mt-2 pt-2 border-t border-zinc-700/50">
-                    <p className="text-zinc-500 text-xs">
-                      {position.confirmations.slice(0, 3).join(' • ')}
-                    </p>
+                  {position.confirmations && position.confirmations.length > 0 && (
+                    <div className="mt-2 pt-2 border-t border-zinc-700/50">
+                      <p className="text-zinc-500 text-xs">
+                        {position.confirmations.slice(0, 3).join(' • ')}
+                      </p>
                   </div>
                 )}
               </div>
