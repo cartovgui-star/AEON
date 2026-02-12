@@ -701,7 +701,7 @@ async def lifespan(app: FastAPI):
     freewill_task = asyncio.create_task(free_will_scanner())
     alert_task = asyncio.create_task(price_alert_system.run_forever())
     
-    logger.info("🚀 AEON AUTONOMOUS TRADER v2 ACTIVATED - Elite trades only (85%+ conf, 4+ confirmations)")
+    logger.info(f"🚀 AEON PAPER TRADING ACTIVATED - {autonomous_trader_v2.min_confidence}%+ conf, {autonomous_trader_v2.min_confirmations}+ confirmations")
     logger.info("🎯 AEON FREE WILL v2 ACTIVATED - Elite alerts only (80%+ conf, 3+ confirmations)")
     logger.info("🔔 AEON PRICE ALERT SYSTEM ACTIVATED - Real-time monitoring")
     logger.info("🔌 WEBSOCKET MANAGER READY - Real-time client connections")
