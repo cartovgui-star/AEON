@@ -315,9 +315,11 @@ export default function Trading() {
         <div className="space-y-3" data-testid="positions-list">
           {livePositions.length > 0 ? (
             livePositions.map((position, i) => {
-              // Calculate USD PnL (assume $1000 position size if not specified)
+              // Calculate USD PnL with leverage
               const positionSize = position.position_size || 1000;
-              const pnlUsd = (position.pnl_pct / 100) * positionSize;
+              const leverage = position.leverage || 10;
+              const pnlWithLeverage = position.pnl_pct * leverage;
+              const pnlUsd = (pnlWithLeverage / 100) * positionSize;
               const tradeType = position.trade_type || 
                 (position.timeframe === '15m' || position.timeframe === '5m' ? 'SCALP' : 
                  position.timeframe === '1h' ? 'DAY' : 'SWING');
@@ -331,7 +333,7 @@ export default function Trading() {
                   }`}
                 >
                   <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
                       <span className={`px-2 py-1 rounded text-xs font-bold ${
                         position.direction === 'LONG' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
                       }`}>
@@ -343,13 +345,16 @@ export default function Trading() {
                       }`}>
                         {tradeType}
                       </span>
+                      <span className="px-2 py-1 rounded text-xs font-bold bg-orange-500/20 text-orange-400">
+                        {leverage}x
+                      </span>
                       <span className="text-white font-medium text-lg">{position.symbol?.replace('/USDT', '')}</span>
                     </div>
                     {/* Live PnL Display */}
                     <div className="flex items-center gap-4">
                       <div className="text-right">
-                        <p className={`text-lg font-bold ${position.pnl_pct >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                          {position.pnl_pct >= 0 ? '+' : ''}{position.pnl_pct?.toFixed(2)}%
+                        <p className={`text-lg font-bold ${pnlWithLeverage >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                          {pnlWithLeverage >= 0 ? '+' : ''}{pnlWithLeverage.toFixed(2)}%
                         </p>
                         <p className={`text-sm ${pnlUsd >= 0 ? 'text-green-400/70' : 'text-red-400/70'}`}>
                           {pnlUsd >= 0 ? '+' : ''}${pnlUsd.toFixed(2)} USD
