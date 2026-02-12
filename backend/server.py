@@ -3103,6 +3103,44 @@ Regime: {signals[0].get('market_regime', 'N/A')}
 
 👁️ «Elite setups revealed. Choose wisely.»"""
             context = "trading"
+        
+        elif text_lower.startswith('/leverage') or text_lower.startswith('/lev'):
+            parts = text_lower.split()
+            if len(parts) >= 2:
+                try:
+                    new_lev = int(parts[1])
+                    if 1 <= new_lev <= 200:
+                        autonomous_trader_v2.max_leverage = new_lev
+                        response = f"""⚡ LEVERAGE UPDATED
+
+Max Leverage: {new_lev}x
+Dynamic Leverage: {'ON' if autonomous_trader_v2.dynamic_leverage else 'OFF'}
+Min Leverage: {autonomous_trader_v2.min_leverage}x
+
+Leverage scales with confidence:
+• 60% conf → ~{autonomous_trader_v2.min_leverage}x
+• 80% conf → ~{int(autonomous_trader_v2.min_leverage + (new_lev - autonomous_trader_v2.min_leverage) * 0.57)}x
+• 95% conf → ~{new_lev}x
+
+⚠️ Higher leverage = higher risk/reward"""
+                    else:
+                        response = "❌ Leverage must be between 1x and 200x"
+                except ValueError:
+                    response = "❌ Invalid leverage value. Example: /leverage 100"
+            else:
+                response = f"""⚡ LEVERAGE SETTINGS
+
+Max Leverage: {autonomous_trader_v2.max_leverage}x
+Min Leverage: {autonomous_trader_v2.min_leverage}x
+Dynamic: {'ON' if autonomous_trader_v2.dynamic_leverage else 'OFF'}
+
+Commands:
+/leverage 50 - Set max to 50x
+/leverage 100 - Set max to 100x
+/leverage 200 - Set max to 200x (DEGEN)
+
+Current trades use dynamic leverage based on confidence."""
+            context = "trading"
             
         elif text_lower == '/strategy':
             report = await autonomous_trader.get_strategy_report()
