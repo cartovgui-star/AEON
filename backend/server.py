@@ -1441,13 +1441,6 @@ async def api_strategy_weights():
     }
 
 
-@api_router.post("/trading/toggle")
-async def api_toggle_trading(active: bool = True):
-    """Toggle autonomous trading v2 on/off."""
-    autonomous_trader_v2.active = active
-    return {"active": autonomous_trader_v2.active, "engine": "v2"}
-
-
 @api_router.get("/trading/analyze/{symbol}")
 async def api_analyze_symbol(symbol: str, timeframe: str = "4h"):
     """Get detailed v2 analysis for a symbol."""
