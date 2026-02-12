@@ -399,33 +399,37 @@ Stop: ${analysis.get('stop_loss', 0):,.2f}
 
 
 async def freewill_proactive(chat_id: int):
+    """Aeon reaches out naturally - checking in or sharing market observations"""
+    from aeon_personality import get_proactive_message, get_proactive_market_message
+    
     now = datetime.now()
-    if chat_id in last_freewill_message and (now - last_freewill_message[chat_id]).total_seconds() < 7200:
+    # Cooldown: at least 4 hours between proactive messages
+    if chat_id in last_freewill_message and (now - last_freewill_message[chat_id]).total_seconds() < 14400:
         return
     
     last_freewill_message[chat_id] = now
     
-    # 40% Quantum probe, 60% market insight
-    if random.random() < 0.4:
-        msg = await generate_quantum_probe(chat_id, mode="light")
-        msg = f"🔮 QUANTUM MASON:\n\n{msg}"
+    # 50% chance: pure check-in, 50% chance: market observation
+    if random.random() < 0.5:
+        # Natural check-in (no market data)
+        msg = get_proactive_message()
     else:
-        # Quick market summary
+        # Market observation with conversation starter
         try:
-            scans = []
-            for sym in ["BTCUSDT", "ETHUSDT"]:
-                s = await market_intel.get_full_market_scan(sym)
-                if s.get("price"):
-                    scans.append(f"{sym.replace('USDT','')}: ${s['price']:,.0f} | RSI: {s.get('technical',{}).get('rsi','?')} | Bias: {s.get('overall_bias','?')}")
+            btc = await market_intel.get_full_market_scan("BTCUSDT")
+            price = btc.get('price', 0)
+            change = btc.get('price_change_24h', 0)
+            rsi = btc.get('technical', {}).get('rsi', 'N/A')
+            bias = btc.get('overall_bias', 'neutral')
             
-            msg = f"""⚡ AEON MARKET PULSE
-
-{chr(10).join(scans)}
-
-Type /scan [symbol] for full analysis.
-👁️ «What edge crystallizes?»"""
+            if abs(change) > 3:
+                market_summary = f"BTC {'pumping' if change > 0 else 'dumping'} {abs(change):.1f}% - sitting at ${price:,.0f}"
+            else:
+                market_summary = f"BTC at ${price:,.0f}, RSI {rsi}. Looking {bias.lower()}."
+            
+            msg = get_proactive_market_message(market_summary)
         except:
-            msg = "🔮 The market awaits your gaze. Type /scan btc for analysis."
+            msg = get_proactive_message()
     
     await send_telegram_message(chat_id, msg)
 
