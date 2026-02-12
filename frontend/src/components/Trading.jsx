@@ -25,10 +25,16 @@ export default function Trading() {
         fetch(`${API_URL}/api/trading/opportunities`)
       ]);
       
+      // Check response status
+      if (!statsRes.ok) console.error('Stats fetch failed:', statsRes.status);
+      if (!openRes.ok) console.error('Open trades fetch failed:', openRes.status);
+      
       const statsData = await statsRes.json();
       const openData = await openRes.json();
       const closedData = await closedRes.json();
       const oppsData = await oppsRes.json();
+      
+      console.log('Trading data loaded:', { stats: statsData?.active, open: openData?.total_open });
       
       setStats(statsData);
       setOpenTrades(openData.open_trades || []);
