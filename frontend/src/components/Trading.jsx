@@ -81,36 +81,48 @@ export default function Trading() {
     console.log('[Trading] fetchData starting...');
     setLoading(true);
     try {
-      // Fetch all data in parallel
-      const [statsRes, liveRes, closedRes, oppsRes, historyRes] = await Promise.all([
+      // Fetch critical data first (fast endpoints)
+      const [statsRes, liveRes, closedRes, historyRes] = await Promise.all([
         fetch(`${API_URL}/api/trading/v2/stats`),
         fetch(`${API_URL}/api/trading/v2/live-positions`),
         fetch(`${API_URL}/api/trading/v2/closed`),
-        fetch(`${API_URL}/api/trading/opportunities`).catch(() => ({ json: () => [] })),
         fetch(`${API_URL}/api/trading/v2/pnl-history`)
       ]);
       
       const statsData = await statsRes.json();
       const liveData = await liveRes.json();
       const closedData = await closedRes.json();
-      const oppsData = await oppsRes.json();
       const historyData = await historyRes.json();
       
       console.log('[Trading] statsData:', statsData?.active, statsData?.open_trades);
       console.log('[Trading] liveData positions:', liveData?.positions?.length);
       
+      // Update state with critical data immediately
       setStats(statsData);
       setLivePositions(liveData.positions || []);
       setClosedTrades(closedData.closed_trades || []);
-      setOpportunities(Array.isArray(oppsData) ? oppsData : []);
       setPnlHistory(historyData.history || []);
       setConfidence(statsData.min_confidence || 70);
+      setLoading(false);
       
       console.log('[Trading] State updated successfully');
+      
+      // Fetch opportunities in background (slow endpoint)
+      fetch(`${API_URL}/api/trading/opportunities`)
+        .then(res => res.json())
+        .then(oppsData => {
+          setOpportunities(Array.isArray(oppsData) ? oppsData : []);
+          console.log('[Trading] Opportunities loaded:', oppsData?.length || 0);
+        })
+        .catch(err => {
+          console.warn('[Trading] Opportunities fetch failed:', err);
+          setOpportunities([]);
+        });
+        
     } catch (err) {
       console.error('[Trading] Failed to fetch trading data:', err);
+      setLoading(false);
     }
-    setLoading(false);
   }, []);
 
   useEffect(() => {
