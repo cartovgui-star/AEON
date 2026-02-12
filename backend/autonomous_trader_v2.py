@@ -106,6 +106,36 @@ class AutonomousTraderV2:
         self.send_alert = None
         self.chat_ids: Set[int] = set()
     
+    def calculate_leverage(self, confidence: float, market_regime: str = None) -> int:
+        """
+        Dynamic leverage calculation based on confidence and market conditions.
+        Higher confidence = higher leverage (up to 200x)
+        """
+        if not self.dynamic_leverage:
+            return self.min_leverage
+        
+        # Base leverage from confidence (60-95% -> 10x-200x)
+        conf_normalized = (confidence - 60) / 35  # 0 to 1
+        conf_normalized = max(0, min(1, conf_normalized))
+        
+        # Calculate leverage
+        leverage = self.min_leverage + (self.max_leverage - self.min_leverage) * conf_normalized
+        
+        # Adjust for market regime
+        regime = market_regime or self.market_regime
+        if regime == "VOLATILE":
+            leverage *= 1.2  # More leverage in volatile markets (more opportunities)
+        elif regime == "TRENDING":
+            leverage *= 1.1  # Slightly more in trends
+        elif regime == "RANGING":
+            leverage *= 0.8  # Less in ranging (choppy)
+        
+        # Cap at max
+        leverage = min(int(leverage), self.max_leverage)
+        leverage = max(leverage, self.min_leverage)
+        
+        return leverage
+    
     def set_dependencies(self, **kwargs):
         """Set all external dependencies"""
         self.market_intel = kwargs.get('market_intel')
