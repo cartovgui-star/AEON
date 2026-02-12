@@ -748,9 +748,11 @@ class AutonomousTraderV2:
             "target_price": signal["target"],
             "partial_target": signal["partial_target"],
             "position_size_pct": signal["position_size_pct"],
+            "position_size": 1000,  # Default $1000 per trade for paper
             "confidence": signal["confidence"],
             "confirmations": signal["confirmations"],
             "timeframe": signal["timeframe"],
+            "trade_type": "SCALP" if signal["timeframe"] in ["5m", "15m"] else "DAY" if signal["timeframe"] == "1h" else "SWING",
             "entry_time": datetime.now(timezone.utc),
             "status": "OPEN",
             "partial_closed": False,
