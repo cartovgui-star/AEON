@@ -418,6 +418,7 @@ export default function SettingsPanel() {
               </div>
             </div>
           )}
+          </div>
         </div>
       )}
 
