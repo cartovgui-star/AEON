@@ -316,28 +316,28 @@ export default function SettingsPanel() {
 
           {/* Original Free Will section */}
           <div className="grid md:grid-cols-2 gap-6">
-          <div className="bg-zinc-800/30 rounded-xl border border-zinc-700/50 overflow-hidden">
-            <div className="flex items-center gap-3 px-6 py-4 bg-zinc-800/50 border-b border-zinc-700/50">
-              <Bell className="w-5 h-5 text-orange-400" />
-              <h3 className="font-semibold text-white">Elite Alerts (Legacy)</h3>
-            </div>
-            <div className="p-6 space-y-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium text-white">Enable Elite Alerts</p>
-                  <p className="text-sm text-zinc-500">80%+ confidence setups</p>
-                </div>
-                <button onClick={() => setSettings(s => ({ ...s, freeWillEnabled: !s.freeWillEnabled }))}
-                  data-testid="freewill-toggle"
-                  className={`w-14 h-7 rounded-full transition-colors ${settings.freeWillEnabled ? 'bg-orange-500' : 'bg-zinc-700'}`}>
-                  <div className={`w-5 h-5 rounded-full bg-white transition-transform ${settings.freeWillEnabled ? 'translate-x-8' : 'translate-x-1'}`} />
-                </button>
+            <div className="bg-zinc-800/30 rounded-xl border border-zinc-700/50 overflow-hidden">
+              <div className="flex items-center gap-3 px-6 py-4 bg-zinc-800/50 border-b border-zinc-700/50">
+                <Bell className="w-5 h-5 text-orange-400" />
+                <h3 className="font-semibold text-white">Elite Alerts (Legacy)</h3>
               </div>
-              <div>
-                <div className="flex justify-between mb-2">
-                  <span className="text-white">Alert Confidence</span>
-                  <span className="text-orange-400 font-semibold">{settings.freeWillMinConf}%</span>
+              <div className="p-6 space-y-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium text-white">Enable Elite Alerts</p>
+                    <p className="text-sm text-zinc-500">80%+ confidence setups</p>
+                  </div>
+                  <button onClick={() => setSettings(s => ({ ...s, freeWillEnabled: !s.freeWillEnabled }))}
+                    data-testid="freewill-toggle"
+                    className={`w-14 h-7 rounded-full transition-colors ${settings.freeWillEnabled ? 'bg-orange-500' : 'bg-zinc-700'}`}>
+                    <div className={`w-5 h-5 rounded-full bg-white transition-transform ${settings.freeWillEnabled ? 'translate-x-8' : 'translate-x-1'}`} />
+                  </button>
                 </div>
+                <div>
+                  <div className="flex justify-between mb-2">
+                    <span className="text-white">Alert Confidence</span>
+                    <span className="text-orange-400 font-semibold">{settings.freeWillMinConf}%</span>
+                  </div>
                 <input type="range" min={65} max={95} value={settings.freeWillMinConf}
                   onChange={e => setSettings(s => ({ ...s, freeWillMinConf: Number(e.target.value) }))}
                   className="w-full h-2 bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-orange-500" />
