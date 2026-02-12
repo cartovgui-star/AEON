@@ -2069,15 +2069,6 @@ Auto Trading: {'🟢 ACTIVE' if autonomous_trader_v2.active else '🔴 PAUSED'}
 
 What's on your mind?"""
             context = "start"
-/structure btc - HH/HL/LH/LL analysis
-/vwap btc - VWAP levels
-/cvd btc - Order flow
-/options btc - Max pain & PCR
-
-Mode: {'Alchemy ⚗️' if current_mode == 'alchemy' else 'Casual'} | Auto v2: {'🟢' if autonomous_trader_v2.active else '🔴'}
-
-What's up?"""
-            context = "start"
             
         elif text_lower == '/freewill' or text_lower == '/fw':
             stats = await free_will_v2.get_stats()
