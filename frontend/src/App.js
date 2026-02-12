@@ -174,6 +174,7 @@ function App() {
     { id: 'analytics', label: 'Alerts', icon: PieChart },
     { id: 'smc', label: 'SMC', icon: Layers },
     { id: 'journal', label: 'Journal', icon: BookOpen },
+    { id: 'commands', label: 'Commands', icon: HelpCircle },
     { id: 'settings', label: 'Settings', icon: Settings },
   ];
 
