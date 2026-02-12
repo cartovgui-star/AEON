@@ -1269,6 +1269,53 @@ async def api_coinglass_full(symbol: str = "BTC"):
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# DUAL TRADING ENGINE APIs (Day Trader + Long Term)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@api_router.get("/dual/stats")
+async def api_dual_stats():
+    """Get Dual Trading Engine statistics (Day Trader + Long Term)"""
+    return dual_engine.get_stats()
+
+
+@api_router.post("/dual/toggle")
+async def api_dual_toggle(active: bool = True):
+    """Toggle entire Dual Trading Engine on/off"""
+    dual_engine.active = active
+    return {"status": "ok", "active": active}
+
+
+@api_router.post("/dual/day-trader/toggle")
+async def api_dual_day_trader_toggle(active: bool = True):
+    """Toggle Day Trader engine on/off"""
+    dual_engine.day_trader.active = active
+    return {"status": "ok", "day_trader_active": active}
+
+
+@api_router.post("/dual/long-term/toggle")
+async def api_dual_long_term_toggle(active: bool = True):
+    """Toggle Long Term engine on/off"""
+    dual_engine.long_term.active = active
+    return {"status": "ok", "long_term_active": active}
+
+
+@api_router.post("/dual/day-trader/confidence")
+async def api_dual_day_trader_confidence(min_conf: int = 75):
+    """Set Day Trader minimum confidence (65-95)"""
+    min_conf = max(65, min(95, min_conf))
+    dual_engine.day_trader.min_confidence = min_conf
+    return {"status": "ok", "day_trader_min_confidence": min_conf}
+
+
+@api_router.post("/dual/long-term/confidence")
+async def api_dual_long_term_confidence(min_conf: int = 88):
+    """Set Long Term minimum confidence (75-95)"""
+    min_conf = max(75, min(95, min_conf))
+    dual_engine.long_term.min_confidence = min_conf
+    return {"status": "ok", "long_term_min_confidence": min_conf}
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # FREE WILL v2 APIs (Ultra-selective)
 # ═══════════════════════════════════════════════════════════════════════════════
 
