@@ -4,162 +4,180 @@
 Build a sophisticated trading bot named "Aeon" with:
 - Autonomous trading engine (v2) - PAPER TRADING MODE
 - Multi-strategy analysis
-- Real-time price alerts
+- Real-time price alerts with NO CONTRADICTING SIGNALS
 - Smart Money Concepts (SMC) analysis
 - Trade journaling and memory system
 - Dashboard with analytics
 - Telegram bot integration
 - Voice conversation capability
+- User profiling system (Aeon learns your preferences)
 
 ---
 
-## Latest Session (Feb 12, 2026) - Conversational AI v4 Enhancement
+## Latest Session (Feb 12, 2026) - Major Feature Additions
 
-### Conversational AI Improvements ✅
-
-**User Request**: Make Aeon's conversation more natural - unified personality (no mode switching), proactive messaging, self-learning, never repetitive, and asking questions to engage.
+### 1. Anti-Contradiction Alert System ✅
+**User Request**: No flip-flopping signals - if LONG sent, won't send SHORT within hours
 
 **Implementation**:
-1. **Unified Personality** - Rewrote `aeon_personality.py` to v4
-   - Single consciousness blending trader, life coach, friend, philosopher
-   - No forced mode switching - topics detected but personality stays unified
-   - Natural flow based on what user is discussing
+- Added `direction_lock_time = 7200` (2 hours) to Free Will v2
+- `last_direction` dict tracks last signal direction per symbol
+- `_can_alert()` checks if opposite direction within lock time → blocks it
+- `contradictions_blocked` stat tracks how many flip-flops were prevented
+- Logs show: "Blocked contradicting signal: DOGE/USDT was SHORT, now LONG"
 
-2. **Engagement & Questions** - Bot actively asks follow-up questions
-   - 70% of responses include genuine follow-up questions
-   - Questions are contextually relevant, not generic
-   - Examples: "What made you think that?", "How's that been affecting you?"
+### 2. Enhanced Settings UI ✅
+**Implementation**: Added 4-tab Settings page
 
-3. **Response Length Matching**
-   - Short messages (1-4 words) → Short replies (1-2 sentences)
-   - Medium messages → Medium replies (2-4 sentences)
-   - Long/detailed messages → Detailed responses with more depth
+**Trading Tab**:
+- Enable Auto Trading toggle
+- Min Confidence slider (70-95%)
+- Trading Stats card (Open Trades, Mode: Paper)
 
-4. **Anti-Repetition System**
-   - Tracks last 3 bot responses and prevents repetition
-   - System prompt explicitly warns against repeating past phrases
-   - Varied conversation starters
+**Alerts Tab**:
+- Enable Alerts toggle
+- Alert Confidence slider (65-95%)
+- Alert System Status (Today/Max, Total, Blocked)
+- Direction lock info (2h no flip-flop)
+- Recent Signal Directions (e.g., XRP: SHORT, DOGE: SHORT)
+- Data Sources list (8 sources)
 
-5. **Proactive Messaging** - Updated `freewill_proactive()` 
-   - Natural check-ins without heavy market jargon
-   - Market observations with conversational tone
-   - 4-hour cooldown between proactive messages
+**Your Profile Tab**:
+- Trading Style (scalper/swing/hodler or "Learning...")
+- Risk Tolerance (low/medium/high)
+- Favorite Coins
+- Messages Analyzed count
+- Aeon's Understanding section
 
-**Test Results**: 14/14 tests passed (iteration_16.json)
+**Voice Tab**:
+- 4 voice options (Guy, Davis, Ryan, William)
 
----
+### 3. User Profiling System ✅
+**File**: `/app/backend/user_profiler.py`
 
-## Previous Session (Feb 12, 2026) - Autonomous Trading Fix
+**Features**:
+- Tracks coin mentions → builds `favorite_coins` list
+- Detects trading style from keywords (scalp/swing/hodl)
+- Detects risk tolerance from language (yolo/degen vs cautious/dca)
+- Stores key facts about user
+- Injects user context into LLM prompts for personalization
 
-### Bug Fix: Autonomous Paper Trading Now Working ✅
+**API Endpoints**:
+- `GET /api/user/profile` - Get user profile summary
+- `GET /api/user/profile/{chat_id}` - Get specific user's profile
+- `POST /api/user/profile/{chat_id}/fact` - Add key fact
 
-**Issue**: The autonomous trader was finding opportunities (16+ signals) but NOT executing any trades.
+### 4. Additional Free Data Sources ✅
+**File**: `/app/backend/additional_data.py`
 
-**Root Cause**: Method name mismatch in `autonomous_trader_v2.py`:
-- Code was calling `learning_system.store_prediction()` 
-- Correct method is `learning_system.record_prediction()`
+**New APIs integrated**:
+- **Blockchain.com** - BTC on-chain: hash rate, difficulty, mempool
+- **mempool.space** - BTC fee estimates (fastest/economy)
+- **gasprice.io/blocknative** - ETH gas prices
+- **DefiLlama** - DeFi TVL data
+- **CryptoCompare** - Social stats (Reddit, Twitter, GitHub)
 
-**Fix Applied**:
-- Updated `take_trade()` function to call `record_prediction()` with correct parameters
-- Added error handling for the learning system call
+**API Endpoints**:
+- `GET /api/data/btc/onchain` - BTC on-chain stats
+- `GET /api/data/btc/fees` - Mempool fee estimates
+- `GET /api/data/eth/gas` - ETH gas prices
+- `GET /api/data/defi/tvl` - DeFi TVL
+- `GET /api/data/social/{symbol}` - Social stats
+- `GET /api/data/all/{symbol}` - All combined
 
-**Results**:
-- ✅ **10 total trades executed**
-- ✅ **9 open positions** currently being managed
-- ✅ **70% min_confidence** setting persisted
-
-### Settings Persistence ✅
-Added methods to persist trading settings across restarts:
-- `load_settings()` - Loads saved settings from MongoDB on startup
-- `save_settings()` - Persists settings when changed via API
-- `save_open_trade()` - Stores open trades in `v2_open_trades` collection
-- `close_trade_in_db()` - Moves closed trades to `v2_closed_trades` collection
-
----
-
-## What's Been Implemented - Final Version
-
-### Session 4 Additions (Feb 12, 2026)
-**Conversational AI v4 ✅**
-- Unified personality engine replacing mode-switching approach
+### 5. Conversational AI v4 ✅
+**Previous session improvement**:
+- Unified personality (no mode switching)
 - Follow-up questions in 70%+ of responses
-- Response length matching to user input
+- Response length matches user input
 - Anti-repetition system
 - Natural proactive messages
 
-### Session 3 Additions (Feb 12, 2026)
-**1. Autonomous Trading Bug Fix ✅**
-- Fixed store_prediction → record_prediction method call
-- Added settings persistence to MongoDB
-- Added trade persistence (open/closed trades)
-- Verified with 21 passing tests
+**Test Results**: 21/21 tests passed (iteration_17.json)
 
-**2. Live MEXC Data Integration ✅**
-- Connected to MEXC exchange for real-time market prices
-- Paper trading mode: simulated trades with REAL prices
-- New endpoints: /api/trading/v2/live-positions, /api/trading/v2/pnl-history
-- Real-time PnL calculation per position
+---
 
-**3. Trading Dashboard Enhancements ✅**
-- Added "Live MEXC Data" banner with "Paper Trading Mode" indicator
-- Added PnL Performance chart component
-- Fixed slow data loading (separated fast/slow API calls)
+## What's Been Implemented - Complete List
 
-### Session 2 Additions (Feb 10, 2026)
+### Session 5 (Feb 12, 2026) - This Session
+- ✅ Anti-contradiction alert system (2hr direction lock)
+- ✅ Enhanced Settings UI (4 tabs)
+- ✅ User profiling system
+- ✅ Additional free APIs (5 new sources)
 
-**1. WebSocket Real-time Alerts ✅**
-**2. Browser Push Notifications ✅**
-**3. SMC Dashboard Page ✅**
-**4. Journal Dashboard Page ✅**
-**5. Mobile Responsiveness ✅**
-**6. SMC + Strategy Confluence ✅**
+### Session 4 (Feb 12, 2026)
+- ✅ Conversational AI v4 (unified personality)
+- ✅ Telegram webhook fix
+
+### Session 3 (Feb 12, 2026)
+- ✅ Autonomous trading bug fix
+- ✅ Live MEXC data integration
+- ✅ Trading dashboard enhancements
+
+### Session 2 (Feb 10, 2026)
+- ✅ WebSocket real-time alerts
+- ✅ Browser push notifications
+- ✅ SMC Dashboard page
+- ✅ Journal Dashboard page
+- ✅ Mobile responsiveness
+- ✅ SMC + Strategy confluence
 
 ### Session 1 Features
 - ✅ Multi-Strategy Engine (6 strategies)
 - ✅ Real-Time Price Alert System
-- ✅ Analytics Page (Alerts + Strategies tabs)
+- ✅ Analytics Page
 - ✅ SMC Analyzer module
 - ✅ Memory/Journal system
-- ✅ Route refactoring
 
 ### Original Features
 - ✅ Autonomous Trader v2
 - ✅ Multi-page dashboard
 - ✅ Voice conversation with Aeon
 - ✅ Trade History page
-- ✅ Settings page
 - ✅ Telegram bot with 40+ commands
 
 ---
 
-## Key Files Updated
+## Key Files
 
-### Conversational AI
-- `backend/aeon_personality.py` - v4 unified personality engine
-- `backend/server.py` - Updated webhook handler (line 3105+)
+### New This Session
+- `/app/backend/user_profiler.py` - User profiling system
+- `/app/backend/additional_data.py` - Additional data sources
+- `/app/frontend/src/components/SettingsPanel.jsx` - Enhanced settings UI
 
-### Core Trading
-- `backend/autonomous_trader_v2.py` - Paper trading engine
-- `backend/routes/trading_v2.py` - Dashboard API endpoints
-
-### Frontend
-- `frontend/src/components/Trading_v2.jsx` - Live trading dashboard
+### Core Files
+- `/app/backend/free_will_v2.py` - Alert engine with anti-contradiction
+- `/app/backend/aeon_personality.py` - Conversational AI v4
+- `/app/backend/autonomous_trader_v2.py` - Paper trading engine
+- `/app/backend/server.py` - Main FastAPI server
 
 ---
 
-## API Endpoints
+## API Endpoints Summary
 
-### Telegram Bot
-- `POST /api/webhook` - Telegram webhook for messages
+### Settings & Configuration
+- `GET /api/trading/v2/stats` - Trading engine stats
+- `POST /api/trading/toggle` - Toggle auto trading
+- `POST /api/trading/v2/confidence` - Set confidence
+- `GET /api/freewill/stats` - Alert system stats
+- `POST /api/freewill/toggle` - Toggle alerts
 
-### Trading Dashboard
-- `GET /api/trading/v2/live-positions` - Open trades with real-time PnL
-- `GET /api/trading/v2/stats` - Engine statistics
-- `GET /api/trading/v2/pnl-history` - Closed trade history
+### User Profiling
+- `GET /api/user/profile` - Get user profile
+- `GET /api/user/profile/{chat_id}` - Get specific profile
+- `POST /api/user/profile/{chat_id}/fact` - Add fact
 
-### Conversational Stats
-- `GET /api/bot/messages` - Recent conversations
-- `GET /api/bot/stats` - Bot usage statistics
+### Additional Data
+- `GET /api/data/btc/onchain` - BTC on-chain
+- `GET /api/data/btc/fees` - Mempool fees
+- `GET /api/data/eth/gas` - ETH gas
+- `GET /api/data/defi/tvl` - DeFi TVL
+- `GET /api/data/social/{symbol}` - Social stats
+
+### Trading
+- `GET /api/trading/v2/live-positions` - Open trades
+- `GET /api/trading/v2/pnl-history` - Closed trades
+- `POST /api/webhook` - Telegram webhook
 
 ---
 
@@ -168,24 +186,16 @@ Added methods to persist trading settings across restarts:
 | Feature | Status | Notes |
 |---------|--------|-------|
 | Dashboard | ✅ | Main page with stats |
-| Trading | ✅ | Live paper trading dashboard |
+| Trading | ✅ | Live paper trading |
+| Settings | ✅ | 4-tab configuration |
+| Alerts | ✅ | No contradicting signals |
+| User Profiling | ✅ | Learns preferences |
 | Conversational AI | ✅ | v4 unified personality |
 | Analytics | ✅ | Alerts + Strategies |
-| SMC Analysis | ✅ | Market structure + confluence |
+| SMC Analysis | ✅ | Market structure |
 | Journal | ✅ | Performance tracking |
-| Settings | ✅ | Configuration |
-| WebSocket | ✅ | Real-time alerts |
-| Push Notifications | ✅ | Browser notifications |
-| Mobile Responsive | ✅ | Works on all devices |
 | Voice Chat | ✅ | Talk to Aeon |
 | Telegram Bot | ✅ | 40+ commands |
-
----
-
-## Known Limitations
-1. Coinglass API - Blocked on paid API key
-2. Trade logging form - Placeholder (API ready)
-3. Real-money trading - Not yet enabled (paper trading only)
 
 ---
 
@@ -193,15 +203,14 @@ Added methods to persist trading settings across restarts:
 
 ### P1 (High Priority)
 - Enable real-money trading when user is ready
-- UI settings page for trader configuration (confidence, risk)
 
-### P2 (Medium Priority)  
-- Enhanced user memory/profiling (Aeon learns user preferences over time)
-- Trade logging form UI completion
+### P2 (Medium Priority)
+- Enhanced trade logging form UI
+- More exchange integrations
 
 ### P3 (Low Priority)
 - Coinglass premium integration
-- Additional exchange support
+- Advanced backtesting
 
 ---
 
