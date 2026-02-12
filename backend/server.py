@@ -3121,7 +3121,7 @@ Commands:
             v2_trades = autonomous_trader_v2.open_trades
             
             if v2_trades:
-                response = "📊 OPEN TRADES (v2 ENGINE)\n\n"
+                response = "📊 OPEN TRADES (AGGRESSIVE MODE)\n\n"
                 total_pnl_usd = 0
                 for trade in v2_trades[:10]:
                     # Get current price for PnL calc
@@ -3130,14 +3130,15 @@ Commands:
                     entry = trade.get("entry_price", 0)
                     direction = trade.get("direction", "")
                     position_size = trade.get("position_size", 1000)
+                    leverage = trade.get("leverage", 10)
                     trade_type = trade.get("trade_type", "SWING")
                     
                     pnl = 0
                     if entry and current:
                         if direction == "LONG":
-                            pnl = ((current - entry) / entry) * 100
+                            pnl = ((current - entry) / entry) * 100 * leverage
                         elif direction == "SHORT":
-                            pnl = ((entry - current) / entry) * 100
+                            pnl = ((entry - current) / entry) * 100 * leverage
                     
                     pnl_usd = (pnl / 100) * position_size
                     total_pnl_usd += pnl_usd
@@ -3147,6 +3148,7 @@ Commands:
                     partial = " (partial)" if trade.get("partial_closed") else ""
                     
                     response += f"""{emoji} {trade.get('symbol')} {direction} {type_emoji}{trade_type}{partial}
+⚡ {leverage}x Leverage
 Entry: ${entry:,.2f} → ${current:,.2f}
 PnL: {pnl:+.2f}% (${pnl_usd:+.2f})
 TP: ${trade.get('target_price', 0):,.2f} | SL: ${trade.get('trail_stop', 0):,.2f}
