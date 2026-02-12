@@ -498,6 +498,9 @@ function App() {
 
         {/* Page: Journal */}
         {currentPage === 'journal' && <Journal />}
+
+        {/* Page: Commands Reference */}
+        {currentPage === 'commands' && <CommandsReference />}
       </main>
 
       {/* Voice Modal */}
