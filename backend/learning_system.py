@@ -194,6 +194,27 @@ class AeonLearningSystem:
         
         return predictions
     
+    async def record_outcome(self, symbol: str, outcome: str, pnl_pct: float):
+        """
+        Record a trade outcome for learning purposes.
+        Called by autonomous_trader_v2 when trades are closed.
+        
+        Args:
+            symbol: Trading pair (e.g., "BTC/USDT")
+            outcome: "WIN" or "LOSS"
+            pnl_pct: Percentage profit/loss
+        """
+        try:
+            await self.db.trade_outcomes.insert_one({
+                "symbol": symbol,
+                "outcome": outcome,
+                "pnl_pct": pnl_pct,
+                "timestamp": datetime.now(timezone.utc)
+            })
+            logger.info(f"Recorded outcome: {symbol} {outcome} {pnl_pct:+.2f}%")
+        except Exception as e:
+            logger.error(f"Failed to record outcome: {e}")
+    
     async def generate_learning_summary(self) -> str:
         """Generate a summary of what Aeon has learned"""
         stats = await self.get_prediction_stats()
