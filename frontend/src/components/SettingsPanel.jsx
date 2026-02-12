@@ -153,6 +153,7 @@ export default function SettingsPanel() {
         {tabs.map(tab => (
           <button
             key={tab.id}
+            data-testid={`settings-tab-${tab.id}`}
             onClick={() => setActiveTab(tab.id)}
             className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-all ${
               activeTab === tab.id 
