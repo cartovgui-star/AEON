@@ -3104,7 +3104,7 @@ R:R: 1:{rr:.1f}
             
             else:
                 # ═══════════════════════════════════════════════════════════════════
-                # AEON PERSONALITY v3 - Life coach + Crypto + Mystical blend
+                # AEON PERSONALITY v4 - Unified consciousness, natural flow
                 # ═══════════════════════════════════════════════════════════════════
                 
                 # Get recent messages for context
@@ -3112,11 +3112,12 @@ R:R: 1:{rr:.1f}
                 
                 # Deep analysis of what they need
                 analysis = aeon_mind.analyze_message(text, recent)
-                logger.info(f"Aeon analysis: mode={analysis['primary_mode']}, mystic={analysis['blend_mystic']}, emotion={analysis['emotional_state']}")
+                topics = ", ".join(analysis.get("topic_hints", [])) or "general"
+                logger.info(f"Aeon analysis: topics={topics}, emotion={analysis.get('emotional_undertone')}, energy={analysis.get('user_energy')}")
                 
                 # Get market data if trading
                 market_data = ""
-                if analysis["needs_data"] and analysis["coins"]:
+                if analysis.get("needs_market_data") and analysis.get("coins"):
                     coin = analysis["coins"][0]
                     try:
                         ticker = mexc.fetch_ticker(f"{coin}/USDT")
@@ -3132,10 +3133,11 @@ R:R: 1:{rr:.1f}
                 system_prompt = build_system_prompt(analysis)
                 user_prompt = build_user_prompt(text, analysis, recent, market_data)
                 
-                context = analysis["primary_mode"]
+                # Determine context for storage
+                context = "trading" if "trading" in analysis.get("topic_hints", []) else "chat"
                 
                 # Generate response with Aeon's unified personality
-                chat = LlmChat(api_key=emergent_key, session_id=f"aeon-v3-{chat_id}",
+                chat = LlmChat(api_key=emergent_key, session_id=f"aeon-v4-{chat_id}",
                               system_message=system_prompt).with_model("openai", "gpt-4o-mini")
                 response = await chat.send_message(UserMessage(text=user_prompt))
         
