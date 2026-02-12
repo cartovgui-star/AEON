@@ -106,7 +106,13 @@ class AeonMind:
         result["coins"] = list(set(result["coins"]))
         
         # Determine primary mode
-        if trading_score > life_score and trading_score > mystic_score:
+        # If coin is mentioned, prioritize trader mode (even with mystical words)
+        if result["coins"]:
+            result["primary_mode"] = "trader"
+            result["needs_data"] = True
+            if mystic_score > 10:
+                result["blend_mystic"] = True
+        elif trading_score > life_score and trading_score > mystic_score:
             result["primary_mode"] = "trader"
             result["needs_data"] = True
             if mystic_score > 10:
