@@ -48,6 +48,9 @@ from conversation_intelligence import (
     get_anti_repetition_prompt, get_flow_prompt
 )
 
+# New personality engine v3
+from aeon_personality import aeon_mind, build_system_prompt, build_user_prompt
+
 # Import route modules
 from routes import (
     derivatives_router, freewill_router, intelligence_router,
