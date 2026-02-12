@@ -397,10 +397,11 @@ export default function Trading() {
                       <p className="text-zinc-500 text-xs">
                         {position.confirmations.slice(0, 3).join(' • ')}
                       </p>
-                  </div>
-                )}
-              </div>
-            ))
+                    </div>
+                  )}
+                </div>
+              );
+            })
           ) : (
             <div className="bg-zinc-800/30 rounded-xl p-8 border border-zinc-700/50 text-center">
               <Activity className="w-12 h-12 text-zinc-600 mx-auto mb-3" />
