@@ -862,6 +862,9 @@ class AutonomousTraderV2:
                     self.closed_trades.append(trade)
                     closed.append(trade)
                     
+                    # Persist closed trade to database
+                    await self.close_trade_in_db(trade)
+                    
                     emoji = "✅" if pnl_pct > 0 else "❌"
                     logger.info(f"{emoji} TRADE CLOSED: {trade['symbol']} | PnL: {pnl_pct:+.2f}% | {trade['exit_reason']}")
                     
