@@ -363,6 +363,46 @@ class TradingStyleEngine:
         setups.sort(key=lambda x: x["confidence"], reverse=True)
         return setups[:3]
     
+    async def validate_and_format_alert(self, setup: Dict) -> tuple:
+        """
+        Validate setup price is still valid and format alert
+        Returns (message, is_valid)
+        """
+        direction = setup["direction"]
+        symbol = setup["symbol"]
+        entry = setup["entry"]
+        
+        # Fetch fresh price to validate
+        if self.market_intel:
+            try:
+                scan = await self.market_intel.get_full_market_scan(symbol.replace("/", ""))
+                current_price = scan.get("price", 0)
+                
+                if current_price:
+                    # Check if price has moved too far from entry (invalidates setup)
+                    price_diff_pct = abs((current_price - entry) / entry * 100)
+                    
+                    if price_diff_pct > 2.0:  # Price moved more than 2%
+                        logger.info(f"[{self.name}] Setup invalidated: {symbol} price moved {price_diff_pct:.1f}% from entry")
+                        return None, False
+                    
+                    # Update entry to current price for more accurate alert
+                    setup["entry"] = current_price
+                    
+                    # Recalculate SL/TP based on fresh price
+                    atr = scan.get("technical", {}).get("atr", current_price * 0.02)
+                    if direction == "LONG":
+                        setup["stop_loss"] = current_price - (atr * self.sl_atr_mult)
+                        setup["take_profit"] = current_price + (atr * self.tp_atr_mult)
+                    else:
+                        setup["stop_loss"] = current_price + (atr * self.sl_atr_mult)
+                        setup["take_profit"] = current_price - (atr * self.tp_atr_mult)
+            except Exception as e:
+                logger.error(f"[{self.name}] Price validation error: {e}")
+        
+        msg = self.format_alert(setup)
+        return msg, True
+    
     def format_alert(self, setup: Dict) -> str:
         """Format setup as alert message"""
         direction = setup["direction"]
