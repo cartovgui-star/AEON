@@ -695,16 +695,19 @@ class AutonomousTraderV2:
         
         # Store in DB
         if self.learning_system:
-            await self.learning_system.store_prediction({
-                "symbol": signal["symbol"],
-                "prediction": signal["direction"],
-                "confidence": signal["confidence"],
-                "entry_price": signal["entry"],
-                "target_price": signal["target"],
-                "stop_price": signal["stop"],
-                "timeframe": signal["timeframe"],
-                "reasoning": "; ".join(signal["confirmations"][:5])
-            })
+            try:
+                await self.learning_system.record_prediction(
+                    symbol=signal["symbol"],
+                    prediction=signal["direction"],
+                    confidence=signal["confidence"],
+                    entry_price=signal["entry"],
+                    target_price=signal["target"],
+                    stop_price=signal["stop"],
+                    timeframe=signal["timeframe"],
+                    reasoning="; ".join(signal["confirmations"][:5])
+                )
+            except Exception as e:
+                logger.warning(f"Failed to record prediction: {e}")
         
         logger.info(f"📈 TRADE OPENED: {signal['direction']} {signal['symbol']} @ ${signal['entry']:,.2f} | Conf: {signal['confidence']}%")
         
