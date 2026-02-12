@@ -3386,7 +3386,9 @@ R:R: 1:{rr:.1f}
                 response = await chat.send_message(UserMessage(text=user_prompt))
         
         # Send response
-        await send_telegram_message(chat_id, response)
+        # Use Markdown for news (clickable links)
+        parse_mode = "Markdown" if context == "news" else None
+        await send_telegram_message(chat_id, response, parse_mode=parse_mode)
         
         # Store conversation and extract insights
         await db.chat_messages.insert_one({
