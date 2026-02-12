@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, Save, RotateCcw, Bot, Bell, Volume2, Shield, Clock, TrendingUp, User, Brain } from 'lucide-react';
+import { Settings, Save, RotateCcw, Bot, Bell, Volume2, Shield, Clock, TrendingUp, User, Brain, Zap, Target } from 'lucide-react';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -9,9 +9,14 @@ export default function SettingsPanel() {
     minConfidence: 85,
     freeWillEnabled: true,
     freeWillMinConf: 80,
+    dayTraderEnabled: true,
+    dayTraderConf: 75,
+    longTermEnabled: true,
+    longTermConf: 88,
     selectedVoice: 'guy'
   });
   const [freeWillStats, setFreeWillStats] = useState(null);
+  const [dualStats, setDualStats] = useState(null);
   const [userProfile, setUserProfile] = useState(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -20,26 +25,43 @@ export default function SettingsPanel() {
   useEffect(() => {
     fetchSettings();
     fetchFreeWillStats();
+    fetchDualStats();
     fetchUserProfile();
   }, []);
 
   const fetchSettings = async () => {
     try {
-      const [tradingRes, freeWillRes] = await Promise.all([
+      const [tradingRes, freeWillRes, dualRes] = await Promise.all([
         fetch(`${API_URL}/api/trading/v2/stats`),
-        fetch(`${API_URL}/api/freewill/stats`)
+        fetch(`${API_URL}/api/freewill/stats`),
+        fetch(`${API_URL}/api/dual/stats`)
       ]);
       const trading = await tradingRes.json();
       const freeWill = await freeWillRes.json();
+      const dual = await dualRes.json();
       setSettings(s => ({
         ...s,
         autoTraderEnabled: trading.active ?? true,
         minConfidence: trading.min_confidence ?? 85,
         freeWillEnabled: freeWill.active ?? true,
-        freeWillMinConf: freeWill.min_confidence ?? 80
+        freeWillMinConf: freeWill.min_confidence ?? 80,
+        dayTraderEnabled: dual.day_trader?.active ?? true,
+        dayTraderConf: dual.day_trader?.min_confidence ?? 75,
+        longTermEnabled: dual.long_term?.active ?? true,
+        longTermConf: dual.long_term?.min_confidence ?? 88
       }));
     } catch (err) {
       console.error('Failed to fetch settings:', err);
+    }
+  };
+
+  const fetchDualStats = async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/dual/stats`);
+      const data = await res.json();
+      setDualStats(data);
+    } catch (err) {
+      console.error('Failed to fetch dual stats:', err);
     }
   };
 
