@@ -498,8 +498,15 @@ class DualTradingEngine:
             self.long_term._mark_alerted(symbol, direction)
         self.total_alerts_sent += 1
     
+    async def validate_and_format_alert(self, setup: Dict) -> tuple:
+        """Validate and format alert with fresh price data"""
+        if setup.get("style") == "Day Trader":
+            return await self.day_trader.validate_and_format_alert(setup)
+        else:
+            return await self.long_term.validate_and_format_alert(setup)
+    
     def format_alert(self, setup: Dict) -> str:
-        """Format alert based on style"""
+        """Format alert based on style (legacy - use validate_and_format_alert)"""
         if setup.get("style") == "Day Trader":
             return self.day_trader.format_alert(setup)
         else:
