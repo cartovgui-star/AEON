@@ -112,6 +112,74 @@ class AutonomousTraderV2:
         self.send_alert = kwargs.get('send_alert')
         self.chat_ids = kwargs.get('chat_ids', set())
     
+    async def load_settings(self):
+        """Load persisted settings from database"""
+        try:
+            settings = await self.db.trader_settings.find_one({"_id": "v2_settings"})
+            if settings:
+                self.active = settings.get("active", True)
+                self.min_confidence = settings.get("min_confidence", 70)
+                self.min_confirmations = settings.get("min_confirmations", 3)
+                self.max_open_trades = settings.get("max_open_trades", 10)
+                logger.info(f"Loaded trader settings: conf={self.min_confidence}%, confirms={self.min_confirmations}")
+            
+            # Load open trades from last session
+            open_trades = await self.db.v2_open_trades.find().to_list(100)
+            if open_trades:
+                self.open_trades = [{k: v for k, v in t.items() if k != '_id'} for t in open_trades]
+                logger.info(f"Restored {len(self.open_trades)} open trades from database")
+            
+            # Load closed trades history
+            closed_trades = await self.db.v2_closed_trades.find().sort("closed_at", -1).limit(100).to_list(100)
+            if closed_trades:
+                self.closed_trades = [{k: v for k, v in t.items() if k != '_id'} for t in closed_trades]
+                # Calculate stats from closed trades
+                self.total_trades = len(self.open_trades) + len(self.closed_trades)
+        except Exception as e:
+            logger.error(f"Failed to load settings: {e}")
+    
+    async def save_settings(self):
+        """Persist current settings to database"""
+        try:
+            await self.db.trader_settings.update_one(
+                {"_id": "v2_settings"},
+                {"$set": {
+                    "active": self.active,
+                    "min_confidence": self.min_confidence,
+                    "min_confirmations": self.min_confirmations,
+                    "max_open_trades": self.max_open_trades,
+                    "updated_at": datetime.now(timezone.utc)
+                }},
+                upsert=True
+            )
+        except Exception as e:
+            logger.error(f"Failed to save settings: {e}")
+    
+    async def save_open_trade(self, trade: Dict):
+        """Persist an open trade to database"""
+        try:
+            trade_doc = {**trade}
+            trade_doc["_id"] = trade["id"]
+            await self.db.v2_open_trades.update_one(
+                {"_id": trade["id"]},
+                {"$set": trade_doc},
+                upsert=True
+            )
+        except Exception as e:
+            logger.error(f"Failed to save trade: {e}")
+    
+    async def close_trade_in_db(self, trade: Dict):
+        """Move trade from open to closed in database"""
+        try:
+            # Remove from open trades
+            await self.db.v2_open_trades.delete_one({"_id": trade["id"]})
+            # Add to closed trades
+            trade_doc = {**trade}
+            trade_doc["_id"] = trade["id"]
+            await self.db.v2_closed_trades.insert_one(trade_doc)
+        except Exception as e:
+            logger.error(f"Failed to close trade in DB: {e}")
+    
     # ═══════════════════════════════════════════════════════════════════════════
     # MARKET REGIME & SESSION DETECTION
     # ═══════════════════════════════════════════════════════════════════════════
