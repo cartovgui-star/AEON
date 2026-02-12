@@ -531,6 +531,9 @@ async def autonomous_trading_loop():
         chat_ids=chat_ids
     )
     
+    # Load persisted settings and trades from database
+    await autonomous_trader_v2.load_settings()
+    
     # Also load old trader weights for backward compatibility
     await autonomous_trader.load_strategy_weights()
     
