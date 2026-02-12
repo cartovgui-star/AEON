@@ -1985,54 +1985,90 @@ Win Rate: {stats['win_rate']}%
 Total PnL: {stats['total_pnl_pct']:+.2f}%"""
             context = "settings"
             
-        elif text == '/start':
+        elif text == '/start' or text_lower == '/help' or text_lower == '/commands':
             current_mode = settings.get("mode", "default")
-            response = f"""Yo, I'm Aeon—your trading buddy and life coach.
+            dual_stats = dual_engine.get_stats()
+            
+            response = f"""🤖 AEON - Your AI Trading Companion
 
-📊 ANALYSIS:
-/scan btc - Full analysis
-/mtf btc - Multi-timeframe (1h/4h/1d)
-/deriv btc - Derivatives data
-/sentiment btc - Sentiment analysis
+━━━━━ PERSONAS ━━━━━
+• Default - Sharp trading buddy & life coach
+• Alchemy Mode - Mystical + trading wisdom
+  (Say "alchemy mode" / "casual mode")
 
-🌍 MARKET INTEL:
-/market - Global summary
-/fear - Fear & Greed Index
-/news - Latest news + sentiment
-/whales - Whale activity
-/onchain - BTC on-chain data
+━━━━━ 📊 MARKET ANALYSIS ━━━━━
+/scan btc      - Full analysis + entry/target/stop
+/ta btc 1h     - Technicals (RSI, MACD, BB, EMA)
+/mtf btc       - Multi-timeframe (1h/4h/1d)
+/sentiment btc - Sentiment score
 
-🧮 CALCULATORS:
-/calc entry exit size lev dir - PnL calc
-/calcsize bal risk% entry stop lev - Position size
+━━━━━ 💰 DERIVATIVES ━━━━━
+/funding btc   - Aggregated funding rates (4 exchanges)
+/deriv btc     - Full derivatives (OI, L/S, funding)
+/positions btc - Long/Short ratio
+/cg btc        - Coinglass data
 
-🤖 AUTO-TRADING v2:
-/auto - Status & elite stats
-/opps - Top signals (85%+ conf)
-/open - Open positions
-/close btc - Close position
-/trail btc 5 - Adjust trail stop
-/tp btc 72000 - Adjust take profit
+━━━━━ 🌍 MARKET INTEL ━━━━━
+/market  - Global summary
+/fear    - Fear & Greed Index
+/top100  - Top 10 by market cap
+/movers  - Top gainers/losers (24h)
+/trending - Most searched coins
 
-🎯 MULTI-STRATEGY:
-/strat btc - Run all strategies on BTC
-/strat eth 1h - Multi-strategy scan (any coin/tf)
+━━━━━ 📰 NEWS & ON-CHAIN ━━━━━
+/news    - Latest headlines (clickable!)
+/whales  - Whale activity (>10 BTC)
+/onchain - BTC network stats
 
-🔔 PRICE ALERTS:
+━━━━━ 🧮 CALCULATORS ━━━━━
+/calc 65000 68000 1000 10 long
+  (entry exit size leverage direction)
+/calcsize 10000 2 65000 63000 10
+  (balance risk% entry stop leverage)
+
+━━━━━ 🤖 AUTONOMOUS TRADING ━━━━━
+/auto    - Status & paper trading stats
+/auto on / off - Toggle trading
+/opps    - Current opportunities
+/open    - Open positions
+/close btc   - Close position
+/trail btc 5 - Set trail stop %
+/tp btc 72000 - Set take profit
+
+━━━━━ 🎯 DUAL ENGINE ━━━━━
+Day Trader: {'🟢' if dual_stats['day_trader']['active'] else '🔴'} ({dual_stats['day_trader']['min_confidence']}% min)
+Long Term: {'🟢' if dual_stats['long_term']['active'] else '🔴'} ({dual_stats['long_term']['min_confidence']}% min)
+
+━━━━━ 🔮 FREE WILL v2 ━━━━━
+/fw      - Free Will status
+/fwconf 80 - Set min confidence
+free on / free off - Toggle alerts
+
+━━━━━ 💎 SMART MONEY (SMC) ━━━━━
+/smc btc - Order blocks, FVG, liquidity
+
+━━━━━ 🧠 ADVANCED ━━━━━
+/divergence btc - RSI/MACD divergence
+/structure btc  - HH/HL/LH/LL analysis
+/vwap btc       - VWAP levels
+/cvd btc        - Order flow (CVD)
+/options btc    - Max pain & P/C ratio
+/strat btc      - Multi-strategy scan
+
+━━━━━ 🔔 ALERTS ━━━━━
 /alerts - View alert status
 /alert add btc above 70000
 /alert remove [id]
 
-💎 SMART MONEY (SMC):
-/smc btc - Full SMC analysis
-/smc eth 1h - Order blocks, FVG, liquidity
-
-📓 JOURNAL & MEMORY:
-/journal - Performance stats
+━━━━━ 📓 JOURNAL ━━━━━
+/journal  - Performance stats
 /insights - AI trading insights
 
-🧠 ADVANCED:
-/divergence btc - RSI/MACD divergence
+Mode: {'Alchemy ⚗️' if current_mode == 'alchemy' else 'Casual'}
+Auto Trading: {'🟢 ACTIVE' if autonomous_trader_v2.active else '🔴 PAUSED'}
+
+What's on your mind?"""
+            context = "start"
 /structure btc - HH/HL/LH/LL analysis
 /vwap btc - VWAP levels
 /cvd btc - Order flow
