@@ -784,7 +784,8 @@ class AutonomousTraderV2:
             "target_price": signal["target"],
             "partial_target": signal["partial_target"],
             "position_size_pct": signal["position_size_pct"],
-            "position_size": 1000,  # Default $1000 per trade for paper
+            "position_size": self.default_position_size,
+            "leverage": self.calculate_leverage(signal["confidence"]),
             "confidence": signal["confidence"],
             "confirmations": signal["confirmations"],
             "timeframe": signal["timeframe"],
@@ -819,7 +820,7 @@ class AutonomousTraderV2:
             except Exception as e:
                 logger.warning(f"Failed to record prediction: {e}")
         
-        logger.info(f"📈 TRADE OPENED: {signal['direction']} {signal['symbol']} @ ${signal['entry']:,.2f} | Conf: {signal['confidence']}%")
+        logger.info(f"📈 TRADE OPENED: {signal['direction']} {signal['symbol']} @ ${signal['entry']:,.2f} | {trade['leverage']}x Lev | Conf: {signal['confidence']}%")
         
         return trade
     
