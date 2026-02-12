@@ -435,18 +435,21 @@ class FreeWillEngineV2:
     async def scan_all(self) -> List[Dict]:
         """
         Scan top pairs on priority timeframes
-        Returns ONLY the best setups (80%+ confidence, 3+ confirmations)
+        Returns ONLY the best setups (80%+ confidence, 3+ confirmations, no contradictions)
         """
         best_setups = {}  # symbol -> best setup
         
         for symbol in TOP_PAIRS[:15]:  # Top 15 for speed
-            if not self._can_alert(symbol):
-                continue
-            
             for tf in PRIORITY_TIMEFRAMES:
                 setup = await self.analyze_setup_full(symbol, tf)
                 
                 if setup:
+                    direction = setup.get("direction")
+                    
+                    # Check if we can alert (includes contradiction check)
+                    if not self._can_alert(symbol, direction):
+                        continue
+                    
                     # Keep best setup per symbol
                     if symbol not in best_setups or setup["confidence"] > best_setups[symbol]["confidence"]:
                         best_setups[symbol] = setup
