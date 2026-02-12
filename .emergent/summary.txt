@@ -1,81 +1,289 @@
 <analysis>**original_problem_statement**: The user wants to build a sophisticated crypto trading bot named Aeon.
 Initial requirements included:
 1.  **Autonomous Paper Trading**: The bot should trade autonomously using simulated trades based on real market data from the MEXC exchange.
-2.  **Advanced Conversational AI**: The bot needs a sophisticated, multi-faceted personality (trader, life coach, buddy, mystic) that feels natural, is not repetitive, asks engaging questions, and can initiate conversations.
+2.  **Advanced Conversational AI**: The bot needs a sophisticated, multi-faceted personality that feels natural and can initiate conversations.
 3.  **System Health**: A general check for bugs and duplicate code.
 
 Recent user requests have expanded on these foundations:
-4.  **Dual Trading Strategies**: The user wants two distinct trading styles running simultaneously: an aggressive Day Trader for scalps/swings and a cautious Long Term trader for position trades.
+4.  **Dual Trading Strategies**: An aggressive Day Trader and a cautious Long Term trader running simultaneously.
 5.  **Enhanced Configuration**: A UI settings panel to control the bot's features.
-6.  **User Profiling**: The bot should learn and adapt to the user's trading style, risk tolerance, and favorite coins over time.
-7.  **Improved Alerts**: The alert system must be consistent, avoid sending contradictory signals (e.g., a LONG signal shortly after a SHORT signal for the same asset), and use more data sources.
+6.  **User Profiling**: The bot should learn and adapt to the user's trading style.
+7.  **Improved Alerts**: The alert system must be consistent and avoid contradictory signals.
 8.  **Voice Integration**: The user approved implementing a Voice feature.
-9.  **Real Money Trading**: Explicitly deferred by the user (not yet).
+9.  **Real Money Trading**: Explicitly deferred by the user.
+10. **Enhanced Commands & UI**: A comprehensive command list in the app, clickable news links in Telegram, and a more detailed trading UI showing PnL in USD and percentage.
+11. **Aggressive Trading Mode**: The bot should trade aggressively with high, dynamic leverage (up to 200x) that it adjusts by itself based on trade confidence.
 
 **User's preferred language**: en
 
 **what currently exists?**
-The application is a full-stack crypto trading bot with a React frontend and a FastAPI backend using MongoDB for data persistence.
--   **Frontend**: A React dashboard with pages for Trading (live PnL, open positions) and Settings. The Settings page has tabs for , , , and . The  tab displays detailed statistics for both the Free Will and the new Dual Engine alert systems.
--   **Backend**: A FastAPI server running multiple background tasks.
--   **Conversational AI**: A unified, proactive personality system that analyzes user messages to build a dynamic user profile (trading style, risk tolerance, favorite coins), remembers conversation context, and initiates chats.
--   **Trading Alerts**: Three distinct alert engines are active:
-    1.  **Free Will v2**: A general-purpose alert system with anti-contradiction logic.
-    2.  **Day Trader Engine**: An aggressive engine focused on short-term scalps and swings.
-    3.  **Long Term Engine**: A cautious engine focused on high-conviction position trades.
--   **Data Integration**: The system pulls live market data from MEXC and supplementary data from other free APIs (on-chain, social sentiment).
+The application is a full-stack crypto trading bot (React frontend, FastAPI backend, MongoDB).
+-   **Frontend**: A dashboard showing key stats, a settings page, a detailed trading page, and a new Commands reference page. The trading page now displays live PnL in both USD and percentage, leverage, and the trade type (Scalp, Swing, Day).
+-   **Backend**: The backend runs multiple asynchronous tasks for the different trading engines (Free Will, Day Trader, Long Term) and proactive chat. The memory instability issue has been resolved by implementing data capping and cleanup routines.
+-   **Trading Logic**: The bot now features an aggressive trading mode with dynamic leverage. It calculates leverage from 10x to 200x based on trade confidence and applies it to paper trades.
+-   **Telegram Bot**: The bot provides a comprehensive command list via , , and . News alerts now include clickable links to the source articles. The webhook has been corrected multiple times to fix unresponsiveness, but its stability remains a concern.
 
 **Last working item**:
--   **Last item agent was working**: The agent had just finished implementing the Dual Trading Engine and adding a corresponding UI section to the Alerts tab on the Settings page. The agent successfully verified the UI with a screenshot. However, immediately after, the system crashed.
--   **Status**: BLOCKED
--   **Agent Testing Done**: Y (Visual verification via screenshot only. Full testing was interrupted.)
--   **Which testing method agent to use?**: both
+-   **Last item agent was working**: The user asked a new question: What do you think about adding moltbot. The agent has not yet researched or responded to this. This came immediately after the agent finished implementing and verifying the aggressive, dynamic leverage trading feature.
+-   **Status**: NONE
+-   **Agent Testing Done**: Y (for the leverage feature)
+-   **Which testing method agent to use?**: web_search_tool (to research moltbot), followed by  if it is a 3rd party integration.
 -   **User Testing Done**: N
 
 **All Pending/In progress Issue list**:
--   Issue 1: Critical - System instability due to memory limit (P0)
+-   Issue 1: Telegram Bot Unresponsiveness (P0)
+-   Issue 2: User question about moltbot (P0)
 
 **Issues Detail**:
--   **Issue 1: Critical - System instability due to memory limit**
-    -   **Description**: The last message from the system was . This critical failure happened right after enabling the new dual-engine background tasks, which run concurrently with existing proactive chat and alert scanning tasks. The combined memory footprint of these processes is likely causing the pod to crash.
-    -   **Attempted fixes**: None. This is a newly emerged issue.
+-   **Issue 1: Telegram Bot Unresponsiveness**
+    -   **Description**: The Telegram bot has repeatedly become unresponsive during the session. The root cause has been incorrect webhook configurations (wrong server URL, wrong endpoint path). Although the agent has applied fixes and verified them with logs and direct  tests, this issue has a high chance of recurring. Final user confirmation that the bot is stable and responsive is still needed.
+    -   **Attempted fixes**:
+        1.  Updated webhook from an old server URL to the correct one.
+        2.  Corrected webhook endpoint from  to .
     -   **Next debug checklist**:
-        1.  Restart the backend and monitor memory usage over time using command-line tools like  or .
-        2.  Review the  task in  and the / classes in . Check if they are accumulating data in memory (e.g., growing lists or dictionaries) without releasing it.
-        3.  Investigate all running background tasks (, , ) for potential memory leaks. The issue could be the cumulative effect of all tasks.
-        4.  If the source isn't obvious, consider using a memory profiling library like  to get a line-by-line analysis of memory consumption in the background tasks.
-    -   **Why fix this issue and what will be achieved with the fix?**: The application is currently unstable and unusable. Fixing this will restore the bot's functionality and allow further development.
+        1.  Ask the user to test the bot one more time by sending  or .
+        2.  If it fails, immediately check backend supervisor logs for errors: ==> /var/log/supervisor/backend.err.log <==
+[92m23:34:51 - LiteLLM:INFO[0m: utils.py:1307 - Wrapper: Completed Call, calling success_handler
+2026-02-12 23:34:51,213 - LiteLLM - INFO - Wrapper: Completed Call, calling success_handler
+[92m23:35:05 - LiteLLM:INFO[0m: utils.py:3427 - 
+LiteLLM completion() model= gpt-4o-mini; provider = openai
+2026-02-12 23:35:05,789 - LiteLLM - INFO - 
+LiteLLM completion() model= gpt-4o-mini; provider = openai
+[92m23:35:06 - LiteLLM:INFO[0m: utils.py:1307 - Wrapper: Completed Call, calling success_handler
+2026-02-12 23:35:06,298 - LiteLLM - INFO - Wrapper: Completed Call, calling success_handler
+[92m23:35:20 - LiteLLM:INFO[0m: utils.py:3427 - 
+LiteLLM completion() model= gpt-4o-mini; provider = openai
+2026-02-12 23:35:20,571 - LiteLLM - INFO - 
+LiteLLM completion() model= gpt-4o-mini; provider = openai
+[92m23:35:21 - LiteLLM:INFO[0m: utils.py:1307 - Wrapper: Completed Call, calling success_handler
+2026-02-12 23:35:21,103 - LiteLLM - INFO - Wrapper: Completed Call, calling success_handler
+2026-02-12 23:35:24,783 - server - INFO - 🎯 ELITE ALERT: BNB/USDT 1d SHORT (82%)
+[92m23:35:35 - LiteLLM:INFO[0m: utils.py:3427 - 
+LiteLLM completion() model= gpt-4o-mini; provider = openai
+2026-02-12 23:35:35,582 - LiteLLM - INFO - 
+LiteLLM completion() model= gpt-4o-mini; provider = openai
+[92m23:35:35 - LiteLLM:INFO[0m: utils.py:1307 - Wrapper: Completed Call, calling success_handler
+2026-02-12 23:35:35,997 - LiteLLM - INFO - Wrapper: Completed Call, calling success_handler
+2026-02-12 23:35:39,385 - server - INFO - cartovgui666 (8537895571): /start
+2026-02-12 23:35:49,051 - server - INFO - cartovgui666 (8537895571): /smc
+[92m23:35:50 - LiteLLM:INFO[0m: utils.py:3427 - 
+LiteLLM completion() model= gpt-4o-mini; provider = openai
+2026-02-12 23:35:50,865 - LiteLLM - INFO - 
+LiteLLM completion() model= gpt-4o-mini; provider = openai
+[92m23:35:52 - LiteLLM:INFO[0m: utils.py:1307 - Wrapper: Completed Call, calling success_handler
+2026-02-12 23:35:52,409 - LiteLLM - INFO - Wrapper: Completed Call, calling success_handler
+[92m23:36:05 - LiteLLM:INFO[0m: utils.py:3427 - 
+LiteLLM completion() model= gpt-4o-mini; provider = openai
+2026-02-12 23:36:05,783 - LiteLLM - INFO - 
+LiteLLM completion() model= gpt-4o-mini; provider = openai
+[92m23:36:06 - LiteLLM:INFO[0m: utils.py:1307 - Wrapper: Completed Call, calling success_handler
+2026-02-12 23:36:06,308 - LiteLLM - INFO - Wrapper: Completed Call, calling success_handler
+[92m23:36:20 - LiteLLM:INFO[0m: utils.py:3427 - 
+LiteLLM completion() model= gpt-4o-mini; provider = openai
+2026-02-12 23:36:20,569 - LiteLLM - INFO - 
+LiteLLM completion() model= gpt-4o-mini; provider = openai
+[92m23:36:21 - LiteLLM:INFO[0m: utils.py:1307 - Wrapper: Completed Call, calling success_handler
+2026-02-12 23:36:21,122 - LiteLLM - INFO - Wrapper: Completed Call, calling success_handler
+[92m23:36:35 - LiteLLM:INFO[0m: utils.py:3427 - 
+LiteLLM completion() model= gpt-4o-mini; provider = openai
+2026-02-12 23:36:35,596 - LiteLLM - INFO - 
+LiteLLM completion() model= gpt-4o-mini; provider = openai
+[92m23:36:36 - LiteLLM:INFO[0m: utils.py:1307 - Wrapper: Completed Call, calling success_handler
+2026-02-12 23:36:36,252 - LiteLLM - INFO - Wrapper: Completed Call, calling success_handler
+[92m23:36:50 - LiteLLM:INFO[0m: utils.py:3427 - 
+LiteLLM completion() model= gpt-4o-mini; provider = openai
+2026-02-12 23:36:50,706 - LiteLLM - INFO - 
+LiteLLM completion() model= gpt-4o-mini; provider = openai
+[92m23:36:51 - LiteLLM:INFO[0m: utils.py:1307 - Wrapper: Completed Call, calling success_handler
+2026-02-12 23:36:51,315 - LiteLLM - INFO - Wrapper: Completed Call, calling success_handler
+[92m23:37:05 - LiteLLM:INFO[0m: utils.py:3427 - 
+LiteLLM completion() model= gpt-4o-mini; provider = openai
+2026-02-12 23:37:05,804 - LiteLLM - INFO - 
+LiteLLM completion() model= gpt-4o-mini; provider = openai
+[92m23:37:06 - LiteLLM:INFO[0m: utils.py:1307 - Wrapper: Completed Call, calling success_handler
+2026-02-12 23:37:06,286 - LiteLLM - INFO - Wrapper: Completed Call, calling success_handler
+[92m23:37:21 - LiteLLM:INFO[0m: utils.py:3427 - 
+LiteLLM completion() model= gpt-4o-mini; provider = openai
+2026-02-12 23:37:21,051 - LiteLLM - INFO - 
+LiteLLM completion() model= gpt-4o-mini; provider = openai
+[92m23:37:21 - LiteLLM:INFO[0m: utils.py:1307 - Wrapper: Completed Call, calling success_handler
+2026-02-12 23:37:21,942 - LiteLLM - INFO - Wrapper: Completed Call, calling success_handler
+2026-02-12 23:37:27,865 - server - INFO - 🎯 ELITE ALERT: XRP/USDT 1h LONG (82%)
+[92m23:37:35 - LiteLLM:INFO[0m: utils.py:3427 - 
+LiteLLM completion() model= gpt-4o-mini; provider = openai
+2026-02-12 23:37:35,777 - LiteLLM - INFO - 
+LiteLLM completion() model= gpt-4o-mini; provider = openai
+[92m23:37:36 - LiteLLM:INFO[0m: utils.py:1307 - Wrapper: Completed Call, calling success_handler
+2026-02-12 23:37:36,573 - LiteLLM - INFO - Wrapper: Completed Call, calling success_handler
+[92m23:37:50 - LiteLLM:INFO[0m: utils.py:3427 - 
+LiteLLM completion() model= gpt-4o-mini; provider = openai
+2026-02-12 23:37:50,456 - LiteLLM - INFO - 
+LiteLLM completion() model= gpt-4o-mini; provider = openai
+[92m23:37:51 - LiteLLM:INFO[0m: utils.py:1307 - Wrapper: Completed Call, calling success_handler
+2026-02-12 23:37:51,074 - LiteLLM - INFO - Wrapper: Completed Call, calling success_handler
+[92m23:38:05 - LiteLLM:INFO[0m: utils.py:3427 - 
+LiteLLM completion() model= gpt-4o-mini; provider = openai
+2026-02-12 23:38:05,608 - LiteLLM - INFO - 
+LiteLLM completion() model= gpt-4o-mini; provider = openai
+[92m23:38:06 - LiteLLM:INFO[0m: utils.py:1307 - Wrapper: Completed Call, calling success_handler
+2026-02-12 23:38:06,267 - LiteLLM - INFO - Wrapper: Completed Call, calling success_handler
+2026-02-12 23:38:16,260 - server - INFO - 🎯 ELITE ALERT: AVAX/USDT 1h LONG (82%)
+[92m23:38:21 - LiteLLM:INFO[0m: utils.py:3427 - 
+LiteLLM completion() model= gpt-4o-mini; provider = openai
+2026-02-12 23:38:21,107 - LiteLLM - INFO - 
+LiteLLM completion() model= gpt-4o-mini; provider = openai
+[92m23:38:21 - LiteLLM:INFO[0m: utils.py:1307 - Wrapper: Completed Call, calling success_handler
+2026-02-12 23:38:21,644 - LiteLLM - INFO - Wrapper: Completed Call, calling success_handler
+[92m23:38:35 - LiteLLM:INFO[0m: utils.py:3427 - 
+LiteLLM completion() model= gpt-4o-mini; provider = openai
+2026-02-12 23:38:35,784 - LiteLLM - INFO - 
+LiteLLM completion() model= gpt-4o-mini; provider = openai
+[92m23:38:36 - LiteLLM:INFO[0m: utils.py:1307 - Wrapper: Completed Call, calling success_handler
+2026-02-12 23:38:36,641 - LiteLLM - INFO - Wrapper: Completed Call, calling success_handler
+INFO:     Will watch for changes in these directories: ['/app/backend']
+INFO:     Uvicorn running on http://0.0.0.0:8001 (Press CTRL+C to quit)
+INFO:     Started reloader process [42] using WatchFiles
+
+==> /var/log/supervisor/backend.out.log <==
+INFO:     10.64.132.72:53892 - "GET /api/trading/v2/closed HTTP/1.1" 200 OK
+INFO:     10.64.132.72:53906 - "GET /api/trading/v2/live-positions HTTP/1.1" 200 OK
+INFO:     10.64.132.55:50974 - "GET /api/trading/v2/stats HTTP/1.1" 200 OK
+INFO:     10.64.132.44:59090 - "GET /api/mexc/live HTTP/1.1" 200 OK
+INFO:     10.64.132.55:50974 - "GET /api/bot/test HTTP/1.1" 200 OK
+INFO:     10.64.132.72:53906 - "GET /api/bot/messages?limit=30 HTTP/1.1" 200 OK
+INFO:     10.64.132.44:59084 - "GET /api/bot/stats HTTP/1.1" 200 OK
+INFO:     10.64.132.72:49234 - "GET /api/trading/summary HTTP/1.1" 200 OK
+INFO:     10.64.132.72:52274 - "GET /api/trading/v2/pnl-history HTTP/1.1" 200 OK
+INFO:     10.64.132.44:43148 - "GET /api/trading/v2/closed HTTP/1.1" 200 OK
+INFO:     10.64.132.55:50968 - "GET /api/trading/v2/stats HTTP/1.1" 200 OK
+INFO:     10.64.132.55:50964 - "GET /api/trading/v2/live-positions HTTP/1.1" 200 OK
+INFO:     10.64.132.72:52302 - "GET /api/mexc/live HTTP/1.1" 200 OK
+INFO:     10.64.132.72:52290 - "GET /api/bot/test HTTP/1.1" 200 OK
+INFO:     10.64.132.44:43162 - "GET /api/bot/messages?limit=30 HTTP/1.1" 200 OK
+INFO:     10.64.132.55:50964 - "GET /api/bot/stats HTTP/1.1" 200 OK
+INFO:     10.64.132.44:43150 - "GET /api/trading/summary HTTP/1.1" 200 OK
+INFO:     10.64.132.72:40106 - "GET /api/trading/v2/closed HTTP/1.1" 200 OK
+INFO:     10.64.132.55:38292 - "GET /api/trading/v2/pnl-history HTTP/1.1" 200 OK
+INFO:     10.64.132.55:38284 - "GET /api/trading/v2/stats HTTP/1.1" 200 OK
+INFO:     10.64.132.72:40092 - "GET /api/trading/v2/live-positions HTTP/1.1" 200 OK
+INFO:     10.64.132.55:58704 - "GET /api/mexc/live HTTP/1.1" 200 OK
+INFO:     10.64.132.44:58522 - "GET /api/bot/test HTTP/1.1" 200 OK
+INFO:     10.64.132.55:38284 - "GET /api/bot/messages?limit=30 HTTP/1.1" 200 OK
+INFO:     10.64.132.72:40092 - "GET /api/bot/stats HTTP/1.1" 200 OK
+INFO:     10.64.132.72:49258 - "GET /api/trading/summary HTTP/1.1" 200 OK
+INFO:     10.64.132.44:52884 - "GET /api/trading/opportunities HTTP/1.1" 200 OK
+INFO:     10.64.132.72:42128 - "GET /api/trading/opportunities HTTP/1.1" 200 OK
+INFO:     10.64.132.44:47222 - "GET /api/trading/v2/closed HTTP/1.1" 200 OK
+INFO:     10.64.132.55:42802 - "GET /api/trading/v2/pnl-history HTTP/1.1" 200 OK
+INFO:     10.64.132.55:42794 - "GET /api/trading/v2/stats HTTP/1.1" 200 OK
+INFO:     10.64.132.72:52998 - "GET /api/trading/v2/live-positions HTTP/1.1" 200 OK
+INFO:     10.64.132.44:47236 - "GET /api/mexc/live HTTP/1.1" 200 OK
+INFO:     10.64.132.55:42794 - "GET /api/bot/messages?limit=30 HTTP/1.1" 200 OK
+INFO:     10.64.132.44:47226 - "GET /api/bot/stats HTTP/1.1" 200 OK
+INFO:     10.64.132.55:42804 - "GET /api/bot/test HTTP/1.1" 200 OK
+INFO:     10.64.132.72:52998 - "GET /api/trading/summary HTTP/1.1" 200 OK
+INFO:     10.64.132.72:57294 - "GET /api/trading/v2/closed HTTP/1.1" 200 OK
+INFO:     10.64.132.44:58524 - "GET /api/trading/v2/pnl-history HTTP/1.1" 200 OK
+INFO:     10.64.132.44:58514 - "GET /api/trading/v2/stats HTTP/1.1" 200 OK
+INFO:     10.64.132.72:57282 - "GET /api/trading/v2/live-positions HTTP/1.1" 200 OK
+INFO:     10.64.132.44:43174 - "GET /api/trading/opportunities HTTP/1.1" 200 OK
+INFO:     10.64.132.44:58514 - "GET /api/mexc/live HTTP/1.1" 200 OK
+INFO:     10.64.132.72:57282 - "GET /api/bot/messages?limit=30 HTTP/1.1" 200 OK
+INFO:     10.64.132.72:52812 - "GET /api/bot/stats HTTP/1.1" 200 OK
+INFO:     10.64.132.44:59938 - "GET /api/bot/test HTTP/1.1" 200 OK
+INFO:     10.64.132.55:54250 - "GET /api/trading/summary HTTP/1.1" 200 OK
+INFO:     10.64.132.44:52884 - "GET /api/trading/opportunities HTTP/1.1" 200 OK
+INFO:     10.64.132.55:58704 - "GET /api/trading/opportunities HTTP/1.1" 200 OK
+INFO:     10.64.132.55:58704 - "GET /api/trading/v2/pnl-history HTTP/1.1" 200 OK
+INFO:     10.64.132.72:48352 - "GET /api/trading/v2/closed HTTP/1.1" 200 OK
+INFO:     10.64.132.44:40084 - "GET /api/trading/v2/live-positions HTTP/1.1" 200 OK
+INFO:     10.64.132.72:48342 - "GET /api/trading/v2/stats HTTP/1.1" 200 OK
+INFO:     10.64.132.72:48342 - "GET /api/mexc/live HTTP/1.1" 200 OK
+INFO:     10.64.132.55:57256 - "GET /api/bot/messages?limit=30 HTTP/1.1" 200 OK
+INFO:     10.64.132.44:40092 - "GET /api/bot/stats HTTP/1.1" 200 OK
+INFO:     10.64.132.44:40104 - "GET /api/bot/test HTTP/1.1" 200 OK
+INFO:     10.64.132.72:48366 - "GET /api/trading/summary HTTP/1.1" 200 OK
+INFO:     10.64.132.44:53098 - "GET /api/trading/v2/pnl-history HTTP/1.1" 200 OK
+INFO:     10.64.132.72:53288 - "GET /api/trading/v2/closed HTTP/1.1" 200 OK
+INFO:     10.64.132.72:53280 - "GET /api/trading/v2/stats HTTP/1.1" 200 OK
+INFO:     10.64.132.72:53272 - "GET /api/trading/v2/live-positions HTTP/1.1" 200 OK
+INFO:     10.64.132.44:35214 - "GET /api/mexc/live HTTP/1.1" 200 OK
+INFO:     10.64.132.55:50988 - "GET /api/bot/test HTTP/1.1" 200 OK
+INFO:     10.64.132.44:35198 - "GET /api/bot/messages?limit=30 HTTP/1.1" 200 OK
+INFO:     10.64.132.55:50976 - "GET /api/bot/stats HTTP/1.1" 200 OK
+INFO:     10.64.132.55:50994 - "GET /api/trading/summary HTTP/1.1" 200 OK
+INFO:     10.64.132.55:51946 - "GET /api/trading/v2/pnl-history HTTP/1.1" 200 OK
+INFO:     10.64.132.72:39304 - "GET /api/trading/v2/closed HTTP/1.1" 200 OK
+INFO:     10.64.132.72:39286 - "GET /api/trading/v2/stats HTTP/1.1" 200 OK
+INFO:     10.64.132.72:39298 - "GET /api/trading/v2/live-positions HTTP/1.1" 200 OK
+INFO:     10.64.132.44:47632 - "GET /api/bot/stats HTTP/1.1" 200 OK
+INFO:     10.64.132.44:47632 - "GET /api/mexc/live HTTP/1.1" 200 OK
+INFO:     10.64.132.55:51954 - "GET /api/bot/test HTTP/1.1" 200 OK
+INFO:     10.64.132.72:39318 - "GET /api/bot/messages?limit=30 HTTP/1.1" 200 OK
+INFO:     10.64.132.72:39286 - "GET /api/trading/summary HTTP/1.1" 200 OK
+INFO:     10.64.132.55:54266 - "GET /api/trading/opportunities HTTP/1.1" 200 OK
+INFO:     10.64.132.44:52884 - "GET /api/trading/opportunities HTTP/1.1" 200 OK
+INFO:     10.64.132.72:42938 - "GET /api/trading/v2/closed HTTP/1.1" 200 OK
+INFO:     10.64.132.72:42928 - "GET /api/trading/v2/pnl-history HTTP/1.1" 200 OK
+INFO:     10.64.132.55:41334 - "GET /api/trading/v2/live-positions HTTP/1.1" 200 OK
+INFO:     10.64.132.72:42942 - "GET /api/trading/v2/stats HTTP/1.1" 200 OK
+INFO:     10.64.132.55:43946 - "GET /api/mexc/live HTTP/1.1" 200 OK
+INFO:     10.64.132.55:41334 - "GET /api/bot/messages?limit=30 HTTP/1.1" 200 OK
+INFO:     10.64.132.72:33962 - "GET /api/bot/stats HTTP/1.1" 200 OK
+INFO:     10.64.132.44:36210 - "GET /api/bot/test HTTP/1.1" 200 OK
+INFO:     10.64.132.72:33978 - "GET /api/trading/summary HTTP/1.1" 200 OK
+INFO:     10.64.132.44:55162 - "GET /api/trading/v2/pnl-history HTTP/1.1" 200 OK
+INFO:     10.64.132.44:55170 - "GET /api/trading/v2/closed HTTP/1.1" 200 OK
+INFO:     10.64.132.55:43680 - "GET /api/trading/v2/live-positions HTTP/1.1" 200 OK
+INFO:     10.64.132.44:55170 - "GET /api/trading/v2/stats HTTP/1.1" 200 OK
+INFO:     10.64.132.72:53280 - "GET /api/trading/opportunities HTTP/1.1" 200 OK
+INFO:     10.64.132.44:55170 - "GET /api/mexc/live HTTP/1.1" 200 OK
+INFO:     10.64.132.55:43700 - "GET /api/bot/messages?limit=30 HTTP/1.1" 200 OK
+INFO:     10.64.132.72:53280 - "GET /api/bot/stats HTTP/1.1" 200 OK
+INFO:     10.64.132.55:43680 - "GET /api/bot/test HTTP/1.1" 200 OK
+INFO:     10.64.132.55:43694 - "GET /api/trading/summary HTTP/1.1" 200 OK
+INFO:     10.64.132.55:51962 - "GET /api/trading/opportunities HTTP/1.1" 200 OK
+INFO:     10.64.132.72:39286 - "GET /api/trading/opportunities HTTP/1.1" 200 OK.
+        3.  Re-verify the webhook configuration with Telegram's API: {"ok":false,"error_code":404,"description":"Not Found"}. Check the  and  fields.
+    -   **Why fix this issue and what will be achieved with the fix?**: The Telegram bot is the primary user interface. If it's unreliable, the entire application is effectively unusable for the user.
+    -   **Status**: USER VERIFICATION PENDING
+    -   **Is recurring issue?**: Y
+    -   **Should Test frontend/backend/both after fix?**: Backend
+    -   **Blocked on other issue**: None.
+
+-   **Issue 2: User question about moltbot**
+    -   **Description**: The user has asked for the agent's opinion on adding moltbot. This is an open-ended request that requires research before a plan can be made.
+    -   **Attempted fixes**: None.
+    -   **Next debug checklist**:
+        1.  Use the  to research what moltbot is (e.g., a trading bot, a library, a service).
+        2.  Based on the findings, formulate a response and a potential plan. If it's a software integration, the plan must involve using the  subagent.
+        3.  Present the research and plan to the user using the  tool.
+    -   **Why fix this issue and what will be achieved with the fix?**: To address the user's direct question and explore a new feature they are interested in.
     -   **Status**: NOT STARTED
     -   **Is recurring issue?**: N
-    -   **Should Test frontend/backend/both after fix?**: Both
-    -   **Blocked on other issue**: None. This is the primary blocker.
+    -   **Should Test frontend/backend/both after fix?**: N/A
+    -   **Blocked on other issue**: None.
 
 **In progress Task List**:
--   Task 1: Finalize and Test Dual Trading Engine Feature (P1)
-
-**Task Detail**:
--   **Task 1: Finalize and Test Dual Trading Engine Feature**
-    -   **Where to resume**: The code implementation and UI are complete. After resolving the memory leak, the next step is to run the testing agent to perform a full regression test on the backend logic and frontend components.
-    -   **What will be achieved with this?**: The user's request for two simultaneous, distinct trading strategies (aggressive day trading and cautious long-term) will be fully operational and verified.
-    -   **Status**: BLOCKED
-    -   **Should Test frontend/backend/both after fix?**: Both
-    -   **Blocked on something**: Blocked by Issue 1: Critical - System instability due to memory limit.
+-   None.
 
 **Upcoming and Future Tasks**
 -   **Upcoming Tasks**:
-    -   (P1) Voice Integration: Implement the Voice tab functionality on the Settings page, as approved by the user.
+    -   (P1) Voice Integration: Implement the Voice tab functionality on the Settings page, as previously approved by the user.
 -   **Future Tasks**:
-    -   (P2) Real-Money Trading: Integrate with a live exchange account to place real orders. The user has explicitly deferred this for now.
+    -   (P2) Real-Money Trading: Integrate with a live exchange account. The user has explicitly deferred this.
     -   (P3) UI for Trading Configuration: Allow users to directly modify trading engine parameters (e.g., confidence levels, timeframes) from the Settings UI.
 
 **Completed work in this session**
--   **Refined Conversational AI**: Migrated from a rigid multi-persona system to a unified, natural personality that is proactive, remembers context via a user profile, and asks engaging questions.
--   **Fixed Telegram Webhook**: Resolved an issue where the bot was unresponsive by correcting an outdated webhook URL.
--   **Enhanced Alert System**: Implemented an anti-contradiction mechanism to prevent flip-flopping signals and increased the number of data sources for better accuracy.
--   **User Profiling System**: Created a backend system and API () that analyzes user messages to learn their trading style, risk tolerance, and favorite coins.
--   **Expanded Settings UI**: Added , , and  tabs to the  component.
--   **Implemented Dual Trading Engine**: Created and activated two concurrent trading alert engines ( and ) with distinct strategies and parameters, accessible via the  endpoint.
--   **UI for Dual Engine**: Added a new section to the Alerts tab to display the live status and stats of the Dual Trading Engine.
+-   **Fixed Critical Memory Leak**: Resolved system crashes by adding memory capping and cleanup routines to background tasks in , , and .
+-   **Implemented Aggressive Trading Mode**:
+    -   Created a dynamic leverage system (10x-200x) based on trade confidence in .
+    -   Added a  Telegram command to view and set the maximum leverage.
+-   **Enhanced Trading UI & Telegram Commands**:
+    -   The trading UI in  now shows PnL in USD, leverage, and trade type badges (Scalp, Day, Swing).
+    -   Telegram news alerts are now clickable, and the  command provides a full command list.
+-   **Created Command Reference Page**: Built a new frontend component  and linked it in the main navigation.
+-   **Fixed Recurring Telegram Webhook Issues**: Repeatedly debugged and corrected the Telegram webhook URL to restore bot responsiveness.
 
 **Earlier issues found/mentioned but not fixed**
 -   None.
@@ -87,76 +295,69 @@ The application is a full-stack crypto trading bot with a React frontend and a F
 
 
 **Key Technical Concepts**
--   **Backend**: FastAPI, Python, Asyncio (for concurrent background tasks)
+-   **Backend**: FastAPI, Python, Asyncio
 -   **Frontend**: React.js
 -   **Database**: MongoDB
--   **Concurrency**: Multiple background tasks run using  for proactive chat, alert scanning (Free Will, Day Trader, Long Term), and daily reports. This is a likely source of the memory issue.
--   **AI/LLM**: GPT-4o via Emergent LLM Key for conversational AI and user profiling.
+-   **Concurrency**: Multiple background tasks for trading and chat, now with memory management.
+-   **Dynamic Leverage**: A non-linear function () maps trade confidence to a leverage multiplier.
+-   **In-Memory Data Capping**: Using  to prevent unbounded memory growth in background tasks.
 
 **key DB schema**
--   **trader_settings**: 
--   **paper_trades**: 
--   **user_profiles**:  (Managed by )
+-   **paper_trades**:  (Expanded schema).
+-   **trader_settings**:  (Expanded to store new settings).
 
 **changes in tech stack**
--   No fundamental changes, but a significant increase in the use of concurrent background tasks in the backend.
+-   None.
 
 **All files of reference**
--   : Critical file. It initializes and runs all background tasks. **Suspected location of memory issue.**
--   : NEW. Contains the logic for the two new trading engines. **A primary suspect for the memory leak.**
--   : Contains the logic for the original alert scanner.
--   : NEW. Contains the enhanced UI with multiple tabs, including the new Dual Engine display.
--   : NEW. Provides the API endpoint for the dual engine stats.
--   : NEW. Contains the logic for the user profiling system.
+-   : Contains all Telegram command handlers and webhook logic. High potential for refactoring.
+-   : Core logic for dynamic leverage and trade management.
+-   : The main trading interface.
+-   : New UI component for the command list.
+-   : Main React router and component structure.
 
 **Areas that need refactoring**:
--   The immediate priority is not refactoring but **debugging**. The memory management of the concurrent background tasks in  needs to be investigated and fixed.
+-   The  file has grown excessively large. The Telegram command handlers should be extracted into a separate module (e.g., ) to improve code organization and maintainability.
 
 **key api endpoints**
--   : Webhook for Telegram bot.
--   : GETs open paper trades.
--   : GETs stats for the Free Will alert system.
--   : NEW. GETs stats for the Day Trader and Long Term engines.
--   : NEW. GETs the learned profile for a user.
--   : NEW. GETs additional market data (on-chain, social, etc.).
+-   : The correct, active endpoint for the Telegram bot webhook.
 
 **Critical Info for New Agent**
--   **Your #1 priority is to investigate and fix the memory leak causing the pod to crash.** The application is unstable. Start by examining the memory usage of the Python backend process, focusing on the newly added concurrent background tasks for the dual trading engine.
--   The user wants two separate trading strategies (Day Trader, Long Term) running at the same time. The code for this is implemented but may be the source of the instability.
--   Do not proceed with any new features until the memory issue is resolved and the application is stable.
+-   Your first task is to address the user's question: What do you think about adding moltbot. Start by researching it with the  and then present your findings and a plan to the user.
+-   The Telegram bot's responsiveness is a **critical and recurring issue**. Be prepared to debug it if the user reports problems again. Verifying its stability is a top priority.
+-   The large  file is becoming a technical debt. Propose refactoring the Telegram handlers out of it after addressing the user's immediate requests.
 
 **documents and test reports created in this job**
--    (and previous iterations)
--    (updated throughout the session)
+-   
+-   
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **System Review: Memory Limit exceeded...**: System message indicating a critical crash. (Status: **Pending Investigation**)
-2.  **Do all but expect real money tarde not yet**: User approving a plan including dual trading engine, user profiling, and voice integration, while explicitly deferring real-money trading. (Status: In Progress)
-3.  **I also still want the tarding alets an setups an automatic messages...never contradicting...**: User reported that alerts seemed to have stopped and requested they be improved to avoid contradictions. (Status: Completed)
-4.  **yes soeverthing is up to dat**: User confirming that the chatbot was responsive again. (Status: Completed)
-5.  **ok good make sure their are no old severs anmore like that**: User asking to clean up any old server references after the webhook was fixed. (Status: Completed)
-6.  **Aeon isn’t responding when I text only sending alerts...**: User reported the bot was not responding to direct messages. (Status: Completed, was a webhook issue)
-7.  **User approved plan to update PRD and finish**: User approved finishing the previous task. (Status: Interrupted by new request)
-8.  **User approved plan for new features**: Approved enhancing settings, user profiling, and adding APIs. (Status: In Progress)
-9.  **User requested dual trading styles**: day trader style and long term...going at the same times. (Status: In Progress)
-10. **User confirmed satisfaction with alert improvements**: Implicitly approved the work on the anti-contradiction system.
+1.  **What do you think about adding moltbot**: Pending response and research.
+2.  **want it actively be aggrsive hgih leverge...**: Requested aggressive, dynamic leverage trading. (Status: Completed)
+3.  **for trrades i want itshow live pnl in usd form an percnt...**: Requested an enhanced trading UI with USD PnL. (Status: Completed)
+4.  **Not responding**: User reported the Telegram bot was unresponsive. (Status: Attempted Fix, Verification Pending)
+5.  **Make sure aeon is on the right server...**: User reported bot issues and requested command list on . (Status: Attempted Fix, Verification Pending)
+6.  **i want you to create list of cammands...**: Requested a command list and clickable news. (Status: Completed)
+7.  **User approved the initial plan**: first 1 yes then 2 (to fix memory leak, then test). (Status: Completed)
 
 **Project Health Check:**
--   **Broken**: Yes. The backend is unstable and crashes due to exceeding memory limits. This is the highest priority issue to resolve.
--   **Mocked**: Trade execution remains mocked (paper trading).
+-   **Broken**: The core backend is stable, but the primary user interface (Telegram bot) has been unreliable and its current stability is unconfirmed by the user. This is a critical point of potential failure.
+-   **Mocked**: All trading is still paper trading.
 
 **3rd Party Integrations**
--   **OpenAI GPT-4o**: Uses Emergent LLM Key for the conversational AI and user profiling.
--   **MEXC Exchange**: Used for live market price data for paper trading and alerts.
+-   **OpenAI GPT-4o**: Uses Emergent LLM Key for conversational AI.
+-   **MEXC Exchange**: For live market price data.
+-   **Potential**: moltbot, pending research.
 
 **Testing status**
--   **Testing agent used after significant changes**: YES
+-   **Testing agent used after significant changes**: YES (after the memory leak fix).
 -   **Troubleshoot agent used after agent stuck in loop**: NO
 -   **Test files created**: None.
--   **Known regressions**: The entire application is non-functional due to memory-related crashes.
+-   **Known regressions**: The Telegram bot has become unresponsive multiple times during the session.
 
 **Credentials to test flow:**
 -   N/A
 
 **What agent forgot to execute**
--   The agent was interrupted by a system crash just as it was about to call the  tool to summarize its work on the Dual Trading Engine UI. The planned update to  was also not executed.</analysis>
+-   The agent has not yet responded to the user's most recent question about moltbot.
+-   The agent did not call the  tool to formally close out the dynamic leverage task, as it was interrupted by the user's new question.</analysis>

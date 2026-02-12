@@ -21,7 +21,7 @@ import requests
 import os
 import time
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://crypto-trader-ai-20.preview.emergentagent.com')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://crypto-bot-dev.preview.emergentagent.com')
 
 
 class TestAlertSystem:
