@@ -435,25 +435,25 @@ async def freewill_proactive(chat_id: int):
 
 
 async def send_daily_report(chat_id: int):
+    """Natural morning check-in with market context"""
     now = datetime.now(central_tz)
     today = str(now.date())
     
     if now.hour == 6 and now.minute < 5 and chat_id not in daily_reports_sent.get(today, []):
         try:
             btc = await market_intel.get_full_market_scan("BTCUSDT")
-            eth = await market_intel.get_full_market_scan("ETHUSDT")
+            btc_price = btc.get('price', 0)
+            btc_bias = btc.get('overall_bias', 'neutral')
             
-            report = f"""🧠 AEON 6AM RITUAL - {now.strftime('%Y-%m-%d')}
-
-📊 BTC: ${btc.get('price', 0):,.0f}
-RSI: {btc.get('technical',{}).get('rsi','?')} | Bias: {btc.get('overall_bias','?')}
-L/S: {btc.get('positioning',{}).get('long_short_ratio','?')} | Funding: {btc.get('funding',{}).get('rate','?')}
-
-📊 ETH: ${eth.get('price', 0):,.0f}
-RSI: {eth.get('technical',{}).get('rsi','?')} | Bias: {eth.get('overall_bias','?')}
-
-🔮 «{random.choice(["What probability do you collapse today?", "The Great Work continues."])}»"""
+            # Natural morning greetings
+            greetings = [
+                f"Morning. BTC at ${btc_price:,.0f}, looking {btc_bias.lower()}. What's the plan today?",
+                f"Gm. Markets woke up {btc_bias.lower()} - BTC ${btc_price:,.0f}. You trading today or chilling?",
+                f"New day. BTC sitting at ${btc_price:,.0f}. How you feeling about it?",
+                f"Rise and grind. BTC ${btc_price:,.0f}. Got any plays lined up?",
+            ]
             
+            report = random.choice(greetings)
             await send_telegram_message(chat_id, report)
             daily_reports_sent.setdefault(today, []).append(chat_id)
         except Exception as e:
