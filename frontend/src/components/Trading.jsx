@@ -78,6 +78,7 @@ export default function Trading() {
   const [confidence, setConfidence] = useState(70);
 
   const fetchData = useCallback(async () => {
+    console.log('[Trading] fetchData starting...');
     setLoading(true);
     try {
       // Fetch all data in parallel
@@ -95,14 +96,19 @@ export default function Trading() {
       const oppsData = await oppsRes.json();
       const historyData = await historyRes.json();
       
+      console.log('[Trading] statsData:', statsData?.active, statsData?.open_trades);
+      console.log('[Trading] liveData positions:', liveData?.positions?.length);
+      
       setStats(statsData);
       setLivePositions(liveData.positions || []);
       setClosedTrades(closedData.closed_trades || []);
       setOpportunities(Array.isArray(oppsData) ? oppsData : []);
       setPnlHistory(historyData.history || []);
       setConfidence(statsData.min_confidence || 70);
+      
+      console.log('[Trading] State updated successfully');
     } catch (err) {
-      console.error('Failed to fetch trading data:', err);
+      console.error('[Trading] Failed to fetch trading data:', err);
     }
     setLoading(false);
   }, []);
