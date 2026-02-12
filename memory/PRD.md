@@ -204,6 +204,6 @@ Added methods to persist trading settings across restarts:
 ---
 
 ## Deployment
-- Preview: https://paper-trade-engine.preview.emergentagent.com
+- Preview: https://aeon-chat-refine.preview.emergentagent.com
 - Backend: Port 8001
 - Frontend: Port 3000
