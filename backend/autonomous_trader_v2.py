@@ -693,16 +693,17 @@ class AutonomousTraderV2:
         self.open_trades.append(trade)
         self.total_trades += 1
         
-        # Store in DB
+        # Store in DB (use chat_id=0 for autonomous trader)
         if self.learning_system:
             try:
                 await self.learning_system.record_prediction(
+                    chat_id=0,  # Autonomous trader uses 0 as system ID
                     symbol=signal["symbol"],
                     prediction=signal["direction"],
                     confidence=signal["confidence"],
                     entry_price=signal["entry"],
                     target_price=signal["target"],
-                    stop_price=signal["stop"],
+                    stop_loss=signal["stop"],
                     timeframe=signal["timeframe"],
                     reasoning="; ".join(signal["confirmations"][:5])
                 )
