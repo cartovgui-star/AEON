@@ -2329,14 +2329,20 @@ Get key at: coinglass.com/api"""
             response = f"""📰 CRYPTO NEWS
 
 Sentiment: {sentiment.get('sentiment', 'UNKNOWN')}
-Bullish: {sentiment.get('bullish_pct', 0)}% | Bearish: {sentiment.get('bearish_pct', 0)}%
+Bullish: {sentiment.get('bullish_pct', 0):.0f}% | Bearish: {sentiment.get('bearish_pct', 0):.0f}%
 
-Recent Headlines:
+📰 Latest Headlines:
 """
-            for n in news[:6]:
+            for i, n in enumerate(news[:6], 1):
                 emoji = n.get('sentiment', {}).get('emoji', '⚪')
-                response += f"{emoji} {n.get('title', '')[:60]}...\n"
+                title = n.get('title', '')[:55]
+                url = n.get('url', '')
+                if url:
+                    response += f"{emoji} [{title}...]({url})\n\n"
+                else:
+                    response += f"{emoji} {title}...\n"
             
+            response += "\n💡 Click headlines to read full articles"
             context = "news"
             
         elif text_lower == '/whales' or text_lower == '/whale':
