@@ -54,7 +54,9 @@ class AeonMind:
     def analyze_message(self, text: str, recent_messages: List[Dict] = None) -> Dict:
         """Deeply analyze message to understand what user really needs"""
         text_lower = text.lower().strip()
-        words = set(text_lower.split())
+        # Clean punctuation from words for better matching
+        import string
+        words = set(w.strip(string.punctuation) for w in text_lower.split())
         
         result = {
             "primary_mode": "buddy",  # buddy, coach, trader, mystic
