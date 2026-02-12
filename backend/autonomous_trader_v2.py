@@ -860,6 +860,11 @@ class AutonomousTraderV2:
                     
                     self.open_trades.remove(trade)
                     self.closed_trades.append(trade)
+                    
+                    # Cap in-memory closed trades to prevent memory growth
+                    if len(self.closed_trades) > 200:
+                        self.closed_trades = self.closed_trades[-150:]  # Keep most recent 150
+                    
                     closed.append(trade)
                     
                     # Persist closed trade to database
