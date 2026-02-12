@@ -89,6 +89,10 @@ memory_system = init_memory_system(db)  # Memory & journaling system
 confluence_analyzer = create_confluence_analyzer(smc_analyzer, strategy_engine)  # SMC+Strategy confluence
 user_profiler = init_user_profiler(db)  # User profiling system
 
+# Dual Trading Engine (Day Trader + Long Term)
+from dual_trading_engine import init_dual_engine, DualTradingEngine
+dual_engine = init_dual_engine(db)
+
 # Set derivatives_intel reference for autonomous trader
 from autonomous_trader import set_derivatives_intel
 set_derivatives_intel(derivatives_intel)
