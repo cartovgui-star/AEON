@@ -703,6 +703,79 @@ async def free_will_scanner():
             await asyncio.sleep(60)
 
 
+async def dual_trading_scanner():
+    """
+    DUAL TRADING ENGINE - Day Trader + Long Term running simultaneously
+    - Day Trader: Aggressive scalps/swings (15m, 1h, 4h)
+    - Long Term: Smart cautious positions (4h, 1d)
+    Both run continuously, never contradicting
+    """
+    await asyncio.sleep(20)  # Initial delay
+    
+    # Set dependencies
+    dual_engine.set_dependencies(
+        market_intel=market_intel,
+        derivatives_intel=derivatives_intel,
+        enhanced_intel=enhanced_intel,
+        order_flow=order_flow
+    )
+    
+    logger.info("⚡🎯 DUAL TRADING ENGINE ACTIVATED - Day Trader + Long Term")
+    
+    while True:
+        try:
+            if dual_engine.active:
+                # Scan both styles
+                all_setups = await dual_engine.scan_all_styles()
+                
+                # Process Day Trader setups
+                for setup in all_setups.get("day_trader", []):
+                    alert_msg = dual_engine.format_alert(setup)
+                    
+                    for chat_id in list(chat_ids):
+                        settings = await get_user_settings(chat_id)
+                        if settings.get("free_will", True):
+                            await send_telegram_message(chat_id, alert_msg)
+                            
+                            await db.dual_alerts.insert_one({
+                                "chat_id": chat_id,
+                                "setup": setup,
+                                "style": "day_trader",
+                                "timestamp": datetime.now(timezone.utc)
+                            })
+                        await asyncio.sleep(0.3)
+                    
+                    dual_engine.mark_alerted("Day Trader", setup["symbol"], setup["direction"])
+                    logger.info(f"⚡ DAY TRADE: {setup['symbol']} {setup['timeframe']} {setup['direction']} ({setup['confidence']}%)")
+                
+                # Process Long Term setups
+                for setup in all_setups.get("long_term", []):
+                    alert_msg = dual_engine.format_alert(setup)
+                    
+                    for chat_id in list(chat_ids):
+                        settings = await get_user_settings(chat_id)
+                        if settings.get("free_will", True):
+                            await send_telegram_message(chat_id, alert_msg)
+                            
+                            await db.dual_alerts.insert_one({
+                                "chat_id": chat_id,
+                                "setup": setup,
+                                "style": "long_term",
+                                "timestamp": datetime.now(timezone.utc)
+                            })
+                        await asyncio.sleep(0.3)
+                    
+                    dual_engine.mark_alerted("Long Term", setup["symbol"], setup["direction"])
+                    logger.info(f"🎯 LONG TERM: {setup['symbol']} {setup['timeframe']} {setup['direction']} ({setup['confidence']}%)")
+            
+            # Scan every 40 seconds
+            await asyncio.sleep(40)
+            
+        except Exception as e:
+            logger.error(f"Dual trading engine error: {e}")
+            await asyncio.sleep(60)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     existing = await db.chat_messages.distinct("chat_id")
@@ -719,10 +792,12 @@ async def lifespan(app: FastAPI):
     ritual_task = asyncio.create_task(eternal_rituals())
     trading_task = asyncio.create_task(autonomous_trading_loop())
     freewill_task = asyncio.create_task(free_will_scanner())
+    dual_task = asyncio.create_task(dual_trading_scanner())
     alert_task = asyncio.create_task(price_alert_system.run_forever())
     
     logger.info(f"🚀 AEON PAPER TRADING ACTIVATED - {autonomous_trader_v2.min_confidence}%+ conf, {autonomous_trader_v2.min_confirmations}+ confirmations")
     logger.info("🎯 AEON FREE WILL v2 ACTIVATED - Elite alerts only (80%+ conf, 3+ confirmations)")
+    logger.info("⚡🎯 DUAL ENGINE ACTIVATED - Day Trader (aggressive) + Long Term (smart)")
     logger.info("🔔 AEON PRICE ALERT SYSTEM ACTIVATED - Real-time monitoring")
     logger.info("🔌 WEBSOCKET MANAGER READY - Real-time client connections")
     
@@ -731,6 +806,7 @@ async def lifespan(app: FastAPI):
     ritual_task.cancel()
     trading_task.cancel()
     freewill_task.cancel()
+    dual_task.cancel()
     alert_task.cancel()
     client.close()
 
