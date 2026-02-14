@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="13" skipped="0" tests="15" time="484.202" timestamp="2026-02-14T20:56:59.816981+00:00" hostname="agent-env-ff4c5970-8560-4168-9129-820af2cfc9d2"><testcase classname="tests.test_iteration19_dual_engine_settings.TestDualTradingEngineAPIs" name="test_api_health" time="60.140"><failure message="assert 520 == 200&#10; +  where 520 = &lt;Response [520]&gt;.status_code">tests/test_iteration19_dual_engine_settings.py:23: in test_api_health
+    assert response.status_code == 200
+E   assert 520 == 200
+E    +  where 520 = &lt;Response [520]&gt;.status_code</failure></testcase><testcase classname="tests.test_iteration19_dual_engine_settings.TestDualTradingEngineAPIs" name="test_dual_stats_returns_correct_structure" time="60.184"><failure message="assert 520 == 200&#10; +  where 520 = &lt;Response [520]&gt;.status_code">tests/test_iteration19_dual_engine_settings.py:32: in test_dual_stats_returns_correct_structure
+    assert response.status_code == 200
+E   assert 520 == 200
+E    +  where 520 = &lt;Response [520]&gt;.status_code</failure></testcase><testcase classname="tests.test_iteration19_dual_engine_settings.TestDualTradingEngineAPIs" name="test_day_trader_toggle_on" time="60.195"><failure message="assert 520 == 200&#10; +  where 520 = &lt;Response [520]&gt;.status_code">tests/test_iteration19_dual_engine_settings.py:75: in test_day_trader_toggle_on
+    assert response.status_code == 200
+E   assert 520 == 200
+E    +  where 520 = &lt;Response [520]&gt;.status_code</failure></testcase><testcase classname="tests.test_iteration19_dual_engine_settings.TestDualTradingEngineAPIs" name="test_day_trader_toggle_off" time="60.226"><failure message="assert 520 == 200&#10; +  where 520 = &lt;Response [520]&gt;.status_code">tests/test_iteration19_dual_engine_settings.py:84: in test_day_trader_toggle_off
+    assert response.status_code == 200
+E   assert 520 == 200
+E    +  where 520 = &lt;Response [520]&gt;.status_code</failure></testcase><testcase classname="tests.test_iteration19_dual_engine_settings.TestDualTradingEngineAPIs" name="test_long_term_toggle_on" time="60.256"><failure message="assert 520 == 200&#10; +  where 520 = &lt;Response [520]&gt;.status_code">tests/test_iteration19_dual_engine_settings.py:96: in test_long_term_toggle_on
+    assert response.status_code == 200
+E   assert 520 == 200
+E    +  where 520 = &lt;Response [520]&gt;.status_code</failure></testcase><testcase classname="tests.test_iteration19_dual_engine_settings.TestDualTradingEngineAPIs" name="test_day_trader_confidence_set" time="60.228"><failure message="assert 520 == 200&#10; +  where 520 = &lt;Response [520]&gt;.status_code">tests/test_iteration19_dual_engine_settings.py:106: in test_day_trader_confidence_set
+    assert response.status_code == 200
+E   assert 520 == 200
+E    +  where 520 = &lt;Response [520]&gt;.status_code</failure></testcase><testcase classname="tests.test_iteration19_dual_engine_settings.TestDualTradingEngineAPIs" name="test_long_term_confidence_set" time="60.250"><failure message="assert 520 == 200&#10; +  where 520 = &lt;Response [520]&gt;.status_code">tests/test_iteration19_dual_engine_settings.py:123: in test_long_term_confidence_set
+    assert response.status_code == 200
+E   assert 520 == 200
+E    +  where 520 = &lt;Response [520]&gt;.status_code</failure></testcase><testcase classname="tests.test_iteration19_dual_engine_settings.TestDualTradingEngineAPIs" name="test_confidence_boundaries" time="60.164"><failure message="assert 520 == 200&#10; +  where 520 = &lt;Response [520]&gt;.status_code">tests/test_iteration19_dual_engine_settings.py:140: in test_confidence_boundaries
+    assert response.status_code == 200
+E   assert 520 == 200
+E    +  where 520 = &lt;Response [520]&gt;.status_code</failure></testcase><testcase classname="tests.test_iteration19_dual_engine_settings.TestFreeWillV2APIs" name="test_freewill_stats_returns_correct_structure" time="1.787"><failure message="assert 520 == 200&#10; +  where 520 = &lt;Response [520]&gt;.status_code">tests/test_iteration19_dual_engine_settings.py:165: in test_freewill_stats_returns_correct_structure
+    assert response.status_code == 200
+E   assert 520 == 200
+E    +  where 520 = &lt;Response [520]&gt;.status_code</failure></testcase><testcase classname="tests.test_iteration19_dual_engine_settings.TestFreeWillV2APIs" name="test_freewill_toggle" time="0.138"><failure message="assert 520 == 200&#10; +  where 520 = &lt;Response [520]&gt;.status_code">tests/test_iteration19_dual_engine_settings.py:187: in test_freewill_toggle
+    assert response.status_code == 200
+E   assert 520 == 200
+E    +  where 520 = &lt;Response [520]&gt;.status_code</failure></testcase><testcase classname="tests.test_iteration19_dual_engine_settings.TestFreeWillV2APIs" name="test_freewill_confidence_set" time="0.142"><failure message="assert 520 == 200&#10; +  where 520 = &lt;Response [520]&gt;.status_code">tests/test_iteration19_dual_engine_settings.py:202: in test_freewill_confidence_set
+    assert response.status_code == 200
+E   assert 520 == 200
+E    +  where 520 = &lt;Response [520]&gt;.status_code</failure></testcase><testcase classname="tests.test_iteration19_dual_engine_settings.TestTradingV2APIs" name="test_trading_v2_stats" time="0.101"><failure message="assert 520 == 200&#10; +  where 520 = &lt;Response [520]&gt;.status_code">tests/test_iteration19_dual_engine_settings.py:217: in test_trading_v2_stats
+    assert response.status_code == 200
+E   assert 520 == 200
+E    +  where 520 = &lt;Response [520]&gt;.status_code</failure></testcase><testcase classname="tests.test_iteration19_dual_engine_settings.TestTradingV2APIs" name="test_trading_toggle" time="0.166"><failure message="assert 520 == 200&#10; +  where 520 = &lt;Response [520]&gt;.status_code">tests/test_iteration19_dual_engine_settings.py:227: in test_trading_toggle
+    assert response.status_code == 200
+E   assert 520 == 200
+E    +  where 520 = &lt;Response [520]&gt;.status_code</failure></testcase><testcase classname="tests.test_iteration19_dual_engine_settings.TestPriceValidation" name="test_dual_engine_has_validate_method" time="0.079" /><testcase classname="tests.test_iteration19_dual_engine_settings.TestPriceValidation" name="test_free_will_has_validate_method" time="0.001" /></testsuite></testsuites>
