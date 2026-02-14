@@ -20,6 +20,8 @@ import Journal from "./components/Journal";
 import Trading from "./components/Trading";
 import CommandsReference from "./components/CommandsReference";
 import QuickScanModal from "./components/QuickScanModal";
+import PriceAlerts from "./components/PriceAlerts";
+import Backtesting from "./components/Backtesting";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
