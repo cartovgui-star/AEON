@@ -62,6 +62,9 @@ from routes import (
 from voice_tts import generate_speech, VOICES
 from price_alerts import price_alert_system, PriceAlertSystem
 from strategy_engine import StrategyEngine
+from sentiment_analyzer import sentiment_analyzer, SentimentAnalyzer
+from arbitrage_detector import arbitrage_detector, ArbitrageDetector
+from strategy_health import strategy_health, StrategyHealth
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
