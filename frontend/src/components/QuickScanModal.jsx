@@ -22,9 +22,10 @@ export default function QuickScanModal({ coin, onClose }) {
     setLoading(true);
     setError('');
     try {
+      // Pass just the coin symbol, API adds USDT
       const [scanRes, taRes] = await Promise.all([
-        fetch(`${API_URL}/api/market/scan/${coin}USDT`),
-        fetch(`${API_URL}/api/market/ta/${coin}USDT?timeframe=1h`)
+        fetch(`${API_URL}/api/market/scan/${coin}`),
+        fetch(`${API_URL}/api/market/ta/${coin}?timeframe=1h`)
       ]);
       
       const scanData = await scanRes.json();
