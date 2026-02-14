@@ -385,13 +385,19 @@ function App() {
               <h2 className="text-lg font-semibold text-white flex items-center gap-2">
                 <BarChart3 className="w-5 h-5 text-orange-400" />
                 Live Market Data
+                <span className="text-xs text-zinc-500 font-normal ml-2">Click any coin for instant analysis</span>
               </h2>
               <div className="grid md:grid-cols-3 gap-4">
                 {mexcData?.symbols?.map((sym, i) => (
-                  <Card key={i} className="bg-zinc-800/30 border-zinc-700/50">
+                  <Card 
+                    key={i} 
+                    className="bg-zinc-800/30 border-zinc-700/50 cursor-pointer hover:bg-zinc-800/50 hover:border-orange-500/30 transition-all group"
+                    onClick={() => setQuickScanCoin(sym.symbol?.replace('/USDT', '').replace('USDT', ''))}
+                    data-testid={`market-card-${sym.symbol?.replace('/USDT', '').replace('USDT', '')}`}
+                  >
                     <CardContent className="p-4">
                       <div className="flex items-center justify-between mb-3">
-                        <span className="font-semibold text-white">{sym.symbol?.replace('/USDT', '')}</span>
+                        <span className="font-semibold text-white group-hover:text-orange-400 transition-colors">{sym.symbol?.replace('/USDT', '')}</span>
                         <span className={`text-sm font-medium ${
                           (sym.change_24h || 0) >= 0 ? 'text-green-400' : 'text-red-400'
                         }`}>
