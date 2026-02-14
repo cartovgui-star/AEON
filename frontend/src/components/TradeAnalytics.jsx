@@ -5,7 +5,7 @@ import {
   ArrowUpRight, ArrowDownRight, Filter, ChevronDown
 } from 'lucide-react';
 import {
-  LineChart, Line, AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
+  AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
 } from 'recharts';
 
