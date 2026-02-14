@@ -23,8 +23,8 @@ export default function QuickScanModal({ coin, onClose }) {
     setError('');
     try {
       const [scanRes, taRes] = await Promise.all([
-        fetch(`${API_URL}/api/scan/${coin}USDT`),
-        fetch(`${API_URL}/api/ta/${coin}USDT?timeframe=1h`)
+        fetch(`${API_URL}/api/market/scan/${coin}USDT`),
+        fetch(`${API_URL}/api/market/ta/${coin}USDT?timeframe=1h`)
       ]);
       
       const scanData = await scanRes.json();
