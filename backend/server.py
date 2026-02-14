@@ -275,30 +275,32 @@ def get_mexc_orderbook() -> Dict[str, Any]:
     """Get MEXC orderbook data for main tracked symbols (dashboard)"""
     try:
         # Main 3 coins for dashboard (faster loading)
-        symbols = ['BTC/USDT', 'ETH/USDT', 'SOL/USDT']
-        tickers = mexc.fetch_tickers(symbols)
-        markets = {}
-        for symbol in symbols:
+        symbols_to_fetch = ['BTC/USDT', 'ETH/USDT', 'SOL/USDT']
+        tickers = mexc.fetch_tickers(symbols_to_fetch)
+        symbols = []
+        for symbol in symbols_to_fetch:
             try:
                 book = mexc.fetch_order_book(symbol, limit=20)
                 bid_depth = sum([b[1] for b in book['bids'][:10]])
                 ask_depth = sum([a[1] for a in book['asks'][:10]])
                 imbalance = ((bid_depth - ask_depth) / (bid_depth + ask_depth) * 100) if (bid_depth + ask_depth) > 0 else 0
                 ticker = tickers[symbol]
-                coin = symbol.split('/')[0]
-                markets[coin] = {
-                    'price': f"${ticker['last']:,.2f}" if ticker['last'] >= 1 else f"${ticker['last']:.4f}",
-                    'change': f"{ticker['percentage']:+.2f}%",
-                    'bid_depth': f"{bid_depth:,.0f}",
-                    'ask_depth': f"{ask_depth:,.0f}",
-                    'imbalance': f"{imbalance:+.0f}%",
-                    'imbalance_raw': imbalance,
-                }
+                symbols.append({
+                    'symbol': symbol,
+                    'price': ticker['last'],
+                    'change_24h': ticker.get('percentage', 0),
+                    'high_24h': ticker.get('high', 0),
+                    'low_24h': ticker.get('low', 0),
+                    'volume_24h': ticker.get('quoteVolume', 0),
+                    'bid_depth': bid_depth,
+                    'ask_depth': ask_depth,
+                    'imbalance': imbalance,
+                })
             except:
                 continue
-        return markets
+        return {"symbols": symbols}
     except Exception as e:
-        return {"error": str(e)}
+        return {"symbols": [], "error": str(e)}
 
 
 async def generate_quantum_probe(chat_id: int, context: str = None, mode: str = "standard") -> str:
