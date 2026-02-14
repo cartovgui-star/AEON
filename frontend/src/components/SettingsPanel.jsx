@@ -516,3 +516,257 @@ export default function SettingsPanel() {
     </div>
   );
 }
+
+// Voice Tab Component
+function VoiceTab({ settings, setSettings }) {
+  const [message, setMessage] = useState('');
+  const [isListening, setIsListening] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [transcript, setTranscript] = useState('');
+  const [aeonResponse, setAeonResponse] = useState('');
+  const [error, setError] = useState('');
+  const audioRef = useRef(null);
+  const recognitionRef = useRef(null);
+
+  const voices = [
+    { id: 'guy', name: 'Guy', desc: 'Confident & calm' },
+    { id: 'davis', name: 'Davis', desc: 'Professional' },
+    { id: 'british', name: 'British', desc: 'Sophisticated' },
+    { id: 'australian', name: 'Australian', desc: 'Friendly & relaxed' }
+  ];
+
+  // Initialize speech recognition
+  useEffect(() => {
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      recognitionRef.current = new SpeechRecognition();
+      recognitionRef.current.continuous = false;
+      recognitionRef.current.interimResults = true;
+      recognitionRef.current.lang = 'en-US';
+
+      recognitionRef.current.onresult = (event) => {
+        const current = event.resultIndex;
+        const text = event.results[current][0].transcript;
+        setTranscript(text);
+        if (event.results[current].isFinal) {
+          setMessage(text);
+        }
+      };
+
+      recognitionRef.current.onend = () => {
+        setIsListening(false);
+      };
+
+      recognitionRef.current.onerror = (event) => {
+        console.error('Speech recognition error:', event.error);
+        setIsListening(false);
+        setError('Speech recognition error. Please try again.');
+      };
+    }
+  }, []);
+
+  const toggleListening = () => {
+    if (isListening) {
+      recognitionRef.current?.stop();
+      setIsListening(false);
+    } else {
+      setTranscript('');
+      setError('');
+      recognitionRef.current?.start();
+      setIsListening(true);
+    }
+  };
+
+  const sendMessage = async () => {
+    if (!message.trim()) return;
+    
+    setIsLoading(true);
+    setError('');
+    setAeonResponse('');
+
+    try {
+      const res = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/voice/respond`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text: message,
+          voice: settings.selectedVoice
+        })
+      });
+
+      const data = await res.json();
+
+      if (data.error) {
+        setError(data.error);
+      } else {
+        setAeonResponse(data.text);
+        
+        // Play audio
+        if (data.audio) {
+          const audioBlob = new Blob(
+            [Uint8Array.from(atob(data.audio), c => c.charCodeAt(0))],
+            { type: 'audio/mp3' }
+          );
+          const audioUrl = URL.createObjectURL(audioBlob);
+          
+          if (audioRef.current) {
+            audioRef.current.src = audioUrl;
+            audioRef.current.play();
+            setIsPlaying(true);
+            
+            audioRef.current.onended = () => {
+              setIsPlaying(false);
+              URL.revokeObjectURL(audioUrl);
+            };
+          }
+        }
+      }
+    } catch (err) {
+      setError('Failed to connect to Aeon. Please try again.');
+    }
+
+    setIsLoading(false);
+  };
+
+  const playResponse = () => {
+    if (audioRef.current && audioRef.current.src) {
+      audioRef.current.play();
+      setIsPlaying(true);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Voice Selection */}
+      <div className="bg-zinc-800/30 rounded-xl border border-zinc-700/50 overflow-hidden">
+        <div className="flex items-center gap-3 px-6 py-4 bg-zinc-800/50 border-b border-zinc-700/50">
+          <Volume2 className="w-5 h-5 text-orange-400" />
+          <h3 className="font-semibold text-white">Choose Aeon's Voice</h3>
+        </div>
+        <div className="p-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {voices.map(v => (
+              <button 
+                key={v.id} 
+                onClick={() => setSettings(s => ({ ...s, selectedVoice: v.id }))}
+                data-testid={`voice-option-${v.id}`}
+                className={`p-4 rounded-lg border text-left transition-all ${
+                  settings.selectedVoice === v.id 
+                    ? 'border-orange-500 bg-orange-500/10' 
+                    : 'border-zinc-700 hover:border-zinc-600'
+                }`}
+              >
+                <p className={`font-medium ${settings.selectedVoice === v.id ? 'text-orange-400' : 'text-white'}`}>
+                  {v.name}
+                </p>
+                <p className="text-xs text-zinc-500">{v.desc}</p>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Voice Chat Interface */}
+      <div className="bg-zinc-800/30 rounded-xl border border-zinc-700/50 overflow-hidden">
+        <div className="flex items-center gap-3 px-6 py-4 bg-zinc-800/50 border-b border-zinc-700/50">
+          <Mic className="w-5 h-5 text-orange-400" />
+          <h3 className="font-semibold text-white">Talk to Aeon</h3>
+          <span className="ml-auto px-2 py-0.5 bg-green-500/20 text-green-400 text-xs rounded">LIVE</span>
+        </div>
+        <div className="p-6 space-y-4">
+          {/* Input Area */}
+          <div className="flex gap-3">
+            <div className="flex-1 relative">
+              <input
+                type="text"
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+                placeholder={isListening ? 'Listening...' : 'Type or speak your message...'}
+                data-testid="voice-input"
+                className="w-full px-4 py-3 bg-zinc-900/50 border border-zinc-700 rounded-lg text-white placeholder-zinc-500 focus:border-orange-500 focus:outline-none"
+              />
+              {transcript && isListening && (
+                <div className="absolute left-4 top-3 text-orange-400 animate-pulse">
+                  {transcript}
+                </div>
+              )}
+            </div>
+            
+            {/* Microphone Button */}
+            <button
+              onClick={toggleListening}
+              data-testid="voice-mic-button"
+              disabled={!recognitionRef.current}
+              className={`p-3 rounded-lg transition-all ${
+                isListening 
+                  ? 'bg-red-500 text-white animate-pulse' 
+                  : 'bg-zinc-700 text-zinc-300 hover:bg-zinc-600'
+              } ${!recognitionRef.current ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
+              {isListening ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+            </button>
+            
+            {/* Send Button */}
+            <button
+              onClick={sendMessage}
+              disabled={!message.trim() || isLoading}
+              data-testid="voice-send-button"
+              className={`px-4 py-3 rounded-lg flex items-center gap-2 transition-all ${
+                message.trim() && !isLoading
+                  ? 'bg-orange-500 text-white hover:bg-orange-600'
+                  : 'bg-zinc-700 text-zinc-500 cursor-not-allowed'
+              }`}
+            >
+              {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
+            </button>
+          </div>
+
+          {/* Error Display */}
+          {error && (
+            <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-sm">
+              {error}
+            </div>
+          )}
+
+          {/* Response Area */}
+          {aeonResponse && (
+            <div className="p-4 bg-zinc-900/50 border border-zinc-700 rounded-lg space-y-3">
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 rounded-full bg-orange-500/20 flex items-center justify-center flex-shrink-0">
+                  <Bot className="w-4 h-4 text-orange-400" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm text-zinc-400 mb-1">Aeon says:</p>
+                  <p className="text-white">{aeonResponse}</p>
+                </div>
+                <button
+                  onClick={playResponse}
+                  disabled={isPlaying}
+                  data-testid="voice-play-button"
+                  className={`p-2 rounded-lg transition-all ${
+                    isPlaying 
+                      ? 'bg-orange-500/20 text-orange-400' 
+                      : 'bg-zinc-700 text-zinc-300 hover:bg-zinc-600'
+                  }`}
+                >
+                  {isPlaying ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Hidden Audio Element */}
+          <audio ref={audioRef} className="hidden" />
+
+          {/* Instructions */}
+          <div className="text-sm text-zinc-500 space-y-1">
+            <p>Click the microphone to speak, or type your message.</p>
+            <p>Aeon will respond with voice using the selected voice style.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
