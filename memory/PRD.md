@@ -39,6 +39,18 @@ Build a sophisticated trading bot named "Aeon" with:
 - Added `data-testid` attributes for better testing
 - Save button calls 8 POST endpoints concurrently
 
+### Voice Integration ✅
+**User Request**: Implement the Voice tab functionality.
+
+**Implementation**:
+- Created `VoiceTab` component in `SettingsPanel.jsx` with:
+  - Voice selection (Guy, Davis, British, Australian)
+  - Text input with mic button for speech recognition
+  - Real-time response with audio playback
+  - Play button to replay Aeon's response
+- Backend uses Edge TTS (free) via `/api/voice/respond` endpoint
+- Supports browser Speech Recognition API
+
 ---
 
 ## Previous Session (Feb 12, 2026) - Memory Fix + Commands Reference
