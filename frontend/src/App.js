@@ -512,6 +512,9 @@ function App() {
         {/* Page: Backtesting */}
         {currentPage === 'backtest' && <Backtesting />}
 
+        {/* Page: Intelligence */}
+        {currentPage === 'intel' && <Intelligence />}
+
         {/* Page: Settings */}
         {currentPage === 'settings' && <SettingsPanel />}
 
