@@ -506,10 +506,16 @@ function App() {
 
         {/* Page: Commands Reference */}
         {currentPage === 'commands' && <CommandsReference />}
+
+        {/* Page: Trade Analytics (Charts) */}
+        {currentPage === 'charts' && <TradeAnalytics />}
       </main>
 
       {/* Voice Modal */}
       {showVoice && <VoiceConversation onClose={() => setShowVoice(false)} />}
+
+      {/* Quick Scan Modal */}
+      {quickScanCoin && <QuickScanModal coin={quickScanCoin} onClose={() => setQuickScanCoin(null)} />}
     </div>
   );
 }
