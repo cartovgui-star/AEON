@@ -504,6 +504,12 @@ function App() {
         {/* Page: Analytics */}
         {currentPage === 'analytics' && <Analytics />}
 
+        {/* Page: Price Alerts */}
+        {currentPage === 'alerts' && <PriceAlerts />}
+
+        {/* Page: Backtesting */}
+        {currentPage === 'backtest' && <Backtesting />}
+
         {/* Page: Settings */}
         {currentPage === 'settings' && <SettingsPanel />}
 
