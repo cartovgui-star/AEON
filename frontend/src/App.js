@@ -179,6 +179,7 @@ function App() {
     { id: 'trades', label: 'History', icon: History },
     { id: 'alerts', label: 'Alerts', icon: Bell },
     { id: 'backtest', label: 'Backtest', icon: FlaskConical },
+    { id: 'intel', label: 'Intel', icon: Brain },
     { id: 'charts', label: 'Analytics', icon: BarChart3 },
     { id: 'smc', label: 'SMC', icon: Layers },
     { id: 'journal', label: 'Journal', icon: BookOpen },
