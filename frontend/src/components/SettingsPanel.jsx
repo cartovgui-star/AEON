@@ -13,7 +13,16 @@ export default function SettingsPanel() {
     dayTraderConf: 75,
     longTermEnabled: true,
     longTermConf: 88,
-    selectedVoice: 'guy'
+    selectedVoice: 'guy',
+    // Notification preferences
+    notifications: {
+      tradeAlerts: true,
+      priceAlerts: true,
+      newsAlerts: true,
+      marketUpdates: false,
+      soundEnabled: true,
+      browserNotifications: false
+    }
   });
   const [freeWillStats, setFreeWillStats] = useState(null);
   const [dualStats, setDualStats] = useState(null);
