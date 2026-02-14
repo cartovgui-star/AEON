@@ -14,10 +14,12 @@ import VoiceConversation from "./components/VoiceConversation";
 import TradeHistory from "./components/TradeHistory";
 import SettingsPanel from "./components/SettingsPanel";
 import Analytics from "./components/Analytics";
+import TradeAnalytics from "./components/TradeAnalytics";
 import SMCAnalysis from "./components/SMCAnalysis";
 import Journal from "./components/Journal";
 import Trading from "./components/Trading";
 import CommandsReference from "./components/CommandsReference";
+import QuickScanModal from "./components/QuickScanModal";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
