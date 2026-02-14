@@ -10,7 +10,38 @@ Build a sophisticated trading bot named "Aeon" with:
 
 ---
 
-## Latest Session (Feb 12, 2026) - Memory Fix + Commands Reference
+## Latest Session (Feb 14, 2026) - Alert Price Validation + Unified Settings UI
+
+### Alert Price Validation Fix ✅
+**Issue**: Alerts sometimes showed wrong prices (e.g., BTC at 30k) and contradicting signals.
+
+**Fixes Applied**:
+1. Added `validate_and_format_alert()` method to `dual_trading_engine.py` (line 366)
+   - Fetches fresh price at alert time
+   - Invalidates setup if price moved >2% from entry
+   - Recalculates SL/TP with fresh price
+2. Added `validate_and_format_alert()` method to `free_will_v2.py` (line 484)
+   - Tighter validation: 1.5% threshold for elite alerts
+   - Updates entry, stop, target with fresh data
+3. Updated `dual_trading_scanner()` and `free_will_scanner()` in `server.py`
+   - Now calls validation before sending any alert
+   - Logs skipped alerts when price moved too much
+
+### Unified Trading Configuration UI ✅
+**User Request**: Integrate all trading configuration into one Settings UI.
+
+**Implementation**:
+- Settings > Alerts tab now saves ALL engine settings together:
+  - Auto Trader toggle + confidence
+  - Free Will toggle + confidence  
+  - Day Trader toggle + confidence
+  - Long Term toggle + confidence
+- Added `data-testid` attributes for better testing
+- Save button calls 8 POST endpoints concurrently
+
+---
+
+## Previous Session (Feb 12, 2026) - Memory Fix + Commands Reference
 
 ### Memory Leak Fix ✅
 **Issue**: System crashed due to memory limit exceeded after enabling dual trading engines.
