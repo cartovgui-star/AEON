@@ -511,26 +511,7 @@ export default function SettingsPanel() {
 
       {/* Voice Tab */}
       {activeTab === 'voice' && (
-        <div className="bg-zinc-800/30 rounded-xl border border-zinc-700/50 overflow-hidden">
-          <div className="flex items-center gap-3 px-6 py-4 bg-zinc-800/50 border-b border-zinc-700/50">
-            <Volume2 className="w-5 h-5 text-orange-400" />
-            <h3 className="font-semibold text-white">Voice Settings</h3>
-          </div>
-          <div className="p-6">
-            <p className="text-white mb-4">Choose Aeon's Voice</p>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {voices.map(v => (
-                <button key={v.id} onClick={() => setSettings(s => ({ ...s, selectedVoice: v.id }))}
-                  className={`p-4 rounded-lg border text-left transition-all ${
-                    settings.selectedVoice === v.id ? 'border-orange-500 bg-orange-500/10' : 'border-zinc-700 hover:border-zinc-600'
-                  }`}>
-                  <p className={`font-medium ${settings.selectedVoice === v.id ? 'text-orange-400' : 'text-white'}`}>{v.name}</p>
-                  <p className="text-xs text-zinc-500">{v.desc}</p>
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
+        <VoiceTab settings={settings} setSettings={setSettings} />
       )}
     </div>
   );
