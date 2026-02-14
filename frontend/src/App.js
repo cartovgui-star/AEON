@@ -174,6 +174,7 @@ function App() {
     { id: 'trading', label: 'Trading', icon: Wallet },
     { id: 'trades', label: 'History', icon: History },
     { id: 'analytics', label: 'Alerts', icon: PieChart },
+    { id: 'charts', label: 'Analytics', icon: BarChart3 },
     { id: 'smc', label: 'SMC', icon: Layers },
     { id: 'journal', label: 'Journal', icon: BookOpen },
     { id: 'commands', label: 'Commands', icon: HelpCircle },
