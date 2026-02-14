@@ -292,20 +292,21 @@ function App() {
 
           {/* Mobile Nav */}
           {mobileMenuOpen && (
-            <div className="md:hidden pt-4 pb-2 border-t border-zinc-800 mt-3">
-              <div className="flex flex-col gap-1">
+            <div className="lg:hidden pt-4 pb-2 border-t border-zinc-800 mt-3">
+              <div className="grid grid-cols-3 gap-1">
                 {navItems.map(item => (
                   <button
                     key={item.id}
                     onClick={() => { setCurrentPage(item.id); setMobileMenuOpen(false); }}
-                    className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
+                    data-testid={`mobile-nav-${item.id}`}
+                    className={`flex flex-col items-center gap-1.5 px-2 py-3 rounded-lg transition-all ${
                       currentPage === item.id
                         ? 'bg-orange-500/20 text-orange-400'
                         : 'text-zinc-400 hover:text-white'
                     }`}
                   >
                     <item.icon className="w-5 h-5" />
-                    <span className="font-medium">{item.label}</span>
+                    <span className="text-xs font-medium">{item.label}</span>
                   </button>
                 ))}
               </div>
