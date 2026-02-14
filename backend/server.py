@@ -1559,6 +1559,88 @@ async def api_defi_tvl(protocol: str = None):
     return await additional_data.get_defi_llama_tvl(protocol)
 
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# SENTIMENT ANALYSIS APIs (Moltbot-inspired)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@api_router.get("/sentiment/composite")
+async def api_sentiment_composite(symbol: str = "BTC"):
+    """Get composite sentiment from all sources"""
+    return await sentiment_analyzer.get_composite_sentiment(symbol.upper())
+
+
+@api_router.get("/sentiment/news")
+async def api_sentiment_news():
+    """Get news sentiment analysis"""
+    return await sentiment_analyzer.get_news_sentiment()
+
+
+@api_router.get("/sentiment/fear-greed")
+async def api_sentiment_fear_greed():
+    """Get Fear & Greed Index with history"""
+    return await sentiment_analyzer.get_fear_greed()
+
+
+@api_router.get("/sentiment/history")
+async def api_sentiment_history():
+    """Get sentiment history"""
+    return {"history": sentiment_analyzer.get_sentiment_history()}
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# ARBITRAGE DETECTION APIs (Moltbot-inspired)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@api_router.get("/arbitrage/scan")
+async def api_arbitrage_scan():
+    """Scan all symbols across exchanges for arbitrage opportunities"""
+    return await arbitrage_detector.scan_all()
+
+
+@api_router.get("/arbitrage/scan/{symbol}")
+async def api_arbitrage_scan_symbol(symbol: str):
+    """Scan specific symbol for arbitrage"""
+    return await arbitrage_detector.scan_symbol(symbol.upper() + "/USDT")
+
+
+@api_router.get("/arbitrage/recent")
+async def api_arbitrage_recent(limit: int = 20):
+    """Get recent arbitrage opportunities"""
+    return {"opportunities": arbitrage_detector.get_recent_opportunities(limit)}
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# STRATEGY HEALTH APIs (Moltbot-inspired self-improving)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@api_router.get("/strategy-health/status")
+async def api_strategy_health():
+    """Get strategy health and performance status"""
+    return strategy_health.get_status()
+
+
+@api_router.get("/strategy-health/ranking")
+async def api_strategy_health_ranking():
+    """Get strategy ranking by performance score"""
+    return {"ranking": strategy_health.get_ranking()}
+
+
+@api_router.post("/strategy-health/record")
+async def api_strategy_health_record(request: Request):
+    """Record a trade result for strategy health tracking"""
+    data = await request.json()
+    strategy_id = data.get("strategy_id", "")
+    pnl_pct = data.get("pnl_pct", 0)
+    symbol = data.get("symbol", "")
+    return strategy_health.record_trade(strategy_id, pnl_pct, symbol)
+
+
+@api_router.post("/strategy-health/unbench/{strategy_id}")
+async def api_strategy_unbench(strategy_id: str):
+    """Manually un-bench a strategy"""
+    return strategy_health.force_unbench(strategy_id)
+
+
 @api_router.get("/data/all/{symbol}")
 async def api_all_additional_data(symbol: str = "BTC"):
     """Get all additional data sources combined"""
