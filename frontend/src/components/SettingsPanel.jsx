@@ -115,13 +115,6 @@ export default function SettingsPanel() {
     setSaving(false);
   };
 
-  const voices = [
-    { id: 'guy', name: 'Guy', desc: 'Confident American' },
-    { id: 'davis', name: 'Davis', desc: 'Deep American' },
-    { id: 'british', name: 'Ryan', desc: 'British' },
-    { id: 'australian', name: 'William', desc: 'Australian' }
-  ];
-
   const tabs = [
     { id: 'trading', label: 'Trading', icon: Bot },
     { id: 'alerts', label: 'Alerts', icon: Bell },
