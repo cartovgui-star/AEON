@@ -69,6 +69,7 @@ function App() {
   const [wsConnected, setWsConnected] = useState(false);
   const [unreadAlerts, setUnreadAlerts] = useState(0);
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const [quickScanCoin, setQuickScanCoin] = useState(null);
   const wsRef = useRef(null);
 
   const fetchData = async () => {
