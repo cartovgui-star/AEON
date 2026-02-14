@@ -7,199 +7,115 @@ Build a sophisticated trading bot named "Aeon" with:
 - No contradicting signals (direction lock prevents flip-flopping)
 - Smart alerts that are only the best setups
 - User profiling (Aeon learns your preferences)
+- Moltbot-inspired features (sentiment, arbitrage, self-improving strategies)
 
 ---
 
-## Latest Session (Feb 14, 2026) - Alert Price Validation + Unified Settings UI
+## Latest Session (Feb 14, 2026) - P0 + Moltbot Features
 
-### Alert Price Validation Fix ✅
-**Issue**: Alerts sometimes showed wrong prices (e.g., BTC at 30k) and contradicting signals.
+### Custom Price Alerts UI (P0) ✅
+- New "Alerts" page with full CRUD for custom price alerts
+- Set alerts: symbol, target price, direction (above/below)
+- Live price shown when setting alert
+- Alert Feed showing real-time auto-alerts (breakouts, RSI extremes, volume spikes)
+- Auto-alert threshold display
 
-**Fixes Applied**:
-1. Added `validate_and_format_alert()` method to `dual_trading_engine.py` (line 366)
-   - Fetches fresh price at alert time
-   - Invalidates setup if price moved >2% from entry
-   - Recalculates SL/TP with fresh price
-2. Added `validate_and_format_alert()` method to `free_will_v2.py` (line 484)
-   - Tighter validation: 1.5% threshold for elite alerts
-   - Updates entry, stop, target with fresh data
-3. Updated `dual_trading_scanner()` and `free_will_scanner()` in `server.py`
-   - Now calls validation before sending any alert
-   - Logs skipped alerts when price moved too much
+### Backtesting UI (P0) ✅
+- New "Backtest" page with strategy testing against MEXC historical data
+- 3 strategies: RSI Mean Reversion, Bollinger Bands, EMA Crossover
+- "Compare All" mode ranks strategies by profit factor
+- Configurable params: timeframe, period, RSI levels, stop/target, EMA periods
+- Equity curve charts, stats cards, recent trades table
 
-### Unified Trading Configuration UI ✅
-**User Request**: Integrate all trading configuration into one Settings UI.
+### Market Intelligence Page (Moltbot-inspired) ✅
+**a) Sentiment Analysis**
+- Composite sentiment from news + Fear & Greed Index
+- Headlines with bull/bear scoring
+- AI recommendation based on market conditions
+- Fear & Greed 7-day history bar chart
 
-**Implementation**:
-- Settings > Alerts tab now saves ALL engine settings together:
-  - Auto Trader toggle + confidence
-  - Free Will toggle + confidence  
-  - Day Trader toggle + confidence
-  - Long Term toggle + confidence
-- Added `data-testid` attributes for better testing
-- Save button calls 8 POST endpoints concurrently
+**b) Arbitrage Detection**
+- Cross-exchange price comparison: MEXC, Binance, Bybit, OKX, KuCoin
+- Scans 10 symbols for price differences
+- Shows spread %, buy/sell exchange, estimated profit
 
-### Quick Wins & Enhancements ✅
-**User Request**: Implement quick wins - one-click coin scan, mobile optimization, export to CSV, notification preferences.
+**c) Self-Improving Strategy Health**
+- Tracks consecutive wins/losses per strategy
+- Auto-benches strategies after 3 consecutive losses (60min cooldown)
+- Performance scoring (0-100)
+- Manual unbench option
 
-**Completed Features**:
+### Navigation & Mobile Optimization (P1) ✅
+- 11 nav items with compact desktop layout
+- Mobile hamburger menu with 3-column grid
+- Responsive across all pages
 
-1. **Trade Analytics Dashboard** (`/app/frontend/src/components/TradeAnalytics.jsx`):
-   - Stats cards: Total Trades, Win Rate, Total PnL, Wins
-   - Time filter: 24h, 7 days, 30 days, All time
-   - Cumulative PnL chart with Recharts
-   - Recent Trades table with sorting
-   - Export to CSV button
-
-2. **One-Click Coin Scan** (`/app/frontend/src/components/QuickScanModal.jsx`):
-   - Click any coin on dashboard → instant full analysis modal
-   - Shows: Current Price, Signal (Buy/Sell/Neutral), RSI, MACD, Trend
-   - Technical Details: EMA 20/50, Bollinger Bands, ATR, Volume
-   - Active Signals list with color coding
-
-3. **Mobile Responsive**: Market cards are clickable with hover states
-4. **Export to CSV**: Available on Analytics page
-
-### Voice Integration ✅
-**User Request**: Implement the Voice tab functionality.
-
-**Implementation**:
-- Created `VoiceTab` component in `SettingsPanel.jsx` with:
-  - Voice selection (Guy, Davis, British, Australian)
-  - Text input with mic button for speech recognition
-  - Real-time response with audio playback
-  - Play button to replay Aeon's response
-- Backend uses Edge TTS (free) via `/api/voice/respond` endpoint
-- Supports browser Speech Recognition API
-
----
-
-## Previous Session (Feb 12, 2026) - Memory Fix + Commands Reference
-
-### Memory Leak Fix ✅
-**Issue**: System crashed due to memory limit exceeded after enabling dual trading engines.
-
-**Fixes Applied**:
-1. Added `record_outcome()` method to `learning_system.py` (was missing, causing errors)
-2. Added `_cleanup_old_tracking()` to `dual_trading_engine.py` - removes stale tracking data >24h
-3. Added `_cleanup_old_tracking()` to `free_will_v2.py` - removes stale tracking data >24h  
-4. Added `_cleanup_old_cooldowns()` to `price_alerts.py` - removes stale cooldown data >2h
-5. Added cap on `closed_trades` list in `autonomous_trader_v2.py` (max 200, keeps most recent 150)
-
-### Commands Reference Page ✅
-- Created comprehensive Commands Reference page (`/app/frontend/src/components/CommandsReference.jsx`)
-- All 40+ commands organized into 12 categories with copy buttons
-- Enhanced /news command with clickable links (Markdown formatting)
-- Added /help and /commands aliases to /start
-- Added /liqs command for liquidation data
-- Updated /start to show dual engine status
-
----
-
-### Dual Trading Engine v3 ✅
-**User Request**: Day trader style (scalps/swings - aggressive) + Long term (smart/cautious) running at the same time
-
-**Implementation**:
-
-**Day Trader (AGGRESSIVE)**:
-- Timeframes: 15m, 1h, 4h
-- Min Confidence: 75%
-- Direction Lock: 1 hour
-- Max Daily Alerts: 20
-- Cooldown: 15 min per symbol
-- R:R: 1.5:2.5 (tighter stops)
-
-**Long Term (SMART)**:
-- Timeframes: 4h, 1d
-- Min Confidence: 88%
-- Direction Lock: 4 hours
-- Max Daily Alerts: 6
-- Cooldown: 2 hours per symbol
-- R:R: 2.0:5.0 (wider stops, bigger moves)
-
-**API Endpoints**:
-- `GET /api/dual/stats` - Get both engines' statistics
-- `POST /api/dual/toggle` - Toggle entire system
-- `POST /api/dual/day-trader/toggle` - Toggle day trader
-- `POST /api/dual/long-term/toggle` - Toggle long term
-- `POST /api/dual/day-trader/confidence` - Set day trader confidence
-- `POST /api/dual/long-term/confidence` - Set long term confidence
-
-**UI**: Settings > Alerts tab now shows:
-- Day Trader card (yellow) with toggle, confidence slider, stats
-- Long Term card (blue) with toggle, confidence slider, stats
-- Legacy Free Will alerts
-- Alert System Status with recent signal directions
+### CSV Export ✅
+- Already functional on Analytics page (client-side CSV generation)
 
 ---
 
 ## Previous Sessions Summary
 
-### Anti-Contradiction System ✅
-- Direction lock prevents flip-flopping (no LONG → SHORT within lock period)
-- Contradictions blocked count tracked
+### Feb 14 (Earlier) - Alert Validation + Unified Settings UI ✅
+- Alert price validation (2% threshold for dual engine, 1.5% for elite)
+- Unified trading configuration UI in Settings > Alerts tab
+- Voice integration with Edge TTS
+- Trade Analytics Dashboard with PnL charts
+- One-click Coin Scan modal
+- Notification preferences UI
 
-### User Profiling System ✅
-- Tracks favorite coins from conversations
-- Detects trading style (scalper/swing/hodler)
-- Detects risk tolerance (low/medium/high)
-- Personalizes Aeon's responses
+### Feb 12 - Memory Fix + Commands Reference ✅
+- Memory leak fix with cleanup routines
+- Commands Reference page with 40+ commands
 
-### Additional Free APIs ✅
-- Blockchain.com (BTC on-chain)
-- mempool.space (BTC fees)
-- ETH gas prices
-- DefiLlama (DeFi TVL)
-- CryptoCompare (social stats)
-
-### Conversational AI v4 ✅
-- Unified personality (no mode switching)
-- Asks follow-up questions
-- Response length matches input
-- Never repetitive
+### Earlier - Dual Engine + Core Features ✅
+- Dual Trading Engine v3 (Day Trader + Long Term)
+- Anti-contradiction system
+- User profiling
+- Conversational AI v4
+- Additional free APIs
 
 ---
 
 ## Key Files
 
-### Dual Trading Engine
-- `/app/backend/dual_trading_engine.py` - DualTradingEngine class
-- `/app/backend/server.py` - Background task `dual_trading_scanner()`
+### New (This Session)
+- `/app/frontend/src/components/PriceAlerts.jsx` - Custom price alerts page
+- `/app/frontend/src/components/Backtesting.jsx` - Strategy backtesting page
+- `/app/frontend/src/components/Intelligence.jsx` - Market intelligence page
+- `/app/backend/sentiment_analyzer.py` - Sentiment analysis module
+- `/app/backend/arbitrage_detector.py` - Cross-exchange arbitrage
+- `/app/backend/strategy_health.py` - Self-improving strategy management
 
-### Settings UI
-- `/app/frontend/src/components/SettingsPanel.jsx` - 4-tab settings with dual engine
-
-### Other Key Files
-- `/app/backend/free_will_v2.py` - Legacy alert engine
-- `/app/backend/user_profiler.py` - User learning system
-- `/app/backend/aeon_personality.py` - Conversational AI
-- `/app/backend/autonomous_trader_v2.py` - Paper trading
+### Existing (Modified)
+- `/app/frontend/src/App.js` - Updated nav (11 items), mobile grid, new routes
+- `/app/backend/server.py` - Added sentiment, arbitrage, strategy-health endpoints
 
 ---
 
 ## API Endpoints Summary
 
-### Dual Trading Engine
-- `GET /api/dual/stats`
-- `POST /api/dual/toggle`
-- `POST /api/dual/day-trader/toggle`
-- `POST /api/dual/day-trader/confidence`
-- `POST /api/dual/long-term/toggle`
-- `POST /api/dual/long-term/confidence`
+### New Endpoints
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| /api/sentiment/composite | GET | Composite sentiment from all sources |
+| /api/sentiment/news | GET | News sentiment analysis |
+| /api/sentiment/fear-greed | GET | Fear & Greed with history |
+| /api/arbitrage/scan | GET | Full exchange scan (5 exchanges, 10 symbols) |
+| /api/arbitrage/scan/{symbol} | GET | Single symbol arbitrage scan |
+| /api/arbitrage/recent | GET | Recent arbitrage opportunities |
+| /api/strategy-health/status | GET | Strategy health & scores |
+| /api/strategy-health/ranking | GET | Strategy ranking by score |
+| /api/strategy-health/record | POST | Record trade for health tracking |
+| /api/strategy-health/unbench/{id} | POST | Force unbench strategy |
 
-### Legacy Free Will
-- `GET /api/freewill/stats`
-- `POST /api/freewill/toggle`
-
-### User Profile
-- `GET /api/user/profile`
-- `GET /api/user/profile/{chat_id}`
-
-### Additional Data
-- `GET /api/data/btc/onchain`
-- `GET /api/data/btc/fees`
-- `GET /api/data/eth/gas`
-- `GET /api/data/defi/tvl`
+### Existing Endpoints (from previous sessions)
+- Alerts: /api/alerts/add, /api/alerts/custom, /api/alerts/{id}, /api/alerts/stats
+- Backtest: /api/backtest/compare/{sym}, /api/backtest/rsi/{sym}, /api/backtest/bb/{sym}, /api/backtest/ema/{sym}
+- Dual Engine: /api/dual/stats, /api/dual/toggle, /api/dual/day-trader/*, /api/dual/long-term/*
+- Trading: /api/trading/v2/stats, /api/trading/toggle, /api/trading/summary
+- Market: /api/mexc/live, /api/market/scan/{symbol}
 
 ---
 
@@ -211,26 +127,31 @@ Build a sophisticated trading bot named "Aeon" with:
 | Long Term | ✅ ACTIVE | 88% conf, 4h/1d |
 | Free Will v2 | ✅ ACTIVE | 80% conf, legacy |
 | Paper Trading | ✅ ACTIVE | 10 open trades |
+| Price Alerts | ✅ ACTIVE | 10 coins tracked |
+| Sentiment | ✅ ACTIVE | News + Fear/Greed |
+| Arbitrage | ✅ ACTIVE | 5 exchanges |
+| Strategy Health | ✅ ACTIVE | Auto-bench enabled |
 | User Profiling | ✅ ACTIVE | Learning preferences |
-| Telegram Chat | ✅ ACTIVE | Responding |
-| All Alerts | ✅ RUNNING | No contradictions |
+| Telegram Chat | ⚠️ VERIFY | Webhook was fixed, needs user check |
 | Memory Mgmt | ✅ FIXED | Cleanup routines active |
 
 ---
 
 ## Backlog
 
-### P1 - Voice Integration
-- Implement Voice tab functionality in Settings
-- User approved but not yet started
+### P1 (Next)
+- Refactor `server.py` - Extract Telegram handlers to separate module
+- Moltbot deeper integration - sentiment-based trade signals
+- Trade Journal improvements
 
 ### P2 (When Ready)
-- Enable real-money trading (user deferred)
+- Real-money trading (user deferred)
+- Discord/Slack integration (user declined)
 
 ### P3 (Future)
-- Trade logging form UI
 - More exchange integrations
-- Advanced backtesting
+- Advanced backtesting with multiple timeframes
+- Portfolio tracking
 
 ---
 
