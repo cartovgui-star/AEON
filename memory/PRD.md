@@ -39,6 +39,27 @@ Build a sophisticated trading bot named "Aeon" with:
 - Added `data-testid` attributes for better testing
 - Save button calls 8 POST endpoints concurrently
 
+### Quick Wins & Enhancements ✅
+**User Request**: Implement quick wins - one-click coin scan, mobile optimization, export to CSV, notification preferences.
+
+**Completed Features**:
+
+1. **Trade Analytics Dashboard** (`/app/frontend/src/components/TradeAnalytics.jsx`):
+   - Stats cards: Total Trades, Win Rate, Total PnL, Wins
+   - Time filter: 24h, 7 days, 30 days, All time
+   - Cumulative PnL chart with Recharts
+   - Recent Trades table with sorting
+   - Export to CSV button
+
+2. **One-Click Coin Scan** (`/app/frontend/src/components/QuickScanModal.jsx`):
+   - Click any coin on dashboard → instant full analysis modal
+   - Shows: Current Price, Signal (Buy/Sell/Neutral), RSI, MACD, Trend
+   - Technical Details: EMA 20/50, Bollinger Bands, ATR, Volume
+   - Active Signals list with color coding
+
+3. **Mobile Responsive**: Market cards are clickable with hover states
+4. **Export to CSV**: Available on Analytics page
+
 ### Voice Integration ✅
 **User Request**: Implement the Voice tab functionality.
 
