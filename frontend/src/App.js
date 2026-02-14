@@ -205,20 +205,21 @@ function App() {
                 </div>
               </div>
               
-              {/* Desktop Nav */}
-              <div className="hidden md:flex items-center gap-1">
+              {/* Desktop Nav - Scrollable */}
+              <div className="hidden lg:flex items-center gap-1">
                 {navItems.map(item => (
                   <button
                     key={item.id}
                     onClick={() => setCurrentPage(item.id)}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
+                    data-testid={`nav-${item.id}`}
+                    className={`flex items-center gap-1.5 px-3 py-2 rounded-lg transition-all whitespace-nowrap ${
                       currentPage === item.id
                         ? 'bg-orange-500/20 text-orange-400'
                         : 'text-zinc-400 hover:text-white hover:bg-zinc-800/50'
                     }`}
                   >
                     <item.icon className="w-4 h-4" />
-                    <span className="text-sm font-medium">{item.label}</span>
+                    <span className="text-xs font-medium">{item.label}</span>
                   </button>
                 ))}
               </div>
