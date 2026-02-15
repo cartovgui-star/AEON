@@ -65,6 +65,7 @@ from strategy_engine import StrategyEngine
 from sentiment_analyzer import sentiment_analyzer, SentimentAnalyzer
 from arbitrage_detector import arbitrage_detector, ArbitrageDetector
 from strategy_health import strategy_health, StrategyHealth
+from self_healer import self_healer, SelfHealer
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
