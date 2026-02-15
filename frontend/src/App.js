@@ -531,6 +531,9 @@ function App() {
         {/* Page: Commands Reference */}
         {currentPage === 'commands' && <CommandsReference />}
 
+        {/* Page: System Health */}
+        {currentPage === 'health' && <SystemHealth />}
+
         {/* Page: Trade Analytics (Charts) */}
         {currentPage === 'charts' && <TradeAnalytics />}
       </main>
