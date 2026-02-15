@@ -57,7 +57,8 @@ from user_profiler import init_user_profiler, UserProfiler
 # Import route modules
 from routes import (
     derivatives_router, freewill_router, intelligence_router,
-    smc_router, memory_router, strategies_router, alerts_router
+    smc_router, memory_router, strategies_router, alerts_router,
+    market_router, trading_router, analysis_router,
 )
 from voice_tts import generate_speech, VOICES
 from price_alerts import price_alert_system, PriceAlertSystem
@@ -66,6 +67,7 @@ from sentiment_analyzer import sentiment_analyzer, SentimentAnalyzer
 from arbitrage_detector import arbitrage_detector, ArbitrageDetector
 from strategy_health import strategy_health, StrategyHealth
 from self_healer import self_healer, SelfHealer
+import app_state
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
