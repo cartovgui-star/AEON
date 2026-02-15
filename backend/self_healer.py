@@ -62,7 +62,7 @@ class ServiceMonitor:
     @property
     def is_stale(self) -> bool:
         if not self.last_heartbeat:
-            return True
+            return False  # Not yet had time to heartbeat
         return (datetime.now(timezone.utc) - self.last_heartbeat).total_seconds() > 300  # 5min
 
     def to_dict(self) -> Dict:
