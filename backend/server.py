@@ -3525,13 +3525,120 @@ R:R: 1:{rr:.1f}
         elif text_lower == '/price':
             orderbook = get_mexc_orderbook()
             if "error" not in orderbook:
-                response = "📊 MEXC ORDERBOOK\n\n"
+                response = "MEXC ORDERBOOK\n\n"
                 for coin, data in orderbook.items():
                     response += f"{coin}: {data['price']} ({data['change']})\n"
-                    response += f"└ Bids: {data['bid_depth']} | Asks: {data['ask_depth']} | {data['imbalance']}\n\n"
+                    response += f"  Bids: {data['bid_depth']} | Asks: {data['ask_depth']} | {data['imbalance']}\n\n"
             else:
-                response = f"⚠️ {orderbook['error']}"
+                response = f"Error: {orderbook['error']}"
             context = "trading"
+        
+        elif text_lower == '/intel' or text_lower == '/intelligence':
+            try:
+                sent = await sentiment_analyzer.get_composite_sentiment("BTC")
+                health_data = strategy_health.get_status()
+                
+                signal = sent.get("signal", "N/A")
+                score = sent.get("composite_score", 0)
+                fg = sent.get("fear_greed", {})
+                rec = sent.get("recommendation", "N/A")
+                
+                health_lines = []
+                for sid, s in health_data.items():
+                    icon = "X" if s.get("benched") else "OK"
+                    health_lines.append(f"  {s['name']}: [{icon}] Score {s['score']} | WR {s['win_rate']}% | {s['total_trades']} trades")
+                
+                response = f"""MARKET INTELLIGENCE
+
+-- SENTIMENT --
+Signal: {signal} ({score:+.3f})
+Fear & Greed: {fg.get('value', 50)} ({fg.get('label', 'Neutral')})
+Recommendation: {rec}
+
+-- STRATEGY HEALTH --
+{chr(10).join(health_lines)}
+
+Use /arbi to scan for arbitrage opportunities
+Use /sentiment [coin] for detailed analysis"""
+            except Exception as e:
+                response = f"Intel error: {e}"
+            context = "analysis"
+        
+        elif text_lower == '/arbi' or text_lower == '/arbitrage':
+            try:
+                await send_telegram_message(chat_id, "Scanning 5 exchanges for arbitrage... (30-60s)")
+                result = await arbitrage_detector.scan_all()
+                opps = result.get("best_opportunities", [])
+                
+                if opps:
+                    opp_lines = []
+                    for o in opps[:5]:
+                        sym = o.get("symbol", "").replace("/USDT", "")
+                        opp_lines.append(f"  {sym}: Buy {o['buy_exchange']} ${o['buy_price']:,.2f} -> Sell {o['sell_exchange']} ${o['sell_price']:,.2f} (+{o['spread_pct']}%)")
+                    response = f"""ARBITRAGE SCAN
+
+Exchanges: {', '.join(result.get('exchanges', []))}
+Symbols scanned: {result.get('symbols_scanned', 0)}
+Opportunities found: {result.get('total_opportunities', 0)}
+
+TOP OPPORTUNITIES:
+{chr(10).join(opp_lines)}"""
+                else:
+                    response = f"""ARBITRAGE SCAN
+
+Exchanges: {', '.join(result.get('exchanges', []))}
+No opportunities above {result.get('min_spread', 0.3)}% spread found."""
+            except Exception as e:
+                response = f"Arbitrage scan error: {e}"
+            context = "analysis"
+        
+        elif text_lower == '/health' or text_lower == '/strategyhealth':
+            try:
+                health_data = strategy_health.get_status()
+                ranking = strategy_health.get_ranking()
+                
+                lines = []
+                for sid, s in health_data.items():
+                    status = "BENCHED" if s.get("benched") else "ACTIVE"
+                    streak = ""
+                    if s.get("consecutive_wins", 0) > 0:
+                        streak = f"W{s['consecutive_wins']}"
+                    elif s.get("consecutive_losses", 0) > 0:
+                        streak = f"L{s['consecutive_losses']}"
+                    
+                    lines.append(f"""{s['name']} [{status}]
+  Score: {s['score']}/100 | Style: {s['style']}
+  Trades: {s['total_trades']} | Win Rate: {s['win_rate']}%
+  PnL: {s['total_pnl']:+.2f}% | Streak: {streak or 'N/A'}
+  Benched count: {s.get('bench_count', 0)}""")
+                
+                rank_lines = [f"  #{i+1} {r['name']} (Score: {r['score']})" for i, r in enumerate(ranking)]
+                
+                response = f"""STRATEGY HEALTH MONITOR
+Auto-benches after 3 consecutive losses
+
+{chr(10).join(lines)}
+
+RANKING:
+{chr(10).join(rank_lines)}
+
+Use /unbench [strategy] to force-activate"""
+            except Exception as e:
+                response = f"Health check error: {e}"
+            context = "analysis"
+        
+        elif text_lower.startswith('/unbench'):
+            parts = text.split()
+            if len(parts) < 2:
+                response = "Usage: /unbench day_trader | long_term | free_will"
+            else:
+                strat = parts[1].lower().replace(" ", "_")
+                result = strategy_health.force_unbench(strat)
+                if result.get("success"):
+                    response = f"Strategy {strat} manually un-benched and reactivated!"
+                else:
+                    response = f"Error: {result.get('error', 'Unknown strategy. Use: day_trader, long_term, free_will')}"
+            context = "settings"
             
         else:
             # Check for mode switches first
