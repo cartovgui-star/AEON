@@ -1782,6 +1782,59 @@ async def api_trading_v2_closed():
     }
 
 
+@api_router.get("/trades/closed")
+async def api_trades_closed():
+    """Alias for frontend TradeAnalytics - returns all closed trades."""
+    trades = []
+    for t in autonomous_trader_v2.closed_trades:
+        trades.append({
+            "symbol": t.get("symbol", ""),
+            "direction": t.get("direction", ""),
+            "entry_price": t.get("entry_price", 0),
+            "exit_price": t.get("exit_price", 0),
+            "pnl_pct": t.get("pnl_pct", 0),
+            "closed_at": t.get("exit_time", t.get("closed_at", "")),
+            "timestamp": t.get("exit_time", t.get("closed_at", "")),
+            "exit_reason": t.get("exit_reason", ""),
+            "style": t.get("style", ""),
+        })
+    return {"trades": trades, "total": len(trades)}
+
+
+@api_router.get("/trades/export")
+async def api_trades_export():
+    """Export all closed trades as CSV download."""
+    import io
+    import csv
+    from starlette.responses import StreamingResponse
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["Date", "Symbol", "Direction", "Entry", "Exit", "PnL%", "Exit Reason", "Style"])
+
+    for t in autonomous_trader_v2.closed_trades:
+        ts = t.get("exit_time", t.get("closed_at", ""))
+        if isinstance(ts, datetime):
+            ts = ts.isoformat()
+        writer.writerow([
+            str(ts),
+            t.get("symbol", ""),
+            t.get("direction", ""),
+            t.get("entry_price", 0),
+            t.get("exit_price", 0),
+            round(t.get("pnl_pct", 0), 2),
+            t.get("exit_reason", ""),
+            t.get("style", ""),
+        ])
+
+    output.seek(0)
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename=aeon_trades_{datetime.now().strftime('%Y%m%d')}.csv"}
+    )
+
+
 @api_router.get("/trading/v2/pnl-history")
 async def api_trading_v2_pnl_history():
     """Get PnL history for chart visualization"""
