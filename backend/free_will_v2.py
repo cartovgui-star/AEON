@@ -407,7 +407,13 @@ class FreeWillEngineV2:
             confidence = min(95, 50 + (signal_strength * 8))
             
             # HARD FILTER: Market structure must not contradict direction
-            structure = scan.get("market_structure", {})
+            structure = {}
+            if self.market_intel:
+                try:
+                    ms = await self.market_intel.get_full_market_scan(symbol.replace("/", ""))
+                    structure = ms.get("market_structure", {}) if ms else {}
+                except Exception:
+                    pass
             structure_bias = structure.get("bias", "neutral")
             
             if direction == "LONG" and structure_bias == "bearish":
