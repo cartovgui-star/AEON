@@ -565,6 +565,7 @@ async def autonomous_trading_loop():
     
     while True:
         try:
+            self_healer.heartbeat("trading_v2")
             if autonomous_trader_v2.active:
                 # Scan all markets with full analysis
                 signals = await autonomous_trader_v2.scan_all_markets()
