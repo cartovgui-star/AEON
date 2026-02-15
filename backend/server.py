@@ -675,6 +675,7 @@ async def free_will_scanner():
     
     while True:
         try:
+            self_healer.heartbeat("free_will")
             if free_will_v2.active:
                 # Scan for elite setups (80%+ confidence, 3+ confirmations, no contradictions)
                 setups = await free_will_v2.scan_all()
