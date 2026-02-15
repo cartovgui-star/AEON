@@ -249,6 +249,84 @@ class MarketIntelligence:
             logger.error(f"TA error: {e}")
             return {"error": str(e)}
     
+    def _analyze_market_structure(self, df) -> Dict:
+        """
+        Analyze swing highs/lows to determine market structure.
+        HH + HL = bullish (uptrend)
+        LH + LL = bearish (downtrend)
+        Mixed = neutral/ranging
+        """
+        try:
+            highs = df['high'].values
+            lows = df['low'].values
+            n = len(highs)
+            if n < 20:
+                return {"bias": "neutral", "swings": []}
+            
+            # Find swing highs and lows using a 5-bar lookback
+            swing_highs = []
+            swing_lows = []
+            lookback = 5
+            
+            for i in range(lookback, n - lookback):
+                if highs[i] == max(highs[i - lookback:i + lookback + 1]):
+                    swing_highs.append((i, float(highs[i])))
+                if lows[i] == min(lows[i - lookback:i + lookback + 1]):
+                    swing_lows.append((i, float(lows[i])))
+            
+            if len(swing_highs) < 2 or len(swing_lows) < 2:
+                return {"bias": "neutral", "swings": [], "reason": "insufficient swings"}
+            
+            # Use last 3 swing highs and lows
+            recent_sh = swing_highs[-3:] if len(swing_highs) >= 3 else swing_highs[-2:]
+            recent_sl = swing_lows[-3:] if len(swing_lows) >= 3 else swing_lows[-2:]
+            
+            # Check swing high pattern
+            hh_count = 0
+            lh_count = 0
+            for i in range(1, len(recent_sh)):
+                if recent_sh[i][1] > recent_sh[i-1][1]:
+                    hh_count += 1  # Higher High
+                elif recent_sh[i][1] < recent_sh[i-1][1]:
+                    lh_count += 1  # Lower High
+            
+            # Check swing low pattern
+            hl_count = 0
+            ll_count = 0
+            for i in range(1, len(recent_sl)):
+                if recent_sl[i][1] > recent_sl[i-1][1]:
+                    hl_count += 1  # Higher Low
+                elif recent_sl[i][1] < recent_sl[i-1][1]:
+                    ll_count += 1  # Lower Low
+            
+            # Determine structure
+            bullish_pts = hh_count + hl_count
+            bearish_pts = lh_count + ll_count
+            
+            if bullish_pts >= 2 and bullish_pts > bearish_pts:
+                bias = "bullish"
+                pattern = "HH/HL"
+            elif bearish_pts >= 2 and bearish_pts > bullish_pts:
+                bias = "bearish"
+                pattern = "LH/LL"
+            else:
+                bias = "neutral"
+                pattern = "MIXED"
+            
+            return {
+                "bias": bias,
+                "pattern": pattern,
+                "higher_highs": hh_count,
+                "lower_highs": lh_count,
+                "higher_lows": hl_count,
+                "lower_lows": ll_count,
+                "last_swing_high": recent_sh[-1][1] if recent_sh else 0,
+                "last_swing_low": recent_sl[-1][1] if recent_sl else 0
+            }
+        except Exception as e:
+            logger.error(f"Market structure error: {e}")
+            return {"bias": "neutral", "error": str(e)}
+    
     async def get_full_market_scan(self, symbol: str = "BTC/USDT") -> Dict[str, Any]:
         """Comprehensive market scan"""
         try:
