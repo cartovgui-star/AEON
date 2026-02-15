@@ -130,13 +130,13 @@ function StrategyCard({ data, isBest }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-4 gap-px bg-zinc-800/50">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-px bg-zinc-800/50">
         <StatBox label="Trades" value={data.total_trades} />
         <StatBox label="Win Rate" value={`${data.win_rate}%`} color={data.win_rate >= 50 ? 'text-green-400' : 'text-red-400'} />
         <StatBox label="Profit Factor" value={data.profit_factor} color={data.profit_factor >= 1 ? 'text-green-400' : 'text-red-400'} />
         <StatBox label="Max DD" value={`-${data.max_drawdown_pct}%`} color="text-red-400" />
       </div>
-      <div className="grid grid-cols-4 gap-px bg-zinc-800/50">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-px bg-zinc-800/50">
         <StatBox label="Avg Win" value={`+${data.avg_win_pct}%`} color="text-green-400" />
         <StatBox label="Avg Loss" value={`${data.avg_loss_pct}%`} color="text-red-400" />
         <StatBox label="Best" value={`+${data.best_trade_pct}%`} color="text-green-400" />

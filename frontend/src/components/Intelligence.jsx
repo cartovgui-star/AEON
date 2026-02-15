@@ -37,7 +37,7 @@ function HealthCard({ id, data, onUnbench }) {
             data-testid={`unbench-${id}`}>Unbench</button>
         </div>
       )}
-      <div className="grid grid-cols-4 gap-2 text-center">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
         <div><p className="text-xs text-zinc-600">Trades</p><p className="text-sm font-medium text-white">{data.total_trades}</p></div>
         <div><p className="text-xs text-zinc-600">Win %</p><p className={`text-sm font-medium ${wrColor}`}>{data.win_rate}%</p></div>
         <div><p className="text-xs text-zinc-600">PnL</p><p className={`text-sm font-medium ${pnlColor}`}>{pnlStr}</p></div>
