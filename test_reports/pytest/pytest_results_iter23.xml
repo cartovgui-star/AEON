@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="13" skipped="0" tests="13" time="782.806" timestamp="2026-02-15T08:35:08.399089+00:00" hostname="agent-env-0de6b1c0-3807-4d7d-8933-7fc1dbd666f8"><testcase classname="tests.test_iteration23_routes.TestSystemHealth" name="test_system_health_returns_status" time="60.197"><failure message="assert 520 == 200&#10; +  where 520 = &lt;Response [520]&gt;.status_code">tests/test_iteration23_routes.py:19: in test_system_health_returns_status
+    assert response.status_code == 200
+E   assert 520 == 200
+E    +  where 520 = &lt;Response [520]&gt;.status_code</failure></testcase><testcase classname="tests.test_iteration23_routes.TestTradesEndpoints" name="test_trades_closed_returns_list" time="60.193"><failure message="assert 520 == 200&#10; +  where 520 = &lt;Response [520]&gt;.status_code">tests/test_iteration23_routes.py:33: in test_trades_closed_returns_list
+    assert response.status_code == 200
+E   assert 520 == 200
+E    +  where 520 = &lt;Response [520]&gt;.status_code</failure></testcase><testcase classname="tests.test_iteration23_routes.TestTradesEndpoints" name="test_trades_export_returns_csv" time="60.140"><failure message="assert 520 == 200&#10; +  where 520 = &lt;Response [520]&gt;.status_code">tests/test_iteration23_routes.py:43: in test_trades_export_returns_csv
+    assert response.status_code == 200
+E   assert 520 == 200
+E    +  where 520 = &lt;Response [520]&gt;.status_code</failure></testcase><testcase classname="tests.test_iteration23_routes.TestSentimentEndpoints" name="test_sentiment_composite_btc" time="60.163"><failure message="assert 520 == 200&#10; +  where 520 = &lt;Response [520]&gt;.status_code">tests/test_iteration23_routes.py:57: in test_sentiment_composite_btc
+    assert response.status_code == 200
+E   assert 520 == 200
+E    +  where 520 = &lt;Response [520]&gt;.status_code</failure></testcase><testcase classname="tests.test_iteration23_routes.TestStrategyHealthEndpoints" name="test_strategy_health_status" time="60.211"><failure message="assert 520 == 200&#10; +  where 520 = &lt;Response [520]&gt;.status_code">tests/test_iteration23_routes.py:70: in test_strategy_health_status
+    assert response.status_code == 200
+E   assert 520 == 200
+E    +  where 520 = &lt;Response [520]&gt;.status_code</failure></testcase><testcase classname="tests.test_iteration23_routes.TestAlertsEndpoints" name="test_alerts_stats" time="60.196"><failure message="assert 520 == 200&#10; +  where 520 = &lt;Response [520]&gt;.status_code">tests/test_iteration23_routes.py:83: in test_alerts_stats
+    assert response.status_code == 200
+E   assert 520 == 200
+E    +  where 520 = &lt;Response [520]&gt;.status_code</failure></testcase><testcase classname="tests.test_iteration23_routes.TestDualEngineEndpoints" name="test_dual_stats" time="60.222"><failure message="assert 520 == 200&#10; +  where 520 = &lt;Response [520]&gt;.status_code">tests/test_iteration23_routes.py:95: in test_dual_stats
+    assert response.status_code == 200
+E   assert 520 == 200
+E    +  where 520 = &lt;Response [520]&gt;.status_code</failure></testcase><testcase classname="tests.test_iteration23_routes.TestTradingV2Endpoints" name="test_trading_v2_stats" time="60.195"><failure message="assert 520 == 200&#10; +  where 520 = &lt;Response [520]&gt;.status_code">tests/test_iteration23_routes.py:108: in test_trading_v2_stats
+    assert response.status_code == 200
+E   assert 520 == 200
+E    +  where 520 = &lt;Response [520]&gt;.status_code</failure></testcase><testcase classname="tests.test_iteration23_routes.TestFreeWillEndpoints" name="test_freewill_stats" time="60.222"><failure message="assert 520 == 200&#10; +  where 520 = &lt;Response [520]&gt;.status_code">tests/test_iteration23_routes.py:122: in test_freewill_stats
+    assert response.status_code == 200
+E   assert 520 == 200
+E    +  where 520 = &lt;Response [520]&gt;.status_code</failure></testcase><testcase classname="tests.test_iteration23_routes.TestArbitrageEndpoints" name="test_arbitrage_recent" time="60.258"><failure message="assert 520 == 200&#10; +  where 520 = &lt;Response [520]&gt;.status_code">tests/test_iteration23_routes.py:136: in test_arbitrage_recent
+    assert response.status_code == 200
+E   assert 520 == 200
+E    +  where 520 = &lt;Response [520]&gt;.status_code</failure></testcase><testcase classname="tests.test_iteration23_routes.TestMarketEndpoints" name="test_market_scan_btc" time="60.220"><failure message="assert 520 == 200&#10; +  where 520 = &lt;Response [520]&gt;.status_code">tests/test_iteration23_routes.py:149: in test_market_scan_btc
+    assert response.status_code == 200
+E   assert 520 == 200
+E    +  where 520 = &lt;Response [520]&gt;.status_code</failure></testcase><testcase classname="tests.test_iteration23_routes.TestMarketEndpoints" name="test_intel_fear_greed" time="60.240"><failure message="assert 520 == 200&#10; +  where 520 = &lt;Response [520]&gt;.status_code">tests/test_iteration23_routes.py:158: in test_intel_fear_greed
+    assert response.status_code == 200
+E   assert 520 == 200
+E    +  where 520 = &lt;Response [520]&gt;.status_code</failure></testcase><testcase classname="tests.test_iteration23_routes.TestMEXCEndpoint" name="test_mexc_live_data" time="60.226"><failure message="assert 520 == 200&#10; +  where 520 = &lt;Response [520]&gt;.status_code">tests/test_iteration23_routes.py:169: in test_mexc_live_data
+    assert response.status_code == 200
+E   assert 520 == 200
+E    +  where 520 = &lt;Response [520]&gt;.status_code</failure></testcase></testsuite></testsuites>
