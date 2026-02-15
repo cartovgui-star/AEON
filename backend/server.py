@@ -490,51 +490,42 @@ async def send_daily_report(chat_id: int):
 # ═══════════════════════════════════════════════════════════════════════════════
 
 # Track last funding alerts to avoid spam
-last_funding_alert: Dict[str, datetime] = {}
+last_funding_alert_time: datetime = datetime.min
 
 
 async def check_funding_rate_alerts():
-    """Check for extreme funding rates and alert users."""
+    """Check for extreme funding rates - grouped into a single message."""
+    global last_funding_alert_time
     now = datetime.now()
-    
+
+    # 2 hour cooldown between funding alerts (was 1h per symbol)
+    if (now - last_funding_alert_time).total_seconds() < 7200:
+        return
+
+    extreme_funding = []
     for symbol in ["BTC/USDT", "ETH/USDT", "SOL/USDT"]:
         try:
-            # Skip if alerted recently (1 hour cooldown)
-            if symbol in last_funding_alert and (now - last_funding_alert[symbol]).total_seconds() < 3600:
-                continue
-            
             funding = await market_intel.get_current_funding_rate(symbol)
             rate = funding.get("funding_rate", 0)
-            
-            # Alert on extreme funding rates
-            if abs(rate) > 0.0008:  # >0.08% is significant
-                last_funding_alert[symbol] = now
-                
-                if rate > 0:
-                    alert_type = "🔴 HIGH POSITIVE"
-                    warning = "Longs paying shorts heavily - potential long squeeze incoming"
-                else:
-                    alert_type = "🟢 HIGH NEGATIVE"
-                    warning = "Shorts paying longs heavily - potential short squeeze incoming"
-                
-                alert = f"""⚡ FUNDING RATE ALERT
-
-{alert_type} FUNDING: {symbol}
-Rate: {funding.get('funding_rate_pct', 'N/A')}
-
-{warning}
-
-Price: ${funding.get('mark_price', 0):,.2f}
-
-👁️ «The leverage winds shift. Prepare accordingly.»"""
-                
-                for chat_id in list(chat_ids):
-                    settings = await get_user_settings(chat_id)
-                    if settings.get("free_will", True):
-                        await send_telegram_message(chat_id, alert)
-                        
+            if abs(rate) > 0.0008:
+                clean = symbol.replace("/USDT", "")
+                pct = funding.get("funding_rate_pct", f"{rate*100:.4f}%")
+                price = funding.get("mark_price", 0)
+                bias = "Longs paying" if rate > 0 else "Shorts paying"
+                extreme_funding.append(f"  {'🔴' if rate > 0 else '🟢'} {clean} {pct} ({bias}) | ${price:,.0f}")
         except Exception as e:
             logger.error(f"Funding alert error for {symbol}: {e}")
+
+    if not extreme_funding:
+        return
+
+    last_funding_alert_time = now
+    alert = "⚡ FUNDING SCAN\n\n" + "\n".join(extreme_funding) + f"\n\n{len(extreme_funding)} extreme rate{'s' if len(extreme_funding) > 1 else ''} - squeeze risk elevated"
+
+    for chat_id in list(chat_ids):
+        settings = await get_user_settings(chat_id)
+        if settings.get("free_will", True):
+            await send_telegram_message(chat_id, alert)
 
 
 async def autonomous_trading_loop():
