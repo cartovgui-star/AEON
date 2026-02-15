@@ -831,7 +831,8 @@ async def lifespan(app: FastAPI):
     await autonomous_trader.load_strategy_weights()
     
     # Configure price alert system with WebSocket support
-    price_alert_system.set_dependencies(send_telegram_message, chat_ids, ws_manager)
+    price_alert_system.set_dependencies(send_telegram_message, chat_ids, ws_manager,
+                                        heartbeat_fn=lambda: self_healer.heartbeat("price_alerts"))
     
     # Start background tasks
     ritual_task = asyncio.create_task(eternal_rituals())
