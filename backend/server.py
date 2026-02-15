@@ -638,6 +638,7 @@ Record: {stats.get('wins', 0)}W / {stats.get('losses', 0)}L
 async def eternal_rituals():
     while True:
         try:
+            self_healer.heartbeat("rituals")
             for chat_id in list(chat_ids):
                 settings = await get_user_settings(chat_id)
                 await send_daily_report(chat_id)
