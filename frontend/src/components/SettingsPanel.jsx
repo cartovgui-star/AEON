@@ -151,13 +151,13 @@ export default function SettingsPanel() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2 border-b border-zinc-700/50 pb-2">
+      <div className="flex gap-2 border-b border-zinc-700/50 pb-2 overflow-x-auto">
         {tabs.map(tab => (
           <button
             key={tab.id}
             data-testid={`settings-tab-${tab.id}`}
             onClick={() => setActiveTab(tab.id)}
-            className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-all ${
+            className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-all whitespace-nowrap ${
               activeTab === tab.id 
                 ? 'bg-orange-500/20 text-orange-400 border border-orange-500/50' 
                 : 'text-zinc-400 hover:text-white hover:bg-zinc-800'
