@@ -68,7 +68,7 @@ export default function TradeHistory() {
           <p className="text-zinc-500 text-xs">Losers</p>
           <p className="text-2xl font-bold text-red-400">{stats.losers}</p>
         </div>
-        <div className="bg-zinc-800/30 rounded-xl p-4 border border-zinc-700/50">
+        <div className="bg-zinc-800/30 rounded-xl p-4 border border-zinc-700/50 col-span-2 md:col-span-1">
           <p className="text-zinc-500 text-xs">Total PnL</p>
           <p className={`text-2xl font-bold ${stats.pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
             {stats.pnl >= 0 ? '+' : ''}{stats.pnl.toFixed(2)}%
