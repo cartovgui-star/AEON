@@ -423,7 +423,10 @@ class PriceAlertSystem:
     # ═══════════════════════════════════════════════════════════════════════════════
 
     async def scan_prices(self):
-        self._rsi_batch = []  # Reset RSI batch each scan
+        self._rsi_batch = []
+
+        if hasattr(self, '_heartbeat_fn') and self._heartbeat_fn:
+            self._heartbeat_fn()
 
         for symbol in self.tracked_symbols:
             try:
