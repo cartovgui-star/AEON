@@ -343,6 +343,7 @@ class MarketIntelligence:
                 "price": ta_data.get("price"),
                 "change_24h": ticker.get("change_24h", 0),
                 "technical": ta_data.get("indicators", {}),
+                "market_structure": ta_data.get("market_structure", {}),
                 "signals": ta_data.get("signals", []),
                 "overall_bias": ta_data.get("overall_bias"),
                 "orderbook": {
