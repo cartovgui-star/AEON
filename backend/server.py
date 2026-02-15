@@ -816,6 +816,21 @@ async def lifespan(app: FastAPI):
     chat_ids.update(existing)
     logger.info(f"Loaded {len(chat_ids)} users")
     
+    # Auto-configure Telegram webhook on every startup
+    server_url = os.environ.get('SERVER_URL', '')
+    if telegram_token and server_url:
+        try:
+            webhook_url = f"{server_url}/api/webhook"
+            async with httpx.AsyncClient(timeout=10) as hc:
+                resp = await hc.get(f"https://api.telegram.org/bot{telegram_token}/setWebhook?url={webhook_url}")
+                result = resp.json()
+                if result.get("ok"):
+                    logger.info(f"Telegram webhook auto-set: {webhook_url}")
+                else:
+                    logger.error(f"Telegram webhook setup failed: {result}")
+        except Exception as e:
+            logger.error(f"Telegram webhook auto-setup error: {e}")
+    
     # Load strategy weights for backward compatibility
     await autonomous_trader.load_strategy_weights()
     
@@ -829,11 +844,11 @@ async def lifespan(app: FastAPI):
     dual_task = asyncio.create_task(dual_trading_scanner())
     alert_task = asyncio.create_task(price_alert_system.run_forever())
     
-    logger.info(f"🚀 AEON PAPER TRADING ACTIVATED - {autonomous_trader_v2.min_confidence}%+ conf, {autonomous_trader_v2.min_confirmations}+ confirmations")
-    logger.info("🎯 AEON FREE WILL v2 ACTIVATED - Elite alerts only (80%+ conf, 3+ confirmations)")
-    logger.info("⚡🎯 DUAL ENGINE ACTIVATED - Day Trader (aggressive) + Long Term (smart)")
-    logger.info("🔔 AEON PRICE ALERT SYSTEM ACTIVATED - Real-time monitoring")
-    logger.info("🔌 WEBSOCKET MANAGER READY - Real-time client connections")
+    logger.info(f"AEON PAPER TRADING ACTIVATED - {autonomous_trader_v2.min_confidence}%+ conf, {autonomous_trader_v2.min_confirmations}+ confirmations")
+    logger.info("AEON FREE WILL v2 ACTIVATED - Elite alerts only (80%+ conf, 3+ confirmations)")
+    logger.info("DUAL ENGINE ACTIVATED - Day Trader (aggressive) + Long Term (smart)")
+    logger.info("AEON PRICE ALERT SYSTEM ACTIVATED - Real-time monitoring")
+    logger.info("WEBSOCKET MANAGER READY - Real-time client connections")
     
     yield
     
