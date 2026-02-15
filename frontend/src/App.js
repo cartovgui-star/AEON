@@ -376,7 +376,7 @@ function App() {
                 </CardContent>
               </Card>
               
-              <Card className="bg-zinc-800/30 border-zinc-700/50">
+              <Card className="bg-zinc-800/30 border-zinc-700/50 col-span-2 md:col-span-1">
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <div>
