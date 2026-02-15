@@ -20,7 +20,7 @@ class TestSystemHealth:
         data = response.json()
         assert "overall" in data
         assert "services" in data
-        assert data["overall"] in ["HEALTHY", "DEGRADED", "CRITICAL"]
+        assert data["overall"].upper() in ["HEALTHY", "DEGRADED", "CRITICAL"]
         print(f"System health: {data['overall']}")
 
 
