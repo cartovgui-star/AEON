@@ -55,17 +55,9 @@ export default function TradeAnalytics() {
       return { trade: i + 1, pnl: cumPnl };
     });
 
-  // Export CSV
+  // Export CSV from backend
   const exportCSV = () => {
-    if (!filtered.length) return;
-    const csv = 'Date,Symbol,Direction,Entry,Exit,PnL%\n' + 
-      filtered.map(t => `${new Date(t.closed_at || t.timestamp).toISOString()},${t.symbol},${t.direction},${t.entry_price},${t.exit_price},${t.pnl_pct || 0}`).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `aeon_trades_${timeRange}.csv`;
-    a.click();
+    window.open(`${API_URL}/api/trades/export`, '_blank');
   };
 
   if (loading) {
