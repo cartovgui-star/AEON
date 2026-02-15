@@ -446,7 +446,7 @@ export default function PriceAlerts() {
           <AlertTriangle className="w-4 h-4" />
           AUTO-ALERT THRESHOLDS
         </h3>
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+        <div className="grid grid-cols-3 sm:grid-cols-5 gap-4">
           <div>
             <p className="text-xs text-zinc-600 mb-1">5min Move</p>
             <p className="text-sm font-medium text-white">{stats?.thresholds?.price_change_5min || 2}%</p>
