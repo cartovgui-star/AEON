@@ -8,7 +8,7 @@ import {
   MessageCircle, Users, Activity, Clock, Zap, Bot, ExternalLink, Send, 
   TrendingUp, TrendingDown, BarChart3, Brain, Target, Trophy, Phone,
   Settings, History, PieChart, Home, Menu, X, BookOpen, Layers, Bell, BellRing,
-  Wallet, HelpCircle, FlaskConical
+  Wallet, HelpCircle, FlaskConical, Shield
 } from "lucide-react";
 import VoiceConversation from "./components/VoiceConversation";
 import TradeHistory from "./components/TradeHistory";
