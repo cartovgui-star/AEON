@@ -359,11 +359,8 @@ async def api_alerts_threshold(request: Request):
 
 
 # MEXC & Bot
-@router.get("/mexc/live")
-async def api_mexc():
-    from server import get_mexc_orderbook
-    return get_mexc_orderbook()
-
+# MEXC & Bot
+# Note: /api/mexc/live remains in server.py to avoid circular import with get_mexc_orderbook
 
 @router.get("/bot/stats")
 async def api_stats():
