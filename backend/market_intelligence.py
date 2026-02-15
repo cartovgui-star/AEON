@@ -197,6 +197,15 @@ class MarketIntelligence:
             if vol_ratio > 1.5:
                 signals.append(("VOLUME", f"HIGH {vol_ratio:.1f}x", "attention"))
             
+            # Market Structure Analysis (Swing Highs/Lows)
+            structure = self._analyze_market_structure(df)
+            structure_bias = structure.get("bias", "neutral")
+            
+            if structure_bias == "bullish":
+                signals.append(("STRUCTURE", "HH/HL", "bullish"))
+            elif structure_bias == "bearish":
+                signals.append(("STRUCTURE", "LH/LL", "bearish"))
+            
             bullish = sum(1 for s in signals if s[2] == "bullish")
             bearish = sum(1 for s in signals if s[2] == "bearish")
             
@@ -225,8 +234,10 @@ class MarketIntelligence:
                     "atr": round(atr, 2),
                     "stoch_k": round(stoch_k, 2),
                     "stoch_d": round(stoch_d, 2),
-                    "volume_ratio": round(vol_ratio, 2)
+                    "volume_ratio": round(vol_ratio, 2),
+                    "trend": "bullish" if ema_9 > ema_21 > ema_50 else "bearish" if ema_9 < ema_21 < ema_50 else "neutral"
                 },
+                "market_structure": structure,
                 "signals": signals,
                 "overall_bias": bias,
                 "bullish_signals": bullish,
