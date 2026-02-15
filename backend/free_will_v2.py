@@ -556,36 +556,27 @@ class FreeWillEngineV2:
         return msg, True
     
     def format_alert(self, setup: Dict) -> str:
-        """Format elite alert message"""
+        """Format lean elite alert"""
         direction = setup.get("direction", "")
         symbol = setup.get("symbol", "").replace("/USDT", "")
         timeframe = setup.get("timeframe", "")
         confidence = setup.get("confidence", 0)
-        
         emoji = "🟢" if direction == "LONG" else "🔴"
-        
+
         entry = setup.get("entry", 0)
         stop = setup.get("stop", 0)
         target = setup.get("target", 0)
         rr = setup.get("risk_reward", 0)
-        
-        confirmations = setup.get("confirmations", [])
-        
-        alert = f"""{emoji} ELITE ALERT: {symbol} {timeframe}
 
-{direction} Entry ${entry:,.2f}
-SL ${stop:,.2f} | TP ${target:,.2f}
-RR 1:{rr} | Conf {confidence}%
+        confirmations = setup.get("confirmations", [])[:4]
+        confirm_str = " | ".join(confirmations) if confirmations else "Multi-signal"
 
-✅ {len(confirmations)} CONFIRMATIONS:
-"""
-        for c in confirmations[:6]:
-            alert += f"• {c}\n"
-        
-        alert += """
-⚠️ MANUAL CHECK REQUIRED
-This is a high-quality setup. DYOR."""
-        
+        alert = (
+            f"{emoji} ELITE {direction} {symbol} {timeframe} ({confidence}%)\n"
+            f"Entry ${entry:,.2f} | SL ${stop:,.2f} | TP ${target:,.2f} | RR 1:{rr}\n"
+            f"{confirm_str}\n"
+            f"DYOR"
+        )
         return alert
     
     async def get_stats(self) -> Dict:
