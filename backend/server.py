@@ -836,6 +836,38 @@ async def lifespan(app: FastAPI):
     price_alert_system.set_dependencies(send_telegram_message, chat_ids, ws_manager,
                                         heartbeat_fn=lambda: self_healer.heartbeat("price_alerts"))
     
+    # Initialize app_state for route modules
+    app_state.db = db
+    app_state.chat_ids = chat_ids
+    app_state.emergent_key = emergent_key
+    app_state.autonomous_trader = autonomous_trader
+    app_state.autonomous_trader_v2 = autonomous_trader_v2
+    app_state.free_will_v2 = free_will_v2
+    app_state.dual_engine = dual_engine
+    app_state.learning_system = learning_system
+    app_state.market_intel = market_intel
+    app_state.enhanced_intel = enhanced_intel
+    app_state.derivatives_intel = derivatives_intel
+    app_state.news_intel = news_intel
+    app_state.futures_calc = futures_calc
+    app_state.mtf_analysis = mtf_analysis
+    app_state.advanced_strategies = advanced_strategies
+    app_state.order_flow = order_flow
+    app_state.options_analyzer = options_analyzer
+    app_state.backtest_engine = backtest_engine
+    app_state.coinglass_intel = coinglass_intel
+    app_state.strategy_engine = strategy_engine
+    app_state.price_alert_system = price_alert_system
+    app_state.sentiment_analyzer = sentiment_analyzer
+    app_state.arbitrage_detector = arbitrage_detector
+    app_state.strategy_health = strategy_health
+    app_state.user_profiler = user_profiler
+    app_state.ws_manager = ws_manager
+    app_state.self_healer = self_healer
+    app_state.send_telegram_message = send_telegram_message
+    app_state.get_user_settings = get_user_settings
+    app_state.update_user_settings = update_user_settings
+    
     # Start background tasks
     ritual_task = asyncio.create_task(eternal_rituals())
     trading_task = asyncio.create_task(autonomous_trading_loop())
