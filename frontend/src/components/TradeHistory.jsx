@@ -134,6 +134,7 @@ export default function TradeHistory() {
             ))}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );
