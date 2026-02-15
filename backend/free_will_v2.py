@@ -406,6 +406,25 @@ class FreeWillEngineV2:
             # Calculate confidence (base 50 + signals)
             confidence = min(95, 50 + (signal_strength * 8))
             
+            # HARD FILTER: Market structure must not contradict direction
+            structure = scan.get("market_structure", {})
+            structure_bias = structure.get("bias", "neutral")
+            
+            if direction == "LONG" and structure_bias == "bearish":
+                logger.info(f"BLOCKED {symbol} LONG - bearish structure (LH/LL)")
+                return None
+            if direction == "SHORT" and structure_bias == "bullish":
+                logger.info(f"BLOCKED {symbol} SHORT - bullish structure (HH/HL)")
+                return None
+            
+            # Boost confidence when structure aligns
+            if direction == "LONG" and structure_bias == "bullish":
+                confidence = min(95, confidence + 5)
+                confirmations.append("Structure HH/HL")
+            elif direction == "SHORT" and structure_bias == "bearish":
+                confidence = min(95, confidence + 5)
+                confirmations.append("Structure LH/LL")
+            
             # Check minimum requirements
             if confidence < self.min_confidence:
                 return None
