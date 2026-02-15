@@ -2108,45 +2108,46 @@ Total PnL: {stats['total_pnl_pct']:+.2f}%"""
             current_mode = settings.get("mode", "default")
             dual_stats = dual_engine.get_stats()
             
-            response = f"""🤖 AEON - Your AI Trading Companion
+            response = f"""AEON - AI Trading Intelligence
 
-━━━━━ PERSONAS ━━━━━
-• Default - Sharp trading buddy & life coach
-• Alchemy Mode - Mystical + trading wisdom
+====== PERSONAS ======
+Default - Sharp trading buddy
+Alchemy Mode - Mystical wisdom
   (Say "alchemy mode" / "casual mode")
 
-━━━━━ 📊 MARKET ANALYSIS ━━━━━
-/scan btc      - Full analysis + entry/target/stop
-/ta btc 1h     - Technicals (RSI, MACD, BB, EMA)
+====== MARKET ANALYSIS ======
+/scan btc      - Full analysis + entry/SL/TP
+/ta btc 1h     - Technicals (RSI, MACD, BB)
 /mtf btc       - Multi-timeframe (1h/4h/1d)
 /sentiment btc - Sentiment score
+/structure btc - HH/HL/LH/LL analysis
 
-━━━━━ 💰 DERIVATIVES ━━━━━
-/funding btc   - Aggregated funding rates (4 exchanges)
-/deriv btc     - Full derivatives (OI, L/S, funding)
+====== DERIVATIVES ======
+/funding btc   - Aggregated funding rates
+/deriv btc     - Full derivatives data
 /positions btc - Long/Short ratio
 /cg btc        - Coinglass data
 
-━━━━━ 🌍 MARKET INTEL ━━━━━
-/market  - Global summary
+====== MARKET INTEL ======
+/market  - Global market summary
 /fear    - Fear & Greed Index
 /top100  - Top 10 by market cap
 /movers  - Top gainers/losers (24h)
 /trending - Most searched coins
 
-━━━━━ 📰 NEWS & ON-CHAIN ━━━━━
+====== NEWS & ON-CHAIN ======
 /news    - Latest headlines (clickable!)
 /whales  - Whale activity (>10 BTC)
 /onchain - BTC network stats
 
-━━━━━ 🧮 CALCULATORS ━━━━━
+====== CALCULATORS ======
 /calc 65000 68000 1000 10 long
   (entry exit size leverage direction)
 /calcsize 10000 2 65000 63000 10
   (balance risk% entry stop leverage)
 
-━━━━━ 🤖 AUTONOMOUS TRADING ━━━━━
-/auto    - Status & paper trading stats
+====== AUTONOMOUS TRADING ======
+/auto    - Paper trading stats
 /auto on / off - Toggle trading
 /opps    - Current opportunities
 /open    - Open positions
@@ -2154,37 +2155,44 @@ Total PnL: {stats['total_pnl_pct']:+.2f}%"""
 /trail btc 5 - Set trail stop %
 /tp btc 72000 - Set take profit
 
-━━━━━ 🎯 DUAL ENGINE ━━━━━
-Day Trader: {'🟢' if dual_stats['day_trader']['active'] else '🔴'} ({dual_stats['day_trader']['min_confidence']}% min)
-Long Term: {'🟢' if dual_stats['long_term']['active'] else '🔴'} ({dual_stats['long_term']['min_confidence']}% min)
+====== DUAL ENGINE ======
+Day Trader: {'ON' if dual_stats['day_trader']['active'] else 'OFF'} ({dual_stats['day_trader']['min_confidence']}% min)
+Long Term: {'ON' if dual_stats['long_term']['active'] else 'OFF'} ({dual_stats['long_term']['min_confidence']}% min)
+* Market structure filter active (HH/HL/LH/LL)
 
-━━━━━ 🔮 FREE WILL v2 ━━━━━
+====== FREE WILL v2 ======
 /fw      - Free Will status
 /fwconf 80 - Set min confidence
 free on / free off - Toggle alerts
 
-━━━━━ 💎 SMART MONEY (SMC) ━━━━━
+====== INTELLIGENCE (NEW) ======
+/intel     - Full market intelligence report
+/arbi      - Scan 5 exchanges for arbitrage
+/health    - Strategy health & auto-bench status
+/unbench [id] - Force reactivate strategy
+
+====== SMART MONEY (SMC) ======
 /smc btc - Order blocks, FVG, liquidity
 
-━━━━━ 🧠 ADVANCED ━━━━━
+====== ADVANCED ======
 /divergence btc - RSI/MACD divergence
-/structure btc  - HH/HL/LH/LL analysis
 /vwap btc       - VWAP levels
 /cvd btc        - Order flow (CVD)
 /options btc    - Max pain & P/C ratio
 /strat btc      - Multi-strategy scan
+/backtest btc   - Strategy backtest
 
-━━━━━ 🔔 ALERTS ━━━━━
+====== ALERTS ======
 /alerts - View alert status
 /alert add btc above 70000
 /alert remove [id]
 
-━━━━━ 📓 JOURNAL ━━━━━
+====== JOURNAL ======
 /journal  - Performance stats
 /insights - AI trading insights
 
-Mode: {'Alchemy ⚗️' if current_mode == 'alchemy' else 'Casual'}
-Auto Trading: {'🟢 ACTIVE' if autonomous_trader_v2.active else '🔴 PAUSED'}
+Mode: {'Alchemy' if current_mode == 'alchemy' else 'Casual'}
+Auto Trading: {'ACTIVE' if autonomous_trader_v2.active else 'PAUSED'}
 
 What's on your mind?"""
             context = "start"
