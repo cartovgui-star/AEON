@@ -206,7 +206,7 @@ export default function Trading() {
           </p>
         </div>
 
-        <div className="bg-zinc-800/30 rounded-xl p-3 sm:p-4 border border-zinc-700/50">
+        <div className="bg-zinc-800/30 rounded-xl p-3 sm:p-4 border border-zinc-700/50 col-span-2 md:col-span-1">
           <p className="text-zinc-500 text-xs">Total Trades</p>
           <p className="text-lg sm:text-xl font-bold text-white">
             <span className="text-green-400">{stats?.wins || 0}W</span>
