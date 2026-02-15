@@ -1,0 +1,75 @@
+{
+  "summary": "Iteration 22 - Alert System Overhaul, CSV Export, Self-Healing System, and System Health Page fully tested. All 14 backend API tests passed. Frontend System Health page renders correctly with 5 service cards. All navigation items (12) working.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {
+        "endpoint": "/api/system/health",
+        "issue": "price_alerts service shows 'unknown' status because it doesn't call self_healer.heartbeat() in its run_forever loop - service works but doesn't report heartbeats",
+        "priority": "LOW"
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration22_new_features.py",
+    "/app/test_reports/pytest/pytest_results_iter22.xml"
+  ],
+  "action_items": [
+    "OPTIONAL: Add self_healer.heartbeat('price_alerts') call inside PriceAlertSystem.run_forever() loop to show 'healthy' status instead of 'unknown'"
+  ],
+  "critical_code_review_comments": [
+    "SystemHealth.jsx correctly uses data-testid attributes for service cards (data-testid='service-{name}')",
+    "price_alerts.py v2 correctly implements RSI batching (_rsi_batch buffer and _flush_rsi_batch method)",
+    "Breakout alerts now include volume_confirmed flag and [Vol Confirmed]/[Low Vol] tag in message",
+    "server.py /api/trades/export correctly returns CSV with proper headers and Content-Disposition attachment",
+    "self_healer.py implements ServiceMonitor class with heartbeat, error tracking, throttling, and auto-restart"
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iteration22_new_features.py"
+  ],
+  "success_rate": {
+    "backend": "100% - All 14 tests passed (System Health, Trades Closed/Export, Alert System v2, Existing features)",
+    "frontend": "100% - System Health page renders, all 12 nav items work, Export button visible in Trade Analytics"
+  },
+  "test_credentials": "",
+  "seed_data_creation": "Created test alert (BTC above $100k) to verify /api/alerts/add - deleted after test",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Iteration 22 features fully working. New endpoints: /api/system/health (returns overall status, 5 services, recent_healing), /api/trades/closed (returns trades list for TradeAnalytics), /api/trades/export (returns CSV download). Alert System v2: RSI alerts are batched (symbol='BATCH', data contains coins array), breakout alerts have volume_confirmed flag. Navigation now has 12 items including 'Health' tab. Services monitored: rituals, trading_v2, free_will, dual_engine, price_alerts.",
+  "verified_features": {
+    "system_health_page": {
+      "status": "WORKING",
+      "components": [
+        "Overall status badge (HEALTHY/DEGRADED/CRITICAL)",
+        "Stats cards: Services, Healthy, Restarts, Total Errors",
+        "Service cards with name, status, heartbeat time, errors/hr, restarts",
+        "Auto-Heal Log section (shows when healing actions occur)",
+        "Refresh button with data-testid='refresh-health-btn'"
+      ]
+    },
+    "self_healer": {
+      "services_monitored": ["rituals", "trading_v2", "free_will", "dual_engine", "price_alerts"],
+      "features": ["Heartbeat tracking", "Error rate limiting (throttling)", "Auto-restart dead tasks", "Healing log"]
+    },
+    "trades_export": {
+      "endpoint": "/api/trades/export",
+      "format": "CSV with headers: Date, Symbol, Direction, Entry, Exit, PnL%, Exit Reason, Style",
+      "frontend": "Export button in TradeAnalytics.jsx opens CSV download"
+    },
+    "alert_system_v2": {
+      "rsi_batching": "Multiple RSI extremes collected and sent as single message",
+      "breakout_improvements": "Volume confirmation flag, longer cooldown (30min vs 5min)",
+      "funding_grouping": "Extreme funding rates grouped into single message"
+    },
+    "navigation": {
+      "items": ["Dashboard", "Trading", "History", "Alerts", "Backtest", "Intel", "Analytics", "SMC", "Journal", "Commands", "Health", "Settings"],
+      "health_nav": "data-testid='nav-health' routes to SystemHealth component"
+    }
+  },
+  "mocked_apis_note": "Paper trading uses MOCKED execution (no real money). All market data is REAL from MEXC exchange."
+}
