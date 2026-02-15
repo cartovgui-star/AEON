@@ -97,10 +97,11 @@ class PriceAlertSystem:
         self._breakout_cooldowns: Dict[str, datetime] = {}
         self._breakout_cooldown_seconds = 1800
 
-    def set_dependencies(self, send_telegram: Callable, chat_ids: Set[int], ws_manager=None):
+    def set_dependencies(self, send_telegram: Callable, chat_ids: Set[int], ws_manager=None, heartbeat_fn=None):
         self.send_telegram = send_telegram
         self.chat_ids = chat_ids
         self.ws_manager = ws_manager
+        self._heartbeat_fn = heartbeat_fn
 
     def _can_send_alert(self, alert_key: str) -> bool:
         now = datetime.now(timezone.utc)
