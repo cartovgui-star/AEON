@@ -185,6 +185,7 @@ function App() {
     { id: 'smc', label: 'SMC', icon: Layers },
     { id: 'journal', label: 'Journal', icon: BookOpen },
     { id: 'commands', label: 'Commands', icon: HelpCircle },
+    { id: 'health', label: 'Health', icon: Shield },
     { id: 'settings', label: 'Settings', icon: Settings },
   ];
 
