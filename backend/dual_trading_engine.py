@@ -300,6 +300,27 @@ class TradingStyleEngine:
             else:
                 return None
             
+            # HARD FILTER: Market structure must not contradict direction
+            # LONG requires non-bearish structure (HH/HL or neutral OK, LH/LL = blocked)
+            # SHORT requires non-bullish structure (LH/LL or neutral OK, HH/HL = blocked)
+            structure = scan.get("market_structure", {})
+            structure_bias = structure.get("bias", "neutral")
+            
+            if direction == "LONG" and structure_bias == "bearish":
+                logger.info(f"[{self.name}] BLOCKED {symbol} LONG - bearish structure (LH/LL)")
+                return None
+            if direction == "SHORT" and structure_bias == "bullish":
+                logger.info(f"[{self.name}] BLOCKED {symbol} SHORT - bullish structure (HH/HL)")
+                return None
+            
+            # Boost confidence when structure aligns with direction
+            if direction == "LONG" and structure_bias == "bullish":
+                confidence = min(95, confidence + 5)
+                confirmations.append("Structure HH/HL")
+            elif direction == "SHORT" and structure_bias == "bearish":
+                confidence = min(95, confidence + 5)
+                confirmations.append("Structure LH/LL")
+            
             # Check minimum requirements
             if confidence < self.min_confidence:
                 return None
