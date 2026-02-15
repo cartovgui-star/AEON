@@ -91,7 +91,8 @@ export default function TradeHistory() {
       </div>
 
       <div className="bg-zinc-800/30 rounded-xl border border-zinc-700/50 overflow-hidden">
-        <table className="w-full">
+        <div className="overflow-x-auto">
+        <table className="w-full min-w-[500px]">
           <thead className="bg-zinc-800/50">
             <tr className="text-left text-xs text-zinc-500 uppercase">
               <th className="px-4 py-3">Symbol</th>
