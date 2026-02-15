@@ -436,36 +436,22 @@ class TradingStyleEngine:
         return msg, True
     
     def format_alert(self, setup: Dict) -> str:
-        """Format setup as alert message"""
+        """Format lean alert message"""
         direction = setup["direction"]
         symbol = setup["symbol"].replace("/USDT", "")
         conf = setup["confidence"]
-        
-        # Direction emoji
         dir_emoji = "🟢" if direction == "LONG" else "🔴"
-        
-        # Style badge
-        if self.style == "AGGRESSIVE":
-            style_badge = "⚡ DAY TRADE"
-        else:
-            style_badge = "🎯 LONG TERM"
-        
-        msg = f"""{self.emoji} {style_badge} ALERT
+        style_badge = "⚡ DAY" if self.style == "AGGRESSIVE" else "🎯 LT"
 
-{dir_emoji} {direction} {symbol}
-Confidence: {conf}%
-Timeframe: {setup['timeframe']}
+        confirms = setup.get('confirmations', [])[:4]
+        confirm_str = " | ".join(confirms) if confirms else "Multiple signals"
 
-Entry: ${setup['entry']:,.2f}
-Stop Loss: ${setup['stop_loss']:,.2f}
-Take Profit: ${setup['take_profit']:,.2f}
-R:R: {setup['risk_reward']:.1f}
-
-Confirmations:
-{chr(10).join(['• ' + c for c in setup['confirmations'][:5]])}
-
-⚠️ DYOR - Not financial advice"""
-        
+        msg = (
+            f"{dir_emoji} {style_badge} {direction} {symbol} {setup['timeframe']} ({conf}%)\n"
+            f"Entry ${setup['entry']:,.2f} | SL ${setup['stop_loss']:,.2f} | TP ${setup['take_profit']:,.2f} | RR {setup['risk_reward']:.1f}\n"
+            f"{confirm_str}\n"
+            f"DYOR"
+        )
         return msg
     
     def get_stats(self) -> Dict:
