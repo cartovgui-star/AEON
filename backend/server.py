@@ -836,14 +836,24 @@ async def lifespan(app: FastAPI):
     dual_task = asyncio.create_task(dual_trading_scanner())
     alert_task = asyncio.create_task(price_alert_system.run_forever())
     
+    # Register all services with self-healer for auto-recovery
+    self_healer.register("rituals", ritual_task, eternal_rituals)
+    self_healer.register("trading_v2", trading_task, autonomous_trading_loop)
+    self_healer.register("free_will", freewill_task, free_will_scanner)
+    self_healer.register("dual_engine", dual_task, dual_trading_scanner)
+    self_healer.register("price_alerts", alert_task, price_alert_system.run_forever)
+    healer_task = asyncio.create_task(self_healer.monitor_loop())
+    
     logger.info(f"AEON PAPER TRADING ACTIVATED - {autonomous_trader_v2.min_confidence}%+ conf, {autonomous_trader_v2.min_confirmations}+ confirmations")
     logger.info("AEON FREE WILL v2 ACTIVATED - Elite alerts only (80%+ conf, 3+ confirmations)")
     logger.info("DUAL ENGINE ACTIVATED - Day Trader (aggressive) + Long Term (smart)")
-    logger.info("AEON PRICE ALERT SYSTEM ACTIVATED - Real-time monitoring")
-    logger.info("WEBSOCKET MANAGER READY - Real-time client connections")
+    logger.info("AEON PRICE ALERT SYSTEM v2 - Lean batched alerts")
+    logger.info("SELF-HEALER ACTIVATED - Auto error detection & recovery")
     
     yield
     
+    self_healer.active = False
+    healer_task.cancel()
     ritual_task.cancel()
     trading_task.cancel()
     freewill_task.cancel()
