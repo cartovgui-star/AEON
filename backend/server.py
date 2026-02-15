@@ -743,6 +743,7 @@ async def dual_trading_scanner():
     
     while True:
         try:
+            self_healer.heartbeat("dual_engine")
             if dual_engine.active:
                 # Scan both styles
                 all_setups = await dual_engine.scan_all_styles()
