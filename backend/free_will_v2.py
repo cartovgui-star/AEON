@@ -523,8 +523,19 @@ class FreeWillEngineV2:
                         logger.info(f"Free Will setup invalidated: {symbol} price moved {price_diff_pct:.1f}% from entry")
                         return None, False
                     
+                    # Re-validate market structure with fresh data
+                    fresh_structure = ta.get("market_structure", {})
+                    fresh_bias = fresh_structure.get("bias", "neutral")
+                    if direction == "LONG" and fresh_bias == "bearish":
+                        logger.info(f"Free Will BLOCKED at validation: {symbol} LONG vs bearish structure")
+                        return None, False
+                    if direction == "SHORT" and fresh_bias == "bullish":
+                        logger.info(f"Free Will BLOCKED at validation: {symbol} SHORT vs bullish structure")
+                        return None, False
+                    
                     # Update entry to current price for more accurate alert
                     setup["entry"] = current_price
+                    setup["structure"] = fresh_structure.get("pattern", "")
                     
                     # Recalculate SL/TP based on fresh price
                     indicators = ta.get("indicators", {})
