@@ -918,6 +918,12 @@ async def root():
     return {"message": "Aeon Market Intelligence Active", "status": "online"}
 
 
+@api_router.get("/system/health")
+async def api_system_health():
+    """Self-healer status - shows all monitored services and recent healing actions."""
+    return self_healer.get_status()
+
+
 @api_router.get("/pairs")
 async def api_list_pairs():
     """List all supported trading pairs"""
