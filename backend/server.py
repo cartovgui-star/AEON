@@ -3793,9 +3793,11 @@ Use /unbench [strategy] to force-activate"""
                         change = ticker.get("percentage", 0)
                         high = ticker.get("high", 0)
                         low = ticker.get("low", 0)
-                        market_data = f"{coin} ${price:,.0f} ({change:+.1f}%) | H: ${high:,.0f} L: ${low:,.0f}"
-                    except:
-                        market_data = ""
+                        market_data = f"{coin} CURRENT PRICE: ${price:,.2f} ({change:+.2f}% 24h) | High: ${high:,.2f} | Low: ${low:,.2f}"
+                        logger.info(f"✅ Fetched REAL market data for {coin}: ${price:,.2f}")
+                    except Exception as e:
+                        logger.error(f"Failed to fetch market data for {coin}: {e}")
+                        market_data = f"[Unable to fetch live {coin} data - connection issue. Acknowledge you need current data to answer accurately.]"
                 
                 # Build prompts using new personality system
                 system_prompt = build_system_prompt(analysis)
