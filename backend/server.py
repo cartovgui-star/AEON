@@ -712,6 +712,24 @@ async def free_will_scanner():
                         
                         await asyncio.sleep(0.5)
                     
+                    # Send to dashboard with reasoning and confirmations
+                    confirmations = setup.get("confirmations", [])
+                    reasoning = f"{setup.get('direction')} signal with {setup.get('confidence')}% confidence. " + \
+                                f"Entry: ${setup.get('entry', 0):,.2f}, Target: ${setup.get('target', 0):,.2f}, " + \
+                                f"Stop: ${setup.get('stop', 0):,.2f}, R:R 1:{setup.get('risk_reward', 0)}"
+                    
+                    price_alert_system._add_dashboard_alert({
+                        "type": "free_will_elite",
+                        "symbol": setup.get("symbol", "").replace("/USDT", ""),
+                        "direction": setup.get("direction"),
+                        "message": f"Elite {setup.get('direction')} setup on {setup.get('timeframe')} ({setup.get('confidence')}%)",
+                        "reasoning": reasoning,
+                        "confirmations": confirmations[:4],  # Top 4 confirmations
+                        "data": setup,
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                        "severity": "high"
+                    })
+                    
                     # Mark alerted with direction for anti-contradiction
                     free_will_v2._mark_alerted(setup["symbol"], direction)
                     logger.info(f"🎯 ELITE ALERT: {setup['symbol']} {setup['timeframe']} {setup['direction']} ({setup['confidence']}%)")
