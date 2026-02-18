@@ -228,6 +228,18 @@ frontend:
         agent: "testing"
         comment: "VERIFIED - Export button present in TradeAnalytics. CSV download working correctly."
 
+  - task: "Trade Journal - Add Notes to Trades"
+    implemented: true
+    working: "NA"
+    file: "backend/routes/trading.py, frontend/src/components/TradeAnalytics.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "P1 feature: Added ability for users to add personal notes to individual trades. Backend: POST/GET /api/trades/{trade_id}/notes endpoints. Frontend: Notes icon column in trade table with modal UI for adding/editing notes. Notes stored in MongoDB."
+
 metadata:
   created_by: "fork_agent"
   version: "2.0"
@@ -236,12 +248,10 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Backend Refactoring - server.py modularization"
-    - "Mobile Optimization - All Components"
-    - "Self-Healing System"
+    - "Trade Journal - Add Notes to Trades"
   stuck_tasks: []
-  test_all: true
-  test_priority: "critical_first"
+  test_all: false
+  test_priority: "high_first"
 
 agent_communication:
   - agent: "main"
@@ -266,3 +276,11 @@ agent_communication:
   - agent: "main"
     message: |
       Refactoring validation complete. Moving to P1: Trade Journal feature implementation.
+  - agent: "main"
+    message: |
+      Trade Journal feature implemented:
+      - Backend: Added POST/GET /api/trades/{trade_id}/notes endpoints
+      - Frontend: Added notes column with icon in TradeAnalytics table
+      - Modal UI for adding/editing notes with trade summary display
+      - Notes stored in MongoDB (v2_open_trades and v2_closed_trades)
+      Ready for testing.
