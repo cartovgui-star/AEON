@@ -103,6 +103,60 @@
 #====================================================================================================
 
 user_problem_statement: |
+  Build Aeon crypto trading bot with enhanced alerts showing WHY LONG/SHORT with reasoning and confirmations.
+  User wants better SHORT/LONG alert displays throughout the app.
+
+backend:
+  - task: "Alert Reasoning & Confirmations - Backend"
+    implemented: true
+    working: "NA"
+    file: "backend/server.py (Free Will, Day Trader, Long Term engines)"
+    stuck_count: 0
+    priority: "critical"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Added reasoning, confirmations, and direction to all trading alerts. Free Will V2, Day Trader, and Long Term engines now send detailed explanations."
+
+frontend:
+  - task: "Alert Display with Reasoning - Frontend"
+    implemented: true
+    working: "NA"
+    file: "frontend/src/components/PriceAlerts.jsx"
+    stuck_count: 0
+    priority: "critical"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Enhanced alerts page to show LONG/SHORT badges, reasoning boxes, and confirmation chips. Fixed babel compilation issue."
+
+metadata:
+  created_by: "main_agent"
+  version: "1.0"
+  test_sequence: 25
+  run_ui: true
+
+test_plan:
+  current_focus:
+    - "Alert Reasoning & Confirmations - Backend"
+    - "Alert Display with Reasoning - Frontend"
+  stuck_tasks: []
+  test_all: false
+  test_priority: "critical_first"
+
+agent_communication:
+  - agent: "main"
+    message: |
+      Alert reasoning feature implemented in backend and frontend. Need to test:
+      1. Backend APIs return reasoning, confirmations, and direction
+      2. Frontend displays all alert types correctly (Free Will, Day Trader, Long Term)
+      3. Reasoning boxes and confirmation chips render properly
+      4. Alert data persists correctly in MongoDB
+      5. Real-time updates work when new alerts arrive
+
+user_problem_statement: |
   Build Aeon - sophisticated crypto trading bot with paper trading, AI personality, enhanced UI/UX, 
   alerts/notifications, Telegram bot interface, and comprehensive analytics dashboard.
 
