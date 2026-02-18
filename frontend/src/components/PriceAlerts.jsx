@@ -421,6 +421,13 @@ export default function PriceAlerts() {
                         <span className="text-xs text-zinc-600">
                           {alert.symbol?.replace('/USDT', '')}
                         </span>
+                        {alert.direction && (
+                          <span className={`text-xs px-2 py-0.5 rounded font-bold ${
+                            alert.direction === 'LONG' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
+                          }`}>
+                            {alert.direction}
+                          </span>
+                        )}
                         {!alert.read && (
                           <span className="w-2 h-2 rounded-full bg-orange-400 animate-pulse" />
                         )}
@@ -428,6 +435,21 @@ export default function PriceAlerts() {
                       <p className="text-sm text-zinc-300 whitespace-pre-line line-clamp-3">
                         {alert.message?.split('\n').filter(l => l.trim()).slice(0, 3).join('\n')}
                       </p>
+                      {alert.reasoning && (
+                        <div className="mt-2 p-2 bg-zinc-900/60 rounded-lg border border-zinc-700/50">
+                          <p className="text-xs text-zinc-400 font-semibold mb-1">Why {alert.direction}:</p>
+                          <p className="text-xs text-zinc-300">{alert.reasoning}</p>
+                        </div>
+                      )}
+                      {alert.confirmations && alert.confirmations.length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-1">
+                          {alert.confirmations.slice(0, 4).map((c, idx) => (
+                            <span key={idx} className="text-xs px-2 py-0.5 bg-cyan-500/10 text-cyan-400 rounded">
+                              ✓ {c}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                       <p className="text-xs text-zinc-600 mt-2">
                         {alert.timestamp ? new Date(alert.timestamp).toLocaleString() : ''}
                       </p>
