@@ -20,7 +20,7 @@ import Journal from "./components/Journal";
 import Trading from "./components/Trading";
 import CommandsReference from "./components/CommandsReference";
 import QuickScanModal from "./components/QuickScanModal";
-import PriceAlertsRedesigned from "./components/PriceAlertsRedesigned";
+import PriceAlerts from "./components/PriceAlerts";
 import Backtesting from "./components/Backtesting";
 import Intelligence from "./components/Intelligence";
 import SystemHealth from "./components/SystemHealth";
@@ -511,7 +511,7 @@ function App() {
         {currentPage === 'analytics' && <Analytics />}
 
         {/* Page: Price Alerts */}
-        {currentPage === 'alerts' && <PriceAlertsRedesigned />}
+        {currentPage === 'alerts' && <PriceAlerts />}
 
         {/* Page: Backtesting */}
         {currentPage === 'backtest' && <Backtesting />}
