@@ -1840,10 +1840,11 @@ async def api_trading_v2_closed():
 
 @api_router.get("/trades/closed")
 async def api_trades_closed():
-    """Alias for frontend TradeAnalytics - returns all closed trades."""
+    """Alias for frontend TradeAnalytics - returns all closed trades with notes support."""
     trades = []
     for t in autonomous_trader_v2.closed_trades:
         trades.append({
+            "id": t.get("id", ""),
             "symbol": t.get("symbol", ""),
             "direction": t.get("direction", ""),
             "entry_price": t.get("entry_price", 0),
@@ -1853,6 +1854,8 @@ async def api_trades_closed():
             "timestamp": t.get("exit_time", t.get("closed_at", "")),
             "exit_reason": t.get("exit_reason", ""),
             "style": t.get("style", ""),
+            "notes": t.get("notes", ""),
+            "notes_updated_at": t.get("notes_updated_at", ""),
         })
     return {"trades": trades, "total": len(trades)}
 
