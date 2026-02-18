@@ -1777,6 +1777,295 @@ async def api_open_predictions():
     return await learning_system.get_open_predictions()
 
 
+@api_router.post("/trading/toggle")
+async def api_trading_toggle(active: bool = True):
+    """Toggle autonomous trading on/off"""
+    autonomous_trader_v2.active = active
+    await autonomous_trader_v2.save_settings()  # Persist to DB
+    return {"active": autonomous_trader_v2.active, "message": f"Trading {'activated' if active else 'paused'}", "engine": "v2"}
+
+
+@api_router.get("/trading/summary")
+async def api_trading_summary():
+    """Get comprehensive autonomous trading v2 summary."""
+    return await autonomous_trader_v2.get_stats()
+
+
+@api_router.get("/trading/opportunities")
+async def api_trading_opportunities():
+    """Get current elite market signals (v2)."""
+    return await autonomous_trader_v2.scan_all_markets()
+
+
+@api_router.get("/trading/strategy")
+async def api_strategy_weights():
+    """Get current strategy weights and performance (v1 legacy)."""
+    return {
+        "weights": autonomous_trader.strategy_weights,
+        "performance": autonomous_trader.strategy_performance,
+        "active": autonomous_trader.active,
+        "min_confidence": autonomous_trader.min_confidence,
+        "note": "This is v1 legacy data. Use /trading/v2/stats for v2 engine."
+    }
+
+
+@api_router.get("/trading/analyze/{symbol}")
+async def api_analyze_symbol(symbol: str, timeframe: str = "4h"):
+    """Get detailed v2 analysis for a symbol."""
+    return await autonomous_trader_v2.analyze_signal(symbol.upper() + "/USDT", timeframe)
+
+
+@api_router.get("/trading/v2/stats")
+async def api_trading_v2_stats():
+    """Get autonomous trader v2 comprehensive statistics."""
+    return await autonomous_trader_v2.get_stats()
+
+
+@api_router.get("/trading/v2/open")
+async def api_trading_v2_open():
+    """Get open trades from v2 engine."""
+    return {
+        "open_trades": autonomous_trader_v2.open_trades,
+        "total_open": len(autonomous_trader_v2.open_trades)
+    }
+
+
+@api_router.get("/trading/v2/closed")
+async def api_trading_v2_closed():
+    """Get closed trades from v2 engine."""
+    return {
+        "closed_trades": autonomous_trader_v2.closed_trades[-20:],  # Last 20
+        "total_closed": len(autonomous_trader_v2.closed_trades)
+    }
+
+
+@api_router.get("/trades/closed")
+async def api_trades_closed():
+    """Alias for frontend TradeAnalytics - returns all closed trades with notes support."""
+    trades = []
+    for t in autonomous_trader_v2.closed_trades:
+        trades.append({
+            "id": t.get("id", ""),
+            "symbol": t.get("symbol", ""),
+            "direction": t.get("direction", ""),
+            "entry_price": t.get("entry_price", 0),
+            "exit_price": t.get("exit_price", 0),
+            "pnl_pct": t.get("pnl_pct", 0),
+            "closed_at": t.get("exit_time", t.get("closed_at", "")),
+            "timestamp": t.get("exit_time", t.get("closed_at", "")),
+            "exit_reason": t.get("exit_reason", ""),
+            "style": t.get("style", ""),
+            "notes": t.get("notes", ""),
+            "notes_updated_at": t.get("notes_updated_at", ""),
+        })
+    return {"trades": trades, "total": len(trades)}
+
+
+@api_router.get("/trades/export")
+async def api_trades_export():
+    """Export all closed trades as CSV download."""
+    import io
+    import csv
+    from starlette.responses import StreamingResponse
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["Date", "Symbol", "Direction", "Entry", "Exit", "PnL%", "Exit Reason", "Style"])
+
+    for t in autonomous_trader_v2.closed_trades:
+        ts = t.get("exit_time", t.get("closed_at", ""))
+        if isinstance(ts, datetime):
+            ts = ts.isoformat()
+        writer.writerow([
+            str(ts),
+            t.get("symbol", ""),
+            t.get("direction", ""),
+            t.get("entry_price", 0),
+            t.get("exit_price", 0),
+            round(t.get("pnl_pct", 0), 2),
+            t.get("exit_reason", ""),
+            t.get("style", ""),
+        ])
+
+    output.seek(0)
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename=aeon_trades_{datetime.now().strftime('%Y%m%d')}.csv"}
+    )
+
+
+@api_router.get("/trading/v2/pnl-history")
+async def api_trading_v2_pnl_history():
+    """Get PnL history for chart visualization"""
+    history = []
+    cumulative_pnl = 0
+    
+    # Get closed trades with timestamps
+    for trade in autonomous_trader_v2.closed_trades:
+        cumulative_pnl += trade.get("pnl_pct", 0)
+        history.append({
+            "timestamp": trade.get("exit_time", trade.get("closed_at", datetime.now(timezone.utc))).isoformat() if isinstance(trade.get("exit_time"), datetime) else str(trade.get("exit_time", "")),
+            "symbol": trade.get("symbol", ""),
+            "pnl": trade.get("pnl_pct", 0),
+            "cumulative_pnl": round(cumulative_pnl, 2),
+            "direction": trade.get("direction", ""),
+            "result": "WIN" if trade.get("pnl_pct", 0) > 0 else "LOSS"
+        })
+    
+    return {
+        "history": history,
+        "total_trades": len(history),
+        "total_pnl": round(cumulative_pnl, 2),
+        "wins": len([h for h in history if h["result"] == "WIN"]),
+        "losses": len([h for h in history if h["result"] == "LOSS"])
+    }
+
+
+@api_router.get("/trading/v2/live-positions")
+async def api_trading_v2_live_positions():
+    """Get open positions with real-time PnL from MEXC"""
+    positions = []
+    total_pnl = 0
+    
+    for trade in autonomous_trader_v2.open_trades:
+        try:
+            # Get live price from MEXC
+            ticker = await market_intel.get_ticker(trade["symbol"])
+            current_price = ticker.get("price", 0) if ticker and "error" not in ticker else 0
+            
+            entry = trade.get("entry_price", 0)
+            direction = trade.get("direction", "")
+            
+            # Calculate real-time PnL
+            if entry and current_price:
+                if direction == "LONG":
+                    pnl_pct = ((current_price - entry) / entry) * 100
+                else:
+                    pnl_pct = ((entry - current_price) / entry) * 100
+            else:
+                pnl_pct = 0
+            
+            total_pnl += pnl_pct
+            
+            positions.append({
+                "id": trade.get("id"),
+                "symbol": trade.get("symbol"),
+                "direction": direction,
+                "entry_price": entry,
+                "current_price": current_price,
+                "stop_price": trade.get("stop_price"),
+                "target_price": trade.get("target_price"),
+                "trail_stop": trade.get("trail_stop"),
+                "pnl_pct": round(pnl_pct, 2),
+                "confidence": trade.get("confidence"),
+                "timeframe": trade.get("timeframe"),
+                "entry_time": trade.get("entry_time").isoformat() if isinstance(trade.get("entry_time"), datetime) else str(trade.get("entry_time", "")),
+                "confirmations": trade.get("confirmations", [])[:3]  # Top 3 reasons
+            })
+        except Exception as e:
+            logger.error(f"Error getting live position data: {e}")
+    
+    return {
+        "positions": positions,
+        "total_positions": len(positions),
+        "total_pnl_pct": round(total_pnl, 2),
+        "data_source": "MEXC Live"
+    }
+
+
+@api_router.post("/trading/v2/confidence")
+async def api_trading_v2_confidence(min_conf: int = 85):
+    """Set v2 minimum confidence threshold (70-98)."""
+    autonomous_trader_v2.min_confidence = max(70, min(98, min_conf))
+    await autonomous_trader_v2.save_settings()  # Persist to DB
+    return {"min_confidence": autonomous_trader_v2.min_confidence}
+
+
+@api_router.post("/trading/v2/close/{symbol}")
+async def api_trading_v2_close(symbol: str):
+    """Manually close a v2 paper trade."""
+    symbol_full = symbol.upper() + "/USDT"
+    
+    for i, trade in enumerate(autonomous_trader_v2.open_trades):
+        if trade.get("symbol") == symbol_full:
+            ticker = await market_intel.get_ticker(symbol_full)
+            current_price = ticker.get("price", 0) if "error" not in ticker else 0
+            
+            entry = trade.get("entry_price", 0)
+            direction = trade.get("direction", "")
+            
+            pnl = 0
+            if entry and current_price:
+                if direction == "LONG":
+                    pnl = ((current_price - entry) / entry) * 100
+                else:
+                    pnl = ((entry - current_price) / entry) * 100
+            
+            closed_trade = autonomous_trader_v2.open_trades.pop(i)
+            closed_trade["exit_price"] = current_price
+            closed_trade["pnl_pct"] = pnl
+            closed_trade["exit_reason"] = "API_MANUAL_CLOSE"
+            closed_trade["closed_at"] = datetime.now(timezone.utc).isoformat()
+            autonomous_trader_v2.closed_trades.append(closed_trade)
+            
+            return {"status": "closed", "trade": closed_trade}
+    
+    return {"error": f"No open trade found for {symbol_full}"}
+
+
+@api_router.post("/trading/v2/trail/{symbol}")
+async def api_trading_v2_trail(symbol: str, trail_pct: float = 3.0):
+    """Update trailing stop percentage for a trade."""
+    symbol_full = symbol.upper() + "/USDT"
+    trail_pct = max(1, min(20, trail_pct))
+    
+    for trade in autonomous_trader_v2.open_trades:
+        if trade.get("symbol") == symbol_full:
+            ticker = await market_intel.get_ticker(symbol_full)
+            current_price = ticker.get("price", 0) if "error" not in ticker else 0
+            
+            direction = trade.get("direction", "")
+            
+            if direction == "LONG":
+                new_stop = current_price * (1 - trail_pct / 100)
+            else:
+                new_stop = current_price * (1 + trail_pct / 100)
+            
+            old_stop = trade.get("trail_stop", 0)
+            trade["trail_stop"] = new_stop
+            trade["trail_pct"] = trail_pct
+            
+            return {
+                "status": "updated",
+                "symbol": symbol_full,
+                "old_stop": old_stop,
+                "new_stop": new_stop,
+                "trail_pct": trail_pct
+            }
+    
+    return {"error": f"No open trade found for {symbol_full}"}
+
+
+@api_router.post("/trading/v2/tp/{symbol}")
+async def api_trading_v2_tp(symbol: str, price: float):
+    """Update take profit price for a trade."""
+    symbol_full = symbol.upper() + "/USDT"
+    
+    for trade in autonomous_trader_v2.open_trades:
+        if trade.get("symbol") == symbol_full:
+            old_tp = trade.get("target_price", 0)
+            trade["target_price"] = price
+            
+            return {
+                "status": "updated",
+                "symbol": symbol_full,
+                "old_tp": old_tp,
+                "new_tp": price
+            }
+    
+    return {"error": f"No open trade found for {symbol_full}"}
+
 
 @api_router.get("/mexc/live")
 async def api_mexc():
