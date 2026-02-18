@@ -411,6 +411,30 @@ class FreeWillEngineV2:
             
             # Calculate confidence (base 50 + signals)
             confidence = min(95, 50 + (signal_strength * 8))
+
+            # ═══════════════════════════════════════════════════════════════════
+            # FILTER CONTRADICTIONS - Remove conflicting confirmations
+            # ═══════════════════════════════════════════════════════════════════
+            cleaned_confirmations = []
+            for conf in confirmations:
+                # Skip bullish signals if SHORT direction
+                if direction == "SHORT":
+                    if any(x in conf.lower() for x in ["uptrend", "bullish bos", "buying", "above vwap"]):
+                        continue
+                # Skip bearish signals if LONG direction  
+                elif direction == "LONG":
+                    if any(x in conf.lower() for x in ["downtrend", "bearish bos", "selling", "below vwap"]):
+                        continue
+                cleaned_confirmations.append(conf)
+            
+            # Replace confirmations with cleaned version
+            confirmations = cleaned_confirmations
+            
+            # Require at least 3 confirmations after filtering
+            if len(confirmations) < 3:
+                logger.info(f"BLOCKED {symbol} {direction} - insufficient confirmations after filtering ({len(confirmations)})")
+                return None
+
             
             # HARD FILTER: Market structure must not contradict direction
             structure = {}
