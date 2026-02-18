@@ -814,10 +814,27 @@ async def dual_trading_scanner():
                             })
                         await asyncio.sleep(0.3)
                     
-                    # Send to dashboard with reasoning
+                    # Send to dashboard with detailed reasoning
                     confirmations = setup.get("confirmations", [])
-                    reasoning = f"Day Trader {setup.get('direction')} with {setup.get('confidence')}% confidence. " + \
-                                f"Fast-paced {setup.get('timeframe')} setup. Entry: ${setup.get('entry', 0):,.2f}"
+                    
+                    # Generate detailed reasoning
+                    reasoning_parts = []
+                    reasoning_parts.append(f"Day Trader {setup.get('confidence')}% setup for fast-paced scalping on {setup.get('timeframe')}")
+                    
+                    # Context from confirmations
+                    for conf in confirmations[:3]:
+                        if 'rsi' in conf.lower():
+                            if 'oversold' in conf.lower():
+                                reasoning_parts.append("RSI oversold creates bounce opportunity")
+                            elif 'overbought' in conf.lower():
+                                reasoning_parts.append("RSI overbought signals reversal setup")
+                        elif 'macd' in conf.lower():
+                            reasoning_parts.append("MACD momentum shift validates entry")
+                        elif 'trend' in conf.lower():
+                            reasoning_parts.append("Trend alignment increases probability")
+                    
+                    reasoning_parts.append(f"Entry: ${setup.get('entry', 0):,.2f} with tight stop management")
+                    reasoning = ". ".join(reasoning_parts) + "."
                     
                     price_alert_system._add_dashboard_alert({
                         "type": "day_trader",
