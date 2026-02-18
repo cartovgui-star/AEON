@@ -73,6 +73,7 @@ async def api_trades_closed():
     trades = []
     for t in state.autonomous_trader_v2.closed_trades:
         trades.append({
+            "id": t.get("id", ""),
             "symbol": t.get("symbol", ""),
             "direction": t.get("direction", ""),
             "entry_price": t.get("entry_price", 0),
@@ -82,6 +83,8 @@ async def api_trades_closed():
             "timestamp": t.get("exit_time", t.get("closed_at", "")),
             "exit_reason": t.get("exit_reason", ""),
             "style": t.get("style", ""),
+            "notes": t.get("notes", ""),
+            "notes_updated_at": t.get("notes_updated_at", ""),
         })
     return {"trades": trades, "total": len(trades)}
 
