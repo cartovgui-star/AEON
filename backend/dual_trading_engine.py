@@ -436,7 +436,7 @@ class TradingStyleEngine:
         return msg, True
     
     def format_alert(self, setup: Dict) -> str:
-        """Format lean alert message"""
+        """Format alert message with WHY reasoning"""
         direction = setup["direction"]
         symbol = setup["symbol"].replace("/USDT", "")
         conf = setup["confidence"]
@@ -445,12 +445,16 @@ class TradingStyleEngine:
 
         confirms = setup.get('confirmations', [])[:4]
         confirm_str = " | ".join(confirms) if confirms else "Multiple signals"
+        
+        # Generate WHY reasoning
+        style_name = "Day Trader" if self.style == "AGGRESSIVE" else "Long Term"
+        why_reason = f"WHY {direction}: {style_name} setup with {conf}% confidence and {len(setup.get('confirmations', []))} confirmations. R:R {setup['risk_reward']:.1f} on {setup['timeframe']}."
 
         msg = (
             f"{dir_emoji} {style_badge} {direction} {symbol} {setup['timeframe']} ({conf}%)\n"
             f"Entry ${setup['entry']:,.2f} | SL ${setup['stop_loss']:,.2f} | TP ${setup['take_profit']:,.2f} | RR {setup['risk_reward']:.1f}\n"
             f"{confirm_str}\n"
-            f"DYOR"
+            f"{why_reason}"
         )
         return msg
     
