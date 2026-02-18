@@ -791,6 +791,23 @@ async def dual_trading_scanner():
                             })
                         await asyncio.sleep(0.3)
                     
+                    # Send to dashboard with reasoning
+                    confirmations = setup.get("confirmations", [])
+                    reasoning = f"Day Trader {setup.get('direction')} with {setup.get('confidence')}% confidence. " + \
+                                f"Fast-paced {setup.get('timeframe')} setup. Entry: ${setup.get('entry', 0):,.2f}"
+                    
+                    price_alert_system._add_dashboard_alert({
+                        "type": "day_trader",
+                        "symbol": setup.get("symbol", "").replace("/USDT", ""),
+                        "direction": setup.get("direction"),
+                        "message": f"Day Trader {setup.get('direction')} on {setup.get('timeframe')} ({setup.get('confidence')}%)",
+                        "reasoning": reasoning,
+                        "confirmations": confirmations[:4],
+                        "data": setup,
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                        "severity": "medium"
+                    })
+                    
                     dual_engine.mark_alerted("Day Trader", setup["symbol"], setup["direction"])
                     logger.info(f"⚡ DAY TRADE: {setup['symbol']} {setup['timeframe']} {setup['direction']} ({setup['confidence']}%)")
                 
@@ -815,6 +832,23 @@ async def dual_trading_scanner():
                                 "timestamp": datetime.now(timezone.utc)
                             })
                         await asyncio.sleep(0.3)
+                    
+                    # Send to dashboard with reasoning
+                    confirmations = setup.get("confirmations", [])
+                    reasoning = f"Long Term {setup.get('direction')} with {setup.get('confidence')}% confidence. " + \
+                                f"Patient {setup.get('timeframe')} setup for multi-week hold. Entry: ${setup.get('entry', 0):,.2f}"
+                    
+                    price_alert_system._add_dashboard_alert({
+                        "type": "long_term",
+                        "symbol": setup.get("symbol", "").replace("/USDT", ""),
+                        "direction": setup.get("direction"),
+                        "message": f"Long Term {setup.get('direction')} on {setup.get('timeframe')} ({setup.get('confidence')}%)",
+                        "reasoning": reasoning,
+                        "confirmations": confirmations[:4],
+                        "data": setup,
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                        "severity": "medium"
+                    })
                     
                     dual_engine.mark_alerted("Long Term", setup["symbol"], setup["direction"])
                     logger.info(f"🎯 LONG TERM: {setup['symbol']} {setup['timeframe']} {setup['direction']} ({setup['confidence']}%)")
