@@ -190,6 +190,67 @@ async def api_trading_v2_close(symbol: str):
     return {"error": f"No open trade found for {symbol_full}"}
 
 
+@router.post("/trades/{trade_id}/notes")
+async def api_add_trade_notes(trade_id: str, request: Request):
+    """Add or update notes for a specific trade"""
+    try:
+        data = await request.json()
+        notes = data.get("notes", "")
+        
+        # Update in open trades
+        for trade in state.autonomous_trader_v2.open_trades:
+            if trade.get("id") == trade_id:
+                trade["notes"] = notes
+                trade["notes_updated_at"] = datetime.now(timezone.utc).isoformat()
+                # Update in database
+                await state.autonomous_trader_v2.db.v2_open_trades.update_one(
+                    {"id": trade_id},
+                    {"$set": {"notes": notes, "notes_updated_at": datetime.now(timezone.utc)}}
+                )
+                return {"status": "success", "trade_id": trade_id, "notes": notes}
+        
+        # Update in closed trades
+        for trade in state.autonomous_trader_v2.closed_trades:
+            if trade.get("id") == trade_id:
+                trade["notes"] = notes
+                trade["notes_updated_at"] = datetime.now(timezone.utc).isoformat()
+                # Update in database
+                await state.autonomous_trader_v2.db.v2_closed_trades.update_one(
+                    {"id": trade_id},
+                    {"$set": {"notes": notes, "notes_updated_at": datetime.now(timezone.utc)}}
+                )
+                return {"status": "success", "trade_id": trade_id, "notes": notes}
+        
+        return {"error": "Trade not found", "trade_id": trade_id}, 404
+    except Exception as e:
+        logger.error(f"Error adding trade notes: {e}")
+        return {"error": str(e)}, 500
+
+
+@router.get("/trades/{trade_id}/notes")
+async def api_get_trade_notes(trade_id: str):
+    """Get notes for a specific trade"""
+    # Check open trades
+    for trade in state.autonomous_trader_v2.open_trades:
+        if trade.get("id") == trade_id:
+            return {
+                "trade_id": trade_id,
+                "notes": trade.get("notes", ""),
+                "notes_updated_at": trade.get("notes_updated_at", "")
+            }
+    
+    # Check closed trades
+    for trade in state.autonomous_trader_v2.closed_trades:
+        if trade.get("id") == trade_id:
+            return {
+                "trade_id": trade_id,
+                "notes": trade.get("notes", ""),
+                "notes_updated_at": trade.get("notes_updated_at", "")
+            }
+    
+    return {"error": "Trade not found", "trade_id": trade_id}, 404
+
+
 @router.post("/trading/v2/trail/{symbol}")
 async def api_trading_v2_trail(symbol: str, trail_pct: float = 3.0):
     symbol_full = symbol.upper() + "/USDT"
