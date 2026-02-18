@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   TrendingUp, TrendingDown, Activity, Target, Award, Calendar,
   Download, RefreshCw, Zap, Clock, DollarSign, BarChart3,
-  ArrowUpRight, ArrowDownRight, ChevronDown
+  ArrowUpRight, ArrowDownRight, ChevronDown, FileText, X, Check
 } from 'lucide-react';
 import {
   AreaChart, Area, BarChart, Bar,
@@ -15,6 +15,8 @@ export default function TradeAnalytics() {
   const [trades, setTrades] = useState([]);
   const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState('7d');
+  const [notesModal, setNotesModal] = useState({ open: false, trade: null, notes: '' });
+  const [savingNotes, setSavingNotes] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -58,6 +60,35 @@ export default function TradeAnalytics() {
   // Export CSV from backend
   const exportCSV = () => {
     window.open(`${API_URL}/api/trades/export`, '_blank');
+  };
+
+  // Open notes modal
+  const openNotesModal = (trade) => {
+    setNotesModal({ open: true, trade, notes: trade.notes || '' });
+  };
+
+  // Save notes
+  const saveNotes = async () => {
+    if (!notesModal.trade) return;
+    setSavingNotes(true);
+    try {
+      const res = await fetch(`${API_URL}/api/trades/${notesModal.trade.id}/notes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notes: notesModal.notes })
+      });
+      const data = await res.json();
+      if (data.status === 'success') {
+        // Update local state
+        setTrades(prev => prev.map(t => 
+          t.id === notesModal.trade.id ? { ...t, notes: notesModal.notes } : t
+        ));
+        setNotesModal({ open: false, trade: null, notes: '' });
+      }
+    } catch (err) {
+      console.error('Failed to save notes:', err);
+    }
+    setSavingNotes(false);
   };
 
   if (loading) {
@@ -144,7 +175,7 @@ export default function TradeAnalytics() {
           </h3>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[560px]">
+          <table className="w-full min-w-[680px]">
             <thead className="bg-zinc-900/50">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-medium text-zinc-400 uppercase">Date</th>
@@ -153,6 +184,7 @@ export default function TradeAnalytics() {
                 <th className="px-4 py-3 text-right text-xs font-medium text-zinc-400 uppercase">Entry</th>
                 <th className="px-4 py-3 text-right text-xs font-medium text-zinc-400 uppercase">Exit</th>
                 <th className="px-4 py-3 text-right text-xs font-medium text-zinc-400 uppercase">PnL</th>
+                <th className="px-4 py-3 text-center text-xs font-medium text-zinc-400 uppercase">Notes</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-700/50">
@@ -171,6 +203,15 @@ export default function TradeAnalytics() {
                   <td className={`px-4 py-3 text-sm text-right font-mono font-medium ${(t.pnl_pct || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                     {(t.pnl_pct || 0) >= 0 ? '+' : ''}{(t.pnl_pct || 0).toFixed(2)}%
                   </td>
+                  <td className="px-4 py-3 text-center">
+                    <button
+                      onClick={() => openNotesModal(t)}
+                      className={`p-1.5 rounded-lg transition-colors ${t.notes ? 'bg-orange-500/20 text-orange-400 hover:bg-orange-500/30' : 'bg-zinc-700/50 text-zinc-400 hover:bg-zinc-700'}`}
+                      title={t.notes ? 'View/Edit Notes' : 'Add Notes'}
+                    >
+                      <FileText className="w-4 h-4" />
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -178,6 +219,83 @@ export default function TradeAnalytics() {
           {!filtered.length && <div className="p-8 text-center text-zinc-500">No trades found</div>}
         </div>
       </div>
+
+      {/* Notes Modal */}
+      {notesModal.open && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-zinc-900 border border-zinc-700 rounded-xl max-w-lg w-full shadow-2xl">
+            {/* Modal Header */}
+            <div className="px-6 py-4 border-b border-zinc-700 flex items-center justify-between">
+              <h3 className="text-white font-semibold flex items-center gap-2">
+                <FileText className="w-5 h-5 text-orange-400" />
+                Trade Notes - {notesModal.trade?.symbol?.replace('/USDT', '')}
+              </h3>
+              <button
+                onClick={() => setNotesModal({ open: false, trade: null, notes: '' })}
+                className="p-1 hover:bg-zinc-800 rounded-lg text-zinc-400 hover:text-white transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 space-y-4">
+              {/* Trade Summary */}
+              <div className="bg-zinc-800/50 rounded-lg p-4 space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-zinc-400">Direction:</span>
+                  <span className={`font-medium ${notesModal.trade?.direction === 'LONG' ? 'text-green-400' : 'text-red-400'}`}>
+                    {notesModal.trade?.direction}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-zinc-400">PnL:</span>
+                  <span className={`font-medium font-mono ${(notesModal.trade?.pnl_pct || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                    {(notesModal.trade?.pnl_pct || 0) >= 0 ? '+' : ''}{(notesModal.trade?.pnl_pct || 0).toFixed(2)}%
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-zinc-400">Closed:</span>
+                  <span className="text-white">{new Date(notesModal.trade?.closed_at || notesModal.trade?.timestamp).toLocaleString()}</span>
+                </div>
+              </div>
+
+              {/* Notes Textarea */}
+              <div>
+                <label className="block text-sm font-medium text-zinc-300 mb-2">Your Notes</label>
+                <textarea
+                  value={notesModal.notes}
+                  onChange={(e) => setNotesModal(prev => ({ ...prev, notes: e.target.value }))}
+                  placeholder="Add your observations, lessons learned, or any other notes about this trade..."
+                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white placeholder-zinc-500 focus:outline-none focus:border-orange-500 resize-none"
+                  rows={6}
+                />
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-4 border-t border-zinc-700 flex items-center justify-end gap-3">
+              <button
+                onClick={() => setNotesModal({ open: false, trade: null, notes: '' })}
+                className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={saveNotes}
+                disabled={savingNotes}
+                className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50"
+              >
+                {savingNotes ? (
+                  <><RefreshCw className="w-4 h-4 animate-spin" /> Saving...</>
+                ) : (
+                  <><Check className="w-4 h-4" /> Save Notes</>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
