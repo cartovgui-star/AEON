@@ -230,15 +230,18 @@ frontend:
 
   - task: "Trade Journal - Add Notes to Trades"
     implemented: true
-    working: "NA"
+    working: true
     file: "backend/routes/trading.py, frontend/src/components/TradeAnalytics.jsx"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "P1 feature: Added ability for users to add personal notes to individual trades. Backend: POST/GET /api/trades/{trade_id}/notes endpoints. Frontend: Notes icon column in trade table with modal UI for adding/editing notes. Notes stored in MongoDB."
+      - working: true
+        agent: "testing"
+        comment: "VERIFIED - All 9 backend tests passed. Frontend fully functional with Notes column, modal, save button, and color-coded icons (gray=no notes, orange=has notes). Testing agent fixed critical bug in server.py duplicate endpoint."
 
 metadata:
   created_by: "fork_agent"
@@ -284,3 +287,11 @@ agent_communication:
       - Modal UI for adding/editing notes with trade summary display
       - Notes stored in MongoDB (v2_open_trades and v2_closed_trades)
       Ready for testing.
+  - agent: "testing"
+    message: |
+      Trade Journal validation COMPLETE - iteration_24.json shows 100% success rate.
+      ✅ Backend: All 9 API tests passed (POST/GET /api/trades/{trade_id}/notes working)
+      ✅ Frontend: Notes column, modal, save button, persistence all verified
+      ✅ UI feedback: Icon color changes (gray→orange) when notes added
+      ⚠️ NOTE: Testing agent found and fixed critical bug in duplicate /api/trades/closed endpoint in server.py
+      ⚠️ REFACTORING NEEDED: Many trading endpoints duplicated in both server.py and routes/trading.py
