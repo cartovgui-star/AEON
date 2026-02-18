@@ -1777,6 +1777,13 @@ async def api_open_predictions():
     return await learning_system.get_open_predictions()
 
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# NOTE: All /trading/* and /trades/* endpoints moved to routes/trading.py
+# This eliminates ~300 lines of duplicate endpoint definitions
+# All trading functionality is now in the modular routes/trading.py file
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
 
 @api_router.get("/mexc/live")
 async def api_mexc():
