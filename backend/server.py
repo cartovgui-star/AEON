@@ -873,10 +873,25 @@ async def dual_trading_scanner():
                             })
                         await asyncio.sleep(0.3)
                     
-                    # Send to dashboard with reasoning
+                    # Send to dashboard with detailed reasoning
                     confirmations = setup.get("confirmations", [])
-                    reasoning = f"Long Term {setup.get('direction')} with {setup.get('confidence')}% confidence. " + \
-                                f"Patient {setup.get('timeframe')} setup for multi-week hold. Entry: ${setup.get('entry', 0):,.2f}"
+                    
+                    # Generate detailed reasoning
+                    reasoning_parts = []
+                    reasoning_parts.append(f"Long Term {setup.get('confidence')}% setup for patient multi-week position on {setup.get('timeframe')}")
+                    
+                    # Context from confirmations
+                    for conf in confirmations[:3]:
+                        if 'structure' in conf.lower() or 'trend' in conf.lower():
+                            reasoning_parts.append("Strong structural foundation supports sustained move")
+                        elif 'divergence' in conf.lower():
+                            reasoning_parts.append("Momentum divergence signals potential trend change")
+                        elif any(x in conf.lower() for x in ['resistance', 'support']):
+                            reasoning_parts.append("Key level interaction validates timing")
+                    
+                    reasoning_parts.append(f"Entry: ${setup.get('entry', 0):,.2f} targeting multi-week hold")
+                    reasoning_parts.append("Higher timeframe setup offers stronger conviction")
+                    reasoning = ". ".join(reasoning_parts) + "."
                     
                     price_alert_system._add_dashboard_alert({
                         "type": "long_term",
