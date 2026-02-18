@@ -432,7 +432,7 @@ export default function Trading() {
                   <div className="flex items-center gap-3">
                     <Zap className={`w-5 h-5 ${opp.direction === 'LONG' ? 'text-green-400' : 'text-red-400'}`} />
                     <span className="text-white font-medium">{opp.symbol?.replace('/USDT', '')}</span>
-                    <span className={`text-xs px-2 py-0.5 rounded ${
+                    <span className={`text-xs px-2 py-0.5 rounded font-bold ${
                       opp.direction === 'LONG' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
                     }`}>
                       {opp.direction}
@@ -450,10 +450,29 @@ export default function Trading() {
                     <span className="text-green-400 ml-1">${opp.target?.toLocaleString()}</span>
                   </div>
                   <div>
-                    <span className="text-zinc-500">Confirms:</span>
-                    <span className="text-orange-400 ml-1">{opp.confirmation_count || opp.confirmations?.length || 0}</span>
+                    <span className="text-zinc-500">Stop:</span>
+                    <span className="text-red-400 ml-1">${opp.stop?.toLocaleString()}</span>
                   </div>
                 </div>
+                
+                {/* Reasoning */}
+                {opp.reasoning && (
+                  <div className="mt-3 p-2 bg-zinc-900/60 rounded-lg border border-zinc-700/50">
+                    <p className="text-xs text-zinc-400 font-semibold mb-1">Why {opp.direction}:</p>
+                    <p className="text-xs text-zinc-300">{opp.reasoning}</p>
+                  </div>
+                )}
+                
+                {/* Confirmations */}
+                {opp.confirmations && opp.confirmations.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {opp.confirmations.slice(0, 4).map((conf, idx) => (
+                      <span key={idx} className="text-xs px-2 py-0.5 bg-cyan-500/10 text-cyan-400 rounded border border-cyan-500/20">
+                        ✓ {conf}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
             ))
           ) : (
