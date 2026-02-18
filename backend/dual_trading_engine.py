@@ -436,7 +436,7 @@ class TradingStyleEngine:
         return msg, True
     
     def format_alert(self, setup: Dict) -> str:
-        """Format alert message with WHY reasoning"""
+        """Format alert message with detailed WHY reasoning"""
         direction = setup["direction"]
         symbol = setup["symbol"].replace("/USDT", "")
         conf = setup["confidence"]
@@ -446,15 +446,48 @@ class TradingStyleEngine:
         confirms = setup.get('confirmations', [])[:4]
         confirm_str = " | ".join(confirms) if confirms else "Multiple signals"
         
-        # Generate WHY reasoning
+        # Generate DETAILED WHY reasoning
         style_name = "Day Trader" if self.style == "AGGRESSIVE" else "Long Term"
-        why_reason = f"WHY {direction}: {style_name} setup with {conf}% confidence and {len(setup.get('confirmations', []))} confirmations. R:R {setup['risk_reward']:.1f} on {setup['timeframe']}."
+        why_parts = []
+        
+        # Context about strategy
+        if self.style == "AGGRESSIVE":
+            why_parts.append(f"Fast-paced {setup['timeframe']} setup targeting quick profits")
+        else:
+            why_parts.append(f"Patient {setup['timeframe']} position for multi-week hold")
+        
+        # Analyze confirmations
+        for conf in confirms:
+            conf_lower = conf.lower()
+            if 'rsi' in conf_lower:
+                if 'oversold' in conf_lower:
+                    why_parts.append("RSI oversold indicates potential bounce from support")
+                elif 'overbought' in conf_lower:
+                    why_parts.append("RSI overbought suggests resistance and reversal ahead")
+            elif 'macd' in conf_lower:
+                if 'bullish' in conf_lower:
+                    why_parts.append("MACD crossover confirms bullish momentum building")
+                else:
+                    why_parts.append("MACD crossover confirms bearish momentum building")
+            elif 'trend' in conf_lower:
+                if 'bullish' in conf_lower or 'uptrend' in conf_lower:
+                    why_parts.append("Established uptrend provides tailwind for longs")
+                else:
+                    why_parts.append("Established downtrend favors short positions")
+            elif 'structure' in conf_lower:
+                why_parts.append("Market structure validates directional bias")
+        
+        # Add probability and risk context
+        why_parts.append(f"{conf}% probability based on historical pattern success rate")
+        why_parts.append(f"Risk/reward of 1:{setup['risk_reward']:.1f} offers asymmetric upside")
+        
+        why_reason = ". ".join(why_parts) + "."
 
         msg = (
             f"{dir_emoji} {style_badge} {direction} {symbol} {setup['timeframe']} ({conf}%)\n"
             f"Entry ${setup['entry']:,.2f} | SL ${setup['stop_loss']:,.2f} | TP ${setup['take_profit']:,.2f} | RR {setup['risk_reward']:.1f}\n"
-            f"{confirm_str}\n"
-            f"{why_reason}"
+            f"{confirm_str}\n\n"
+            f"WHY {direction}: {why_reason}"
         )
         return msg
     
