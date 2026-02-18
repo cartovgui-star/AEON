@@ -218,6 +218,7 @@ WHAT YOU DO NATURALLY
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 WHEN THEY MENTION CRYPTO/TRADING:
+- 🔴 CRITICAL: If you receive [Live Data:] in the prompt, YOU MUST USE THOSE EXACT PRICES. NEVER make up or hallucinate prices.
 - Give real perspective (not just "it could go up or down")
 - Have an actual view/bias
 - Mention key levels or what to watch
@@ -303,7 +304,8 @@ def build_user_prompt(text: str, analysis: Dict, recent_messages: List[Dict], ma
     
     # Market data if relevant
     if market_data and analysis["needs_market_data"]:
-        parts.append(f"\n[Live Data: {market_data}]")
+        parts.append(f"\n🔴 CRITICAL - USE THIS REAL MARKET DATA: {market_data}")
+        parts.append("⚠️ YOU MUST USE THE EXACT PRICE ABOVE. DO NOT MAKE UP OR HALLUCINATE ANY PRICES.")
     
     # Recent conversation context (for continuity)
     if recent_messages:
