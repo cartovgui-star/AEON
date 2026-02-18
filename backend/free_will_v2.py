@@ -562,7 +562,7 @@ class FreeWillEngineV2:
         return msg, True
     
     def format_alert(self, setup: Dict) -> str:
-        """Format lean elite alert"""
+        """Format elite alert with WHY reasoning"""
         direction = setup.get("direction", "")
         symbol = setup.get("symbol", "").replace("/USDT", "")
         timeframe = setup.get("timeframe", "")
@@ -576,12 +576,16 @@ class FreeWillEngineV2:
 
         confirmations = setup.get("confirmations", [])[:4]
         confirm_str = " | ".join(confirmations) if confirmations else "Multi-signal"
+        
+        # Generate WHY reasoning
+        why_reason = f"WHY {direction}: {confidence}% confidence with {len(setup.get('confirmations', []))} confirmations. "
+        why_reason += f"R:R 1:{rr} setup on {timeframe}. {confirm_str}"
 
         alert = (
             f"{emoji} ELITE {direction} {symbol} {timeframe} ({confidence}%)\n"
             f"Entry ${entry:,.2f} | SL ${stop:,.2f} | TP ${target:,.2f} | RR 1:{rr}\n"
             f"{confirm_str}\n"
-            f"DYOR"
+            f"{why_reason}"
         )
         return alert
     
