@@ -712,11 +712,34 @@ async def free_will_scanner():
                         
                         await asyncio.sleep(0.5)
                     
-                    # Send to dashboard with reasoning and confirmations
+                    # Send to dashboard with detailed reasoning
                     confirmations = setup.get("confirmations", [])
-                    reasoning = f"{setup.get('direction')} signal with {setup.get('confidence')}% confidence. " + \
-                                f"Entry: ${setup.get('entry', 0):,.2f}, Target: ${setup.get('target', 0):,.2f}, " + \
-                                f"Stop: ${setup.get('stop', 0):,.2f}, R:R 1:{setup.get('risk_reward', 0)}"
+                    
+                    # Generate detailed reasoning for dashboard
+                    reasoning_parts = []
+                    reasoning_parts.append(f"Elite {setup.get('confidence')}% probability setup identified on {setup.get('timeframe')} timeframe")
+                    
+                    # Analyze confirmations for context
+                    has_structure = any('trend' in c.lower() or 'bos' in c.lower() for c in confirmations)
+                    has_momentum = any('rsi' in c.lower() or 'macd' in c.lower() for c in confirmations)
+                    has_sentiment = any('fear' in c.lower() or 'greed' in c.lower() or 'funding' in c.lower() for c in confirmations)
+                    
+                    if has_structure:
+                        if setup.get('direction') == 'LONG':
+                            reasoning_parts.append("Market structure showing bullish formation")
+                        else:
+                            reasoning_parts.append("Market structure showing bearish formation")
+                    
+                    if has_momentum:
+                        reasoning_parts.append("Momentum indicators confirm directional bias")
+                    
+                    if has_sentiment:
+                        reasoning_parts.append("Sentiment extremes create contrarian opportunity")
+                    
+                    reasoning_parts.append(f"Entry: ${setup.get('entry', 0):,.2f}, Target: ${setup.get('target', 0):,.2f}, Stop: ${setup.get('stop', 0):,.2f}")
+                    reasoning_parts.append(f"Risk/Reward 1:{setup.get('risk_reward', 0):.1f} offers favorable asymmetry")
+                    
+                    reasoning = ". ".join(reasoning_parts) + "."
                     
                     price_alert_system._add_dashboard_alert({
                         "type": "free_will_elite",
