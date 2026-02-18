@@ -255,20 +255,26 @@ class FreeWillEngineV2:
                     trend = struct.get("trend", "")
                     bos = struct.get("bos")
                     
+                    # Only add trend if it aligns with the direction being analyzed
                     if trend == "UPTREND":
                         signals_buy += 1
-                        confirmations.append("📈 Uptrend (HH/HL)")
+                        if signals_buy > signals_sell:  # Only if leaning LONG
+                            confirmations.append("📈 Uptrend (HH/HL)")
                     elif trend == "DOWNTREND":
                         signals_sell += 1
-                        confirmations.append("📉 Downtrend (LH/LL)")
+                        if signals_sell > signals_buy:  # Only if leaning SHORT
+                            confirmations.append("📉 Downtrend (LH/LL)")
                     
+                    # BOS - only add if it aligns with overall direction
                     if bos:
                         if "BULLISH" in bos.get("type", ""):
                             signals_buy += 2
-                            confirmations.append("⚡ Bullish BOS")
+                            if signals_buy > signals_sell:  # Only if leaning LONG
+                                confirmations.append("⚡ Bullish BOS")
                         elif "BEARISH" in bos.get("type", ""):
                             signals_sell += 2
-                            confirmations.append("⚡ Bearish BOS")
+                            if signals_sell > signals_buy:  # Only if leaning SHORT
+                                confirmations.append("⚡ Bearish BOS")
                 except:
                     pass
             
