@@ -414,20 +414,47 @@ export default function PriceAlerts() {
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
                         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${getSeverityBadge(alert.severity)}`}>
                           {alert.type?.replace('_', ' ').toUpperCase()}
                         </span>
                         <span className="text-xs text-zinc-600">
                           {alert.symbol?.replace('/USDT', '')}
                         </span>
+                        {alert.direction && (
+                          <span className={`text-xs px-2 py-0.5 rounded font-semibold ${
+                            alert.direction === 'LONG' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
+                          }`}>
+                            {alert.direction}
+                          </span>
+                        )}
                         {!alert.read && (
                           <span className="w-2 h-2 rounded-full bg-orange-400 animate-pulse" />
                         )}
                       </div>
-                      <p className="text-sm text-zinc-300 whitespace-pre-line line-clamp-3">
+                      <p className="text-sm text-zinc-300 whitespace-pre-line line-clamp-3 mb-2">
                         {alert.message?.split('\n').filter(l => l.trim()).slice(0, 3).join('\n')}
                       </p>
+                      
+                      {/* REASONING SECTION */}
+                      {alert.reasoning && (
+                        <div className="mt-2 p-2.5 bg-zinc-900/60 rounded-lg border border-zinc-700/50">
+                          <p className="text-xs text-zinc-400 mb-1 font-semibold">Why {alert.direction}:</p>
+                          <p className="text-xs text-zinc-300 leading-relaxed">{alert.reasoning}</p>
+                        </div>
+                      )}
+                      
+                      {/* CONFIRMATIONS */}
+                      {alert.confirmations && alert.confirmations.length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          {alert.confirmations.map((conf, idx) => (
+                            <span key={idx} className="text-xs px-2 py-1 bg-cyan-500/10 text-cyan-400 rounded border border-cyan-500/20">
+                              ✓ {conf}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      
                       <p className="text-xs text-zinc-600 mt-2">
                         {alert.timestamp ? new Date(alert.timestamp).toLocaleString() : ''}
                       </p>
