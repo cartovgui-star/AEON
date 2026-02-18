@@ -592,7 +592,7 @@ class FreeWillEngineV2:
         return msg, True
     
     def format_alert(self, setup: Dict) -> str:
-        """Format elite alert with WHY reasoning"""
+        """Format elite alert with detailed WHY reasoning"""
         direction = setup.get("direction", "")
         symbol = setup.get("symbol", "").replace("/USDT", "")
         timeframe = setup.get("timeframe", "")
@@ -607,15 +607,75 @@ class FreeWillEngineV2:
         confirmations = setup.get("confirmations", [])[:4]
         confirm_str = " | ".join(confirmations) if confirmations else "Multi-signal"
         
-        # Generate WHY reasoning
-        why_reason = f"WHY {direction}: {confidence}% confidence with {len(setup.get('confirmations', []))} confirmations. "
-        why_reason += f"R:R 1:{rr} setup on {timeframe}. {confirm_str}"
+        # Generate DETAILED WHY reasoning based on confirmations
+        why_parts = []
+        
+        # Analyze structure/trend
+        structure_conf = [c for c in confirmations if any(x in c.lower() for x in ['trend', 'bos', 'structure'])]
+        if structure_conf:
+            if direction == "LONG":
+                why_parts.append("Market structure showing bullish formation with higher highs and higher lows")
+            else:
+                why_parts.append("Market structure showing bearish formation with lower highs and lower lows")
+        
+        # Analyze momentum indicators
+        momentum_conf = [c for c in confirmations if any(x in c.lower() for x in ['rsi', 'macd', 'momentum'])]
+        if momentum_conf:
+            for conf in momentum_conf:
+                if 'rsi' in conf.lower():
+                    if 'oversold' in conf.lower():
+                        why_parts.append(f"RSI signals oversold conditions creating bounce opportunity")
+                    elif 'overbought' in conf.lower():
+                        why_parts.append(f"RSI signals overbought conditions ripe for reversal")
+                elif 'macd' in conf.lower():
+                    if direction == "LONG":
+                        why_parts.append("MACD showing bullish momentum shift")
+                    else:
+                        why_parts.append("MACD showing bearish momentum shift")
+        
+        # Analyze order flow/sentiment
+        flow_conf = [c for c in confirmations if any(x in c.lower() for x in ['buying', 'selling', 'vwap', 'volume'])]
+        if flow_conf:
+            for conf in flow_conf:
+                if 'buying' in conf.lower():
+                    why_parts.append("Strong buying pressure indicates accumulation by smart money")
+                elif 'selling' in conf.lower():
+                    why_parts.append("Strong selling pressure indicates distribution by institutions")
+                elif 'vwap' in conf.lower():
+                    if 'above' in conf.lower():
+                        why_parts.append("Price trading above VWAP shows bullish control")
+                    else:
+                        why_parts.append("Price trading below VWAP shows bearish control")
+        
+        # Analyze sentiment/options
+        sentiment_conf = [c for c in confirmations if any(x in c.lower() for x in ['fear', 'greed', 'funding', 'pain'])]
+        if sentiment_conf:
+            for conf in sentiment_conf:
+                if 'fear' in conf.lower():
+                    why_parts.append("Extreme fear creates contrarian buying opportunity")
+                elif 'greed' in conf.lower():
+                    why_parts.append("Extreme greed signals potential market top")
+                elif 'funding' in conf.lower():
+                    if 'high' in conf.lower() or 'positive' in conf.lower():
+                        why_parts.append("High funding rates suggest long squeeze risk")
+                    else:
+                        why_parts.append("Negative funding suggests short squeeze setup")
+        
+        # Add risk/reward context
+        why_parts.append(f"Risk/reward ratio of 1:{rr} offers favorable asymmetric opportunity")
+        
+        # Combine into coherent reasoning
+        why_reason = ". ".join(why_parts) + "."
+        
+        # Fallback if no specific reasoning generated
+        if len(why_parts) <= 1:
+            why_reason = f"WHY {direction}: Multiple technical and fundamental factors align showing {confidence}% probability. {len(confirmations)} independent confirmations validate the setup on {timeframe} timeframe with 1:{rr} risk/reward."
 
         alert = (
             f"{emoji} ELITE {direction} {symbol} {timeframe} ({confidence}%)\n"
             f"Entry ${entry:,.2f} | SL ${stop:,.2f} | TP ${target:,.2f} | RR 1:{rr}\n"
-            f"{confirm_str}\n"
-            f"{why_reason}"
+            f"{confirm_str}\n\n"
+            f"WHY {direction}: {why_reason}"
         )
         return alert
     
