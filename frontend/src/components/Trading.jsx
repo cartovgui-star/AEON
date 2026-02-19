@@ -573,6 +573,7 @@ export default function Trading() {
             <button onClick={() => setShowPositionModal(false)} className="p-2 hover:bg-zinc-700 rounded-lg text-zinc-400 hover:text-white transition-colors">
               <X className="w-5 h-5" />
             </button>
+            </div>
           </div>
 
           {/* Modal Body */}
