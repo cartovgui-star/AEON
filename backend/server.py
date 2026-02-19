@@ -1935,11 +1935,11 @@ async def api_close_all_positions():
         errors = []
         
         # Close positions in autonomous trader v2
-        for trade in list(auto_trader_v2.open_trades):
+        for trade in list(autonomous_trader_v2.open_trades):
             try:
                 # Get current price
                 symbol = trade["symbol"]
-                current_data = await market_intel.get_market_data(symbol)
+                current_data = await market_intel.get_ticker(symbol)
                 current_price = current_data.get("price", trade.get("entry_price", 0))
                 
                 # Calculate final PnL
@@ -1956,9 +1956,9 @@ async def api_close_all_positions():
                 trade["closed_at"] = datetime.now(timezone.utc).isoformat()
                 trade["close_reason"] = "EMERGENCY_KILL_SWITCH"
                 
-                auto_trader_v2.closed_trades.append(trade)
-                await auto_trader_v2.close_trade_in_db(trade)
-                auto_trader_v2.open_trades.remove(trade)
+                autonomous_trader_v2.closed_trades.append(trade)
+                await autonomous_trader_v2.close_trade_in_db(trade)
+                autonomous_trader_v2.open_trades.remove(trade)
                 closed_count += 1
                 
             except Exception as e:
