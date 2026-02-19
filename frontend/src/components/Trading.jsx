@@ -76,6 +76,8 @@ export default function Trading() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('positions');
   const [confidence, setConfidence] = useState(70);
+  const [selectedPosition, setSelectedPosition] = useState(null);
+  const [showPositionModal, setShowPositionModal] = useState(false);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
