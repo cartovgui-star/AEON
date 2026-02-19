@@ -1,5 +1,5 @@
 """
-AEON AUTONOMOUS TRADER V2
+AEON AUTONOMOUS TRADER V2.5
 Ultimate trading engine with ALL data sources and smart execution
 
 Features:
@@ -11,6 +11,11 @@ Features:
 - Session awareness (Asia/London/NY)
 - Trail stops and partial profits
 - Unlimited signals (quality filtered)
+
+TRADE STYLES:
+- SCALP: 5m-15m, 50-200x leverage, quick in/out
+- DAY: 1h-4h, 20-75x leverage, medium holds
+- SWING: 4h-1d, 10-25x leverage, longer positions
 """
 
 import asyncio
@@ -33,6 +38,40 @@ TRADING_PAIRS = [
 
 # Priority timeframes for quality signals
 TIMEFRAMES = ["4h", "1h", "1d"]
+
+# Trade Style Configurations
+TRADE_STYLES = {
+    "SCALP": {
+        "timeframes": ["5m", "15m"],
+        "min_leverage": 50,
+        "max_leverage": 200,
+        "stop_atr_mult": 1.0,  # Tight stops
+        "target_atr_mult": 1.5,  # Quick profits
+        "min_confidence": 70,
+        "max_hold_hours": 4,
+        "emoji": "⚡"
+    },
+    "DAY": {
+        "timeframes": ["1h", "4h"],
+        "min_leverage": 20,
+        "max_leverage": 75,
+        "stop_atr_mult": 1.5,
+        "target_atr_mult": 2.5,
+        "min_confidence": 65,
+        "max_hold_hours": 24,
+        "emoji": "🔥"
+    },
+    "SWING": {
+        "timeframes": ["4h", "1d"],
+        "min_leverage": 10,
+        "max_leverage": 25,
+        "stop_atr_mult": 2.0,
+        "target_atr_mult": 4.0,
+        "min_confidence": 60,
+        "max_hold_hours": 168,  # 7 days
+        "emoji": "🎯"
+    }
+}
 
 
 class AutonomousTraderV2:
