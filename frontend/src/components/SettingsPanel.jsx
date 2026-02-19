@@ -1,5 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Settings, Save, RotateCcw, Bot, Bell, Volume2, Shield, Clock, TrendingUp, User, Brain, Zap, Target, Mic, MicOff, Play, Loader2, Send } from 'lucide-react';
+import { 
+  Settings, Save, RotateCcw, Bot, Bell, Volume2, Shield, Clock, TrendingUp, 
+  User, Brain, Zap, Target, Mic, MicOff, Play, Loader2, Send, 
+  ChevronDown, ChevronUp, Info, AlertTriangle, CheckCircle2, Power
+} from 'lucide-react';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
@@ -14,7 +18,6 @@ export default function SettingsPanel() {
     longTermEnabled: true,
     longTermConf: 88,
     selectedVoice: 'guy',
-    // Notification preferences
     notifications: {
       tradeAlerts: true,
       priceAlerts: true,
@@ -30,6 +33,12 @@ export default function SettingsPanel() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [activeTab, setActiveTab] = useState('trading');
+  const [expandedSections, setExpandedSections] = useState({
+    autoTrader: true,
+    dayTrader: true,
+    longTerm: true,
+    eliteAlerts: false
+  });
 
   useEffect(() => {
     fetchSettings();
@@ -100,22 +109,17 @@ export default function SettingsPanel() {
     setSaving(true);
     try {
       await Promise.all([
-        // Auto Trader settings
         fetch(`${API_URL}/api/trading/toggle?active=${settings.autoTraderEnabled}`, { method: 'POST' }),
         fetch(`${API_URL}/api/trading/v2/confidence?min_conf=${settings.minConfidence}`, { method: 'POST' }),
-        // Free Will settings
         fetch(`${API_URL}/api/freewill/toggle?active=${settings.freeWillEnabled}`, { method: 'POST' }),
         fetch(`${API_URL}/api/freewill/confidence?min_conf=${settings.freeWillMinConf}`, { method: 'POST' }),
-        // Day Trader settings
         fetch(`${API_URL}/api/dual/day-trader/toggle?active=${settings.dayTraderEnabled}`, { method: 'POST' }),
         fetch(`${API_URL}/api/dual/day-trader/confidence?min_conf=${settings.dayTraderConf}`, { method: 'POST' }),
-        // Long Term settings
         fetch(`${API_URL}/api/dual/long-term/toggle?active=${settings.longTermEnabled}`, { method: 'POST' }),
         fetch(`${API_URL}/api/dual/long-term/confidence?min_conf=${settings.longTermConf}`, { method: 'POST' })
       ]);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
-      // Refresh stats after saving
       fetchDualStats();
       fetchFreeWillStats();
     } catch (err) {
@@ -124,281 +128,405 @@ export default function SettingsPanel() {
     setSaving(false);
   };
 
+  const toggleSection = (section) => {
+    setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
+  };
+
   const tabs = [
-    { id: 'trading', label: 'Trading', icon: Bot },
-    { id: 'alerts', label: 'Alerts', icon: Bell },
-    { id: 'profile', label: 'Your Profile', icon: User },
+    { id: 'trading', label: 'Trading Engines', icon: Bot },
+    { id: 'alerts', label: 'Alert System', icon: Bell },
+    { id: 'profile', label: 'Profile', icon: User },
     { id: 'voice', label: 'Voice', icon: Volume2 }
   ];
 
+  // Reusable Toggle Switch Component
+  const ToggleSwitch = ({ enabled, onChange, color = 'orange' }) => {
+    const colors = {
+      orange: enabled ? 'bg-orange-500' : 'bg-zinc-700',
+      yellow: enabled ? 'bg-yellow-500' : 'bg-zinc-700',
+      blue: enabled ? 'bg-blue-500' : 'bg-zinc-700',
+      green: enabled ? 'bg-green-500' : 'bg-zinc-700'
+    };
+    return (
+      <button 
+        onClick={onChange}
+        className={`relative w-12 h-6 rounded-full transition-colors ${colors[color]}`}
+      >
+        <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-transform ${
+          enabled ? 'left-6' : 'left-0.5'
+        }`} />
+      </button>
+    );
+  };
+
+  // Confidence Slider Component
+  const ConfidenceSlider = ({ value, onChange, min = 60, max = 95, color = 'orange' }) => {
+    const colors = {
+      orange: 'accent-orange-500',
+      yellow: 'accent-yellow-500',
+      blue: 'accent-blue-500'
+    };
+    const textColors = {
+      orange: 'text-orange-400',
+      yellow: 'text-yellow-400',
+      blue: 'text-blue-400'
+    };
+    return (
+      <div className="space-y-2">
+        <div className="flex justify-between items-center">
+          <span className="text-zinc-400 text-sm">Min Confidence</span>
+          <span className={`font-bold ${textColors[color]}`}>{value}%</span>
+        </div>
+        <input 
+          type="range" 
+          min={min} 
+          max={max} 
+          value={value}
+          onChange={(e) => onChange(Number(e.target.value))}
+          className={`w-full h-2 bg-zinc-700 rounded-lg appearance-none cursor-pointer ${colors[color]}`}
+        />
+        <div className="flex justify-between text-xs text-zinc-600">
+          <span>More trades</span>
+          <span>Higher quality</span>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-6" data-testid="settings-panel">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold text-white flex items-center gap-2">
           <Settings className="w-6 h-6 text-orange-400" />
-          Configuration
+          Settings
         </h2>
-        <div className="flex gap-3">
-          <button onClick={fetchSettings} className="px-4 py-2 bg-zinc-800 rounded-lg text-zinc-400 hover:text-white flex items-center gap-2">
-            <RotateCcw className="w-4 h-4" /> Refresh
+        <div className="flex gap-2">
+          <button 
+            onClick={fetchSettings} 
+            className="px-3 py-2 bg-zinc-800 rounded-lg text-zinc-400 hover:text-white flex items-center gap-2 transition-colors"
+          >
+            <RotateCcw className="w-4 h-4" />
+            <span className="hidden sm:inline">Refresh</span>
           </button>
-          <button onClick={saveSettings} disabled={saving} data-testid="save-settings-btn"
-            className={`px-6 py-2 rounded-lg font-medium flex items-center gap-2 ${saved ? 'bg-green-500' : 'bg-orange-500 hover:bg-orange-600'} text-white`}>
-            <Save className="w-4 h-4" />
+          <button 
+            onClick={saveSettings} 
+            disabled={saving} 
+            data-testid="save-settings-btn"
+            className={`px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-all ${
+              saved ? 'bg-green-500' : 'bg-orange-500 hover:bg-orange-600'
+            } text-white`}
+          >
+            {saved ? <CheckCircle2 className="w-4 h-4" /> : <Save className="w-4 h-4" />}
             {saving ? 'Saving...' : saved ? 'Saved!' : 'Save'}
           </button>
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-2 border-b border-zinc-700/50 pb-2 overflow-x-auto">
+      {/* Tab Navigation */}
+      <div className="flex gap-1 bg-zinc-800/30 p-1 rounded-xl overflow-x-auto">
         {tabs.map(tab => (
           <button
             key={tab.id}
             data-testid={`settings-tab-${tab.id}`}
             onClick={() => setActiveTab(tab.id)}
-            className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-all whitespace-nowrap ${
+            className={`flex-1 px-4 py-2.5 rounded-lg flex items-center justify-center gap-2 transition-all whitespace-nowrap ${
               activeTab === tab.id 
-                ? 'bg-orange-500/20 text-orange-400 border border-orange-500/50' 
-                : 'text-zinc-400 hover:text-white hover:bg-zinc-800'
+                ? 'bg-orange-500 text-white' 
+                : 'text-zinc-400 hover:text-white hover:bg-zinc-800/50'
             }`}
           >
             <tab.icon className="w-4 h-4" />
-            {tab.label}
+            <span className="text-sm font-medium">{tab.label}</span>
           </button>
         ))}
       </div>
 
-      {/* Trading Tab */}
+      {/* Trading Engines Tab */}
       {activeTab === 'trading' && (
-        <div className="grid md:grid-cols-2 gap-6">
-          <div className="bg-zinc-800/30 rounded-xl border border-zinc-700/50 overflow-hidden">
-            <div className="flex items-center gap-3 px-6 py-4 bg-zinc-800/50 border-b border-zinc-700/50">
-              <Bot className="w-5 h-5 text-orange-400" />
-              <h3 className="font-semibold text-white">Autonomous Trader v2</h3>
-            </div>
-            <div className="p-6 space-y-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium text-white">Enable Auto Trading</p>
-                  <p className="text-sm text-zinc-500">Paper trading with live MEXC data</p>
-                </div>
-                <button onClick={() => setSettings(s => ({ ...s, autoTraderEnabled: !s.autoTraderEnabled }))}
-                  data-testid="auto-trader-toggle"
-                  className={`w-14 h-7 rounded-full transition-colors ${settings.autoTraderEnabled ? 'bg-orange-500' : 'bg-zinc-700'}`}>
-                  <div className={`w-5 h-5 rounded-full bg-white transition-transform ${settings.autoTraderEnabled ? 'translate-x-8' : 'translate-x-1'}`} />
-                </button>
-              </div>
-              <div>
-                <div className="flex justify-between mb-2">
-                  <span className="text-white">Min Confidence</span>
-                  <span className="text-orange-400 font-semibold">{settings.minConfidence}%</span>
-                </div>
-                <input type="range" min={70} max={95} value={settings.minConfidence}
-                  onChange={e => setSettings(s => ({ ...s, minConfidence: Number(e.target.value) }))}
-                  className="w-full h-2 bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-orange-500" />
-                <div className="flex justify-between text-xs text-zinc-500 mt-1">
-                  <span>More Trades (70%)</span>
-                  <span>Higher Quality (95%)</span>
-                </div>
-              </div>
-            </div>
+        <div className="space-y-4">
+          {/* Paper Trading Notice */}
+          <div className="flex items-center gap-3 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-xl">
+            <AlertTriangle className="w-5 h-5 text-yellow-400 flex-shrink-0" />
+            <p className="text-yellow-200 text-sm">
+              <span className="font-semibold">Paper Trading Mode</span> - Using live MEXC data for simulated trades. No real money at risk.
+            </p>
           </div>
 
-          {/* Trading Stats */}
+          {/* Autonomous Trader v2 */}
           <div className="bg-zinc-800/30 rounded-xl border border-zinc-700/50 overflow-hidden">
-            <div className="flex items-center gap-3 px-6 py-4 bg-zinc-800/50 border-b border-zinc-700/50">
-              <TrendingUp className="w-5 h-5 text-green-400" />
-              <h3 className="font-semibold text-white">Trading Stats</h3>
+            <button 
+              onClick={() => toggleSection('autoTrader')}
+              className="w-full flex items-center justify-between px-5 py-4 hover:bg-zinc-800/30 transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <div className={`p-2 rounded-lg ${settings.autoTraderEnabled ? 'bg-orange-500/20' : 'bg-zinc-700/50'}`}>
+                  <Bot className={`w-5 h-5 ${settings.autoTraderEnabled ? 'text-orange-400' : 'text-zinc-500'}`} />
+                </div>
+                <div className="text-left">
+                  <h3 className="font-semibold text-white">Autonomous Trader v2</h3>
+                  <p className="text-xs text-zinc-500">Main trading engine with SMC analysis</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className={`px-2 py-1 rounded text-xs font-medium ${
+                  settings.autoTraderEnabled ? 'bg-green-500/20 text-green-400' : 'bg-zinc-700 text-zinc-400'
+                }`}>
+                  {settings.autoTraderEnabled ? 'ACTIVE' : 'PAUSED'}
+                </span>
+                {expandedSections.autoTrader ? <ChevronUp className="w-5 h-5 text-zinc-400" /> : <ChevronDown className="w-5 h-5 text-zinc-400" />}
+              </div>
+            </button>
+            
+            {expandedSections.autoTrader && (
+              <div className="px-5 pb-5 space-y-4 border-t border-zinc-700/50 pt-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-white font-medium">Enable Trading</p>
+                    <p className="text-zinc-500 text-xs">Auto-execute trades based on signals</p>
+                  </div>
+                  <ToggleSwitch 
+                    enabled={settings.autoTraderEnabled} 
+                    onChange={() => setSettings(s => ({ ...s, autoTraderEnabled: !s.autoTraderEnabled }))}
+                  />
+                </div>
+                <ConfidenceSlider 
+                  value={settings.minConfidence}
+                  onChange={(val) => setSettings(s => ({ ...s, minConfidence: val }))}
+                  min={70}
+                  max={95}
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Dual Strategy Engines */}
+          <div className="grid md:grid-cols-2 gap-4">
+            {/* Day Trader */}
+            <div className="bg-zinc-800/30 rounded-xl border border-yellow-500/30 overflow-hidden">
+              <button 
+                onClick={() => toggleSection('dayTrader')}
+                className="w-full flex items-center justify-between px-5 py-4 hover:bg-zinc-800/30 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 rounded-lg ${settings.dayTraderEnabled ? 'bg-yellow-500/20' : 'bg-zinc-700/50'}`}>
+                    <Zap className={`w-5 h-5 ${settings.dayTraderEnabled ? 'text-yellow-400' : 'text-zinc-500'}`} />
+                  </div>
+                  <div className="text-left">
+                    <h3 className="font-semibold text-white">Day Trader</h3>
+                    <p className="text-xs text-zinc-500">Aggressive scalps & swings</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className={`px-2 py-0.5 rounded text-xs ${
+                    settings.dayTraderEnabled ? 'bg-yellow-500/20 text-yellow-400' : 'bg-zinc-700 text-zinc-400'
+                  }`}>
+                    {settings.dayTraderEnabled ? 'ON' : 'OFF'}
+                  </span>
+                  {expandedSections.dayTrader ? <ChevronUp className="w-4 h-4 text-zinc-400" /> : <ChevronDown className="w-4 h-4 text-zinc-400" />}
+                </div>
+              </button>
+              
+              {expandedSections.dayTrader && (
+                <div className="px-5 pb-5 space-y-4 border-t border-yellow-500/20 pt-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-white text-sm">Enable</span>
+                    <ToggleSwitch 
+                      enabled={settings.dayTraderEnabled} 
+                      onChange={() => setSettings(s => ({ ...s, dayTraderEnabled: !s.dayTraderEnabled }))}
+                      color="yellow"
+                    />
+                  </div>
+                  <ConfidenceSlider 
+                    value={settings.dayTraderConf}
+                    onChange={(val) => setSettings(s => ({ ...s, dayTraderConf: val }))}
+                    min={65}
+                    max={90}
+                    color="yellow"
+                  />
+                  {dualStats?.day_trader && (
+                    <div className="grid grid-cols-3 gap-2 pt-2 border-t border-zinc-700/50">
+                      <div className="text-center p-2 bg-zinc-900/50 rounded-lg">
+                        <p className="text-lg font-bold text-white">{dualStats.day_trader.daily_alerts}</p>
+                        <p className="text-xs text-zinc-500">Today</p>
+                      </div>
+                      <div className="text-center p-2 bg-zinc-900/50 rounded-lg">
+                        <p className="text-lg font-bold text-white">{dualStats.day_trader.setups_analyzed}</p>
+                        <p className="text-xs text-zinc-500">Analyzed</p>
+                      </div>
+                      <div className="text-center p-2 bg-zinc-900/50 rounded-lg">
+                        <p className="text-lg font-bold text-white">{dualStats.day_trader.direction_lock_hours}h</p>
+                        <p className="text-xs text-zinc-500">Lock</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
-            <div className="p-6 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-zinc-900/50 rounded-lg p-3">
-                  <p className="text-zinc-500 text-sm">Open Trades</p>
-                  <p className="text-2xl font-bold text-white">10</p>
+
+            {/* Long Term */}
+            <div className="bg-zinc-800/30 rounded-xl border border-blue-500/30 overflow-hidden">
+              <button 
+                onClick={() => toggleSection('longTerm')}
+                className="w-full flex items-center justify-between px-5 py-4 hover:bg-zinc-800/30 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 rounded-lg ${settings.longTermEnabled ? 'bg-blue-500/20' : 'bg-zinc-700/50'}`}>
+                    <Target className={`w-5 h-5 ${settings.longTermEnabled ? 'text-blue-400' : 'text-zinc-500'}`} />
+                  </div>
+                  <div className="text-left">
+                    <h3 className="font-semibold text-white">Long Term</h3>
+                    <p className="text-xs text-zinc-500">Position trades on HTF</p>
+                  </div>
                 </div>
-                <div className="bg-zinc-900/50 rounded-lg p-3">
-                  <p className="text-zinc-500 text-sm">Mode</p>
-                  <p className="text-lg font-bold text-yellow-400">Paper</p>
+                <div className="flex items-center gap-2">
+                  <span className={`px-2 py-0.5 rounded text-xs ${
+                    settings.longTermEnabled ? 'bg-blue-500/20 text-blue-400' : 'bg-zinc-700 text-zinc-400'
+                  }`}>
+                    {settings.longTermEnabled ? 'ON' : 'OFF'}
+                  </span>
+                  {expandedSections.longTerm ? <ChevronUp className="w-4 h-4 text-zinc-400" /> : <ChevronDown className="w-4 h-4 text-zinc-400" />}
                 </div>
-              </div>
-              <div className="text-sm text-zinc-400">
-                Using live MEXC exchange data for paper trading. No real money at risk.
-              </div>
+              </button>
+              
+              {expandedSections.longTerm && (
+                <div className="px-5 pb-5 space-y-4 border-t border-blue-500/20 pt-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-white text-sm">Enable</span>
+                    <ToggleSwitch 
+                      enabled={settings.longTermEnabled} 
+                      onChange={() => setSettings(s => ({ ...s, longTermEnabled: !s.longTermEnabled }))}
+                      color="blue"
+                    />
+                  </div>
+                  <ConfidenceSlider 
+                    value={settings.longTermConf}
+                    onChange={(val) => setSettings(s => ({ ...s, longTermConf: val }))}
+                    min={80}
+                    max={95}
+                    color="blue"
+                  />
+                  {dualStats?.long_term && (
+                    <div className="grid grid-cols-3 gap-2 pt-2 border-t border-zinc-700/50">
+                      <div className="text-center p-2 bg-zinc-900/50 rounded-lg">
+                        <p className="text-lg font-bold text-white">{dualStats.long_term.daily_alerts}</p>
+                        <p className="text-xs text-zinc-500">Today</p>
+                      </div>
+                      <div className="text-center p-2 bg-zinc-900/50 rounded-lg">
+                        <p className="text-lg font-bold text-white">{dualStats.long_term.setups_analyzed}</p>
+                        <p className="text-xs text-zinc-500">Analyzed</p>
+                      </div>
+                      <div className="text-center p-2 bg-zinc-900/50 rounded-lg">
+                        <p className="text-lg font-bold text-white">{dualStats.long_term.direction_lock_hours}h</p>
+                        <p className="text-xs text-zinc-500">Lock</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>
       )}
 
-      {/* Alerts Tab */}
+      {/* Alert System Tab */}
       {activeTab === 'alerts' && (
-        <div className="space-y-6">
-          {/* Dual Trading Engine - Day Trader + Long Term */}
-          <div className="grid md:grid-cols-2 gap-6">
-            {/* Day Trader */}
-            <div className="bg-zinc-800/30 rounded-xl border border-yellow-500/30 overflow-hidden">
-              <div className="flex items-center gap-3 px-6 py-4 bg-yellow-500/10 border-b border-yellow-500/30">
-                <Zap className="w-5 h-5 text-yellow-400" />
-                <h3 className="font-semibold text-white">Day Trader</h3>
-                <span className="ml-auto px-2 py-0.5 bg-yellow-500/20 text-yellow-400 text-xs rounded">AGGRESSIVE</span>
+        <div className="space-y-4">
+          {/* Elite Alerts (Legacy) */}
+          <div className="bg-zinc-800/30 rounded-xl border border-zinc-700/50 overflow-hidden">
+            <button 
+              onClick={() => toggleSection('eliteAlerts')}
+              className="w-full flex items-center justify-between px-5 py-4 hover:bg-zinc-800/30 transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <div className={`p-2 rounded-lg ${settings.freeWillEnabled ? 'bg-orange-500/20' : 'bg-zinc-700/50'}`}>
+                  <Bell className={`w-5 h-5 ${settings.freeWillEnabled ? 'text-orange-400' : 'text-zinc-500'}`} />
+                </div>
+                <div className="text-left">
+                  <h3 className="font-semibold text-white">Elite Alerts</h3>
+                  <p className="text-xs text-zinc-500">High-confidence trade signals</p>
+                </div>
               </div>
-              <div className="p-6 space-y-4">
+              <div className="flex items-center gap-2">
+                <span className={`px-2 py-0.5 rounded text-xs ${
+                  settings.freeWillEnabled ? 'bg-green-500/20 text-green-400' : 'bg-zinc-700 text-zinc-400'
+                }`}>
+                  {settings.freeWillEnabled ? 'ACTIVE' : 'PAUSED'}
+                </span>
+                {expandedSections.eliteAlerts ? <ChevronUp className="w-4 h-4 text-zinc-400" /> : <ChevronDown className="w-4 h-4 text-zinc-400" />}
+              </div>
+            </button>
+            
+            {expandedSections.eliteAlerts && (
+              <div className="px-5 pb-5 space-y-4 border-t border-zinc-700/50 pt-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="font-medium text-white">Enable Day Trading</p>
-                    <p className="text-sm text-zinc-500">Scalps & swings on 15m, 1h, 4h</p>
+                    <p className="text-white font-medium">Enable Alerts</p>
+                    <p className="text-zinc-500 text-xs">Receive LONG/SHORT signals</p>
                   </div>
-                  <button onClick={() => setSettings(s => ({ ...s, dayTraderEnabled: !s.dayTraderEnabled }))}
-                    className={`w-14 h-7 rounded-full transition-colors ${settings.dayTraderEnabled ? 'bg-yellow-500' : 'bg-zinc-700'}`}>
-                    <div className={`w-5 h-5 rounded-full bg-white transition-transform ${settings.dayTraderEnabled ? 'translate-x-8' : 'translate-x-1'}`} />
-                  </button>
+                  <ToggleSwitch 
+                    enabled={settings.freeWillEnabled} 
+                    onChange={() => setSettings(s => ({ ...s, freeWillEnabled: !s.freeWillEnabled }))}
+                  />
                 </div>
-                <div>
-                  <div className="flex justify-between mb-2">
-                    <span className="text-white text-sm">Min Confidence</span>
-                    <span className="text-yellow-400 font-semibold">{settings.dayTraderConf}%</span>
-                  </div>
-                  <input type="range" min={65} max={90} value={settings.dayTraderConf}
-                    onChange={e => setSettings(s => ({ ...s, dayTraderConf: Number(e.target.value) }))}
-                    className="w-full h-2 bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-yellow-500" />
-                </div>
-                {dualStats?.day_trader && (
-                  <div className="grid grid-cols-3 gap-2 pt-2 border-t border-zinc-700/50">
-                    <div className="text-center">
-                      <p className="text-xs text-zinc-500">Today</p>
-                      <p className="font-bold text-white">{dualStats.day_trader.daily_alerts}/{dualStats.day_trader.max_daily_alerts}</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-xs text-zinc-500">Analyzed</p>
-                      <p className="font-bold text-white">{dualStats.day_trader.setups_analyzed}</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-xs text-zinc-500">Lock</p>
-                      <p className="font-bold text-white">{dualStats.day_trader.direction_lock_hours}h</p>
-                    </div>
-                  </div>
-                )}
+                <ConfidenceSlider 
+                  value={settings.freeWillMinConf}
+                  onChange={(val) => setSettings(s => ({ ...s, freeWillMinConf: val }))}
+                  min={65}
+                  max={95}
+                />
               </div>
-            </div>
-
-            {/* Long Term */}
-            <div className="bg-zinc-800/30 rounded-xl border border-blue-500/30 overflow-hidden">
-              <div className="flex items-center gap-3 px-6 py-4 bg-blue-500/10 border-b border-blue-500/30">
-                <Target className="w-5 h-5 text-blue-400" />
-                <h3 className="font-semibold text-white">Long Term</h3>
-                <span className="ml-auto px-2 py-0.5 bg-blue-500/20 text-blue-400 text-xs rounded">SMART</span>
-              </div>
-              <div className="p-6 space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium text-white">Enable Long Term</p>
-                    <p className="text-sm text-zinc-500">Position trades on 4h, 1d</p>
-                  </div>
-                  <button onClick={() => setSettings(s => ({ ...s, longTermEnabled: !s.longTermEnabled }))}
-                    className={`w-14 h-7 rounded-full transition-colors ${settings.longTermEnabled ? 'bg-blue-500' : 'bg-zinc-700'}`}>
-                    <div className={`w-5 h-5 rounded-full bg-white transition-transform ${settings.longTermEnabled ? 'translate-x-8' : 'translate-x-1'}`} />
-                  </button>
-                </div>
-                <div>
-                  <div className="flex justify-between mb-2">
-                    <span className="text-white text-sm">Min Confidence</span>
-                    <span className="text-blue-400 font-semibold">{settings.longTermConf}%</span>
-                  </div>
-                  <input type="range" min={80} max={95} value={settings.longTermConf}
-                    onChange={e => setSettings(s => ({ ...s, longTermConf: Number(e.target.value) }))}
-                    className="w-full h-2 bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-blue-500" />
-                </div>
-                {dualStats?.long_term && (
-                  <div className="grid grid-cols-3 gap-2 pt-2 border-t border-zinc-700/50">
-                    <div className="text-center">
-                      <p className="text-xs text-zinc-500">Today</p>
-                      <p className="font-bold text-white">{dualStats.long_term.daily_alerts}/{dualStats.long_term.max_daily_alerts}</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-xs text-zinc-500">Analyzed</p>
-                      <p className="font-bold text-white">{dualStats.long_term.setups_analyzed}</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-xs text-zinc-500">Lock</p>
-                      <p className="font-bold text-white">{dualStats.long_term.direction_lock_hours}h</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
+            )}
           </div>
 
-          {/* Original Free Will section */}
-          <div className="grid md:grid-cols-2 gap-6">
-            <div className="bg-zinc-800/30 rounded-xl border border-zinc-700/50 overflow-hidden">
-              <div className="flex items-center gap-3 px-6 py-4 bg-zinc-800/50 border-b border-zinc-700/50">
-                <Bell className="w-5 h-5 text-orange-400" />
-                <h3 className="font-semibold text-white">Elite Alerts (Legacy)</h3>
-              </div>
-              <div className="p-6 space-y-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium text-white">Enable Elite Alerts</p>
-                    <p className="text-sm text-zinc-500">80%+ confidence setups</p>
-                  </div>
-                  <button onClick={() => setSettings(s => ({ ...s, freeWillEnabled: !s.freeWillEnabled }))}
-                    data-testid="freewill-toggle"
-                    className={`w-14 h-7 rounded-full transition-colors ${settings.freeWillEnabled ? 'bg-orange-500' : 'bg-zinc-700'}`}>
-                    <div className={`w-5 h-5 rounded-full bg-white transition-transform ${settings.freeWillEnabled ? 'translate-x-8' : 'translate-x-1'}`} />
-                  </button>
-                </div>
-                <div>
-                  <div className="flex justify-between mb-2">
-                    <span className="text-white">Alert Confidence</span>
-                    <span className="text-orange-400 font-semibold">{settings.freeWillMinConf}%</span>
-                  </div>
-                <input type="range" min={65} max={95} value={settings.freeWillMinConf}
-                  onChange={e => setSettings(s => ({ ...s, freeWillMinConf: Number(e.target.value) }))}
-                  className="w-full h-2 bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-orange-500" />
-              </div>
-            </div>
-          </div>
-
-          {/* Alert Stats */}
+          {/* Alert Stats Dashboard */}
           {freeWillStats && (
             <div className="bg-zinc-800/30 rounded-xl border border-zinc-700/50 overflow-hidden">
-              <div className="flex items-center gap-3 px-6 py-4 bg-zinc-800/50 border-b border-zinc-700/50">
+              <div className="flex items-center gap-3 px-5 py-4 border-b border-zinc-700/50">
                 <Shield className="w-5 h-5 text-blue-400" />
-                <h3 className="font-semibold text-white">Alert System Status</h3>
+                <h3 className="font-semibold text-white">Alert Statistics</h3>
               </div>
-              <div className="p-6 space-y-4">
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="bg-zinc-900/50 rounded-lg p-3 text-center">
-                    <p className="text-zinc-500 text-xs">Today</p>
-                    <p className="text-xl font-bold text-white">{freeWillStats.daily_alerts}/{freeWillStats.max_daily_alerts}</p>
+              <div className="p-5 space-y-4">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="bg-zinc-900/50 rounded-xl p-4 text-center">
+                    <p className="text-2xl font-bold text-white">{freeWillStats.daily_alerts}</p>
+                    <p className="text-xs text-zinc-500">Today's Alerts</p>
+                    <p className="text-xs text-zinc-600">Max: {freeWillStats.max_daily_alerts}</p>
                   </div>
-                  <div className="bg-zinc-900/50 rounded-lg p-3 text-center">
-                    <p className="text-zinc-500 text-xs">Total</p>
-                    <p className="text-xl font-bold text-white">{freeWillStats.total_alerts_sent}</p>
+                  <div className="bg-zinc-900/50 rounded-xl p-4 text-center">
+                    <p className="text-2xl font-bold text-orange-400">{freeWillStats.total_alerts_sent}</p>
+                    <p className="text-xs text-zinc-500">Total Sent</p>
                   </div>
-                  <div className="bg-zinc-900/50 rounded-lg p-3 text-center">
-                    <p className="text-zinc-500 text-xs">Blocked</p>
-                    <p className="text-xl font-bold text-green-400">{freeWillStats.contradictions_blocked}</p>
+                  <div className="bg-zinc-900/50 rounded-xl p-4 text-center">
+                    <p className="text-2xl font-bold text-green-400">{freeWillStats.contradictions_blocked}</p>
+                    <p className="text-xs text-zinc-500">Blocked</p>
+                    <p className="text-xs text-zinc-600">Contradictions</p>
+                  </div>
+                  <div className="bg-zinc-900/50 rounded-xl p-4 text-center">
+                    <p className="text-2xl font-bold text-blue-400">{freeWillStats.pairs_monitored}</p>
+                    <p className="text-xs text-zinc-500">Pairs</p>
                   </div>
                 </div>
                 
-                <div className="flex items-center gap-2 text-sm">
-                  <Clock className="w-4 h-4 text-zinc-500" />
-                  <span className="text-zinc-400">Cooldown: {freeWillStats.alert_cooldown_mins} min per coin</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <Shield className="w-4 h-4 text-zinc-500" />
-                  <span className="text-zinc-400">Direction lock: {freeWillStats.direction_lock_hours}h (no flip-flop)</span>
+                <div className="flex flex-wrap gap-3 pt-2">
+                  <div className="flex items-center gap-2 px-3 py-2 bg-zinc-900/50 rounded-lg">
+                    <Clock className="w-4 h-4 text-zinc-500" />
+                    <span className="text-zinc-300 text-sm">{freeWillStats.alert_cooldown_mins}min cooldown</span>
+                  </div>
+                  <div className="flex items-center gap-2 px-3 py-2 bg-zinc-900/50 rounded-lg">
+                    <Shield className="w-4 h-4 text-zinc-500" />
+                    <span className="text-zinc-300 text-sm">{freeWillStats.direction_lock_hours}h direction lock</span>
+                  </div>
                 </div>
 
-                {/* Recent Directions */}
+                {/* Recent Signal Directions */}
                 {freeWillStats.recent_directions && Object.keys(freeWillStats.recent_directions).length > 0 && (
-                  <div className="mt-4">
-                    <p className="text-sm text-zinc-400 mb-2">Recent Signal Directions:</p>
+                  <div className="pt-3 border-t border-zinc-700/50">
+                    <p className="text-sm text-zinc-400 mb-2">Recent Directions (locked)</p>
                     <div className="flex flex-wrap gap-2">
                       {Object.entries(freeWillStats.recent_directions).map(([symbol, dir]) => (
-                        <span key={symbol} className={`px-2 py-1 rounded text-xs font-medium ${
-                          dir === 'LONG' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
+                        <span key={symbol} className={`px-3 py-1.5 rounded-lg text-xs font-medium ${
+                          dir === 'LONG' ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-red-500/20 text-red-400 border border-red-500/30'
                         }`}>
                           {symbol.replace('/USDT', '')}: {dir}
                         </span>
@@ -412,67 +540,65 @@ export default function SettingsPanel() {
 
           {/* Data Sources */}
           {freeWillStats && (
-            <div className="bg-zinc-800/30 rounded-xl border border-zinc-700/50 overflow-hidden md:col-span-2">
-              <div className="flex items-center gap-3 px-6 py-4 bg-zinc-800/50 border-b border-zinc-700/50">
+            <div className="bg-zinc-800/30 rounded-xl border border-zinc-700/50 overflow-hidden">
+              <div className="flex items-center gap-3 px-5 py-4 border-b border-zinc-700/50">
                 <Brain className="w-5 h-5 text-purple-400" />
-                <h3 className="font-semibold text-white">Data Sources ({freeWillStats.data_sources?.length || 0})</h3>
+                <h3 className="font-semibold text-white">Data Sources</h3>
+                <span className="ml-auto px-2 py-0.5 bg-purple-500/20 text-purple-400 text-xs rounded">{freeWillStats.data_sources?.length || 0} active</span>
               </div>
-              <div className="p-6">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="p-5">
+                <div className="flex flex-wrap gap-2">
                   {freeWillStats.data_sources?.map((source, i) => (
-                    <div key={i} className="bg-zinc-900/50 rounded-lg p-3 flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-green-400"></div>
+                    <div key={i} className="flex items-center gap-2 px-3 py-2 bg-zinc-900/50 rounded-lg border border-zinc-700/50">
+                      <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
                       <span className="text-sm text-zinc-300">{source}</span>
                     </div>
                   ))}
                 </div>
                 <p className="text-xs text-zinc-500 mt-4">
-                  Monitoring {freeWillStats.pairs_monitored} pairs on {freeWillStats.timeframes?.join(', ')} timeframes
+                  Monitoring on {freeWillStats.timeframes?.join(', ')} timeframes
                 </p>
               </div>
             </div>
           )}
-          </div>
         </div>
       )}
 
       {/* Profile Tab */}
       {activeTab === 'profile' && (
-        <div className="grid md:grid-cols-2 gap-6">
+        <div className="grid md:grid-cols-2 gap-4">
           <div className="bg-zinc-800/30 rounded-xl border border-zinc-700/50 overflow-hidden">
-            <div className="flex items-center gap-3 px-6 py-4 bg-zinc-800/50 border-b border-zinc-700/50">
+            <div className="flex items-center gap-3 px-5 py-4 border-b border-zinc-700/50">
               <User className="w-5 h-5 text-orange-400" />
-              <h3 className="font-semibold text-white">Your Trading Profile</h3>
+              <h3 className="font-semibold text-white">Your Profile</h3>
             </div>
-            <div className="p-6 space-y-4">
+            <div className="p-5">
               {userProfile ? (
-                <>
-                  <div className="space-y-3">
-                    <div className="flex justify-between">
-                      <span className="text-zinc-400">Trading Style</span>
-                      <span className="text-white font-medium">{userProfile.trading_style || 'Learning...'}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-zinc-400">Risk Tolerance</span>
-                      <span className={`font-medium ${
-                        userProfile.risk_tolerance === 'high' ? 'text-red-400' :
-                        userProfile.risk_tolerance === 'medium' ? 'text-yellow-400' : 'text-green-400'
-                      }`}>{userProfile.risk_tolerance || 'Unknown'}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-zinc-400">Favorite Coins</span>
-                      <span className="text-orange-400">{userProfile.favorite_coins?.join(', ') || 'None yet'}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-zinc-400">Messages Analyzed</span>
-                      <span className="text-white">{userProfile.messages_analyzed || 0}</span>
-                    </div>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between p-3 bg-zinc-900/50 rounded-lg">
+                    <span className="text-zinc-400">Trading Style</span>
+                    <span className="text-white font-medium">{userProfile.trading_style || 'Learning...'}</span>
                   </div>
-                </>
+                  <div className="flex items-center justify-between p-3 bg-zinc-900/50 rounded-lg">
+                    <span className="text-zinc-400">Risk Tolerance</span>
+                    <span className={`font-medium px-2 py-0.5 rounded ${
+                      userProfile.risk_tolerance === 'high' ? 'bg-red-500/20 text-red-400' :
+                      userProfile.risk_tolerance === 'medium' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-green-500/20 text-green-400'
+                    }`}>{userProfile.risk_tolerance || 'Unknown'}</span>
+                  </div>
+                  <div className="flex items-center justify-between p-3 bg-zinc-900/50 rounded-lg">
+                    <span className="text-zinc-400">Favorite Coins</span>
+                    <span className="text-orange-400 text-sm">{userProfile.favorite_coins?.join(', ') || 'None yet'}</span>
+                  </div>
+                  <div className="flex items-center justify-between p-3 bg-zinc-900/50 rounded-lg">
+                    <span className="text-zinc-400">Messages</span>
+                    <span className="text-white">{userProfile.messages_analyzed || 0} analyzed</span>
+                  </div>
+                </div>
               ) : (
                 <div className="text-center py-8">
                   <Brain className="w-12 h-12 text-zinc-600 mx-auto mb-3" />
-                  <p className="text-zinc-400">Aeon is learning your preferences...</p>
+                  <p className="text-zinc-400">Learning your preferences...</p>
                   <p className="text-sm text-zinc-500 mt-2">Chat more to build your profile!</p>
                 </div>
               )}
@@ -480,32 +606,27 @@ export default function SettingsPanel() {
           </div>
 
           <div className="bg-zinc-800/30 rounded-xl border border-zinc-700/50 overflow-hidden">
-            <div className="flex items-center gap-3 px-6 py-4 bg-zinc-800/50 border-b border-zinc-700/50">
+            <div className="flex items-center gap-3 px-5 py-4 border-b border-zinc-700/50">
               <Brain className="w-5 h-5 text-purple-400" />
               <h3 className="font-semibold text-white">Aeon's Understanding</h3>
             </div>
-            <div className="p-6">
+            <div className="p-5">
               <p className="text-zinc-400 text-sm mb-4">
-                Aeon learns from your conversations to personalize responses and trading insights.
+                Aeon learns from your conversations to personalize responses.
               </p>
-              <ul className="space-y-2 text-sm">
-                <li className="flex items-center gap-2 text-zinc-300">
-                  <div className="w-1.5 h-1.5 rounded-full bg-green-400"></div>
-                  Tracks coins you ask about most
-                </li>
-                <li className="flex items-center gap-2 text-zinc-300">
-                  <div className="w-1.5 h-1.5 rounded-full bg-green-400"></div>
-                  Learns your risk preferences
-                </li>
-                <li className="flex items-center gap-2 text-zinc-300">
-                  <div className="w-1.5 h-1.5 rounded-full bg-green-400"></div>
-                  Adapts communication style
-                </li>
-                <li className="flex items-center gap-2 text-zinc-300">
-                  <div className="w-1.5 h-1.5 rounded-full bg-green-400"></div>
-                  Remembers your trading history
-                </li>
-              </ul>
+              <div className="space-y-2">
+                {[
+                  'Tracks coins you ask about most',
+                  'Learns your risk preferences',
+                  'Adapts communication style',
+                  'Remembers trading history'
+                ].map((item, i) => (
+                  <div key={i} className="flex items-center gap-2 p-2 text-sm text-zinc-300">
+                    <CheckCircle2 className="w-4 h-4 text-green-400" />
+                    {item}
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
@@ -535,10 +656,9 @@ function VoiceTab({ settings, setSettings }) {
     { id: 'guy', name: 'Guy', desc: 'Confident & calm' },
     { id: 'davis', name: 'Davis', desc: 'Professional' },
     { id: 'british', name: 'British', desc: 'Sophisticated' },
-    { id: 'australian', name: 'Australian', desc: 'Friendly & relaxed' }
+    { id: 'australian', name: 'Australian', desc: 'Friendly' }
   ];
 
-  // Initialize speech recognition
   useEffect(() => {
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -556,12 +676,8 @@ function VoiceTab({ settings, setSettings }) {
         }
       };
 
-      recognitionRef.current.onend = () => {
-        setIsListening(false);
-      };
-
-      recognitionRef.current.onerror = (event) => {
-        console.error('Speech recognition error:', event.error);
+      recognitionRef.current.onend = () => setIsListening(false);
+      recognitionRef.current.onerror = () => {
         setIsListening(false);
         setError('Speech recognition error. Please try again.');
       };
@@ -582,7 +698,6 @@ function VoiceTab({ settings, setSettings }) {
 
   const sendMessage = async () => {
     if (!message.trim()) return;
-    
     setIsLoading(true);
     setError('');
     setAeonResponse('');
@@ -591,32 +706,24 @@ function VoiceTab({ settings, setSettings }) {
       const res = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/voice/respond`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          text: message,
-          voice: settings.selectedVoice
-        })
+        body: JSON.stringify({ text: message, voice: settings.selectedVoice })
       });
-
       const data = await res.json();
 
       if (data.error) {
         setError(data.error);
       } else {
         setAeonResponse(data.text);
-        
-        // Play audio
         if (data.audio) {
           const audioBlob = new Blob(
             [Uint8Array.from(atob(data.audio), c => c.charCodeAt(0))],
             { type: 'audio/mp3' }
           );
           const audioUrl = URL.createObjectURL(audioBlob);
-          
           if (audioRef.current) {
             audioRef.current.src = audioUrl;
             audioRef.current.play();
             setIsPlaying(true);
-            
             audioRef.current.onended = () => {
               setIsPlaying(false);
               URL.revokeObjectURL(audioUrl);
@@ -624,42 +731,34 @@ function VoiceTab({ settings, setSettings }) {
           }
         }
       }
-    } catch (err) {
+    } catch {
       setError('Failed to connect to Aeon. Please try again.');
     }
-
     setIsLoading(false);
   };
 
-  const playResponse = () => {
-    if (audioRef.current && audioRef.current.src) {
-      audioRef.current.play();
-      setIsPlaying(true);
-    }
-  };
-
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Voice Selection */}
       <div className="bg-zinc-800/30 rounded-xl border border-zinc-700/50 overflow-hidden">
-        <div className="flex items-center gap-3 px-6 py-4 bg-zinc-800/50 border-b border-zinc-700/50">
+        <div className="flex items-center gap-3 px-5 py-4 border-b border-zinc-700/50">
           <Volume2 className="w-5 h-5 text-orange-400" />
-          <h3 className="font-semibold text-white">Choose Aeon's Voice</h3>
+          <h3 className="font-semibold text-white">Voice Selection</h3>
         </div>
-        <div className="p-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="p-5">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             {voices.map(v => (
               <button 
                 key={v.id} 
                 onClick={() => setSettings(s => ({ ...s, selectedVoice: v.id }))}
                 data-testid={`voice-option-${v.id}`}
-                className={`p-4 rounded-lg border text-left transition-all ${
+                className={`p-3 rounded-xl border text-left transition-all ${
                   settings.selectedVoice === v.id 
                     ? 'border-orange-500 bg-orange-500/10' 
                     : 'border-zinc-700 hover:border-zinc-600'
                 }`}
               >
-                <p className={`font-medium ${settings.selectedVoice === v.id ? 'text-orange-400' : 'text-white'}`}>
+                <p className={`font-medium text-sm ${settings.selectedVoice === v.id ? 'text-orange-400' : 'text-white'}`}>
                   {v.name}
                 </p>
                 <p className="text-xs text-zinc-500">{v.desc}</p>
@@ -669,72 +768,54 @@ function VoiceTab({ settings, setSettings }) {
         </div>
       </div>
 
-      {/* Voice Chat Interface */}
+      {/* Voice Chat */}
       <div className="bg-zinc-800/30 rounded-xl border border-zinc-700/50 overflow-hidden">
-        <div className="flex items-center gap-3 px-6 py-4 bg-zinc-800/50 border-b border-zinc-700/50">
+        <div className="flex items-center gap-3 px-5 py-4 border-b border-zinc-700/50">
           <Mic className="w-5 h-5 text-orange-400" />
           <h3 className="font-semibold text-white">Talk to Aeon</h3>
           <span className="ml-auto px-2 py-0.5 bg-green-500/20 text-green-400 text-xs rounded">LIVE</span>
         </div>
-        <div className="p-6 space-y-4">
-          {/* Input Area */}
-          <div className="flex gap-3">
-            <div className="flex-1 relative">
-              <input
-                type="text"
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-                placeholder={isListening ? 'Listening...' : 'Type or speak your message...'}
-                data-testid="voice-input"
-                className="w-full px-4 py-3 bg-zinc-900/50 border border-zinc-700 rounded-lg text-white placeholder-zinc-500 focus:border-orange-500 focus:outline-none"
-              />
-              {transcript && isListening && (
-                <div className="absolute left-4 top-3 text-orange-400 animate-pulse">
-                  {transcript}
-                </div>
-              )}
-            </div>
-            
-            {/* Microphone Button */}
+        <div className="p-5 space-y-4">
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+              placeholder={isListening ? 'Listening...' : 'Type or speak...'}
+              data-testid="voice-input"
+              className="flex-1 px-4 py-3 bg-zinc-900/50 border border-zinc-700 rounded-xl text-white placeholder-zinc-500 focus:border-orange-500 focus:outline-none"
+            />
             <button
               onClick={toggleListening}
               data-testid="voice-mic-button"
               disabled={!recognitionRef.current}
-              className={`p-3 rounded-lg transition-all ${
-                isListening 
-                  ? 'bg-red-500 text-white animate-pulse' 
-                  : 'bg-zinc-700 text-zinc-300 hover:bg-zinc-600'
-              } ${!recognitionRef.current ? 'opacity-50 cursor-not-allowed' : ''}`}
+              className={`p-3 rounded-xl transition-all ${
+                isListening ? 'bg-red-500 text-white animate-pulse' : 'bg-zinc-700 text-zinc-300 hover:bg-zinc-600'
+              }`}
             >
               {isListening ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
             </button>
-            
-            {/* Send Button */}
             <button
               onClick={sendMessage}
               disabled={!message.trim() || isLoading}
               data-testid="voice-send-button"
-              className={`px-4 py-3 rounded-lg flex items-center gap-2 transition-all ${
-                message.trim() && !isLoading
-                  ? 'bg-orange-500 text-white hover:bg-orange-600'
-                  : 'bg-zinc-700 text-zinc-500 cursor-not-allowed'
+              className={`px-4 rounded-xl flex items-center gap-2 transition-all ${
+                message.trim() && !isLoading ? 'bg-orange-500 text-white hover:bg-orange-600' : 'bg-zinc-700 text-zinc-500'
               }`}
             >
               {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
             </button>
           </div>
 
-          {/* Error Display */}
           {error && (
-            <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-sm">
+            <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-sm">
               {error}
             </div>
           )}
 
-          {/* Response Area */}
           {aeonResponse && (
-            <div className="p-4 bg-zinc-900/50 border border-zinc-700 rounded-lg space-y-3">
+            <div className="p-4 bg-zinc-900/50 border border-zinc-700 rounded-xl">
               <div className="flex items-start gap-3">
                 <div className="w-8 h-8 rounded-full bg-orange-500/20 flex items-center justify-center flex-shrink-0">
                   <Bot className="w-4 h-4 text-orange-400" />
@@ -744,14 +825,10 @@ function VoiceTab({ settings, setSettings }) {
                   <p className="text-white">{aeonResponse}</p>
                 </div>
                 <button
-                  onClick={playResponse}
+                  onClick={() => audioRef.current?.play()}
                   disabled={isPlaying}
                   data-testid="voice-play-button"
-                  className={`p-2 rounded-lg transition-all ${
-                    isPlaying 
-                      ? 'bg-orange-500/20 text-orange-400' 
-                      : 'bg-zinc-700 text-zinc-300 hover:bg-zinc-600'
-                  }`}
+                  className={`p-2 rounded-lg ${isPlaying ? 'bg-orange-500/20 text-orange-400' : 'bg-zinc-700 text-zinc-300 hover:bg-zinc-600'}`}
                 >
                   {isPlaying ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
                 </button>
@@ -759,14 +836,8 @@ function VoiceTab({ settings, setSettings }) {
             </div>
           )}
 
-          {/* Hidden Audio Element */}
           <audio ref={audioRef} className="hidden" />
-
-          {/* Instructions */}
-          <div className="text-sm text-zinc-500 space-y-1">
-            <p>Click the microphone to speak, or type your message.</p>
-            <p>Aeon will respond with voice using the selected voice style.</p>
-          </div>
+          <p className="text-xs text-zinc-500">Click the microphone to speak, or type your message.</p>
         </div>
       </div>
     </div>
