@@ -1874,6 +1874,41 @@ IMPORTANT RULES FOR VOICE:
         return {"error": str(e)}
 
 
+@api_router.post("/voice/transcribe")
+async def api_voice_transcribe(request: Request):
+    """
+    Transcribe audio using OpenAI Whisper for natural, accurate speech-to-text.
+    Accepts base64 encoded audio data.
+    """
+    try:
+        from voice_tts import transcribe_audio
+        
+        data = await request.json()
+        audio_b64 = data.get("audio", "")
+        language = data.get("language", "en")
+        
+        if not audio_b64:
+            return {"error": "No audio provided", "use_browser": True}
+        
+        # Decode base64 audio
+        audio_data = base64.b64decode(audio_b64)
+        
+        # Transcribe
+        result = await transcribe_audio(audio_data, language)
+        return result
+        
+    except Exception as e:
+        logger.error(f"Voice transcribe error: {e}")
+        return {"error": str(e), "use_browser": True}
+
+
+@api_router.get("/voice/info")
+async def api_voice_info():
+    """Get available voices and STT status"""
+    from voice_tts import get_voice_info
+    return get_voice_info()
+
+
 @api_router.get("/learning/stats")
 async def api_learning_stats():
     return await learning_system.get_prediction_stats()
@@ -1882,6 +1917,155 @@ async def api_learning_stats():
 @api_router.get("/learning/open")
 async def api_open_predictions():
     return await learning_system.get_open_predictions()
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# EMERGENCY CONTROLS API (Kill Switch, Close All)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@api_router.post("/trading/v2/close-all")
+async def api_close_all_positions():
+    """
+    EMERGENCY KILL SWITCH - Close all open positions immediately.
+    Use with caution!
+    """
+    try:
+        closed_count = 0
+        errors = []
+        
+        # Close positions in autonomous trader v2
+        for trade in list(auto_trader_v2.open_trades):
+            try:
+                # Get current price
+                symbol = trade["symbol"]
+                current_data = await market_intel.get_market_data(symbol)
+                current_price = current_data.get("price", trade.get("entry_price", 0))
+                
+                # Calculate final PnL
+                entry = trade.get("entry_price", current_price)
+                direction = trade.get("direction", "LONG")
+                leverage = trade.get("leverage", 10)
+                pnl_pct = ((current_price - entry) / entry * 100) if direction == "LONG" else ((entry - current_price) / entry * 100)
+                pnl_leveraged = pnl_pct * leverage
+                
+                # Close the trade
+                trade["exit_price"] = current_price
+                trade["pnl_pct"] = pnl_pct
+                trade["pnl_leveraged"] = pnl_leveraged
+                trade["closed_at"] = datetime.now(timezone.utc).isoformat()
+                trade["close_reason"] = "EMERGENCY_KILL_SWITCH"
+                
+                auto_trader_v2.closed_trades.append(trade)
+                await auto_trader_v2.close_trade_in_db(trade)
+                auto_trader_v2.open_trades.remove(trade)
+                closed_count += 1
+                
+            except Exception as e:
+                errors.append(f"{trade.get('symbol', 'unknown')}: {str(e)}")
+        
+        # Also clear any trades in dual engine if needed
+        dual_engine.day_trader_open.clear()
+        dual_engine.long_term_open.clear()
+        
+        return {
+            "success": True,
+            "closed_count": closed_count,
+            "errors": errors if errors else None,
+            "message": f"Emergency close: {closed_count} positions closed"
+        }
+        
+    except Exception as e:
+        logger.error(f"Kill switch error: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@api_router.post("/trading/v2/quick-trade")
+async def api_quick_trade(request: Request):
+    """
+    Execute a quick trade from the dashboard or SMC analysis.
+    Auto-determines trade style and leverage based on timeframe and confidence.
+    """
+    try:
+        data = await request.json()
+        symbol = data.get("symbol", "BTC")
+        direction = data.get("direction", "LONG")
+        timeframe = data.get("timeframe", "1h")
+        confidence = data.get("confidence", 75)
+        position_size = data.get("position_size", 1000)
+        
+        # Get current price
+        full_symbol = f"{symbol}/USDT"
+        market_data = await market_intel.get_market_data(full_symbol)
+        current_price = market_data.get("price", 0)
+        
+        if current_price <= 0:
+            return {"error": "Could not get current price"}
+        
+        # Determine trade style based on timeframe
+        trade_style = auto_trader_v2.determine_trade_style(timeframe, confidence)
+        
+        # Calculate leverage (bot has free will)
+        leverage = auto_trader_v2.calculate_leverage(confidence, None, trade_style)
+        
+        # Get ATR for stop/target
+        tech = await market_intel.get_technical_analysis(symbol + "USDT", timeframe)
+        atr = tech.get("atr", current_price * 0.02)
+        
+        # Get style config for stop/target multipliers
+        style_config = auto_trader_v2.get_trade_style_config(trade_style)
+        
+        # Calculate stop and target
+        if direction == "LONG":
+            stop_price = current_price - (atr * style_config["stop_atr_mult"])
+            target_price = current_price + (atr * style_config["target_atr_mult"])
+        else:
+            stop_price = current_price + (atr * style_config["stop_atr_mult"])
+            target_price = current_price - (atr * style_config["target_atr_mult"])
+        
+        # Create trade
+        trade = {
+            "id": f"quick_{symbol}_{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}",
+            "symbol": full_symbol,
+            "direction": direction,
+            "trade_type": trade_style,
+            "timeframe": timeframe,
+            "entry_price": current_price,
+            "current_price": current_price,
+            "position_size": position_size,
+            "leverage": leverage,
+            "stop_price": stop_price,
+            "target_price": target_price,
+            "confidence": confidence,
+            "pnl_pct": 0,
+            "entry_time": datetime.now(timezone.utc).isoformat(),
+            "source": "quick_trade",
+            "confirmations": [f"{trade_style} style selected", f"{leverage}x leverage", f"ATR-based stops"]
+        }
+        
+        # Add to open trades
+        auto_trader_v2.open_trades.append(trade)
+        await auto_trader_v2.save_open_trade(trade)
+        
+        # Log to dashboard alerts
+        price_alert_system._add_dashboard_alert({
+            "type": "quick_trade",
+            "symbol": symbol,
+            "direction": direction,
+            "message": f"Quick {trade_style} {direction} on {symbol} @ ${current_price:,.2f} ({leverage}x)",
+            "data": trade,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "severity": "medium"
+        })
+        
+        return {
+            "success": True,
+            "trade": trade,
+            "message": f"{style_config['emoji']} {trade_style} {direction} @ ${current_price:,.2f} ({leverage}x leverage)"
+        }
+        
+    except Exception as e:
+        logger.error(f"Quick trade error: {e}")
+        return {"success": False, "error": str(e)}
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
