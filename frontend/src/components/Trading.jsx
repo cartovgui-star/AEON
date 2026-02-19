@@ -406,6 +406,10 @@ export default function Trading() {
                       <p className="text-zinc-500 text-xs">Size</p>
                       <p className="text-white">${positionSize.toLocaleString()}</p>
                     </div>
+                    <div>
+                      <p className="text-zinc-500 text-xs">Margin</p>
+                      <p className="text-cyan-400 font-medium">${margin.toFixed(2)}</p>
+                    </div>
                   </div>
                   {position.confirmations && position.confirmations.length > 0 && (
                     <div className="mt-2 pt-2 border-t border-zinc-700/50">
