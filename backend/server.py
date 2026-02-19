@@ -1964,9 +1964,8 @@ async def api_close_all_positions():
             except Exception as e:
                 errors.append(f"{trade.get('symbol', 'unknown')}: {str(e)}")
         
-        # Also clear any trades in dual engine if needed
-        dual_engine.day_trader_open.clear()
-        dual_engine.long_term_open.clear()
+        # Note: dual_engine is for alerts only, not position management
+        # No need to clear any positions there
         
         return {
             "success": True,
