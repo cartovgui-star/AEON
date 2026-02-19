@@ -541,16 +541,15 @@ export default function Trading() {
           )}
         </div>
       )}
-    </div>
 
-    {/* Position Details Modal */}
-    {showPositionModal && selectedPosition && (
-      <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowPositionModal(false)}>
-        <div className="bg-gradient-to-br from-zinc-900 to-zinc-800 border border-zinc-700 rounded-2xl max-w-2xl w-full shadow-2xl" onClick={(e) => e.stopPropagation()}>
-          {/* Modal Header */}
-          <div className={`px-6 py-4 border-b flex items-center justify-between ${
-            selectedPosition.direction === 'LONG' ? 'border-green-500/30 bg-green-500/5' : 'border-red-500/30 bg-red-500/5'
-          }`}>
+      {/* Position Details Modal */}
+      {showPositionModal && selectedPosition && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowPositionModal(false)}>
+          <div className="bg-gradient-to-br from-zinc-900 to-zinc-800 border border-zinc-700 rounded-2xl max-w-2xl w-full shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            {/* Modal Header */}
+            <div className={`px-6 py-4 border-b flex items-center justify-between ${
+              selectedPosition.direction === 'LONG' ? 'border-green-500/30 bg-green-500/5' : 'border-red-500/30 bg-red-500/5'
+            }`}>
             <div className="flex items-center gap-3">
               <div className={`p-2 rounded-xl ${
                 selectedPosition.direction === 'LONG' ? 'bg-green-500/20' : 'bg-red-500/20'
