@@ -24,6 +24,7 @@ import PriceAlerts from "./components/PriceAlerts";
 import Backtesting from "./components/Backtesting";
 import Intelligence from "./components/Intelligence";
 import SystemHealth from "./components/SystemHealth";
+import Dashboard from "./components/Dashboard";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
