@@ -109,7 +109,12 @@ Build a sophisticated trading bot named "Aeon" with:
 
 ## Key Files
 
-### New (This Session)
+### Modified (Feb 19, 2026)
+- `/app/frontend/src/components/Trading.jsx` - Fixed modal structure, position calling card
+- `/app/frontend/src/components/SettingsPanel.jsx` - Complete redesign with collapsible sections
+- `/app/frontend/src/components/SMCAnalysis.jsx` - Added "Why This Signal?" reasoning section
+
+### New (Feb 15, 2026)
 - `/app/backend/self_healer.py` - Self-healing system
 - `/app/frontend/src/components/SystemHealth.jsx` - Health monitoring UI
 
