@@ -379,7 +379,7 @@ export default function Trading() {
                       </button>
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-6 gap-3 text-sm">
+                  <div className="grid grid-cols-2 sm:grid-cols-7 gap-3 text-sm">
                     <div>
                       <p className="text-zinc-500 text-xs">Entry</p>
                       <p className="text-white">${position.entry_price?.toLocaleString()}</p>
