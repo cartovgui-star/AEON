@@ -95,6 +95,11 @@ class AutonomousTraderV2:
     - Session awareness
     - Position sizing by confidence
     - Trail stops
+    
+    TRADE STYLES:
+    - SCALP: Quick trades, high leverage (50-200x)
+    - DAY: Medium holds, moderate leverage (20-75x)
+    - SWING: Longer positions, lower leverage (10-25x)
     """
     
     def __init__(self, db: AsyncIOMotorDatabase):
@@ -105,7 +110,7 @@ class AutonomousTraderV2:
         self.min_confidence = 60  # Lower threshold = more trades
         self.min_confirmations = 2  # Need 2+ data sources agreeing
         
-        # LEVERAGE SETTINGS
+        # LEVERAGE SETTINGS (Bot has FREE WILL to choose)
         self.max_leverage = 200  # Up to 200x
         self.min_leverage = 10   # Minimum 10x
         self.dynamic_leverage = True  # Auto-adjust based on confidence
@@ -145,35 +150,66 @@ class AutonomousTraderV2:
         self.send_alert = None
         self.chat_ids: Set[int] = set()
     
-    def calculate_leverage(self, confidence: float, market_regime: str = None) -> int:
+    def determine_trade_style(self, timeframe: str, confidence: float) -> str:
         """
-        Dynamic leverage calculation based on confidence and market conditions.
-        Higher confidence = higher leverage (up to 200x)
+        Determine the best trade style based on timeframe and confidence.
+        Bot has FREE WILL to choose the optimal style.
+        """
+        if timeframe in ["5m", "15m"]:
+            return "SCALP"
+        elif timeframe in ["1h", "4h"]:
+            # Higher confidence -> prefer DAY trading
+            if confidence >= 75:
+                return "DAY"
+            else:
+                return "SCALP" if timeframe == "1h" else "DAY"
+        else:  # 1d+
+            return "SWING"
+    
+    def calculate_leverage(self, confidence: float, market_regime: str = None, trade_style: str = None) -> int:
+        """
+        Dynamic leverage calculation based on confidence, market conditions, and trade style.
+        Bot has FREE WILL to choose leverage within style bounds.
+        
+        SCALP: 50-200x (aggressive, quick)
+        DAY: 20-75x (moderate, medium holds)
+        SWING: 10-25x (conservative, longer holds)
         """
         if not self.dynamic_leverage:
             return self.min_leverage
         
-        # Base leverage from confidence (60-95% -> 10x-200x)
-        conf_normalized = (confidence - 60) / 35  # 0 to 1
+        # Get style config
+        style = trade_style or "DAY"
+        style_config = TRADE_STYLES.get(style, TRADE_STYLES["DAY"])
+        style_min = style_config["min_leverage"]
+        style_max = style_config["max_leverage"]
+        
+        # Base leverage from confidence (normalized to style range)
+        style_min_conf = style_config["min_confidence"]
+        conf_normalized = (confidence - style_min_conf) / (95 - style_min_conf)
         conf_normalized = max(0, min(1, conf_normalized))
         
-        # Calculate leverage
-        leverage = self.min_leverage + (self.max_leverage - self.min_leverage) * conf_normalized
+        # Calculate leverage within style bounds
+        leverage = style_min + (style_max - style_min) * conf_normalized
         
         # Adjust for market regime
         regime = market_regime or self.market_regime
         if regime == "VOLATILE":
-            leverage *= 1.2  # More leverage in volatile markets (more opportunities)
-        elif regime == "TRENDING":
-            leverage *= 1.1  # Slightly more in trends
+            leverage *= 1.3  # MORE leverage in volatile (opportunities!)
+        elif regime == "TRENDING_UP" or regime == "TRENDING_DOWN":
+            leverage *= 1.2  # Trend following = higher leverage
         elif regime == "RANGING":
-            leverage *= 0.8  # Less in ranging (choppy)
+            leverage *= 0.7  # Less leverage in choppy markets
         
-        # Cap at max
-        leverage = min(int(leverage), self.max_leverage)
-        leverage = max(leverage, self.min_leverage)
+        # Cap within style bounds
+        leverage = min(int(leverage), style_max)
+        leverage = max(leverage, style_min)
         
         return leverage
+    
+    def get_trade_style_config(self, trade_style: str) -> Dict:
+        """Get configuration for a trade style"""
+        return TRADE_STYLES.get(trade_style, TRADE_STYLES["DAY"])
     
     def set_dependencies(self, **kwargs):
         """Set all external dependencies"""
