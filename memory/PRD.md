@@ -171,12 +171,12 @@ Build a sophisticated trading bot named "Aeon" with:
 
 ### P1 (Next)
 - Mobile Optimization - full review of all pages for mobile-friendliness
-- Trade Journal improvements - allow notes on individual trades
-- server.py refactoring - extract more responsibilities into modules
+- server.py refactoring - extract more responsibilities into modules, remove duplicate routes
 
 ### P2 (When Ready)
 - Real-money trading (user deferred)
 - Moltbot deeper integration - sentiment-based trade signals
+- Cleanup unused PriceAlertsRedesigned.jsx file
 
 ### P3 (Future)
 - More exchange integrations
