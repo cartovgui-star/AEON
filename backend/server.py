@@ -1996,24 +1996,24 @@ async def api_quick_trade(request: Request):
         
         # Get current price
         full_symbol = f"{symbol}/USDT"
-        market_data = await market_intel.get_market_data(full_symbol)
+        market_data = await market_intel.get_ticker(full_symbol)
         current_price = market_data.get("price", 0)
         
         if current_price <= 0:
             return {"error": "Could not get current price"}
         
         # Determine trade style based on timeframe
-        trade_style = auto_trader_v2.determine_trade_style(timeframe, confidence)
+        trade_style = autonomous_trader_v2.determine_trade_style(timeframe, confidence)
         
         # Calculate leverage (bot has free will)
-        leverage = auto_trader_v2.calculate_leverage(confidence, None, trade_style)
+        leverage = autonomous_trader_v2.calculate_leverage(confidence, None, trade_style)
         
         # Get ATR for stop/target
         tech = await market_intel.get_technical_analysis(symbol + "USDT", timeframe)
         atr = tech.get("atr", current_price * 0.02)
         
         # Get style config for stop/target multipliers
-        style_config = auto_trader_v2.get_trade_style_config(trade_style)
+        style_config = autonomous_trader_v2.get_trade_style_config(trade_style)
         
         # Calculate stop and target
         if direction == "LONG":
@@ -2044,8 +2044,8 @@ async def api_quick_trade(request: Request):
         }
         
         # Add to open trades
-        auto_trader_v2.open_trades.append(trade)
-        await auto_trader_v2.save_open_trade(trade)
+        autonomous_trader_v2.open_trades.append(trade)
+        await autonomous_trader_v2.save_open_trade(trade)
         
         # Log to dashboard alerts
         price_alert_system._add_dashboard_alert({
