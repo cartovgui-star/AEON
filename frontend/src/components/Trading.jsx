@@ -325,13 +325,18 @@ export default function Trading() {
               const tradeType = position.trade_type || 
                 (position.timeframe === '15m' || position.timeframe === '5m' ? 'SCALP' : 
                  position.timeframe === '1h' ? 'DAY' : 'SWING');
+              const margin = positionSize / leverage;
               
               return (
                 <div 
                   key={position.id || i} 
                   data-testid={`position-${position.symbol?.replace('/USDT', '')}`}
-                  className={`bg-zinc-800/30 rounded-xl p-4 border ${
-                    position.direction === 'LONG' ? 'border-green-500/30' : 'border-red-500/30'
+                  onClick={() => {
+                    setSelectedPosition(position);
+                    setShowPositionModal(true);
+                  }}
+                  className={`bg-zinc-800/30 rounded-xl p-4 border cursor-pointer hover:border-opacity-60 transition-all ${
+                    position.direction === 'LONG' ? 'border-green-500/30 hover:border-green-500/50' : 'border-red-500/30 hover:border-red-500/50'
                   }`}
                 >
                   <div className="flex items-center justify-between mb-3">
@@ -363,7 +368,10 @@ export default function Trading() {
                         </p>
                       </div>
                       <button 
-                        onClick={() => closeTrade(position.symbol)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          closeTrade(position.symbol);
+                        }}
                         className="p-2 bg-red-500/20 rounded-lg text-red-400 hover:bg-red-500/30 transition-all"
                         title="Close Position"
                       >
