@@ -388,7 +388,7 @@ class FreeWillEngineV2:
                         bullish_reasons.append(f"Extreme Fear ({fg_value}) - contrarian buy")
                     elif fg_value > 80:
                         signals_sell += 1
-                        confirmations.append(f"🤑 Extreme Greed ({fg_value})")
+                        bearish_reasons.append(f"Extreme Greed ({fg_value}) - contrarian sell")
                 except:
                     pass
             
