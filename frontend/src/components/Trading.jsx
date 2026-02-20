@@ -1,10 +1,441 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Activity, TrendingUp, TrendingDown, DollarSign, Target, 
-  Play, Pause, RefreshCw, X, Settings2, Zap, Radio, BarChart3
+  Play, Pause, RefreshCw, X, Settings2, Zap, Radio, BarChart3,
+  AlertTriangle, Shield, Flame, Clock, ChevronRight, Percent,
+  ArrowUpRight, ArrowDownRight, Crosshair, LineChart
 } from 'lucide-react';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
+
+// Coin logo mapping
+const COIN_LOGOS = {
+  BTC: 'https://assets.coingecko.com/coins/images/1/small/bitcoin.png',
+  ETH: 'https://assets.coingecko.com/coins/images/279/small/ethereum.png',
+  SOL: 'https://assets.coingecko.com/coins/images/4128/small/solana.png',
+  AVAX: 'https://assets.coingecko.com/coins/images/12559/small/Avalanche_Circle_RedWhite_Trans.png',
+  BNB: 'https://assets.coingecko.com/coins/images/825/small/bnb-icon2_2x.png',
+  XRP: 'https://assets.coingecko.com/coins/images/44/small/xrp-symbol-white-128.png',
+  ADA: 'https://assets.coingecko.com/coins/images/975/small/cardano.png',
+  DOGE: 'https://assets.coingecko.com/coins/images/5/small/dogecoin.png',
+  DOT: 'https://assets.coingecko.com/coins/images/12171/small/polkadot.png',
+  MATIC: 'https://assets.coingecko.com/coins/images/4713/small/matic-token-icon.png',
+  LINK: 'https://assets.coingecko.com/coins/images/877/small/chainlink-new-logo.png',
+  UNI: 'https://assets.coingecko.com/coins/images/12504/small/uniswap-uni.png',
+  LTC: 'https://assets.coingecko.com/coins/images/2/small/litecoin.png',
+  ATOM: 'https://assets.coingecko.com/coins/images/1481/small/cosmos_hub.png',
+  ARB: 'https://assets.coingecko.com/coins/images/16547/small/photo_2023-03-29_21.47.00.jpeg',
+  OP: 'https://assets.coingecko.com/coins/images/25244/small/Optimism.png',
+  INJ: 'https://assets.coingecko.com/coins/images/12882/small/Secondary_Symbol.png',
+  SUI: 'https://assets.coingecko.com/coins/images/26375/small/sui_asset.jpeg',
+  APT: 'https://assets.coingecko.com/coins/images/26455/small/aptos_round.png',
+  NEAR: 'https://assets.coingecko.com/coins/images/10365/small/near.jpg',
+};
+
+// Professional Position Card Modal Component
+const PositionCardModal = ({ position, onClose, onCloseTrade, onSetTrailing }) => {
+  const [partialCloseAmount, setPartialCloseAmount] = useState(100);
+  const [showTrailingInput, setShowTrailingInput] = useState(false);
+  const [trailingPct, setTrailingPct] = useState(5);
+  
+  if (!position) return null;
+  
+  const symbol = position.symbol?.replace('/USDT', '') || '';
+  const isLong = position.direction === 'LONG';
+  const pnlPct = (position.pnl_pct || 0) * (position.leverage || 10);
+  const pnlUsd = (pnlPct / 100) * (position.position_size || 1000);
+  const isProfitable = pnlPct >= 0;
+  
+  // Calculate risk metrics
+  const entryPrice = position.entry_price || 0;
+  const currentPrice = position.current_price || 0;
+  const stopPrice = position.stop_price || 0;
+  const targetPrice = position.target_price || 0;
+  const leverage = position.leverage || 10;
+  const margin = (position.position_size || 1000) / leverage;
+  
+  // Liquidation price estimation (simplified)
+  const liqDistance = isLong 
+    ? ((currentPrice - stopPrice) / currentPrice * 100)
+    : ((stopPrice - currentPrice) / currentPrice * 100);
+  
+  // Progress to target/stop
+  const totalRange = Math.abs(targetPrice - stopPrice);
+  const currentProgress = isLong 
+    ? ((currentPrice - stopPrice) / totalRange * 100)
+    : ((stopPrice - currentPrice) / totalRange * 100);
+  
+  // Risk level
+  const riskLevel = liqDistance < 2 ? 'HIGH' : liqDistance < 5 ? 'MEDIUM' : 'LOW';
+  const riskColor = riskLevel === 'HIGH' ? 'red' : riskLevel === 'MEDIUM' ? 'amber' : 'green';
+  
+  // Time in position
+  const timeHeld = position.entry_time 
+    ? Math.floor((new Date() - new Date(position.entry_time)) / (1000 * 60 * 60))
+    : 0;
+  
+  // ROI threshold for fire animation
+  const isOnFire = Math.abs(pnlPct) > 50;
+
+  return (
+    <div 
+      className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-50 p-4" 
+      onClick={onClose}
+    >
+      <div 
+        className="w-full max-w-lg overflow-hidden rounded-2xl shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          background: 'linear-gradient(180deg, #1a1a2e 0%, #16213e 50%, #0f0f23 100%)',
+          border: `1px solid ${isLong ? 'rgba(34, 197, 94, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`,
+        }}
+      >
+        {/* Header - Exchange Style */}
+        <div className="relative px-5 py-4 border-b border-zinc-800/50">
+          {/* Live indicator */}
+          <div className="absolute top-3 right-3 flex items-center gap-1.5">
+            <span className="relative flex h-2 w-2">
+              <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${isLong ? 'bg-green-400' : 'bg-red-400'}`}></span>
+              <span className={`relative inline-flex rounded-full h-2 w-2 ${isLong ? 'bg-green-500' : 'bg-red-500'}`}></span>
+            </span>
+            <span className="text-xs text-zinc-400">LIVE</span>
+          </div>
+          
+          <div className="flex items-center gap-3">
+            {/* Coin Logo */}
+            <div className="relative">
+              <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${isLong ? 'bg-green-500/10' : 'bg-red-500/10'} border ${isLong ? 'border-green-500/30' : 'border-red-500/30'}`}>
+                {COIN_LOGOS[symbol] ? (
+                  <img src={COIN_LOGOS[symbol]} alt={symbol} className="w-8 h-8 rounded-full" />
+                ) : (
+                  <span className="text-lg font-bold text-white">{symbol.slice(0, 2)}</span>
+                )}
+              </div>
+              {/* Direction badge */}
+              <div className={`absolute -bottom-1 -right-1 px-1.5 py-0.5 rounded text-[10px] font-bold ${isLong ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}`}>
+                {isLong ? 'L' : 'S'}
+              </div>
+            </div>
+            
+            {/* Symbol & Info */}
+            <div className="flex-1">
+              <div className="flex items-center gap-2">
+                <h3 className="text-xl font-bold text-white">{symbol}/USDT</h3>
+                <span className={`px-2 py-0.5 rounded text-xs font-semibold ${isLong ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                  {position.direction}
+                </span>
+                <span className="px-2 py-0.5 rounded text-xs font-semibold bg-orange-500/20 text-orange-400">
+                  {leverage}x
+                </span>
+              </div>
+              <div className="flex items-center gap-2 mt-0.5 text-xs text-zinc-400">
+                <span className="flex items-center gap-1">
+                  <Clock className="w-3 h-3" />
+                  {timeHeld}h
+                </span>
+                <span>•</span>
+                <span>{position.timeframe}</span>
+                <span>•</span>
+                <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${
+                  position.trade_type === 'SCALP' ? 'bg-purple-500/20 text-purple-400' :
+                  position.trade_type === 'DAY' ? 'bg-blue-500/20 text-blue-400' :
+                  'bg-amber-500/20 text-amber-400'
+                }`}>
+                  {position.trade_type || 'SWING'}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* PnL Section - Large with Glow */}
+        <div className={`px-5 py-4 ${isProfitable ? 'bg-green-500/5' : 'bg-red-500/5'}`}>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs text-zinc-400 mb-1">Unrealized PnL</p>
+              <div className="flex items-baseline gap-2">
+                <span 
+                  className={`text-3xl font-bold ${isProfitable ? 'text-green-400' : 'text-red-400'}`}
+                  style={{
+                    textShadow: isProfitable 
+                      ? '0 0 20px rgba(34, 197, 94, 0.5)' 
+                      : '0 0 20px rgba(239, 68, 68, 0.5)'
+                  }}
+                >
+                  {isProfitable ? '+' : ''}{pnlPct.toFixed(2)}%
+                </span>
+                {isOnFire && (
+                  <Flame className={`w-6 h-6 ${isProfitable ? 'text-green-400' : 'text-red-400'} animate-pulse`} />
+                )}
+              </div>
+              <p className={`text-lg font-semibold ${isProfitable ? 'text-green-400/80' : 'text-red-400/80'}`}>
+                {isProfitable ? '+' : ''}${pnlUsd.toFixed(2)} USDT
+              </p>
+            </div>
+            
+            {/* ROI Badge */}
+            <div className={`px-4 py-3 rounded-xl ${isProfitable ? 'bg-green-500/10 border border-green-500/30' : 'bg-red-500/10 border border-red-500/30'}`}>
+              <p className="text-xs text-zinc-400 text-center mb-1">ROI</p>
+              <p className={`text-2xl font-bold text-center ${isProfitable ? 'text-green-400' : 'text-red-400'}`}>
+                {isProfitable ? '+' : ''}{pnlPct.toFixed(1)}%
+              </p>
+            </div>
+          </div>
+          
+          {/* Progress to Target */}
+          <div className="mt-4">
+            <div className="flex justify-between text-xs mb-1">
+              <span className="text-red-400">SL ${stopPrice?.toLocaleString()}</span>
+              <span className="text-zinc-400">Progress</span>
+              <span className="text-green-400">TP ${targetPrice?.toLocaleString()}</span>
+            </div>
+            <div className="h-2 bg-zinc-800 rounded-full overflow-hidden relative">
+              <div 
+                className={`h-full rounded-full transition-all duration-500 ${isProfitable ? 'bg-gradient-to-r from-green-600 to-green-400' : 'bg-gradient-to-r from-red-600 to-red-400'}`}
+                style={{ width: `${Math.min(Math.max(currentProgress, 0), 100)}%` }}
+              />
+              {/* Current position marker */}
+              <div 
+                className="absolute top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full border-2 border-zinc-900 shadow-lg"
+                style={{ left: `${Math.min(Math.max(currentProgress, 2), 98)}%`, transform: 'translate(-50%, -50%)' }}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Key Stats Bar */}
+        <div className="grid grid-cols-4 border-y border-zinc-800/50">
+          <div className="px-3 py-3 text-center border-r border-zinc-800/50">
+            <p className="text-[10px] text-zinc-500 uppercase">Entry</p>
+            <p className="text-sm font-semibold text-white">${entryPrice?.toLocaleString()}</p>
+          </div>
+          <div className="px-3 py-3 text-center border-r border-zinc-800/50">
+            <p className="text-[10px] text-zinc-500 uppercase">Mark</p>
+            <p className={`text-sm font-semibold ${isProfitable ? 'text-green-400' : 'text-red-400'}`}>
+              ${currentPrice?.toLocaleString()}
+            </p>
+          </div>
+          <div className="px-3 py-3 text-center border-r border-zinc-800/50">
+            <p className="text-[10px] text-zinc-500 uppercase">Size</p>
+            <p className="text-sm font-semibold text-white">${(position.position_size || 1000).toLocaleString()}</p>
+          </div>
+          <div className="px-3 py-3 text-center">
+            <p className="text-[10px] text-zinc-500 uppercase">Margin</p>
+            <p className="text-sm font-semibold text-cyan-400">${margin.toFixed(2)}</p>
+          </div>
+        </div>
+
+        {/* Risk Metrics Panel */}
+        <div className="px-5 py-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-zinc-400">Risk Assessment</span>
+            <span className={`px-2 py-0.5 rounded text-xs font-bold flex items-center gap-1
+              ${riskLevel === 'HIGH' ? 'bg-red-500/20 text-red-400' : 
+                riskLevel === 'MEDIUM' ? 'bg-amber-500/20 text-amber-400' : 
+                'bg-green-500/20 text-green-400'}`}
+            >
+              {riskLevel === 'HIGH' && <AlertTriangle className="w-3 h-3" />}
+              {riskLevel === 'LOW' && <Shield className="w-3 h-3" />}
+              {riskLevel} RISK
+            </span>
+          </div>
+          
+          {/* Margin Ratio Bar */}
+          <div>
+            <div className="flex justify-between text-xs mb-1">
+              <span className="text-zinc-400">Margin Ratio</span>
+              <span className="text-white">{(100 / leverage).toFixed(1)}%</span>
+            </div>
+            <div className="h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+              <div 
+                className={`h-full rounded-full ${
+                  100/leverage > 10 ? 'bg-green-500' : 
+                  100/leverage > 5 ? 'bg-amber-500' : 'bg-red-500'
+                }`}
+                style={{ width: `${Math.min(100/leverage * 5, 100)}%` }}
+              />
+            </div>
+          </div>
+          
+          {/* Distance to Stop */}
+          <div className="flex justify-between items-center">
+            <span className="text-xs text-zinc-400">Distance to Stop</span>
+            <span className={`text-sm font-semibold ${liqDistance > 5 ? 'text-green-400' : liqDistance > 2 ? 'text-amber-400' : 'text-red-400'}`}>
+              {liqDistance.toFixed(2)}%
+            </span>
+          </div>
+          
+          {/* Confidence */}
+          <div className="flex justify-between items-center">
+            <span className="text-xs text-zinc-400">Signal Confidence</span>
+            <div className="flex items-center gap-2">
+              <div className="w-20 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                <div 
+                  className="h-full rounded-full bg-gradient-to-r from-cyan-500 to-blue-500"
+                  style={{ width: `${position.confidence || 85}%` }}
+                />
+              </div>
+              <span className="text-sm font-semibold text-cyan-400">{position.confidence || 85}%</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Price Ladder Visualization */}
+        <div className="px-5 py-3 border-t border-zinc-800/50">
+          <p className="text-xs text-zinc-400 mb-3">Price Levels</p>
+          <div className="relative h-24 flex items-center">
+            {/* Vertical line */}
+            <div className="absolute left-8 top-0 bottom-0 w-0.5 bg-zinc-700" />
+            
+            {/* TP Level */}
+            <div className="absolute left-0 top-0 flex items-center gap-2 w-full">
+              <div className="w-4 h-4 rounded-full bg-green-500 flex items-center justify-center">
+                <Target className="w-2.5 h-2.5 text-white" />
+              </div>
+              <div className="h-0.5 w-4 bg-green-500" />
+              <div className="flex-1 flex justify-between items-center">
+                <span className="text-xs text-green-400">Take Profit</span>
+                <span className="text-sm font-semibold text-green-400">${targetPrice?.toLocaleString()}</span>
+              </div>
+            </div>
+            
+            {/* Current Price */}
+            <div className="absolute left-0 top-1/2 -translate-y-1/2 flex items-center gap-2 w-full">
+              <div className={`w-4 h-4 rounded-full ${isProfitable ? 'bg-green-500' : 'bg-red-500'} flex items-center justify-center animate-pulse`}>
+                <Crosshair className="w-2.5 h-2.5 text-white" />
+              </div>
+              <div className={`h-0.5 w-4 ${isProfitable ? 'bg-green-500' : 'bg-red-500'}`} />
+              <div className="flex-1 flex justify-between items-center">
+                <span className="text-xs text-white">Current</span>
+                <span className={`text-sm font-bold ${isProfitable ? 'text-green-400' : 'text-red-400'}`}>
+                  ${currentPrice?.toLocaleString()}
+                </span>
+              </div>
+            </div>
+            
+            {/* Entry Level */}
+            <div className="absolute left-0 bottom-6 flex items-center gap-2 w-full">
+              <div className="w-4 h-4 rounded-full bg-blue-500 flex items-center justify-center">
+                <ArrowUpRight className="w-2.5 h-2.5 text-white" />
+              </div>
+              <div className="h-0.5 w-4 bg-blue-500" />
+              <div className="flex-1 flex justify-between items-center">
+                <span className="text-xs text-blue-400">Entry</span>
+                <span className="text-sm font-semibold text-blue-400">${entryPrice?.toLocaleString()}</span>
+              </div>
+            </div>
+            
+            {/* SL Level */}
+            <div className="absolute left-0 bottom-0 flex items-center gap-2 w-full">
+              <div className="w-4 h-4 rounded-full bg-red-500 flex items-center justify-center">
+                <X className="w-2.5 h-2.5 text-white" />
+              </div>
+              <div className="h-0.5 w-4 bg-red-500" />
+              <div className="flex-1 flex justify-between items-center">
+                <span className="text-xs text-red-400">Stop Loss</span>
+                <span className="text-sm font-semibold text-red-400">${stopPrice?.toLocaleString()}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Confirmations */}
+        {position.confirmations && position.confirmations.length > 0 && (
+          <div className="px-5 py-3 border-t border-zinc-800/50">
+            <p className="text-xs text-zinc-400 mb-2">Signal Confirmations</p>
+            <div className="flex flex-wrap gap-1.5">
+              {position.confirmations.slice(0, 5).map((conf, idx) => (
+                <span key={idx} className="px-2 py-1 bg-cyan-500/10 text-cyan-400 rounded text-xs border border-cyan-500/20">
+                  ✓ {conf}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Quick Actions */}
+        <div className="px-5 py-4 border-t border-zinc-800/50 space-y-3">
+          {/* Partial Close */}
+          <div>
+            <p className="text-xs text-zinc-400 mb-2">Quick Close</p>
+            <div className="flex gap-2">
+              {[25, 50, 75, 100].map((pct) => (
+                <button
+                  key={pct}
+                  onClick={() => setPartialCloseAmount(pct)}
+                  className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${
+                    partialCloseAmount === pct 
+                      ? 'bg-red-500 text-white' 
+                      : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
+                  }`}
+                >
+                  {pct}%
+                </button>
+              ))}
+            </div>
+          </div>
+          
+          {/* Trailing Stop */}
+          {!showTrailingInput ? (
+            <button
+              onClick={() => setShowTrailingInput(true)}
+              className="w-full py-2.5 bg-amber-500/10 border border-amber-500/30 text-amber-400 rounded-lg text-sm font-semibold hover:bg-amber-500/20 transition-all flex items-center justify-center gap-2"
+            >
+              <LineChart className="w-4 h-4" />
+              Set Trailing Stop
+            </button>
+          ) : (
+            <div className="flex gap-2">
+              <input
+                type="number"
+                value={trailingPct}
+                onChange={(e) => setTrailingPct(Number(e.target.value))}
+                className="flex-1 px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-sm"
+                placeholder="Trail %"
+              />
+              <button
+                onClick={() => {
+                  onSetTrailing && onSetTrailing(position.symbol, trailingPct);
+                  setShowTrailingInput(false);
+                }}
+                className="px-4 py-2 bg-amber-500 text-white rounded-lg text-sm font-semibold"
+              >
+                Set {trailingPct}%
+              </button>
+              <button
+                onClick={() => setShowTrailingInput(false)}
+                className="px-3 py-2 bg-zinc-700 text-zinc-400 rounded-lg"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+          
+          {/* Main Actions */}
+          <div className="flex gap-2">
+            <button
+              onClick={() => {
+                onCloseTrade && onCloseTrade(position.symbol, partialCloseAmount);
+                if (partialCloseAmount === 100) onClose();
+              }}
+              data-testid="modal-close-position-btn"
+              className="flex-1 py-3 bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 text-white rounded-xl font-semibold transition-all shadow-lg shadow-red-500/20"
+            >
+              Close {partialCloseAmount}% Position
+            </button>
+            <button
+              onClick={onClose}
+              data-testid="modal-back-btn"
+              className="px-5 py-3 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-xl font-semibold transition-all"
+            >
+              Back
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 // Simple PnL Chart Component
 const PnLChart = ({ data }) => {
