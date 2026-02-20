@@ -3859,13 +3859,13 @@ Use /unbench [strategy] to force-activate"""
 # Include main api_router
 app.include_router(api_router)
 
-# Include modular route modules
+# Include modular route modules (all with /api prefix)
 app.include_router(smc_router, prefix="/api")
 app.include_router(memory_router, prefix="/api")
 app.include_router(strategies_router, prefix="/api")
 app.include_router(alerts_router, prefix="/api")
-app.include_router(market_router)
-app.include_router(trading_router)
-app.include_router(analysis_router)
+app.include_router(market_router, prefix="/api")
+app.include_router(trading_router, prefix="/api")
+app.include_router(analysis_router, prefix="/api")
 
 app.add_middleware(CORSMiddleware, allow_credentials=True, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
