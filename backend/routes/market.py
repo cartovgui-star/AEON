@@ -2,7 +2,7 @@
 from fastapi import APIRouter
 import app_state as state
 
-router = APIRouter(prefix="/api")
+router = APIRouter()  # No prefix - added when mounting
 
 
 @router.get("/market/scan/{symbol}")
