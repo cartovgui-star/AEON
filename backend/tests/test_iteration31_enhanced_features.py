@@ -32,25 +32,25 @@ class TestMarketCommand:
     """Test /market command with MEXC fallback for market data"""
     
     def test_market_summary_endpoint(self):
-        """Test intel/market returns summary with working prices"""
-        response = requests.get(f"{BASE_URL}/api/intel/market")
+        """Test intel/summary returns summary with working prices"""
+        response = requests.get(f"{BASE_URL}/api/intel/summary")
         assert response.status_code == 200
         data = response.json()
         
-        # Check it returns content (string summary)
+        # Check it returns content
         assert data is not None
         print(f"Market summary type: {type(data)}")
         
-        # Could be a string (formatted response) or dict
-        if isinstance(data, str):
+        # The endpoint returns {"summary": "..."} dict
+        if isinstance(data, dict) and "summary" in data:
+            summary = data["summary"]
             # Check for expected sections
-            assert "MARKET" in data.upper() or "BTC" in data.upper()
+            assert "MARKET" in summary.upper() or "BTC" in summary.upper()
             # Verify prices are not zeros
-            assert "$0.00" not in data or "N/A" in data  # Either has real prices or says N/A
-            print(f"Market summary (first 500 chars): {data[:500]}")
-        elif isinstance(data, dict):
-            # Check dict structure
-            print(f"Market summary keys: {data.keys()}")
+            assert "$0.00" not in summary or "N/A" in summary  # Either has real prices or says N/A
+            print(f"Market summary (first 500 chars): {summary[:500]}")
+        elif isinstance(data, str):
+            print(f"Market summary keys: {data[:200]}")
     
     def test_global_market_data(self):
         """Test global market data endpoint"""
@@ -287,7 +287,7 @@ class TestEnhancedIntelModule:
     
     def test_funding_rate(self):
         """Test funding rate endpoint"""
-        response = requests.get(f"{BASE_URL}/api/intel/funding/btc")
+        response = requests.get(f"{BASE_URL}/api/market/funding/btc")
         assert response.status_code == 200
         data = response.json()
         
@@ -343,20 +343,23 @@ class TestMEXCFallback:
     
     def test_market_summary_has_prices(self):
         """Verify market summary has live BTC/ETH/SOL prices"""
-        response = requests.get(f"{BASE_URL}/api/intel/market")
+        response = requests.get(f"{BASE_URL}/api/intel/summary")
         assert response.status_code == 200
         data = response.json()
         
-        if isinstance(data, str):
+        # Extract summary from dict
+        summary = data.get("summary", "") if isinstance(data, dict) else data
+        
+        if summary:
             # Check for live prices
             # Should NOT show $0.00 for BTC/ETH/SOL
-            content = data.upper()
-            print(f"Market summary snippet: {data[400:800]}")
+            content = summary.upper()
+            print(f"Market summary snippet: {summary[400:800]}")
             
             # If prices section exists, check it's not all zeros
             if "KEY PRICES" in content:
                 # Split and check
-                price_section = data[data.find("KEY PRICES"):data.find("KEY PRICES")+300]
+                price_section = summary[summary.find("KEY PRICES"):summary.find("KEY PRICES")+300]
                 print(f"Price section: {price_section}")
 
 
