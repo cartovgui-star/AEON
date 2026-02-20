@@ -232,6 +232,6 @@ Build a sophisticated trading bot named "Aeon" with:
 ---
 
 ## Deployment
-- Preview: https://aeon-trading-1.preview.emergentagent.com
+- Preview: https://trading-engine-demo.preview.emergentagent.com
 - Backend: Port 8001
 - Frontend: Port 3000

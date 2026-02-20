@@ -2,146 +2,261 @@
 
 **PRODUCT REQUIREMENTS**:
 1.  **Autonomous Paper Trading**: The bot should trade autonomously using simulated trades based on real market data from the MEXC exchange. This includes dual strategies (Aggressive Day Trader and cautious Long Term) and an aggressive mode with dynamic leverage up to 200x.
-2.  **Advanced Conversational AI**: The bot needs a sophisticated personality and the ability to respond via text and voice.
+2.  **Advanced Conversational AI**: The bot needs a sophisticated personality and the ability to respond via text and voice, using real-time data and avoiding price hallucinations.
 3.  **Enhanced UI/UX**:
     *   A main dashboard for key stats and market data.
-    *   A detailed trading UI showing PnL in USD and percentage.
+    *   A detailed trading UI showing PnL in USD and percentage. This includes a calling card modal for detailed position info, including margin usage.
     *   A comprehensive command list within the app.
     *   A UI settings panel to control the bot's trading features.
     *   A Trade Analytics Dashboard with visual charts (PnL curve, win rates).
     *   Quick Wins: One-click coin scan, mobile optimization, CSV export of trades, and notification preferences.
-4.  **Alerts & Notifications**: An alert system that is consistent and avoids contradictory signals. Users should be able to set custom price alerts.
-5.  **Telegram Bot**: The primary interface for interaction, must be responsive and provide a full command list. News alerts should have clickable links.
+4.  **Alerts & Notifications**: An alert system that provides detailed, non-contradictory reasoning and confirmations for every LONG or SHORT signal.
+5.  **Telegram Bot**: The primary interface for interaction, must be responsive and provide a full command list with detailed, accurate alerts.
 6.  **User Profiling**: The bot should learn and adapt to the user's trading style (deferred).
 7.  **Real Money Trading**: Explicitly deferred by the user.
 
 **User's preferred language**: en
 
 **what currently exists?**
-The application is a full-stack crypto trading bot with a React frontend, FastAPI backend, and MongoDB.
--   **Frontend**: The UI has been significantly optimized for mobile devices across all major pages (, , , , etc.). A new System Health page () has been added to display the status of backend services.
--   **Backend**: The backend has undergone a major refactoring. The monolithic  has been broken down into a modular structure with dedicated route files for , , , and  logic, improving maintainability. A new Self-Healing system () has been implemented to monitor background services, detect failures, and attempt automatic restarts. The alert system was overhauled to be leaner, and the Export to CSV functionality is now fully implemented. A critical bug in the  trading engine was also fixed.
+The application is a full-stack crypto trading bot (React + FastAPI + MongoDB). The agent has recently completed several major updates:
+-   **Backend Refactoring (Phase 1)**: Removed ~176 lines of duplicate API endpoints from  and corrected router prefixes, making the backend more modular. The file still remains large (~3700 lines).
+-   **Dashboard V2**: A new dashboard () has been implemented, featuring a Kill Switch to close all positions, a daily P&L goal tracker, quick action buttons, and an enhanced stats grid showing dynamic leverage.
+-   **Expanded Trading Styles**: The backend trading engine () was upgraded to support three distinct trading styles (SCALP, DAY, SWING) with dynamic leverage. However, the frontend currently appears to only display SWING trades.
+-   **Voice Feature**: The backend was prepared for OpenAI Whisper integration. However, the user reported the Aeon not responding issue. Investigation showed the backend endpoint is working, pointing to a potential frontend/mic permission issue in . A text input was added as a fallback.
+-   **UI/UX Enhancements**: The  page rendering issue was fixed, the position calling card modal was verified, the  was redesigned, and  was enhanced with detailed signal reasoning.
 
 **Last working item**:
--   **Last item agent was working**: The agent just completed two major user-requested tasks in parallel: a massive refactoring of  into modular route files and a comprehensive mobile optimization pass across all frontend components. The agent was in the process of initiating a full test run with the testing agent to validate these extensive changes when the session ended.
--   **Status**: IN PROGRESS
--   **Agent Testing Done**: N
--   **Which testing method agent to use?**: both
+-   **Last item agent was working**: The agent was performing a P1 priority task of refactoring the monolithic  file. It successfully identified and removed 27 duplicate API routes (~176 lines) for , , , and other modules. It also corrected the API prefixing for all modular routers to ensure they work correctly under the main  path.
+-   **Status**: NONE (COMPLETED will be marked only if user has verified it by testing)
+-   **Agent Testing Done**: Y
+-   **Which testing method agent to use?**: NA
 -   **User Testing Done**: N
 
 **All Pending/In progress Issue list**:
--   Issue 1: Verify  Refactoring and Mobile Optimization (P0)
+-   Issue 1: Aeon not responding - Voice Feature Broken (P0)
+-   Issue 2: Dynamic Trading Styles Not Reflected in UI (P1)
+-   Issue 3: Incomplete  Refactoring (P1)
 
 **Issues Detail**:
--   **Issue 1: Verify  Refactoring and Mobile Optimization**
-    -   **Description**: The backend  was broken down into four new route files, and almost all frontend components were updated for better mobile responsiveness. These changes are substantial and require a full regression test to ensure no functionality was broken.
-    -   **Attempted fixes**: The agent completed the implementation and was about to call the testing agent.
+-   **Issue 1: Aeon not responding - Voice Feature Broken**
+    -   **Description**: The user reported that the Talk to Aeon voice feature is not functional. The agent's investigation confirmed the backend endpoint () is working correctly via . The issue is likely on the frontend within the  component.
+    -   **Attempted fixes**: The agent tested the backend endpoint to confirm it's not a server issue. A text input field was added to  as a temporary fallback, but the core voice problem was not solved.
     -   **Next debug checklist**:
-        1.  Invoke the  tool.
-        2.  Provide the context that a major backend refactoring and frontend mobile optimization pass was just completed.
-        3.  Instruct the agent to perform a full end-to-end test of all major features, including API endpoints, frontend page rendering on both desktop and mobile, and the functionality of the new System Health page.
-        4.  Review the test report and fix any regressions identified.
-    -   **Why fix this issue and what will be achieved with the fix?**: This will validate that the significant improvements to code structure and user experience are stable and ready for use, preventing future bugs.
+        1.  Examine  to trace the logic for starting the microphone and handling the audio stream.
+        2.  Check the browser's developer console for any errors related to microphone access (), WebSocket connections, or audio processing when the Start Talking button is clicked.
+        3.  Add  statements to track the state of , , and any API call responses within the component.
+        4.  Ensure the frontend is correctly sending the audio data to the  endpoint and handling the response.
+    -   **Why fix this issue and what will be achieved with the fix?**: This is a core feature requested by the user for interacting with the bot. Fixing it will restore a primary UI/UX component.
     -   **Status**: IN PROGRESS
+    -   **Is recurring issue?**: N
+    -   **Should Test frontend/backend/both after fix?**: Frontend
+    -   **Blocked on other issue**: None
+
+-   **Issue 2: Dynamic Trading Styles Not Reflected in UI**
+    -   **Description**: The backend now supports SCALP, DAY, and SWING trading styles with dynamic leverage. However, screenshots of the dashboard and trading page show all positions are still labeled as SWING with a static 10x leverage, indicating the frontend is not displaying the new dynamic data.
+    -   **Attempted fixes**: None. The issue was only just observed by the agent.
+    -   **Next debug checklist**:
+        1.  Inspect the API responses for endpoints that return trade data (e.g., ). Verify if the  and  fields are being sent correctly from the backend.
+        2.  Examine the frontend components that display this data (, ) to see how they are parsing and rendering these fields.
+        3.  Check for hardcoded values or incorrect state management that might be overriding the data from the API.
+    -   **Why fix this issue and what will be achieved with the fix?**: This will correctly display the output of the new dynamic trading engine, which was a key user request for more flexible trading strategies.
+    -   **Status**: NOT STARTED
     -   **Is recurring issue?**: N
     -   **Should Test frontend/backend/both after fix?**: Both
     -   **Blocked on other issue**: None
 
+-   **Issue 3: Incomplete  Refactoring**
+    -   **Description**: The user requested a refactor of the large  file. While ~176 lines and 27 duplicate routes have been removed, the file is still ~3700 lines long with ~86 endpoints that could be modularized.
+    -   **Attempted fixes**: Phase 1 of refactoring is complete.
+    -   **Next debug checklist**:
+        1.  Use @api_router.get("/ws/stats")
+@api_router.get("/confluence/{symbol}")
+@api_router.get("/")
+@api_router.get("/system/health")
+@api_router.get("/pairs")
+@api_router.get("/mtf/{symbol}")
+@api_router.get("/mtf/align/{symbol}")
+@api_router.get("/calc/pnl")
+@api_router.get("/calc/position")
+@api_router.get("/calc/scenarios")
+@api_router.get("/advanced/divergence/{symbol}")
+@api_router.get("/advanced/structure/{symbol}")
+@api_router.get("/advanced/vwap/{symbol}")
+@api_router.get("/advanced/full/{symbol}")
+@api_router.get("/orderflow/cvd/{symbol}")
+@api_router.get("/orderflow/divergence/{symbol}")
+@api_router.get("/orderflow/absorption/{symbol}")
+@api_router.get("/orderflow/full/{symbol}")
+@api_router.get("/options/maxpain/{currency}")
+@api_router.get("/options/pcr/{currency}")
+@api_router.get("/options/oi/{currency}")
+@api_router.get("/options/full/{currency}")
+@api_router.get("/backtest/rsi/{symbol}")
+@api_router.get("/backtest/bb/{symbol}")
+@api_router.get("/backtest/ema/{symbol}")
+@api_router.get("/backtest/compare/{symbol}")
+@api_router.get("/coinglass/funding/{symbol}")
+@api_router.get("/coinglass/oi/{symbol}")
+@api_router.get("/coinglass/ls/{symbol}")
+@api_router.get("/coinglass/liquidations/{symbol}")
+@api_router.get("/coinglass/full/{symbol}")
+@api_router.get("/dual/stats")
+@api_router.post("/dual/toggle")
+@api_router.post("/dual/day-trader/toggle")
+@api_router.post("/dual/long-term/toggle")
+@api_router.post("/dual/day-trader/confidence")
+@api_router.post("/dual/long-term/confidence")
+@api_router.get("/freewill/stats")
+@api_router.get("/freewill/scan/{symbol}")
+@api_router.post("/freewill/toggle")
+@api_router.post("/freewill/confidence")
+@api_router.get("/alerts/stats")
+@api_router.get("/alerts/dashboard")
+@api_router.post("/alerts/mark-read/{dashboard_id}")
+@api_router.post("/alerts/clear")
+@api_router.post("/alerts/add")
+@api_router.delete("/alerts/{alert_id}")
+@api_router.get("/alerts/custom")
+@api_router.post("/alerts/threshold")
+@api_router.get("/strategies/scan/{symbol}")
+@api_router.get("/strategies/ma/{symbol}")
+@api_router.get("/strategies/rsi/{symbol}")
+@api_router.get("/strategies/breakout/{symbol}")
+@api_router.get("/strategies/bb/{symbol}")
+@api_router.get("/strategies/macd/{symbol}")
+@api_router.get("/strategies/pullback/{symbol}")
+@api_router.get("/strategies/all/{symbol}")
+@api_router.get("/data/social/{symbol}")
+@api_router.get("/data/btc/onchain")
+@api_router.get("/data/btc/fees")
+@api_router.get("/data/eth/gas")
+@api_router.get("/data/defi/tvl")
+@api_router.get("/sentiment/composite")
+@api_router.get("/sentiment/news")
+@api_router.get("/sentiment/fear-greed")
+@api_router.get("/sentiment/history")
+@api_router.get("/strategy-health/status")
+@api_router.get("/strategy-health/ranking")
+@api_router.post("/strategy-health/record")
+@api_router.post("/strategy-health/unbench/{strategy_id}")
+@api_router.get("/data/all/{symbol}")
+@api_router.post("/voice/respond")
+@api_router.post("/voice/transcribe")
+@api_router.get("/voice/info")
+@api_router.get("/learning/stats")
+@api_router.get("/learning/open")
+@api_router.post("/trading/v2/close-all")
+@api_router.post("/trading/v2/quick-trade")
+@api_router.get("/mexc/live")
+@api_router.get("/bot/stats")
+@api_router.get("/bot/messages")
+@api_router.get("/bot/test")
+@api_router.get("/user/profile")
+@api_router.get("/user/profile/{chat_id}")
+@api_router.post("/user/profile/{chat_id}/fact")
+@api_router.post("/webhook") to list all remaining endpoints.
+        2.  Group the remaining endpoints by functionality (e.g., , , ).
+        3.  Create or identify corresponding files in  for these groups.
+        4.  Systematically move the endpoint logic from  to the modular route files, ensuring all dependencies are also moved or correctly imported.
+        5.  Remove the moved endpoints from .
+    -   **Why fix this issue and what will be achieved with the fix?**: Completing the refactor will improve code maintainability, reduce complexity, and align with modern FastAPI best practices.
+    -   **Status**: IN PROGRESS
+    -   **Is recurring issue?**: N
+    -   **Should Test frontend/backend/both after fix?**: Backend
+    -   **Blocked on other issue**: None
+
 **In progress Task List**:
--   None.
+-   There are no other tasks in progress; the work is captured in the issue list above.
 
 **Upcoming and Future Tasks**
 -   **Upcoming Tasks**:
-    -   (P1) **Trade Journal**: Allow users to add notes to individual trades.
-
+    -   (P1) **Cleanup Unused Files**: Perform a thorough check of the entire repository for any orphaned or unused component/service files now that major refactoring has occurred.
 -   **Future Tasks**:
     -   (P2) **Real-Money Trading**: Integrate with a live exchange account (explicitly deferred by user).
+    -   (P2) **User Profiling**: Implement logic for the bot to learn from and adapt to the user's trading style (deferred).
 
 **Completed work in this session**
--   ** Refactoring**: Decomposed the monolithic  into a modular architecture using FastAPI routers for better organization and scalability.
-    -   Created , , , .
-    -   Created  to manage shared dependencies.
--   **Mobile Optimization**: Performed a comprehensive review and update of all major frontend components (, , , , etc.) to improve responsiveness and layout on mobile devices.
--   **Self-Healing System**: Implemented a new  module to monitor background tasks, detect failures, and attempt auto-recovery. This includes a new  endpoint and a corresponding System Health page on the frontend.
--   **Alert System Overhaul**: Refactored alert generation in , , and  to be leaner and better by grouping alerts and improving message formatting.
--   **CSV Export Implementation**: Added a  backend endpoint and correctly wired up the frontend button in .
--   **Bug Fix ()**: Resolved a  (name scan is not defined) by correctly fetching market structure data within the trading engine.
+-   **Backend Refactoring (Phase 1)**: Removed 27 duplicate API routes (~176 lines) from  and fixed router prefixes.
+-   **Dashboard V2 Implementation**: Created and integrated a new dashboard with a Kill Switch, P&L goal tracker, and enhanced stats grid ().
+-   **Dynamic Trading Engine**: Upgraded the backend to support SCALP, DAY, and SWING styles with variable leverage ().
+-   **Voice Feature Preparation**: Prepared the backend for OpenAI Whisper integration and added a new  endpoint.
+-   **Trading Page Bug Fix**: Fixed a critical JSX structural bug in  that was blocking the page from rendering.
+-   **Settings Page Redesign**: Overhauled  with a clean, tabbed UI.
+-   **SMC Analysis Enhancement**: Added a Why This Signal? reasoning section to .
 
 **Earlier issues found/mentioned but not fixed**
--   None. All previously known issues were addressed in this session.
+-   None that aren't already captured in the All Pending/In progress Issue list.
 
 **Known issue recurrence from previous fork**
--   **Telegram Bot Unresponsiveness**: This was permanently fixed in a previous session with an auto-webhook setup on startup. **Status: RESOLVED**.
+-   None.
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
--   **Frontend**: React, Recharts, Responsive Design (Tailwind CSS).
--   **Backend**: FastAPI, Asyncio, Pydantic, Code Modularity (Route Separation), Service Health Monitoring.
--   **Database**: MongoDB.
--   **Core Logic**: Market Structure Analysis, Alert Filtering, Self-Healing.
--   **Integrations**: Telegram Bot API,  library.
+-   **Frontend**: React, JSX, Tailwind CSS, Component-based UI, State Management.
+-   **Backend**: FastAPI, Pydantic, Modular Routing (APIRouter), Route prefixing, Background tasks.
+-   **Core Logic**: Dynamic trading styles (SCALP/DAY/SWING), dynamic leverage calculation, LLM-based conversational AI.
+-   **Integrations**: OpenAI Whisper (prepared), Edge TTS, CCXT.
 
 **key DB schema**
--   No changes were made to the DB schema in this session.
+-   No changes in this session.
 
 **All files of reference**
--   **New Files**:
-    -   : Core logic for the service monitoring system.
-    -   : Manages shared dependencies for FastAPI routers.
-    -   , , , : Modular API route files refactored from .
-    -   : UI for displaying service health.
--   **Modified Files**:
-    -   : Major refactoring to orchestrate routers and background tasks.
-    -   : Fixed a critical bug and updated alert formatting.
-    -   : Added the route for the new health page.
-    -   : Most components were updated for mobile responsiveness.
+-   : Heavily refactored but still large. Contains new endpoints for voice STT and the kill switch.
+-   : New file containing the logic for different trading styles.
+-   : New component for the upgraded dashboard.
+-   : Modified to render the new  component.
+-   : The likely source of the Aeon not responding bug.
+-   : File where the rendering bug was fixed.
+-   : The redesigned settings UI.
+-   , , : Router prefixes were fixed.
 
 **Areas that need refactoring**:
--   None. A major refactoring of  was just completed.
+-   : Still contains ~86 API endpoints and is ~3700 lines long. Needs to be further broken down into modular route files as a P1 priority.
 
 **key api endpoints**
--   : **(NEW)** Returns the health status of all monitored background services.
--   : **(NEW)** Exports the user's trade history as a downloadable CSV file.
--   **Note**: All other API endpoints still exist but have been moved from  to their respective modular route files in .
+-   : **(POST)** New endpoint for Speech-to-Text transcription.
+-   : **(POST)** New endpoint for the Kill Switch to liquidate all open trades.
+-   : **(POST)** Existing endpoint for conversational AI, confirmed to be working on the backend.
 
 **Critical Info for New Agent**
--   Your immediate and only priority is to validate the massive refactoring and mobile optimization work completed in the last session.
--   The user's last instruction was Continue where we left at, which means you should proceed with testing.
--   Use the  tool to run a full end-to-end regression test on both the frontend and backend.
--   All previously pending tasks and user requests from this session (Alerts, CSV export, Self-Healing) have been implemented. The codebase is significantly healthier but needs verification.
+-   **P0 Blocker**: The top priority is to fix the Aeon not responding voice feature. The problem is on the frontend in , as the backend endpoint is confirmed to be working.
+-   **P1 Data Mismatch**: Investigate why the new dynamic trading styles and leverage (SCALP/DAY) are not being displayed on the frontend. The UI seems to be stuck showing SWING and 10x. Check API payloads first, then the frontend rendering logic in  and .
+-   **P1 Background Task**: Continue the refactoring of . The user wants this file to be fully modularized.
 
 **documents and test reports created in this job**
 -   
--    (updated)
+-   
+-    (Updated)
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  : User instruction to resume the task. (Status: PENDING - agent must run tests).
-2.  : User approved the plan for mobile optimization and  refactoring. (Status: COMPLETED).
-3.  : User confirmed the next tasks. (Status: COMPLETED).
-4.  : User instruction to continue after a tool connection issue. (Status: COMPLETED).
-5.  : User asking about a temporary tool error. (Status: COMPLETED).
-6.  : User set priorities and requested the self-healing feature. (Status: COMPLETED).
+1.  : User reported the voice feature is broken and requested P1 priority for  refactoring and file cleanup. (Status: IN PROGRESS)
+2.  : User approved the agent's plan to use the testing agent. (Status: COMPLETED)
+3.  : User requested P1 tasks, an enhancement idea, and more trading styles (quick/medium trades with high leverage). (Status: COMPLETED)
+4.  : User approved the agent's plan and requested a dashboard upgrade and voice implementation using their GPU. (Status: COMPLETED)
+5.  : User asked the agent to work on tasks of all priorities. (Status: COMPLETED)
 
 **Project Health Check:**
--   **Broken**: None.
--   **Mocked**: All trading is still in paper trading mode as per original requirements.
+-   **Broken**: The Talk to Aeon voice conversation feature is not working from the user's perspective, likely due to a frontend issue.
+-   **Mocked**: All trading is still in paper trading mode.
 
 **3rd Party Integrations**
 -   **OpenAI GPT-4o**: Uses Emergent LLM Key for conversational AI.
+-   **OpenAI Whisper**: Prepared for integration for Speech-to-Text.
 -   **MEXC Exchange**: Primary source for live market data.
 -   **Edge TTS**: For text-to-speech voice feature.
 -   **Multi-Exchange via **: For arbitrage detection (Binance, Bybit, OKX, KuCoin).
 
 **Testing status**
--   **Testing agent used after significant changes**: YES. It was used after the self-healer implementation and the call was initiated for the final refactoring work but was interrupted.
--   **Troubleshoot agent used after agent stuck in loop**: NO
+-   **Testing agent used after significant changes**: YES. Used twice to validate major feature implementations.
+-   **Troubleshoot agent used after agent stuck in loop**: NO.
 -   **Test files created**: None.
--   **Known regressions**: None identified, but the recent large-scale changes make regression testing the highest priority.
+-   **Known regressions**: The voice feature, which was previously working, is now reported as broken by the user.
 
 **Credentials to test flow:**
 -   N/A
 
 **What agent forgot to execute**
--   The agent was interrupted before it could execute the final, critical step: calling the  to verify the major backend refactoring and frontend mobile optimization. This is the immediate next action.</analysis>
+-   The agent did not fully debug and resolve the root cause of the Aeon not responding voice issue, instead providing a temporary fallback.
+-   The agent did not verify that the new dynamic trading styles were correctly displayed on the frontend after implementing the backend logic.</analysis>
