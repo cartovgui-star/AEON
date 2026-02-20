@@ -1793,18 +1793,57 @@ Use with /deriv {symbol.lower()} for full derivatives picture."""
             
         elif text_lower == '/fear' or text_lower == '/greed' or text_lower == '/fng':
             fng = await enhanced_intel.get_fear_greed_index()
-            interpretation = enhanced_intel.interpret_fear_greed(fng.get("value", 50))
+            value = fng.get("value", 50)
+            classification = fng.get('classification', 'Neutral')
+            interpretation = enhanced_intel.interpret_fear_greed(value)
+            
+            # Detailed action guidance
+            if value <= 20:
+                action = "STRONG BUY ZONE - Accumulate quality assets"
+                risk = "Could drop more but historically great entries"
+                what_happens = "Extreme fear often marks local/major bottoms"
+            elif value <= 35:
+                action = "Start building positions slowly"
+                risk = "May see more fear before reversal"
+                what_happens = "Fear washing out weak hands"
+            elif value >= 80:
+                action = "EXTREME CAUTION - Take profits"
+                risk = "Top likely forming, don't chase"
+                what_happens = "Extreme greed precedes major corrections"
+            elif value >= 65:
+                action = "Tighten stops, scale out of positions"
+                risk = "Getting overheated"
+                what_happens = "Greed building, correction possible"
+            else:
+                action = "No extreme - trade your analysis"
+                risk = "Market in balance"
+                what_happens = "Neutral sentiment, follow trend"
             
             response = f"""🎭 FEAR & GREED INDEX
 
-Value: {fng.get('value', '?')}
-Status: {fng.get('classification', '?')}
+📊 Value: {value}
+📈 Status: {classification}
 
 {interpretation}
 
-This is a contrarian indicator:
-• Extreme Fear = potential buying opportunity
-• Extreme Greed = potential top, be cautious"""
+🎯 WHAT THIS MEANS:
+• {what_happens}
+
+💰 ACTION TO TAKE:
+• {action}
+
+⚠️ RISK IF WRONG:
+• {risk}
+
+📚 HOW TO USE THIS:
+• 0-25 = Extreme Fear → Contrarian BUY
+• 25-45 = Fear → Look for entries
+• 45-55 = Neutral → Trade trend
+• 55-75 = Greed → Caution, tighten stops
+• 75-100 = Extreme Greed → Contrarian SELL
+
+💡 Remember: This is a CONTRARIAN indicator
+Buy when others are fearful, sell when greedy"""
             context = "trading"
             
         elif text_lower == '/top100' or text_lower == '/top':
