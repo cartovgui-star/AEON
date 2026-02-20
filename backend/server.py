@@ -1874,93 +1874,59 @@ Total PnL: {stats['total_pnl_pct']:+.2f}%"""
             current_mode = settings.get("mode", "default")
             dual_stats = dual_engine.get_stats()
             
-            response = f"""AEON - AI Trading Intelligence
+            response = f"""*AEON Trading Intelligence*
 
-====== PERSONAS ======
-Default - Sharp trading buddy
-Alchemy Mode - Mystical wisdom
-  (Say "alchemy mode" / "casual mode")
+*QUICK START*
+/scan btc - Full analysis with entry/SL/TP
+/ta btc - Technicals (RSI, MACD, BB)
+/auto - Paper trading status
+/fw - Free Will elite alerts
 
-====== MARKET ANALYSIS ======
-/scan btc      - Full analysis + entry/SL/TP
-/ta btc 1h     - Technicals (RSI, MACD, BB)
-/mtf btc       - Multi-timeframe (1h/4h/1d)
-/sentiment btc - Sentiment score
-/structure btc - HH/HL/LH/LL analysis
+*ANALYSIS*
+/scan [coin] - Full SMC analysis
+/ta [coin] [tf] - Technical indicators
+/mtf [coin] - Multi-timeframe view
+/structure [coin] - HH/HL/LH/LL
+/smc [coin] - Order blocks & FVG
 
-====== DERIVATIVES ======
-/funding btc   - Aggregated funding rates
-/deriv btc     - Full derivatives data
-/positions btc - Long/Short ratio
-/cg btc        - Coinglass data
+*MARKET DATA*
+/market - Global summary
+/fear - Fear & Greed Index
+/top100 - Top 10 by market cap
+/movers - 24h gainers/losers
+/trending - Most searched
 
-====== MARKET INTEL ======
-/market  - Global market summary
-/fear    - Fear & Greed Index
-/top100  - Top 10 by market cap
-/movers  - Top gainers/losers (24h)
-/trending - Most searched coins
+*DERIVATIVES*
+/funding [coin] - Funding rates
+/deriv [coin] - Full derivatives
+/positions [coin] - Long/Short ratio
+/cg [coin] - Coinglass data
 
-====== NEWS & ON-CHAIN ======
-/news    - Latest headlines (clickable!)
-/whales  - Whale activity (>10 BTC)
-/onchain - BTC network stats
+*TRADING*
+/auto on|off - Toggle paper trading
+/opps - Current opportunities
+/open - Open positions
+/close [coin] - Close position
+/trail [coin] [%] - Set trailing stop
 
-====== CALCULATORS ======
-/calc 65000 68000 1000 10 long
-  (entry exit size leverage direction)
-/calcsize 10000 2 65000 63000 10
-  (balance risk% entry stop leverage)
+*ALERTS*
+/alerts - View active alerts
+/alert add [coin] above|below [price]
+/fw - Free Will status
+/fwconf [80-95] - Set confidence
 
-====== AUTONOMOUS TRADING ======
-/auto    - Paper trading stats
-/auto on / off - Toggle trading
-/opps    - Current opportunities
-/open    - Open positions
-/close btc   - Close position
-/trail btc 5 - Set trail stop %
-/tp btc 72000 - Set take profit
+*ADVANCED*
+/intel - Full market intelligence
+/arbi - Multi-exchange arbitrage
+/options [btc|eth] - Options analysis
+/cvd [coin] - Order flow
+/divergence [coin] - Divergence scan
 
-====== DUAL ENGINE ======
-Day Trader: {'ON' if dual_stats['day_trader']['active'] else 'OFF'} ({dual_stats['day_trader']['min_confidence']}% min)
-Long Term: {'ON' if dual_stats['long_term']['active'] else 'OFF'} ({dual_stats['long_term']['min_confidence']}% min)
-* Market structure filter active (HH/HL/LH/LL)
+*MODE*
+Say "alchemy mode" for mystical responses
+Say "casual mode" for trading focus
 
-====== FREE WILL v2 ======
-/fw      - Free Will status
-/fwconf 80 - Set min confidence
-free on / free off - Toggle alerts
-
-====== INTELLIGENCE (NEW) ======
-/intel     - Full market intelligence report
-/arbi      - Scan 5 exchanges for arbitrage
-/health    - Strategy health & auto-bench status
-/unbench [id] - Force reactivate strategy
-
-====== SMART MONEY (SMC) ======
-/smc btc - Order blocks, FVG, liquidity
-
-====== ADVANCED ======
-/divergence btc - RSI/MACD divergence
-/vwap btc       - VWAP levels
-/cvd btc        - Order flow (CVD)
-/options btc    - Max pain & P/C ratio
-/strat btc      - Multi-strategy scan
-/backtest btc   - Strategy backtest
-
-====== ALERTS ======
-/alerts - View alert status
-/alert add btc above 70000
-/alert remove [id]
-
-====== JOURNAL ======
-/journal  - Performance stats
-/insights - AI trading insights
-
-Mode: {'Alchemy' if current_mode == 'alchemy' else 'Casual'}
-Auto Trading: {'ACTIVE' if autonomous_trader_v2.active else 'PAUSED'}
-
-What's on your mind?"""
+Status: {'ACTIVE' if autonomous_trader_v2.active else 'PAUSED'} | Mode: {'Alchemy' if current_mode == 'alchemy' else 'Casual'}"""
             context = "start"
             
         elif text_lower == '/freewill' or text_lower == '/fw':
