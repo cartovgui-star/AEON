@@ -575,13 +575,31 @@ export default function Trading() {
     }
   };
 
-  const closeTrade = async (symbol) => {
+  const closeTrade = async (symbol, percentage = 100) => {
     try {
       const cleanSymbol = symbol.replace('/USDT', '');
-      await fetch(`${API_URL}/api/trading/v2/close/${cleanSymbol}`, { method: 'POST' });
+      await fetch(`${API_URL}/api/trading/v2/close/${cleanSymbol}`, { 
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ percentage })
+      });
       fetchData();
     } catch (err) {
       console.error('Close trade failed:', err);
+    }
+  };
+
+  const setTrailingStop = async (symbol, trailPct) => {
+    try {
+      const cleanSymbol = symbol.replace('/USDT', '');
+      await fetch(`${API_URL}/api/trading/v2/trail/${cleanSymbol}`, { 
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ trail_pct: trailPct })
+      });
+      fetchData();
+    } catch (err) {
+      console.error('Set trailing stop failed:', err);
     }
   };
 
