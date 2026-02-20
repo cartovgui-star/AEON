@@ -307,6 +307,97 @@ class AdditionalDataSources:
         results["defi_tvl"] = fetched[4] if not isinstance(fetched[4], Exception) else {"error": str(fetched[4])}
         
         return results
+    
+    async def get_crypto_news(self, limit: int = 10) -> Dict:
+        """
+        Aggregate crypto news from multiple FREE sources
+        Sources: CryptoCompare, CryptoPanic (public), RSS feeds
+        """
+        cache_key = "crypto_news"
+        cached = self._get_cached(cache_key)
+        if cached:
+            return cached
+        
+        all_news = []
+        
+        try:
+            async with httpx.AsyncClient(timeout=15) as client:
+                # CryptoCompare News (FREE)
+                try:
+                    cc_url = "https://min-api.cryptocompare.com/data/v2/news/?lang=EN"
+                    resp = await client.get(cc_url)
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        for item in data.get("Data", [])[:limit]:
+                            all_news.append({
+                                "title": item.get("title", ""),
+                                "body": item.get("body", "")[:200] + "...",
+                                "source": item.get("source_info", {}).get("name", "CryptoCompare"),
+                                "url": item.get("url", ""),
+                                "published": item.get("published_on", 0),
+                                "categories": item.get("categories", "").split("|")[:3],
+                                "tags": item.get("tags", "").split("|")[:5],
+                                "sentiment": "neutral"
+                            })
+                except Exception as e:
+                    logger.warning(f"CryptoCompare news error: {e}")
+                
+                # CoinGecko News (FREE - via status updates)
+                try:
+                    cg_url = "https://api.coingecko.com/api/v3/status_updates?per_page=10"
+                    resp = await client.get(cg_url)
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        for item in data.get("status_updates", []):
+                            all_news.append({
+                                "title": item.get("project", {}).get("name", "Crypto") + " Update",
+                                "body": item.get("description", "")[:200] + "...",
+                                "source": "CoinGecko",
+                                "url": item.get("project", {}).get("link", ""),
+                                "published": 0,  # No timestamp
+                                "categories": [item.get("category", "general")],
+                                "tags": [],
+                                "sentiment": "neutral"
+                            })
+                except Exception as e:
+                    logger.warning(f"CoinGecko news error: {e}")
+                
+                # CryptoPanic Public Headlines (FREE)
+                try:
+                    cp_url = "https://cryptopanic.com/api/v1/posts/?auth_token=free&public=true&kind=news"
+                    resp = await client.get(cp_url)
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        for item in data.get("results", [])[:limit]:
+                            sentiment = "bullish" if item.get("votes", {}).get("positive", 0) > item.get("votes", {}).get("negative", 0) else "bearish" if item.get("votes", {}).get("negative", 0) > item.get("votes", {}).get("positive", 0) else "neutral"
+                            all_news.append({
+                                "title": item.get("title", ""),
+                                "body": "",
+                                "source": item.get("source", {}).get("title", "CryptoPanic"),
+                                "url": item.get("url", ""),
+                                "published": item.get("created_at", ""),
+                                "categories": [c.get("title", "") for c in item.get("currencies", [])[:3]],
+                                "tags": [],
+                                "sentiment": sentiment
+                            })
+                except Exception as e:
+                    logger.warning(f"CryptoPanic news error: {e}")
+                
+        except Exception as e:
+            logger.error(f"News aggregation error: {e}")
+        
+        # Sort by published time if available
+        all_news.sort(key=lambda x: x.get("published", 0), reverse=True)
+        
+        result = {
+            "news": all_news[:limit * 2],  # Return up to 2x limit
+            "total": len(all_news),
+            "sources": ["CryptoCompare", "CoinGecko", "CryptoPanic"],
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }
+        
+        self._set_cache(cache_key, result)
+        return result
 
 
 # Global instance
