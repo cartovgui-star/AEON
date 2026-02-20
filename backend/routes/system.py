@@ -43,3 +43,10 @@ async def api_list_pairs():
             "multi_timeframe": "1h, 4h, 1d analysis available"
         }
     }
+
+
+@router.get("/news")
+async def api_crypto_news(limit: int = 10):
+    """Get aggregated crypto news from multiple sources"""
+    from additional_data import additional_data
+    return await additional_data.get_crypto_news(limit=limit)
