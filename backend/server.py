@@ -68,6 +68,9 @@ from routes import (
     options_router, backtest_router, coinglass_router,
     dual_router, data_router, sentiment_router,
     strategy_health_router, voice_router, user_router,
+    # Server.py refactoring routes
+    accuracy_router, learning_router, bot_router,
+    system_router, mtf_router, confluence_router,
 )
 from voice_tts import generate_speech, VOICES
 from price_alerts import price_alert_system, PriceAlertSystem
