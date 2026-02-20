@@ -167,11 +167,16 @@ class FreeWillEngineV2:
         """
         Full multi-source analysis for a setup
         Returns setup only if confidence >= 80% AND 3+ confirmations
+        
+        IMPROVED: Collects bullish/bearish signals separately, then only shows
+        confirmations that support the final direction. No contradictions.
         """
         self.setups_analyzed += 1
         
         try:
-            confirmations = []
+            # Collect signals separately - no mixing
+            bullish_reasons = []
+            bearish_reasons = []
             signals_buy = 0
             signals_sell = 0
             
@@ -191,41 +196,43 @@ class FreeWillEngineV2:
                 bb_signal = indicators.get("bb_position", "")
                 ema_stack = indicators.get("ema_stack", "")
                 
-                # RSI extremes
+                # RSI signals
                 if rsi < 25:
                     signals_buy += 2
-                    confirmations.append(f"RSI extreme oversold ({rsi:.0f})")
+                    bullish_reasons.append(f"RSI oversold at {rsi:.0f}")
                 elif rsi < 30:
                     signals_buy += 1
-                    confirmations.append(f"RSI oversold ({rsi:.0f})")
+                    bullish_reasons.append(f"RSI approaching oversold ({rsi:.0f})")
                 elif rsi > 75:
                     signals_sell += 2
-                    confirmations.append(f"RSI extreme overbought ({rsi:.0f})")
+                    bearish_reasons.append(f"RSI overbought at {rsi:.0f}")
                 elif rsi > 70:
                     signals_sell += 1
-                    confirmations.append(f"RSI overbought ({rsi:.0f})")
+                    bearish_reasons.append(f"RSI approaching overbought ({rsi:.0f})")
                 
-                # MACD
+                # MACD - only count clear signals
                 if "BULLISH" in str(macd_signal).upper():
                     signals_buy += 1
-                    confirmations.append("MACD bullish")
+                    bullish_reasons.append("MACD bullish crossover")
                 elif "BEARISH" in str(macd_signal).upper():
                     signals_sell += 1
-                    confirmations.append("MACD bearish")
+                    bearish_reasons.append("MACD bearish crossover")
                 
                 # Bollinger Bands
                 if "LOWER" in str(bb_signal).upper() or "OVERSOLD" in str(bb_signal).upper():
                     signals_buy += 1
-                    confirmations.append("BB lower band touch")
+                    bullish_reasons.append("Price at BB lower band (support)")
                 elif "UPPER" in str(bb_signal).upper() or "OVERBOUGHT" in str(bb_signal).upper():
                     signals_sell += 1
-                    confirmations.append("BB upper band touch")
+                    bearish_reasons.append("Price at BB upper band (resistance)")
                 
                 # EMA Stack
                 if "BULLISH" in str(ema_stack).upper():
                     signals_buy += 1
+                    bullish_reasons.append("EMA stack bullish (20>50>200)")
                 elif "BEARISH" in str(ema_stack).upper():
                     signals_sell += 1
+                    bearish_reasons.append("EMA stack bearish (20<50<200)")
             else:
                 return None
             
@@ -237,12 +244,13 @@ class FreeWillEngineV2:
                     div = await self.advanced_strategies.detect_divergence(symbol, timeframe)
                     if div.get("has_divergence"):
                         for d in div.get("divergences", []):
+                            div_type = d.get('type', '').replace('_', ' ')
                             if d.get("signal") == "BUY":
-                                signals_buy += 2  # Divergence is strong
-                                confirmations.append(f"📊 {d.get('type')} divergence")
+                                signals_buy += 2
+                                bullish_reasons.append(f"{div_type} divergence (reversal signal)")
                             elif d.get("signal") == "SELL":
                                 signals_sell += 2
-                                confirmations.append(f"📊 {d.get('type')} divergence")
+                                bearish_reasons.append(f"{div_type} divergence (reversal signal)")
                 except:
                     pass
             
