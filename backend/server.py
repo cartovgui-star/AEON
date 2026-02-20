@@ -1619,28 +1619,80 @@ free on/off - Toggle alerts
             whale = await market_intel.get_top_trader_long_short_ratio(symbol + "USDT", "1h", 1)
             funding = await market_intel.get_current_funding_rate(symbol + "USDT")
             
-            ls_ratio = ls[0]['long_short_ratio'] if ls else 0
-            whale_ratio = whale[0]['long_short_ratio'] if whale else 0
-            long_pct = ls[0]['long_account']*100 if ls else 0
-            short_pct = ls[0]['short_account']*100 if ls else 0
+            ls_ratio = ls[0]['long_short_ratio'] if ls else 1
+            whale_ratio = whale[0]['long_short_ratio'] if whale else 1
+            long_pct = ls[0]['long_account']*100 if ls else 50
+            short_pct = ls[0]['short_account']*100 if ls else 50
+            funding_rate = funding.get('funding_rate_pct', 0)
             
-            crowd_warning = ""
-            if ls and ls_ratio > 1.5:
-                crowd_warning = "⚠️ Longs crowded!"
-            elif ls and ls_ratio < 0.7:
-                crowd_warning = "⚠️ Shorts crowded!"
+            # Positioning Analysis
+            if long_pct > 65:
+                crowd_warning = "⚠️ LONGS CROWDED"
+                crowd_explain = "Too many longs = short squeeze risk LOW, long squeeze risk HIGH"
+                crowd_action = "Be cautious going long here"
+                crowd_risk = "If price drops, mass liquidations will accelerate the move"
+            elif long_pct < 35:
+                crowd_warning = "⚠️ SHORTS CROWDED"
+                crowd_explain = "Too many shorts = short squeeze risk HIGH"
+                crowd_action = "Risky to short, watch for squeeze"
+                crowd_risk = "If price pumps, short liquidations will fuel the rally"
+            elif long_pct > 55:
+                crowd_warning = "🟡 Slightly long-heavy"
+                crowd_explain = "Mild long bias, not extreme"
+                crowd_action = "Okay to trade either direction"
+                crowd_risk = "Watch for shift to >60%"
+            elif long_pct < 45:
+                crowd_warning = "🟡 Slightly short-heavy"
+                crowd_explain = "Mild short bias, not extreme"
+                crowd_action = "Okay to trade either direction"
+                crowd_risk = "Watch for shift to <40%"
+            else:
+                crowd_warning = "⚪ BALANCED"
+                crowd_explain = "Healthy distribution, no crowding"
+                crowd_action = "Trade your analysis"
+                crowd_risk = "Neither side has squeeze risk"
+            
+            # Whale analysis
+            whale_signal = ""
+            if whale_ratio > 1.3:
+                whale_signal = "🐋 Whales LONG (contrarian: watch for dump)"
+            elif whale_ratio < 0.7:
+                whale_signal = "🐋 Whales SHORT (contrarian: watch for squeeze)"
+            else:
+                whale_signal = "🐋 Whales neutral"
+            
+            # Funding analysis
+            if funding_rate and isinstance(funding_rate, (int, float)):
+                if funding_rate > 0.03:
+                    funding_warning = "💸 HIGH funding (longs paying) → long squeeze risk"
+                elif funding_rate < -0.01:
+                    funding_warning = "💸 NEGATIVE funding (shorts paying) → short squeeze setup"
+                else:
+                    funding_warning = "💸 Normal funding"
+            else:
+                funding_warning = "💸 Funding: N/A"
             
             response = f"""📈 {symbol} POSITIONING
 
-Long/Short Ratio: {ls_ratio:.2f}
-Longs: {long_pct:.1f}%
-Shorts: {short_pct:.1f}%
+📊 Long/Short Ratio: {ls_ratio:.2f}
+• Longs: {long_pct:.1f}%
+• Shorts: {short_pct:.1f}%
 
-🐋 Whale L/S: {whale_ratio:.2f}
+{crowd_warning}
+• {crowd_explain}
+• Action: {crowd_action}
+• Risk: {crowd_risk}
 
-💰 Funding: {funding.get('funding_rate_pct', 'N/A')}
+{whale_signal}
+Whale L/S Ratio: {whale_ratio:.2f}
 
-{crowd_warning}"""
+{funding_warning}
+Rate: {funding_rate if isinstance(funding_rate, str) else f'{funding_rate:.4f}%' if funding_rate else 'N/A'}
+
+💡 WHAT THIS MEANS:
+• Crowded positions often get liquidated
+• Trade WITH the trend, not against crowds
+• Funding extremes signal reversals"""
             context = "trading"
             
         elif text_lower.startswith('/funding'):
