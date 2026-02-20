@@ -1,0 +1,66 @@
+{
+  "summary": "Iteration 31 - All enhanced commands and accuracy tracking features verified. /market shows proper prices with MEXC fallback, /structure and /divergence commands have full explanations (trend explanation, action, risk), /accuracy command and API endpoint work correctly.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration31_enhanced_features.py",
+    "/app/test_reports/pytest/pytest_results_iter31.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "All 5 requested features implemented and working correctly:",
+    "1. /market command: Shows global market data with MEXC fallback - BTC $68,199, ETH $1,967, SOL $84.36 (LIVE prices)",
+    "2. /structure command: Has trend_explain, action, risk sections (e.g., 'Making Higher Highs & Higher Lows = Bulls in control')",
+    "3. /divergence command: Has WHAT THIS IS, WHAT TO EXPECT, ACTION, IF WRONG sections with detailed explanations",
+    "4. /accuracy command: Returns full accuracy report with overview, by_direction, by_confidence, by_symbol stats",
+    "5. /api/accuracy endpoint: Returns JSON with win_rate, wins, losses, pending, recent_alerts",
+    "MEXC fallback working: CoinGecko rate limiting handled with MEXC as primary source for prices"
+  ],
+  "updated_files": [],
+  "success_rate": {
+    "backend": "100% - All 20 tests passed",
+    "frontend": "N/A - Backend-only testing for this iteration"
+  },
+  "test_credentials": "",
+  "seed_data_creation": "",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Enhanced commands fully working. Key endpoints verified: /api/intel/summary (market data), /api/accuracy (tracking), /api/advanced/structure/{symbol}, /api/advanced/divergence/{symbol}. All Telegram webhook commands respond without errors.",
+  "verified_features": {
+    "/market command": {
+      "status": "WORKING",
+      "mexc_fallback": "WORKING - Primary data source",
+      "prices_verified": "BTC $68,199.83, ETH $1,967.86, SOL $84.36",
+      "market_cap": "$2.41T (via CoinGecko)"
+    },
+    "/structure command": {
+      "trend_explanation": "WORKING - 'Making Higher Highs & Higher Lows = Bulls in control'",
+      "action_guidance": "WORKING - 'Look for LONG entries on pullbacks to support'",
+      "risk_if_wrong": "WORKING - 'If support breaks, trend may reverse - watch for LH'"
+    },
+    "/divergence command": {
+      "what_this_is": "WORKING - Explains divergence type",
+      "what_to_expect": "WORKING - 'Momentum is weakening for sellers → reversal UP likely'",
+      "action": "WORKING - 'Look for long entry when price confirms reversal'",
+      "if_wrong": "WORKING - 'If price breaks below prior low, divergence fails - exit'"
+    },
+    "/accuracy command": {
+      "format_accuracy_message": "WORKING - Formatted Telegram message",
+      "overview_stats": "WORKING - total_alerts, wins, losses, win_rate",
+      "by_direction": "WORKING - LONG/SHORT breakdown",
+      "by_confidence": "WORKING - 80-85%, 85-90%, 90-95% ranges"
+    },
+    "/api/accuracy endpoint": {
+      "status": "WORKING",
+      "response_structure": "overview, by_direction, by_confidence, by_symbol, recent_alerts"
+    }
+  },
+  "mocked_apis_note": "All market data is REAL from MEXC exchange. CoinGecko used for global market cap when available."
+}
