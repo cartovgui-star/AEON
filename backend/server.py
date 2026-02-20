@@ -3389,5 +3389,12 @@ app.include_router(sentiment_router, prefix="/api")
 app.include_router(strategy_health_router, prefix="/api")
 app.include_router(voice_router, prefix="/api")
 app.include_router(user_router, prefix="/api")
+# Server.py refactoring routes
+app.include_router(accuracy_router, prefix="/api")
+app.include_router(learning_router, prefix="/api")
+app.include_router(bot_router, prefix="/api")
+app.include_router(system_router, prefix="/api")
+app.include_router(mtf_router, prefix="/api")
+app.include_router(confluence_router, prefix="/api")
 
 app.add_middleware(CORSMiddleware, allow_credentials=True, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
