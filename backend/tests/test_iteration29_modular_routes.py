@@ -67,7 +67,8 @@ class TestCalculatorsRoute:
         )
         assert response.status_code == 200
         data = response.json()
-        assert "position_size" in data or "recommended_size" in data or "size" in data
+        # Response has recommended_position_size
+        assert "recommended_position_size" in data or "coins_to_buy" in data
     
     def test_calc_scenarios(self):
         """Test PnL scenarios generator"""
@@ -201,9 +202,14 @@ class TestOrderFlowRoute:
         response = requests.get(f"{BASE_URL}/api/orderflow/cvd/BTC")
         assert response.status_code == 200
     
-    def test_orderflow_footprint(self):
-        """Test footprint chart data"""
-        response = requests.get(f"{BASE_URL}/api/orderflow/footprint/BTC")
+    def test_orderflow_divergence(self):
+        """Test CVD divergence detection"""
+        response = requests.get(f"{BASE_URL}/api/orderflow/divergence/BTC")
+        assert response.status_code == 200
+    
+    def test_orderflow_absorption(self):
+        """Test order absorption detection"""
+        response = requests.get(f"{BASE_URL}/api/orderflow/absorption/BTC")
         assert response.status_code == 200
     
     def test_orderflow_full(self):
@@ -215,49 +221,112 @@ class TestOrderFlowRoute:
 class TestOptionsRoute:
     """Test /api/options/* endpoints - Options analysis"""
     
-    def test_options_btc(self):
-        """Test BTC options analysis"""
-        response = requests.get(f"{BASE_URL}/api/options/BTC")
+    def test_options_maxpain(self):
+        """Test BTC options max pain"""
+        response = requests.get(f"{BASE_URL}/api/options/maxpain/BTC")
         assert response.status_code == 200
+    
+    def test_options_pcr(self):
+        """Test BTC put/call ratio"""
+        response = requests.get(f"{BASE_URL}/api/options/pcr/BTC")
+        assert response.status_code == 200
+    
+    def test_options_full(self):
+        """Test BTC full options analysis"""
+        response = requests.get(f"{BASE_URL}/api/options/full/BTC")
+        assert response.status_code == 200
+        data = response.json()
+        assert "max_pain" in data
 
 
 class TestBacktestRoute:
     """Test /api/backtest/* endpoints - Backtesting"""
     
-    def test_backtest_strategies(self):
-        """Test list available strategies"""
-        response = requests.get(f"{BASE_URL}/api/backtest/strategies")
+    def test_backtest_rsi(self):
+        """Test RSI strategy backtest"""
+        response = requests.get(f"{BASE_URL}/api/backtest/rsi/BTC", params={"days": 7})
+        assert response.status_code == 200
+        data = response.json()
+        assert "strategy" in data
+        assert "RSI" in data["strategy"]
+    
+    def test_backtest_bb(self):
+        """Test Bollinger Band strategy backtest"""
+        response = requests.get(f"{BASE_URL}/api/backtest/bb/BTC", params={"days": 7})
+        assert response.status_code == 200
+    
+    def test_backtest_ema(self):
+        """Test EMA crossover strategy backtest"""
+        response = requests.get(f"{BASE_URL}/api/backtest/ema/BTC", params={"days": 7})
+        assert response.status_code == 200
+    
+    def test_backtest_compare(self):
+        """Test compare all strategies"""
+        response = requests.get(f"{BASE_URL}/api/backtest/compare/BTC", params={"days": 7})
         assert response.status_code == 200
 
 
 class TestDataRoute:
-    """Test /api/data/* endpoints - Historical and candle data"""
+    """Test /api/data/* endpoints - Social, on-chain, fees, gas, DeFi data"""
     
-    def test_data_candles(self):
-        """Test historical candles data"""
-        response = requests.get(
-            f"{BASE_URL}/api/data/candles/BTC",
-            params={"timeframe": "1h", "limit": 10}
-        )
+    def test_data_social(self):
+        """Test social data for BTC"""
+        response = requests.get(f"{BASE_URL}/api/data/social/BTC")
+        assert response.status_code == 200
+    
+    def test_data_btc_onchain(self):
+        """Test BTC on-chain stats"""
+        response = requests.get(f"{BASE_URL}/api/data/btc/onchain")
+        assert response.status_code == 200
+    
+    def test_data_btc_fees(self):
+        """Test BTC mempool fees"""
+        response = requests.get(f"{BASE_URL}/api/data/btc/fees")
+        assert response.status_code == 200
+    
+    def test_data_eth_gas(self):
+        """Test ETH gas prices"""
+        response = requests.get(f"{BASE_URL}/api/data/eth/gas")
+        assert response.status_code == 200
+    
+    def test_data_defi_tvl(self):
+        """Test DeFi TVL data"""
+        response = requests.get(f"{BASE_URL}/api/data/defi/tvl")
+        assert response.status_code == 200
+    
+    def test_data_all(self):
+        """Test all additional data combined"""
+        response = requests.get(f"{BASE_URL}/api/data/all/BTC")
         assert response.status_code == 200
 
 
 class TestStrategyHealthRoute:
     """Test /api/strategy-health/* endpoints - Strategy monitoring"""
     
-    def test_strategy_health_stats(self):
-        """Test strategy health statistics"""
-        response = requests.get(f"{BASE_URL}/api/strategy-health/stats")
+    def test_strategy_health_status(self):
+        """Test strategy health status"""
+        response = requests.get(f"{BASE_URL}/api/strategy-health/status")
+        assert response.status_code == 200
+        data = response.json()
+        # Should have strategy entries
+        assert "day_trader" in data or "free_will" in data
+    
+    def test_strategy_health_ranking(self):
+        """Test strategy ranking by performance"""
+        response = requests.get(f"{BASE_URL}/api/strategy-health/ranking")
         assert response.status_code == 200
 
 
 class TestUserRoute:
     """Test /api/user/* endpoints - User profile and settings"""
     
-    def test_user_profiles(self):
+    def test_user_profile(self):
         """Test user profile endpoint"""
-        response = requests.get(f"{BASE_URL}/api/user/profiles")
+        response = requests.get(f"{BASE_URL}/api/user/profile")
         assert response.status_code == 200
+        data = response.json()
+        # Should have profile fields or error for no users
+        assert "chat_id" in data or "error" in data
 
 
 class TestTradingIntegration:
@@ -301,11 +370,38 @@ class TestFreewillRoute:
 
 
 class TestMarketRoute:
-    """Test /api/market/* endpoints - Market data"""
+    """Test /api/market/* and /api/intel/* endpoints - Market data"""
     
-    def test_market_summary(self):
-        """Test global market summary"""
-        response = requests.get(f"{BASE_URL}/api/market/summary")
+    def test_market_scan(self):
+        """Test market scan for symbol"""
+        response = requests.get(f"{BASE_URL}/api/market/scan/BTC")
+        assert response.status_code == 200
+    
+    def test_market_ta(self):
+        """Test technical analysis"""
+        response = requests.get(f"{BASE_URL}/api/market/ta/BTC")
+        assert response.status_code == 200
+    
+    def test_intel_summary(self):
+        """Test market intelligence summary"""
+        response = requests.get(f"{BASE_URL}/api/intel/summary")
+        assert response.status_code == 200
+        data = response.json()
+        assert "summary" in data
+    
+    def test_intel_fear_greed(self):
+        """Test Fear & Greed Index"""
+        response = requests.get(f"{BASE_URL}/api/intel/fear-greed")
+        assert response.status_code == 200
+    
+    def test_intel_top100(self):
+        """Test top 100 coins"""
+        response = requests.get(f"{BASE_URL}/api/intel/top100")
+        assert response.status_code == 200
+    
+    def test_intel_trending(self):
+        """Test trending coins"""
+        response = requests.get(f"{BASE_URL}/api/intel/trending")
         assert response.status_code == 200
 
 
