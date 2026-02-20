@@ -1144,6 +1144,19 @@ export default function Trading() {
           </div>
         </div>
       )}
+
+      {/* NEW: Professional Exchange-Style Position Card Modal */}
+      {/* Uncomment below and comment out above modal to use new design */}
+      {/* 
+      {showPositionModal && selectedPosition && (
+        <PositionCardModal
+          position={selectedPosition}
+          onClose={() => setShowPositionModal(false)}
+          onCloseTrade={closeTrade}
+          onSetTrailing={setTrailingStop}
+        />
+      )}
+      */}
     </div>
   );
 }
