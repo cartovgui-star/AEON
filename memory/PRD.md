@@ -216,15 +216,12 @@ Build a sophisticated trading bot named "Aeon" with:
 ## Backlog
 
 ### P1 (Next)
-- Mobile Optimization - full review of all pages for mobile-friendliness
 - Trade notification sounds - different sounds for LONG vs SHORT
 - PnL Goal customization UI - let users set daily/weekly targets
 
 ### P2 (When Ready)
 - Real-money trading (user deferred)
 - Moltbot deeper integration - sentiment-based trade signals
-- Cleanup unused PriceAlertsRedesigned.jsx file
-- server.py refactoring - extract more responsibilities into modules
 
 ### P3 (Future)
 - More exchange integrations
