@@ -1137,17 +1137,7 @@ export default function Trading() {
                   data-testid="modal-back-btn"
                   className="px-6 py-3 bg-zinc-700 hover:bg-zinc-600 text-white rounded-lg font-medium transition-all"
                 >
-                  Back
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* NEW: Professional Exchange-Style Position Card Modal */}
-      {/* Uncomment below and comment out above modal to use new design */}
-      {/* 
+      {/* Position Details Modal - Professional Exchange Style */}
       {showPositionModal && selectedPosition && (
         <PositionCardModal
           position={selectedPosition}
@@ -1156,7 +1146,6 @@ export default function Trading() {
           onSetTrailing={setTrailingStop}
         />
       )}
-      */}
     </div>
   );
 }
