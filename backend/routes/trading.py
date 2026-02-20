@@ -156,6 +156,9 @@ async def api_trading_v2_live_positions():
                 "stop_price": trade.get("stop_price"), "target_price": trade.get("target_price"),
                 "trail_stop": trade.get("trail_stop"), "pnl_pct": round(pnl_pct, 2),
                 "confidence": trade.get("confidence"), "timeframe": trade.get("timeframe"),
+                "trade_type": trade.get("trade_type", "SWING"),
+                "leverage": trade.get("leverage", 10),
+                "position_size": trade.get("position_size", 1000),
                 "entry_time": trade.get("entry_time").isoformat() if isinstance(trade.get("entry_time"), datetime) else str(trade.get("entry_time", "")),
                 "confirmations": trade.get("confirmations", [])[:3]
             })
