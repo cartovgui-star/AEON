@@ -12,52 +12,91 @@ Build a sophisticated trading bot named "Aeon" with:
 
 ---
 
-## Latest Session (Feb 20, 2026) - Enhanced Commands & Alert Explanations
+## Latest Session (Feb 20, 2026) - Market Data Fix & Accuracy Tracking
 
-### Enhanced Command Explanations - DONE
-All trading commands now include detailed explanations:
+### Market Data Zero Fix - DONE
+- Added MEXC price fallback when CoinGecko is rate-limited
+- get_market_summary now fetches BTC/ETH/SOL from MEXC directly if CoinGecko fails
+- Global market cap shows "N/A (API rate limited)" instead of $0.00T
 
-**1. /ta (Technical Analysis)**
-- RSI: Status (OVERSOLD/OVERBOUGHT/NEUTRAL), Explanation, Action, If Wrong
-- MACD: Crossover direction, Strength indicator
-- Bollinger Bands: Position analysis
+### Enhanced Commands - DONE
+**1. /structure (Market Structure)**
+- Trend explanation: "Making Higher Highs & Higher Lows = Bulls in control"
+- Action: "Look for LONG entries on pullbacks to support"
+- Risk if wrong: "If support breaks, trend may reverse - watch for LH"
+- BOS (Break of Structure) explanation
 
-**2. /positions**  
-- Crowd Analysis: LONGS CROWDED/SHORTS CROWDED/BALANCED
-- Explanation of what crowding means
-- Action recommendation and risk scenario
+**2. /divergence**
+- WHAT THIS IS: Explains regular vs hidden divergence
+- WHAT TO EXPECT: Expected price action
+- ACTION: Entry strategy
+- IF WRONG: Exit rules and failure conditions
 
-**3. /funding**
-- Status: EXTREME HIGH/HIGH/NEGATIVE/NEUTRAL
-- What it means, Action to take, Risk if wrong
-- Funding 101 education
+### Trade Outcome Tracking - DONE
+New `trade_outcome_tracker.py` module:
+- Records all alerts sent with entry/stop/target
+- Tracks outcomes: WIN, LOSS, BREAKEVEN, EXPIRED
+- Stats by direction (LONG/SHORT win rates)
+- Stats by confidence level (80-85%, 85-90%, 90-95%)
+- Stats by symbol (top performers)
+- /accuracy command for Telegram
+- /api/accuracy endpoint for dashboard
 
-**4. /fear (Fear & Greed)**
-- What this means, Action to take, Risk if wrong
-- How to use guide (0-25, 25-45, 45-55, 55-75, 75-100 ranges)
+---
+
+## Previous Session - Enhanced Command Explanations
+
+### Enhanced Commands with Explanations - DONE
+- /ta: RSI Status + Explanation + Action + If Wrong
+- /positions: Crowd Analysis + Explanation + Risk
+- /funding: Status + Action + Risk + Funding 101
+- /fear: What This Means + Action + Risk + How To Use
 
 ### Enhanced Alert Formats - DONE
-All alert engines now include:
-- **WHY** - Detailed reasoning for the signal
-- **WHAT TO EXPECT** - Expected price action scenarios  
-- **IF WRONG** - Exact actions if stop loss is hit
-- **PREPARATION** - How to prepare for the trade
+All alerts now include: WHY, WHAT TO EXPECT, IF WRONG, PREPARATION
 
-### Anti-Contradiction Mechanisms
-- Direction lock prevents flip-flopping (2hr Free Will, 1hr Day Trader, 4hr Long Term)
-- Bullish/bearish reasons separated before final direction chosen
-- Only matching direction confirmations shown
+---
 
-### Previous Session - Server.py Refactoring
-- Reduced server.py from 3503 to 3049 lines
+## Previous Session - Server.py Refactoring
+
+### Server.py Major Refactoring - DONE
+- Reduced from 3503 to 3049 lines
 - Created 12 new modular route files
 - server.py now has only 16 endpoints
 
 ---
 
-## Previous Session (Feb 20, 2026) - Bug Fixes
+## Architecture
 
-### P0 FIX: Telegram Bot "Not Responding" - DONE
+### Backend Route Modules (22 files)
+- routes/calculators.py - PnL, position sizing
+- routes/advanced.py - Divergence, structure, VWAP
+- routes/orderflow.py - CVD, absorption, delta
+- routes/options.py - Max pain, PCR, OI
+- routes/backtest.py - Strategy backtests
+- routes/coinglass.py - Real derivatives data
+- routes/dual.py - Dual engine controls
+- routes/data.py - Social, on-chain, fees
+- routes/sentiment.py - Composite sentiment
+- routes/strategy_health.py - Self-improving tracking
+- routes/voice.py - TTS/STT
+- routes/user.py - User profiling
+- (plus 10 existing route files)
+
+### Key Services
+- autonomous_trader_v2.py - Paper trading engine
+- free_will_v2.py - Elite signal generation
+- dual_trading_engine.py - Day Trader + Long Term
+- trade_outcome_tracker.py - Alert accuracy tracking
+- enhanced_intel.py - Market intelligence
+
+---
+
+## Future/Backlog
+- Real-money trading (user deferred)
+- User profiling/adaptive trading (user deferred)
+- SCALP/DAY trades when conditions favor
+- Dashboard chart for accuracy over time
 - **SCALP**: 5m-15m timeframes, 50-200x leverage, tight stops, quick profits
 - **DAY**: 1h-4h timeframes, 20-75x leverage, medium holds
 - **SWING**: 4h-1d timeframes, 10-25x leverage, longer positions
