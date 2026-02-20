@@ -22,6 +22,13 @@ from .sentiment import router as sentiment_router
 from .strategy_health import router as strategy_health_router
 from .voice import router as voice_router
 from .user import router as user_router
+# Server.py refactoring routes
+from .accuracy import router as accuracy_router
+from .learning import router as learning_router
+from .bot import router as bot_router
+from .system import router as system_router
+from .mtf import router as mtf_router
+from .confluence import router as confluence_router
 
 __all__ = [
     "derivatives_router",
@@ -47,4 +54,11 @@ __all__ = [
     "strategy_health_router",
     "voice_router",
     "user_router",
+    # Server.py refactoring routes
+    "accuracy_router",
+    "learning_router",
+    "bot_router",
+    "system_router",
+    "mtf_router",
+    "confluence_router",
 ]
