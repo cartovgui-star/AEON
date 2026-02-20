@@ -207,6 +207,31 @@ class AutonomousTraderV2:
         
         return leverage
     
+    def calculate_position_size(self, confidence: float, position_size_pct: float = 2) -> float:
+        """
+        Dynamic position size calculation based on confidence and position_size_pct.
+        Higher confidence = larger position size (within bounds).
+        
+        Base: $1000
+        Min: $500 (low confidence)
+        Max: $2500 (elite confidence)
+        """
+        base_size = self.default_position_size  # $1000
+        
+        # Scale by confidence (60% confidence = 0.6x, 90% = 1.4x)
+        confidence_multiplier = 0.5 + (confidence / 100)  # 0.5 to 1.5
+        
+        # Scale by position_size_pct (2% = 1x, 5% = 1.5x)
+        pct_multiplier = 0.5 + (position_size_pct / 10)  # 0.5 to 1.5 for 0-10%
+        
+        size = base_size * confidence_multiplier * pct_multiplier
+        
+        # Bounds
+        size = max(500, min(2500, size))
+        
+        # Round to nearest 50
+        return round(size / 50) * 50
+    
     def get_trade_style_config(self, trade_style: str) -> Dict:
         """Get configuration for a trade style"""
         return TRADE_STYLES.get(trade_style, TRADE_STYLES["DAY"])
