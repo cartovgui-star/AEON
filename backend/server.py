@@ -2633,7 +2633,12 @@ Avg Loss: -{stats.get('average_loss', 0):.2f}%"""
 Commands:
 /journal - Stats
 /journal log - Log a trade
-/insights - AI insights"""
+/insights - AI insights
+/accuracy - Alert accuracy"""
+            context = "trading"
+        
+        elif text_lower == '/accuracy' or text_lower == '/acc':
+            response = trade_outcome_tracker.format_accuracy_message()
             context = "trading"
         
         elif text_lower == '/insights':
