@@ -55,6 +55,9 @@ from aeon_personality import aeon_mind, build_system_prompt, build_user_prompt
 # User profiling system
 from user_profiler import init_user_profiler, UserProfiler
 
+# Trade outcome tracking
+from trade_outcome_tracker import trade_outcome_tracker, TradeOutcomeTracker
+
 # Import route modules
 from routes import (
     derivatives_router, freewill_router, intelligence_router,
