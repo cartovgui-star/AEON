@@ -1133,6 +1133,33 @@ async def api_trend_alignment(symbol: str):
 # Sentiment, Strategy-Health, Voice, User endpoints moved to routes/
 
 
+@api_router.get("/accuracy")
+async def api_accuracy_stats():
+    """Get alert accuracy statistics"""
+    return trade_outcome_tracker.get_accuracy_report()
+
+
+@api_router.get("/accuracy/pending")
+async def api_accuracy_pending():
+    """Get pending alerts awaiting outcome"""
+    return {"pending": trade_outcome_tracker.get_pending_alerts()}
+
+
+@api_router.post("/accuracy/record")
+async def api_accuracy_record(request: Request):
+    """Record outcome for an alert"""
+    data = await request.json()
+    alert_id = data.get("alert_id", "")
+    outcome = data.get("outcome", "")  # WIN, LOSS, BREAKEVEN, EXPIRED
+    exit_price = data.get("exit_price", 0)
+    
+    if not alert_id or not outcome:
+        return {"error": "alert_id and outcome required"}
+    
+    result = trade_outcome_tracker.update_outcome(alert_id, outcome, exit_price)
+    return result
+
+
 @api_router.get("/learning/stats")
 async def api_learning_stats():
     return await learning_system.get_prediction_stats()
