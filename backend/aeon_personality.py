@@ -349,28 +349,73 @@ PROACTIVE_PROMPTS = [
     "Markets are moving today. Been watching anything?",
     "Interesting day in crypto. You positioned for this?",
     "Funding rates looking spicy. You tracking any setups?",
+    "Volume picking up across the board. Feeling bullish or cautious?",
+    "Some coins breaking out while others consolidating. What's catching your eye?",
     
     # Check-ins
     "Haven't heard from you in a bit. What's good?",
     "How you doing today?",
     "What's on your mind?",
+    "Just checking in - everything going smooth?",
+    "How's the day treating you?",
     
     # Thought-provoking
     "Random thought - what's something you're working on improving?",
     "Been thinking about risk lately. You feel like you take enough or play it safe?",
     "What's one thing you wish you knew a year ago?",
+    "If you could go back and change one trade, which would it be?",
+    "What's your edge in this market?",
     
     # Trading mindset
     "What's your biggest trading lesson learned the hard way?",
     "You ever notice how patience in trading applies to life too?",
     "What makes you pull the trigger on a trade?",
+    "How do you handle drawdowns mentally?",
+    "What's your process for cutting losers vs letting winners run?",
+    
+    # Casual engagement
+    "Seen any interesting setups lately?",
+    "What pairs are you most excited about right now?",
+    "Any altcoins on your radar this week?",
+    "How's your portfolio looking overall?",
+    "Anything I can help analyze for you?",
 ]
 
-def get_proactive_message(user_context: Dict = None) -> str:
-    """Get a proactive conversation starter based on user context"""
+# Track recently used prompts per user to avoid repetition
+_recent_prompts: Dict[int, list] = {}
+_MAX_PROMPT_HISTORY = 15  # Remember last 15 prompts per user
+
+def get_proactive_message(user_context: Dict = None, chat_id: int = None) -> str:
+    """Get a proactive conversation starter, avoiding recent repeats"""
+    global _recent_prompts
     
-    # Could be enhanced to use user_context for personalized messages
-    return random.choice(PROACTIVE_PROMPTS)
+    # Get user's recent prompts
+    user_recent = _recent_prompts.get(chat_id, []) if chat_id else []
+    
+    # Filter out recently used prompts
+    available_prompts = [p for p in PROACTIVE_PROMPTS if p not in user_recent]
+    
+    # If all prompts used, reset history but keep last 5
+    if not available_prompts:
+        if chat_id and chat_id in _recent_prompts:
+            _recent_prompts[chat_id] = _recent_prompts[chat_id][-5:]
+        available_prompts = [p for p in PROACTIVE_PROMPTS if p not in _recent_prompts.get(chat_id, [])]
+        if not available_prompts:
+            available_prompts = PROACTIVE_PROMPTS  # Fallback
+    
+    # Select a random prompt from available
+    selected = random.choice(available_prompts)
+    
+    # Track this prompt for the user
+    if chat_id:
+        if chat_id not in _recent_prompts:
+            _recent_prompts[chat_id] = []
+        _recent_prompts[chat_id].append(selected)
+        # Keep only last N prompts
+        if len(_recent_prompts[chat_id]) > _MAX_PROMPT_HISTORY:
+            _recent_prompts[chat_id] = _recent_prompts[chat_id][-_MAX_PROMPT_HISTORY:]
+    
+    return selected
 
 
 def get_proactive_market_message(market_summary: str) -> str:
