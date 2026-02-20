@@ -452,8 +452,8 @@ async def freewill_proactive(chat_id: int):
     
     # 50% chance: pure check-in, 50% chance: market observation
     if random.random() < 0.5:
-        # Natural check-in (no market data)
-        msg = get_proactive_message()
+        # Natural check-in (no market data) - pass chat_id to avoid repeats
+        msg = get_proactive_message(chat_id=chat_id)
     else:
         # Market observation with conversation starter
         try:
@@ -470,7 +470,7 @@ async def freewill_proactive(chat_id: int):
             
             msg = get_proactive_market_message(market_summary)
         except:
-            msg = get_proactive_message()
+            msg = get_proactive_message(chat_id=chat_id)
     
     await send_telegram_message(chat_id, msg)
 
