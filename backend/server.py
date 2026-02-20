@@ -1524,21 +1524,91 @@ free on/off - Toggle alerts
                 response = f"⚠️ {ta['error']}"
             else:
                 ind = ta.get("indicators", {})
+                price = ta['price']
+                rsi = ind.get('rsi', 50)
+                macd = ind.get('macd', 0)
+                macd_signal = ind.get('macd_signal', 0)
+                bb_lower = ind.get('bb_lower', 0)
+                bb_upper = ind.get('bb_upper', 0)
+                
+                # RSI Analysis with explanation
+                if rsi < 30:
+                    rsi_status = "🟢 OVERSOLD"
+                    rsi_explain = "Sellers exhausted → bounce likely"
+                    rsi_action = "Watch for reversal candle to go LONG"
+                    rsi_risk = "If breaks lower: More downside, wait for 20-25 RSI"
+                elif rsi < 40:
+                    rsi_status = "🟡 APPROACHING OVERSOLD"
+                    rsi_explain = "Getting cheap, buyers may step in"
+                    rsi_action = "Prepare long entries, set alerts at support"
+                    rsi_risk = "Could drop to 30 before bouncing"
+                elif rsi > 70:
+                    rsi_status = "🔴 OVERBOUGHT"
+                    rsi_explain = "Buyers exhausted → pullback likely"
+                    rsi_action = "Take profits on longs, watch for short setup"
+                    rsi_risk = "If breaks higher: Could squeeze to 80+ briefly"
+                elif rsi > 60:
+                    rsi_status = "🟡 APPROACHING OVERBOUGHT"
+                    rsi_explain = "Getting expensive, consider scaling out"
+                    rsi_action = "Tighten stops on longs, don't chase"
+                    rsi_risk = "Could push to 70-75 before reversal"
+                else:
+                    rsi_status = "⚪ NEUTRAL"
+                    rsi_explain = "No extreme - wait for better setup"
+                    rsi_action = "Use other indicators for direction"
+                    rsi_risk = "Range-bound action likely"
+                
+                # MACD Analysis
+                macd_cross = "BULLISH" if macd > macd_signal else "BEARISH"
+                macd_strength = abs(macd - macd_signal)
+                
+                # Bollinger Band Analysis
+                bb_position = ""
+                if price <= bb_lower * 1.01:
+                    bb_position = "At LOWER band (support zone)"
+                    bb_action = "Watch for bounce"
+                elif price >= bb_upper * 0.99:
+                    bb_position = "At UPPER band (resistance zone)"
+                    bb_action = "Watch for rejection"
+                else:
+                    bb_mid = (bb_lower + bb_upper) / 2
+                    if price > bb_mid:
+                        bb_position = "Upper half (bullish control)"
+                        bb_action = "Trend favors longs"
+                    else:
+                        bb_position = "Lower half (bearish control)"
+                        bb_action = "Trend favors shorts"
+                
                 response = f"""📊 {symbol} TECHNICALS ({interval})
 
-Price: ${ta['price']:,.2f}
-Bias: {ta['overall_bias']}
+💰 Price: ${price:,.2f}
+📈 Bias: {ta['overall_bias']}
 
-RSI: {ind.get('rsi', 'N/A')}
-MACD: {ind.get('macd', 'N/A')} (Signal: {ind.get('macd_signal', 'N/A')})
-Stoch: K={ind.get('stoch_k', 'N/A')} D={ind.get('stoch_d', 'N/A')}
+📉 RSI: {rsi:.1f} {rsi_status}
+• {rsi_explain}
+• Action: {rsi_action}
+• If wrong: {rsi_risk}
 
-BB: ${ind.get('bb_lower', 0):,.0f} - ${ind.get('bb_upper', 0):,.0f}
-EMA: 9={ind.get('ema_9', 0):,.0f} | 21={ind.get('ema_21', 0):,.0f} | 50={ind.get('ema_50', 0):,.0f}
-ATR: ${ind.get('atr', 0):,.2f}
-Vol Ratio: {ind.get('volume_ratio', 1):.1f}x
+📊 MACD: {macd:.2f} (Signal: {macd_signal:.2f})
+• Crossover: {macd_cross}
+• Strength: {'Strong' if macd_strength > 50 else 'Moderate' if macd_strength > 20 else 'Weak'}
 
-Signals: {len(ta.get('signals', []))} detected"""
+📏 Bollinger Bands:
+• Lower: ${bb_lower:,.0f} | Upper: ${bb_upper:,.0f}
+• Position: {bb_position}
+
+🔧 OTHER INDICATORS:
+• Stoch: K={ind.get('stoch_k', 'N/A')} D={ind.get('stoch_d', 'N/A')}
+• EMA Stack: 9={ind.get('ema_9', 0):,.0f} > 21={ind.get('ema_21', 0):,.0f} > 50={ind.get('ema_50', 0):,.0f}
+• ATR: ${ind.get('atr', 0):,.2f} (volatility measure)
+• Vol Ratio: {ind.get('volume_ratio', 1):.1f}x avg
+
+💡 BOTTOM LINE:
+{f'RSI {rsi_status.split()[1]} + {macd_cross} MACD = Consider {direction}' if (rsi < 35 or rsi > 65) else 'No extreme RSI - use structure/trend for entries'}"""
+                
+                # Set direction variable for bottom line
+                direction = "LONG" if rsi < 40 else "SHORT" if rsi > 60 else "WAIT"
+                
             context = "trading"
             
         elif text_lower.startswith('/positions'):
