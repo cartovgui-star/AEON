@@ -12,7 +12,47 @@ Build a sophisticated trading bot named "Aeon" with:
 
 ---
 
-## Latest Session (Feb 19, 2026) - UI Enhancements
+## Latest Session (Feb 20, 2026) - Major Feature Update
+
+### Multi-Style Trading System - DONE
+- **SCALP**: 5m-15m timeframes, 50-200x leverage, tight stops, quick profits
+- **DAY**: 1h-4h timeframes, 20-75x leverage, medium holds
+- **SWING**: 4h-1d timeframes, 10-25x leverage, longer positions
+- Bot has FREE WILL to choose leverage based on confidence and market conditions
+- Dynamic leverage calculation based on trade style, confidence, and volatility
+
+### Upgraded Dashboard - DONE
+- **Quick Trade** button (orange gradient) - One-click access to trading
+- **Kill Switch** button (red) - Emergency close all positions
+- **Kill Switch Modal** with confirmation and position count
+- **Daily Goal Progress** bar - Track PnL against target
+- **Live Positions Preview** - Shows top 4 positions with trade style labels
+- **Leverage Heatmap** - Total leverage exposure display
+- 6-stat grid: Status, Win Rate, PnL, Open Trades, Leverage, Users
+- Trade style labels (SCALP purple, DAY blue, SWING amber)
+
+### Quick Trade API - DONE
+- `/api/trading/v2/quick-trade` POST endpoint
+- Auto-determines trade style from timeframe
+- Dynamic leverage calculation
+- ATR-based stop loss and take profit
+- Returns trade with style emoji, leverage, confirmations
+
+### Emergency Kill Switch API - DONE
+- `/api/trading/v2/close-all` POST endpoint
+- Closes all open positions at market price
+- Returns closed count and any errors
+- Clears dual engine tracking
+
+### Enhanced Voice (OpenAI Whisper) - DONE
+- `/api/voice/transcribe` for Whisper STT
+- `/api/voice/info` returns STT availability
+- Natural speech-to-text transcription
+- Falls back to browser STT if unavailable
+
+---
+
+## Previous Session (Feb 19, 2026) - UI Enhancements
 
 ### Position "Calling Card" Modal (P0) - DONE
 - Fixed critical JSX structure error in Trading.jsx (modal body was outside container)
