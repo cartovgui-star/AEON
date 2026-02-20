@@ -12,7 +12,34 @@ Build a sophisticated trading bot named "Aeon" with:
 
 ---
 
-## Latest Session (Feb 20, 2026) - Major Feature Update
+## Latest Session (Feb 20, 2026) - P0/P1 Bug Fixes & Refactoring
+
+### P0 FIX: Telegram Bot "Not Responding" - DONE
+- Fixed critical bug in `/price` command webhook handler
+- Issue: `orderbook.items()` was iterating over dict with `{"symbols": [...]}` instead of list
+- Solution: Now correctly accesses `orderbook.get("symbols", [])` and iterates over the list
+- Webhook now returns 200 OK instead of 500 error
+
+### P1 FIX: Dynamic Trading Styles Not Showing in UI - DONE
+- Added `trade_type` and `leverage` fields to `/api/trading/v2/live-positions` endpoint
+- Dashboard and Trading page now correctly display SCALP/DAY/SWING badges
+- Leverage values (60x, 75x, etc.) shown correctly instead of hardcoded 10x
+
+### P1: Server.py Refactoring Phase 2 - DONE
+- Removed 20 duplicate API endpoints (~168 lines)
+- Reduced server.py from 3705 lines to 3537 lines
+- Removed duplicate endpoints: alerts (8), strategies (8), freewill (4)
+- Mounted missing routers: derivatives_router, freewill_router, intelligence_router
+- Updated routes/freewill.py to use app_state.free_will_v2
+
+### Test Coverage
+- All fixes verified via testing_agent_v3 (iteration 3)
+- 15/15 backend tests passed
+- UI features verified on Dashboard and Trading pages
+
+---
+
+## Previous Session (Feb 20, 2026) - Major Feature Update
 
 ### Multi-Style Trading System - DONE
 - **SCALP**: 5m-15m timeframes, 50-200x leverage, tight stops, quick profits
