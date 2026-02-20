@@ -3630,5 +3630,8 @@ app.include_router(alerts_router, prefix="/api")
 app.include_router(market_router, prefix="/api")
 app.include_router(trading_router, prefix="/api")
 app.include_router(analysis_router, prefix="/api")
+app.include_router(derivatives_router, prefix="/api")
+app.include_router(freewill_router, prefix="/api")
+app.include_router(intelligence_router, prefix="/api")
 
 app.add_middleware(CORSMiddleware, allow_credentials=True, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
