@@ -60,6 +60,11 @@ from routes import (
     derivatives_router, freewill_router, intelligence_router,
     smc_router, memory_router, strategies_router, alerts_router,
     market_router, trading_router, analysis_router,
+    # New modular routes
+    calculators_router, advanced_router, orderflow_router,
+    options_router, backtest_router, coinglass_router,
+    dual_router, data_router, sentiment_router,
+    strategy_health_router, voice_router, user_router,
 )
 from voice_tts import generate_speech, VOICES
 from price_alerts import price_alert_system, PriceAlertSystem
