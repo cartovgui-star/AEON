@@ -1699,21 +1699,73 @@ Rate: {funding_rate if isinstance(funding_rate, str) else f'{funding_rate:.4f}%'
             parts = text_lower.split()
             symbol = parts[1].upper() if len(parts) > 1 else "BTC"
             
-            # Use enhanced intel funding data
             # Use REAL derivatives data from multiple exchanges
             funding = await derivatives_intel.get_aggregated_funding(symbol + "USDT")
             
-            response = f"""💰 {symbol} FUNDING RATES (REAL DATA)
+            avg_funding = funding.get('average_funding_rate', 0)
+            
+            # Funding Analysis
+            if isinstance(avg_funding, (int, float)):
+                if avg_funding > 0.05:
+                    funding_status = "🔴 EXTREME HIGH"
+                    explain = "Longs paying heavy premium → long squeeze imminent"
+                    action = "Avoid new longs, consider shorts on rejection"
+                    risk = "If squeeze happens, expect 5-15% drop"
+                elif avg_funding > 0.02:
+                    funding_status = "🟠 HIGH"
+                    explain = "Longs paying premium → market overheated"
+                    action = "Tighten long stops, don't add"
+                    risk = "Pullback likely within 24-48h"
+                elif avg_funding < -0.02:
+                    funding_status = "🟢 NEGATIVE"
+                    explain = "Shorts paying → short squeeze setup"
+                    action = "Look for long entries on dips"
+                    risk = "If squeeze happens, expect 5-10% pump"
+                elif avg_funding < 0:
+                    funding_status = "🟢 SLIGHTLY NEGATIVE"
+                    explain = "Mild short bias"
+                    action = "Favorable for longs"
+                    risk = "Healthy market condition"
+                else:
+                    funding_status = "⚪ NEUTRAL"
+                    explain = "No strong bias from funding"
+                    action = "Use other indicators"
+                    risk = "Normal market conditions"
+            else:
+                funding_status = "N/A"
+                explain = "Unable to get funding data"
+                action = "Check other sources"
+                risk = "Data unavailable"
+            
+            response = f"""💰 {symbol} FUNDING RATES
 
-Average: {funding.get('average_funding_pct', 'N/A')}
+📊 Average: {funding.get('average_funding_pct', 'N/A')}
+Status: {funding_status}
+
 {funding.get('interpretation', '')}
+
+🔍 WHAT THIS MEANS:
+• {explain}
+
+🎯 ACTION:
+• {action}
+
+⚠️ RISK:
+• {risk}
 
 📊 BY EXCHANGE:"""
             
             for ex in funding.get('exchanges', []):
                 response += f"\n• {ex.get('exchange')}: {ex.get('funding_rate_pct', 'N/A')}"
             
-            response += f"\n\nData from {funding.get('data_sources', 0)} exchanges"
+            response += f"""
+
+💡 FUNDING 101:
+• Positive = Longs pay shorts (bullish crowd)
+• Negative = Shorts pay longs (bearish crowd)
+• Extreme = Reversal likely (contrarian signal)
+
+Data from {funding.get('data_sources', 0)} exchanges"""
             context = "trading"
             
         elif text_lower.startswith('/liqs') or text_lower.startswith('/liquidations'):
