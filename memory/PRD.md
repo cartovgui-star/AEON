@@ -12,35 +12,46 @@ Build a sophisticated trading bot named "Aeon" with:
 
 ---
 
-## Latest Session (Feb 20, 2026) - Server.py Refactoring Complete
+## Latest Session (Feb 20, 2026) - Enhanced Commands & Alert Explanations
 
-### Server.py Major Refactoring - DONE
-- Reduced server.py from 3503 to 3049 lines (~13% reduction)
-- Moved 50 endpoints from server.py to 12 new modular route files
-- server.py now has only 16 endpoints (down from 66)
+### Enhanced Command Explanations - DONE
+All trading commands now include detailed explanations:
 
-**New Route Modules Created:**
-1. `routes/calculators.py` - PnL, position sizing, scenarios (3 endpoints)
-2. `routes/advanced.py` - Divergence, structure, VWAP (4 endpoints)
-3. `routes/orderflow.py` - CVD, absorption, delta (4 endpoints)
-4. `routes/options.py` - Max pain, PCR, OI (4 endpoints)
-5. `routes/backtest.py` - RSI, BB, EMA backtests (4 endpoints)
-6. `routes/coinglass.py` - Real derivatives data (5 endpoints)
-7. `routes/dual.py` - Dual engine controls (6 endpoints)
-8. `routes/data.py` - Social, on-chain, fees, gas (6 endpoints)
-9. `routes/sentiment.py` - Composite sentiment (4 endpoints)
-10. `routes/strategy_health.py` - Self-improving tracking (4 endpoints)
-11. `routes/voice.py` - TTS/STT endpoints (3 endpoints)
-12. `routes/user.py` - User profiling (3 endpoints)
+**1. /ta (Technical Analysis)**
+- RSI: Status (OVERSOLD/OVERBOUGHT/NEUTRAL), Explanation, Action, If Wrong
+- MACD: Crossover direction, Strength indicator
+- Bollinger Bands: Position analysis
 
-### Cleanup Done
-- Removed server.py.backup file
-- All route files properly use app_state for dependencies
-- All routes mounted with /api prefix
+**2. /positions**  
+- Crowd Analysis: LONGS CROWDED/SHORTS CROWDED/BALANCED
+- Explanation of what crowding means
+- Action recommendation and risk scenario
 
-### Previous Session Improvements
-- Fixed elite signal WHY explanations (no contradictions)
-- Cleaned up Telegram /help menu
+**3. /funding**
+- Status: EXTREME HIGH/HIGH/NEGATIVE/NEUTRAL
+- What it means, Action to take, Risk if wrong
+- Funding 101 education
+
+**4. /fear (Fear & Greed)**
+- What this means, Action to take, Risk if wrong
+- How to use guide (0-25, 25-45, 45-55, 55-75, 75-100 ranges)
+
+### Enhanced Alert Formats - DONE
+All alert engines now include:
+- **WHY** - Detailed reasoning for the signal
+- **WHAT TO EXPECT** - Expected price action scenarios  
+- **IF WRONG** - Exact actions if stop loss is hit
+- **PREPARATION** - How to prepare for the trade
+
+### Anti-Contradiction Mechanisms
+- Direction lock prevents flip-flopping (2hr Free Will, 1hr Day Trader, 4hr Long Term)
+- Bullish/bearish reasons separated before final direction chosen
+- Only matching direction confirmations shown
+
+### Previous Session - Server.py Refactoring
+- Reduced server.py from 3503 to 3049 lines
+- Created 12 new modular route files
+- server.py now has only 16 endpoints
 
 ---
 
