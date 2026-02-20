@@ -859,7 +859,7 @@ class AutonomousTraderV2:
             "target_price": signal["target"],
             "partial_target": signal["partial_target"],
             "position_size_pct": signal["position_size_pct"],
-            "position_size": self.default_position_size,
+            "position_size": self.calculate_position_size(signal["confidence"], signal.get("position_size_pct", 2)),
             "leverage": self.calculate_leverage(signal["confidence"]),
             "confidence": signal["confidence"],
             "confirmations": signal["confirmations"],
