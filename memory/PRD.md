@@ -12,7 +12,7 @@ Build a sophisticated trading bot named "Aeon" with:
 
 ---
 
-## Latest Session (Dec 20, 2025) - Full Cleanup & Refactoring
+## Latest Session (Dec 20, 2025) - Full Cleanup, Features & Tests
 
 ### Position Card Modal Fix (P0) - DONE
 - Fixed duplicate modal rendering in Trading.jsx
@@ -37,17 +37,28 @@ Build a sophisticated trading bot named "Aeon" with:
 - server.py now has only 8 core endpoints (root, webhook, close-all, quick-trade, mexc, bot/*)
 - Total route files: 26 modular route files
 
-### Command Verification (P3) - DONE
-- `/scan` - Uses LLM for AI analysis with "what could go wrong"
-- `/structure` - Enhanced with trend explanation, action, risk if wrong, BOS
-- `/divergence` - Enhanced with "What This Is", "What To Expect", "Action", "If Wrong"
-- `/accuracy` - Shows win rate, direction stats, confidence stats, symbol stats
+### Dynamic Position Sizing - NEW
+- Added `calculate_position_size()` method to autonomous_trader_v2.py
+- Position sizes now vary based on confidence (60%=$750, 90%=$1400)
+- Range: $500 (min) to $2500 (max), rounded to nearest $50
+- New trades will show varied margins
 
-### Trade Outcome Tracking - VERIFIED
-- `trade_outcome_tracker.py` module working
-- Records alerts, tracks WIN/LOSS/BREAKEVEN/EXPIRED outcomes
-- Stats by direction, confidence level, symbol
-- `/accuracy` command and `/api/accuracy` endpoint both working
+### News Aggregation - NEW
+- Added `get_crypto_news()` to additional_data.py
+- Sources: CryptoCompare, CoinGecko, CryptoPanic
+- New `/api/system/news` endpoint
+- `/news` command in help menu
+
+### Leaderboard Feature - NEW
+- Added `/leaderboard` Telegram command (also `/lb`, `/top coins`)
+- Shows coin win rates sorted by performance
+- Top 5 performers and worst 3 performers
+- New `/api/accuracy/leaderboard` endpoint
+
+### Test Cases - NEW
+- Created `/app/backend/tests/test_trader.py` - 9 tests for position sizing, leverage, trade styles
+- Created `/app/backend/tests/test_routes.py` - API endpoint tests
+- All 9 trader tests passing
 
 ---
 
