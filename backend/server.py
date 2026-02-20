@@ -1601,26 +1601,7 @@ async def api_sentiment_history():
     return {"history": sentiment_analyzer.get_sentiment_history()}
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# ARBITRAGE DETECTION APIs (Moltbot-inspired)
-# ═══════════════════════════════════════════════════════════════════════════════
-
-@api_router.get("/arbitrage/scan")
-async def api_arbitrage_scan():
-    """Scan all symbols across exchanges for arbitrage opportunities"""
-    return await arbitrage_detector.scan_all()
-
-
-@api_router.get("/arbitrage/scan/{symbol}")
-async def api_arbitrage_scan_symbol(symbol: str):
-    """Scan specific symbol for arbitrage"""
-    return await arbitrage_detector.scan_symbol(symbol.upper() + "/USDT")
-
-
-@api_router.get("/arbitrage/recent")
-async def api_arbitrage_recent(limit: int = 20):
-    """Get recent arbitrage opportunities"""
-    return {"opportunities": arbitrage_detector.get_recent_opportunities(limit)}
+# Arbitrage routes moved to routes/market.py
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
