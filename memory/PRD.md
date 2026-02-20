@@ -12,31 +12,41 @@ Build a sophisticated trading bot named "Aeon" with:
 
 ---
 
-## Latest Session (Feb 20, 2026) - Signal & UX Improvements
+## Latest Session (Feb 20, 2026) - Server.py Refactoring Complete
 
-### Elite Signal WHY Explanation - DONE
-- Improved Free Will v2 signal analysis to collect bullish and bearish reasons separately
-- Confirmations now ONLY contain reasons that match the final direction (no contradictions)
-- Added `_build_why_explanation()` method for clear, categorized reasoning
-- Each signal now includes: Technical, Sentiment, Structure breakdown
+### Server.py Major Refactoring - DONE
+- Reduced server.py from 3503 to 3049 lines (~13% reduction)
+- Moved 50 endpoints from server.py to 12 new modular route files
+- server.py now has only 16 endpoints (down from 66)
 
-### Telegram Commands Cleanup - DONE  
-- Reorganized /help menu with markdown formatting (*SECTION*)
-- 8 logical categories: Quick Start, Analysis, Market Data, Derivatives, Trading, Alerts, Advanced, Mode
-- Removed redundant entries, cleaner formatting
-- Status indicators at bottom (Active/Paused, Mode)
+**New Route Modules Created:**
+1. `routes/calculators.py` - PnL, position sizing, scenarios (3 endpoints)
+2. `routes/advanced.py` - Divergence, structure, VWAP (4 endpoints)
+3. `routes/orderflow.py` - CVD, absorption, delta (4 endpoints)
+4. `routes/options.py` - Max pain, PCR, OI (4 endpoints)
+5. `routes/backtest.py` - RSI, BB, EMA backtests (4 endpoints)
+6. `routes/coinglass.py` - Real derivatives data (5 endpoints)
+7. `routes/dual.py` - Dual engine controls (6 endpoints)
+8. `routes/data.py` - Social, on-chain, fees, gas (6 endpoints)
+9. `routes/sentiment.py` - Composite sentiment (4 endpoints)
+10. `routes/strategy_health.py` - Self-improving tracking (4 endpoints)
+11. `routes/voice.py` - TTS/STT endpoints (3 endpoints)
+12. `routes/user.py` - User profiling (3 endpoints)
 
-### Previous Session Fixes
-- P0: Fixed Telegram `/price` webhook bug (was using dict.items() on list)
-- P1: Added trade_type/leverage to live-positions API
-- P1: Removed 20 duplicate endpoints from server.py (~168 lines)
-- P1: Mounted missing routers (freewill, derivatives, intelligence)
+### Cleanup Done
+- Removed server.py.backup file
+- All route files properly use app_state for dependencies
+- All routes mounted with /api prefix
+
+### Previous Session Improvements
+- Fixed elite signal WHY explanations (no contradictions)
+- Cleaned up Telegram /help menu
 
 ---
 
-## Previous Session (Feb 20, 2026) - Major Feature Update
+## Previous Session (Feb 20, 2026) - Bug Fixes
 
-### Multi-Style Trading System - DONE
+### P0 FIX: Telegram Bot "Not Responding" - DONE
 - **SCALP**: 5m-15m timeframes, 50-200x leverage, tight stops, quick profits
 - **DAY**: 1h-4h timeframes, 20-75x leverage, medium holds
 - **SWING**: 4h-1d timeframes, 10-25x leverage, longer positions
