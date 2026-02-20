@@ -1049,27 +1049,8 @@ async def websocket_endpoint(websocket: WebSocket):
         ws_manager.disconnect(websocket)
 
 
-@api_router.get("/ws/stats")
-async def ws_stats():
-    """Get WebSocket connection statistics"""
-    return ws_manager.get_stats()
-
-
 # ═══════════════════════════════════════════════════════════════════════════════
-# CONFLUENCE API (SMC + Strategy)
-# ═══════════════════════════════════════════════════════════════════════════════
-
-@api_router.get("/confluence/{symbol}")
-async def api_confluence(symbol: str, timeframe: str = "4h"):
-    """
-    Get SMC + Strategy confluence analysis
-    Combines Smart Money Concepts with technical strategies for high-probability setups
-    """
-    return await confluence_analyzer.analyze_confluence(symbol.upper() + "/USDT", timeframe)
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# API ROUTES
+# API ROUTES (Minimal - most moved to routes/)
 # ═══════════════════════════════════════════════════════════════════════════════
 
 @api_router.get("/")
@@ -1077,100 +1058,16 @@ async def root():
     return {"message": "Aeon Market Intelligence Active", "status": "online"}
 
 
-@api_router.get("/system/health")
-async def api_system_health():
-    """Self-healer status - shows all monitored services and recent healing actions."""
-    return self_healer.get_status()
-
-
-@api_router.get("/pairs")
-async def api_list_pairs():
-    """List all supported trading pairs"""
-    return {
-        "total_pairs": 44,
-        "pairs": [
-            "BTC", "ETH", "BNB", "SOL", "XRP", "DOGE", "ADA", "AVAX", "SHIB", "DOT",
-            "LINK", "TRX", "BCH", "LTC", "NEAR", "UNI", "APT", "ICP", "ETC", "FIL",
-            "ATOM", "XLM", "ARB", "OP", "INJ", "HBAR", "VET", "GRT", "AAVE", "ALGO",
-            "SAND", "AXS", "MANA", "XTZ", "FLOW", "NEO", "SNX", "CRV", "RUNE", "ZEC",
-            "DASH", "COMP", "ENJ", "CHZ"
-        ],
-        "features": {
-            "autonomous_trading": "All 44 pairs scanned every 5 minutes",
-            "derivatives": "Funding rates from OKX, Bitget, KuCoin, Gate.io",
-            "technical_analysis": "RSI, MACD, BB, EMA, Stoch for all pairs",
-            "multi_timeframe": "1h, 4h, 1d analysis available"
-        }
-    }
-
-
-# NOTE: /market/*, /intel/*, /derivatives/* routes are now in routes/market.py
-# Keeping these as fallbacks for backwards compatibility until frontend is migrated
-
-
-# Intel routes moved to routes/market.py (intel/* routes)
-# Derivatives routes moved to routes/market.py (derivatives/* routes)
-# News/onchain/whales routes moved to routes/market.py
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# MULTI-TIMEFRAME ANALYSIS APIs
-# ═══════════════════════════════════════════════════════════════════════════════
-
-@api_router.get("/mtf/{symbol}")
-async def api_multi_timeframe(symbol: str):
-    """Get multi-timeframe confluence analysis"""
-    return await mtf_analysis.get_multi_timeframe_analysis(symbol.upper() + "USDT")
-
-
-@api_router.get("/mtf/align/{symbol}")
-async def api_trend_alignment(symbol: str):
-    """Get trend alignment across timeframes"""
-    return await mtf_analysis.get_trend_alignment(symbol.upper() + "USDT")
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# BOT STATUS APIs
-# ═══════════════════════════════════════════════════════════════════════════════
-# NOTE: Calc, Advanced, OrderFlow, Options, Backtest, Coinglass, Dual, Data,
-# Sentiment, Strategy-Health, Voice, User endpoints moved to routes/
-
-
-@api_router.get("/accuracy")
-async def api_accuracy_stats():
-    """Get alert accuracy statistics"""
-    return trade_outcome_tracker.get_accuracy_report()
-
-
-@api_router.get("/accuracy/pending")
-async def api_accuracy_pending():
-    """Get pending alerts awaiting outcome"""
-    return {"pending": trade_outcome_tracker.get_pending_alerts()}
-
-
-@api_router.post("/accuracy/record")
-async def api_accuracy_record(request: Request):
-    """Record outcome for an alert"""
-    data = await request.json()
-    alert_id = data.get("alert_id", "")
-    outcome = data.get("outcome", "")  # WIN, LOSS, BREAKEVEN, EXPIRED
-    exit_price = data.get("exit_price", 0)
-    
-    if not alert_id or not outcome:
-        return {"error": "alert_id and outcome required"}
-    
-    result = trade_outcome_tracker.update_outcome(alert_id, outcome, exit_price)
-    return result
-
-
-@api_router.get("/learning/stats")
-async def api_learning_stats():
-    return await learning_system.get_prediction_stats()
-
-
-@api_router.get("/learning/open")
-async def api_open_predictions():
-    return await learning_system.get_open_predictions()
+# NOTE: The following endpoints moved to routes/:
+# - /ws/stats -> routes/system.py
+# - /confluence/{symbol} -> routes/confluence.py
+# - /system/health -> routes/system.py
+# - /pairs -> routes/system.py
+# - /mtf/{symbol} -> routes/mtf.py
+# - /mtf/align/{symbol} -> routes/mtf.py
+# - /accuracy/* -> routes/accuracy.py
+# - /learning/* -> routes/learning.py
+# - /bot/* -> routes/bot.py
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
