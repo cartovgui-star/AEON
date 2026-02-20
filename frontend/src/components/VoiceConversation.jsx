@@ -22,6 +22,8 @@ export default function VoiceConversation({ onClose }) {
   const [selectedVoice, setSelectedVoice] = useState('guy');
   const [error, setError] = useState(null);
   const [volume, setVolume] = useState(0);
+  const [textInput, setTextInput] = useState('');
+  const [showTextInput, setShowTextInput] = useState(false);
   
   const recognitionRef = useRef(null);
   const audioRef = useRef(null);
