@@ -236,6 +236,15 @@ export default function VoiceConversation({ onClose }) {
     interrupt();
   };
 
+  // Handle text submit
+  const handleTextSubmit = (e) => {
+    e.preventDefault();
+    if (textInput.trim() && !isProcessingRef.current) {
+      processUserSpeech(textInput.trim());
+      setTextInput('');
+    }
+  };
+
   // Cleanup
   useEffect(() => {
     return () => {
