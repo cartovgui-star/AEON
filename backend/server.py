@@ -2187,28 +2187,77 @@ Strength: {d['strength']}
             
             struct = await advanced_strategies.analyze_market_structure(symbol + "/USDT", timeframe)
             
+            trend = struct.get('trend', 'UNKNOWN')
+            bias = struct.get('bias', 'NEUTRAL')
+            support = struct.get('support', 0)
+            resistance = struct.get('resistance', 0)
+            current = struct.get('current_price', 0)
+            is_ranging = struct.get('is_ranging', False)
+            
+            # Trend explanation
+            if trend == "UPTREND":
+                trend_explain = "Making Higher Highs & Higher Lows = Bulls in control"
+                action = "Look for LONG entries on pullbacks to support"
+                risk = "If support breaks, trend may reverse - watch for LH"
+            elif trend == "DOWNTREND":
+                trend_explain = "Making Lower Highs & Lower Lows = Bears in control"
+                action = "Look for SHORT entries on rallies to resistance"
+                risk = "If resistance breaks, trend may reverse - watch for HH"
+            else:
+                trend_explain = "No clear HH/HL or LH/LL pattern"
+                action = "Wait for structure to form before trading"
+                risk = "Choppy price action - easy to get stopped out"
+            
+            # BOS (Break of Structure) info
             bos_info = ""
             if struct.get('bos'):
                 bos = struct['bos']
+                bos_type = bos.get('type', '')
+                bos_level = bos.get('level', 0)
+                
+                if 'BULLISH' in bos_type:
+                    bos_explain = "Buyers broke key level - momentum shifting UP"
+                    bos_action = "Confirms long bias, enter on retest"
+                else:
+                    bos_explain = "Sellers broke key level - momentum shifting DOWN"
+                    bos_action = "Confirms short bias, enter on retest"
+                
                 bos_info = f"""
-⚡ {bos['type']}
-Level: ${bos['level']:,.2f}
-{bos['description']}
+⚡ BREAK OF STRUCTURE: {bos_type}
+Level: ${bos_level:,.2f}
+• {bos_explain}
+• Action: {bos_action}
 """
+            
+            # Support/Resistance guidance
+            dist_to_support = ((current - support) / support * 100) if support > 0 else 0
+            dist_to_resist = ((resistance - current) / current * 100) if current > 0 else 0
             
             response = f"""📈 {symbol} MARKET STRUCTURE ({timeframe})
 
-Trend: {struct.get('trend', 'UNKNOWN')}
-Bias: {struct.get('bias', 'NEUTRAL')}
+🎯 TREND: {trend}
+• {trend_explain}
+
+📊 BIAS: {bias.upper()}
 Structure: {' → '.join(struct.get('structure', []))}
 
-Support: ${struct.get('support', 0):,.2f}
-Resistance: ${struct.get('resistance', 0):,.2f}
-Current: ${struct.get('current_price', 0):,.2f}
+📍 KEY LEVELS:
+Support: ${support:,.2f} ({dist_to_support:.1f}% below)
+Resistance: ${resistance:,.2f} ({dist_to_resist:.1f}% above)
+Current: ${current:,.2f}
 
-Range: {'Yes' if struct.get('is_ranging') else 'No'} ({struct.get('range_pct', 0):.1f}%)
+🎲 Range: {'Yes - Consolidation' if is_ranging else 'No - Trending'} ({struct.get('range_pct', 0):.1f}%)
 {bos_info}
-Use this to identify trend direction and key levels."""
+🎯 ACTION:
+• {action}
+
+⚠️ RISK IF WRONG:
+• {risk}
+
+💡 STRUCTURE TRADING RULES:
+• In uptrend: BUY dips, don't short
+• In downtrend: SELL rallies, don't buy
+• Wait for BOS to confirm direction changes"""
             context = "trading"
         
         elif text_lower.startswith('/vwap'):
