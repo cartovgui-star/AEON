@@ -13,7 +13,7 @@ import requests
 import os
 
 # Use the public URL for testing
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://trading-engine-demo.preview.emergentagent.com')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://aeon-preview.preview.emergentagent.com')
 
 
 class TestAutonomousTradingV2Stats:
