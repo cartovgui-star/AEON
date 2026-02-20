@@ -1119,24 +1119,12 @@ export default function Trading() {
                 </p>
               </div>
 
-              {/* Action Buttons */}
-              <div className="flex gap-3">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    closeTrade(selectedPosition.symbol);
-                    setShowPositionModal(false);
-                  }}
-                  data-testid="modal-close-position-btn"
-                  className="flex-1 py-3 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-all"
-                >
-                  Close Position
-                </button>
-                <button
-                  onClick={() => setShowPositionModal(false)}
-                  data-testid="modal-back-btn"
-                  className="px-6 py-3 bg-zinc-700 hover:bg-zinc-600 text-white rounded-lg font-medium transition-all"
-                >
+              {/* Note: Old modal UI removed - using new PositionCardModal component */}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Position Details Modal - Professional Exchange Style */}
       {showPositionModal && selectedPosition && (
         <PositionCardModal
