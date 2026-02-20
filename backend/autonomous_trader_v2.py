@@ -169,7 +169,7 @@ class AutonomousTraderV2:
     def calculate_leverage(self, confidence: float, market_regime: str = None, trade_style: str = None) -> int:
         """
         Dynamic leverage calculation based on confidence, market conditions, and trade style.
-        Bot has FREE WILL to choose leverage within style bounds.
+        Bot has FREE WILL to choose leverage - adds randomness for variety.
         
         SCALP: 50-200x (aggressive, quick)
         DAY: 20-75x (moderate, medium holds)
@@ -189,21 +189,30 @@ class AutonomousTraderV2:
         conf_normalized = (confidence - style_min_conf) / (95 - style_min_conf)
         conf_normalized = max(0, min(1, conf_normalized))
         
-        # Calculate leverage within style bounds
-        leverage = style_min + (style_max - style_min) * conf_normalized
+        # Calculate base leverage within style bounds
+        base_leverage = style_min + (style_max - style_min) * conf_normalized
+        
+        # Add FREE WILL randomness (±20% variation)
+        import random
+        variation = random.uniform(0.8, 1.2)
+        leverage = base_leverage * variation
         
         # Adjust for market regime
         regime = market_regime or self.market_regime
         if regime == "VOLATILE":
-            leverage *= 1.3  # MORE leverage in volatile (opportunities!)
+            leverage *= random.uniform(1.1, 1.4)  # MORE leverage in volatile
         elif regime == "TRENDING_UP" or regime == "TRENDING_DOWN":
-            leverage *= 1.2  # Trend following = higher leverage
+            leverage *= random.uniform(1.0, 1.3)  # Trend following
         elif regime == "RANGING":
-            leverage *= 0.7  # Less leverage in choppy markets
+            leverage *= random.uniform(0.6, 0.8)  # Less in choppy
         
         # Cap within style bounds
         leverage = min(int(leverage), style_max)
         leverage = max(leverage, style_min)
+        
+        # Round to nice numbers (multiples of 5 for cleaner display)
+        leverage = round(leverage / 5) * 5
+        leverage = max(style_min, min(style_max, leverage))
         
         return leverage
     
