@@ -393,45 +393,28 @@ class FreeWillEngineV2:
                     pass
             
             # ═══════════════════════════════════════════════════════════════════
-            # CALCULATE FINAL SCORE
+            # CALCULATE FINAL SCORE - Use only matching direction reasons
             # ═══════════════════════════════════════════════════════════════════
             
-            # Determine direction
+            # Determine direction based on signal strength
             if signals_buy > signals_sell and signals_buy >= 3:
                 direction = "LONG"
                 signal_strength = signals_buy
+                confirmations = bullish_reasons  # Only bullish reasons for LONG
             elif signals_sell > signals_buy and signals_sell >= 3:
                 direction = "SHORT"
                 signal_strength = signals_sell
+                confirmations = bearish_reasons  # Only bearish reasons for SHORT
             else:
                 return None  # No clear direction
             
             # Calculate confidence (base 50 + signals)
             confidence = min(95, 50 + (signal_strength * 8))
-
-            # ═══════════════════════════════════════════════════════════════════
-            # FILTER CONTRADICTIONS - Remove conflicting confirmations
-            # ═══════════════════════════════════════════════════════════════════
-            cleaned_confirmations = []
-            for conf in confirmations:
-                # Skip bullish signals if SHORT direction
-                if direction == "SHORT":
-                    if any(x in conf.lower() for x in ["uptrend", "bullish bos", "buying", "above vwap"]):
-                        continue
-                # Skip bearish signals if LONG direction  
-                elif direction == "LONG":
-                    if any(x in conf.lower() for x in ["downtrend", "bearish bos", "selling", "below vwap"]):
-                        continue
-                cleaned_confirmations.append(conf)
             
-            # Replace confirmations with cleaned version
-            confirmations = cleaned_confirmations
-            
-            # Require at least 3 confirmations after filtering
+            # Require at least 3 confirmations (all matching direction now)
             if len(confirmations) < 3:
-                logger.info(f"BLOCKED {symbol} {direction} - insufficient confirmations after filtering ({len(confirmations)})")
+                logger.info(f"BLOCKED {symbol} {direction} - only {len(confirmations)} confirmations")
                 return None
-
             
             # HARD FILTER: Market structure must not contradict direction
             structure = {}
@@ -453,16 +436,11 @@ class FreeWillEngineV2:
             # Boost confidence when structure aligns
             if direction == "LONG" and structure_bias == "bullish":
                 confidence = min(95, confidence + 5)
-                confirmations.append("Structure HH/HL")
             elif direction == "SHORT" and structure_bias == "bearish":
                 confidence = min(95, confidence + 5)
-                confirmations.append("Structure LH/LL")
             
-            # Check minimum requirements
+            # Check minimum confidence
             if confidence < self.min_confidence:
-                return None
-            
-            if len(confirmations) < self.min_confirmations:
                 return None
             
             # Calculate entry, stop, target
@@ -482,13 +460,17 @@ class FreeWillEngineV2:
             reward = abs(target - entry)
             rr = reward / risk if risk > 0 else 0
             
+            # Build the "WHY" explanation
+            why_explanation = self._build_why_explanation(direction, confirmations, confidence)
+            
             return {
                 "symbol": symbol,
                 "timeframe": timeframe,
                 "direction": direction,
                 "confidence": confidence,
-                "confirmations": confirmations,
+                "confirmations": confirmations[:5],  # Top 5 reasons
                 "confirmation_count": len(confirmations),
+                "why": why_explanation,
                 "entry": entry,
                 "stop": stop,
                 "target": target,
@@ -502,6 +484,41 @@ class FreeWillEngineV2:
         except Exception as e:
             logger.error(f"Setup analysis error {symbol} {timeframe}: {e}")
             return None
+    
+    def _build_why_explanation(self, direction: str, confirmations: list, confidence: int) -> str:
+        """Build a clear explanation of WHY this trade makes sense"""
+        if direction == "LONG":
+            emoji = "📈"
+            action = "BUY"
+        else:
+            emoji = "📉"
+            action = "SELL"
+        
+        # Categorize reasons
+        technical = []
+        sentiment = []
+        structure = []
+        
+        for conf in confirmations:
+            conf_lower = conf.lower()
+            if any(x in conf_lower for x in ["rsi", "macd", "bb", "ema", "divergence"]):
+                technical.append(conf)
+            elif any(x in conf_lower for x in ["fear", "greed", "funding", "crowd", "squeeze"]):
+                sentiment.append(conf)
+            else:
+                structure.append(conf)
+        
+        # Build explanation
+        parts = [f"{emoji} {action} Signal ({confidence}% confidence)"]
+        
+        if technical:
+            parts.append(f"Technical: {', '.join(technical[:2])}")
+        if sentiment:
+            parts.append(f"Sentiment: {', '.join(sentiment[:2])}")
+        if structure:
+            parts.append(f"Structure: {', '.join(structure[:2])}")
+        
+        return " | ".join(parts)
     
     async def scan_all(self) -> List[Dict]:
         """
