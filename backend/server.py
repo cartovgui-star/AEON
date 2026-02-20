@@ -1093,28 +1093,8 @@ async def api_list_pairs():
     }
 
 
-@api_router.get("/market/scan/{symbol}")
-async def api_market_scan(symbol: str):
-    return await market_intel.get_full_market_scan(symbol.upper() + "USDT")
-
-
-@api_router.get("/market/ta/{symbol}")
-async def api_technical_analysis(symbol: str, interval: str = "1h"):
-    return await market_intel.get_technical_analysis(symbol.upper() + "USDT", interval)
-
-
-@api_router.get("/market/funding/{symbol}")
-async def api_funding(symbol: str):
-    # Use real funding data from enhanced_intel
-    return await enhanced_intel.get_funding_rate(symbol.upper() + "USDT")
-
-
-@api_router.get("/market/positions/{symbol}")
-async def api_positions(symbol: str):
-    ls = await market_intel.get_long_short_ratio(symbol.upper() + "USDT", "1h", 5)
-    whale = await market_intel.get_top_trader_long_short_ratio(symbol.upper() + "USDT", "1h", 5)
-    taker = await market_intel.get_taker_long_short_ratio(symbol.upper() + "USDT", "1h", 5)
-    return {"long_short": ls, "whale": whale, "taker_flow": taker}
+# NOTE: /market/*, /intel/*, /derivatives/* routes are now in routes/market.py
+# Keeping these as fallbacks for backwards compatibility until frontend is migrated
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
