@@ -606,7 +606,7 @@ class FreeWillEngineV2:
         return msg, True
     
     def format_alert(self, setup: Dict) -> str:
-        """Format elite alert with detailed WHY reasoning"""
+        """Format elite alert with detailed WHY reasoning and IF WRONG guidance"""
         direction = setup.get("direction", "")
         symbol = setup.get("symbol", "").replace("/USDT", "")
         timeframe = setup.get("timeframe", "")
@@ -617,80 +617,94 @@ class FreeWillEngineV2:
         stop = setup.get("stop", 0)
         target = setup.get("target", 0)
         rr = setup.get("risk_reward", 0)
+        
+        # Calculate percentages
+        risk_pct = abs(entry - stop) / entry * 100 if entry > 0 else 0
+        reward_pct = abs(target - entry) / entry * 100 if entry > 0 else 0
 
         confirmations = setup.get("confirmations", [])[:4]
         confirm_str = " | ".join(confirmations) if confirmations else "Multi-signal"
         
         # Generate DETAILED WHY reasoning based on confirmations
         why_parts = []
+        scenarios = []
         
         # Analyze structure/trend
-        structure_conf = [c for c in confirmations if any(x in c.lower() for x in ['trend', 'bos', 'structure'])]
+        structure_conf = [c for c in confirmations if any(x in c.lower() for x in ['trend', 'bos', 'structure', 'hh', 'hl', 'lh', 'll'])]
         if structure_conf:
             if direction == "LONG":
-                why_parts.append("Market structure showing bullish formation with higher highs and higher lows")
+                why_parts.append("Market showing higher highs/lows (bullish structure)")
+                scenarios.append("Price should continue making HH/HL toward target")
             else:
-                why_parts.append("Market structure showing bearish formation with lower highs and lower lows")
+                why_parts.append("Market showing lower highs/lows (bearish structure)")
+                scenarios.append("Price should continue making LH/LL toward target")
         
         # Analyze momentum indicators
-        momentum_conf = [c for c in confirmations if any(x in c.lower() for x in ['rsi', 'macd', 'momentum'])]
-        if momentum_conf:
-            for conf in momentum_conf:
-                if 'rsi' in conf.lower():
-                    if 'oversold' in conf.lower():
-                        why_parts.append(f"RSI signals oversold conditions creating bounce opportunity")
-                    elif 'overbought' in conf.lower():
-                        why_parts.append(f"RSI signals overbought conditions ripe for reversal")
-                elif 'macd' in conf.lower():
-                    if direction == "LONG":
-                        why_parts.append("MACD showing bullish momentum shift")
-                    else:
-                        why_parts.append("MACD showing bearish momentum shift")
+        for conf in confirmations:
+            if 'rsi' in conf.lower():
+                if 'oversold' in conf.lower():
+                    why_parts.append("RSI oversold = sellers exhausted, bounce incoming")
+                    scenarios.append("Expect relief rally as shorts cover")
+                elif 'overbought' in conf.lower():
+                    why_parts.append("RSI overbought = buyers exhausted, pullback coming")
+                    scenarios.append("Expect profit-taking selloff")
+            elif 'macd' in conf.lower():
+                if direction == "LONG":
+                    why_parts.append("MACD bullish crossover = momentum shifting up")
+                else:
+                    why_parts.append("MACD bearish crossover = momentum shifting down")
         
         # Analyze order flow/sentiment
-        flow_conf = [c for c in confirmations if any(x in c.lower() for x in ['buying', 'selling', 'vwap', 'volume'])]
-        if flow_conf:
-            for conf in flow_conf:
-                if 'buying' in conf.lower():
-                    why_parts.append("Strong buying pressure indicates accumulation by smart money")
-                elif 'selling' in conf.lower():
-                    why_parts.append("Strong selling pressure indicates distribution by institutions")
-                elif 'vwap' in conf.lower():
-                    if 'above' in conf.lower():
-                        why_parts.append("Price trading above VWAP shows bullish control")
-                    else:
-                        why_parts.append("Price trading below VWAP shows bearish control")
-        
-        # Analyze sentiment/options
-        sentiment_conf = [c for c in confirmations if any(x in c.lower() for x in ['fear', 'greed', 'funding', 'pain'])]
-        if sentiment_conf:
-            for conf in sentiment_conf:
-                if 'fear' in conf.lower():
-                    why_parts.append("Extreme fear creates contrarian buying opportunity")
-                elif 'greed' in conf.lower():
-                    why_parts.append("Extreme greed signals potential market top")
-                elif 'funding' in conf.lower():
-                    if 'high' in conf.lower() or 'positive' in conf.lower():
-                        why_parts.append("High funding rates suggest long squeeze risk")
-                    else:
-                        why_parts.append("Negative funding suggests short squeeze setup")
+        for conf in confirmations:
+            if 'buying' in conf.lower():
+                why_parts.append("Strong buying pressure = smart money accumulating")
+                scenarios.append("Accumulation often precedes major moves up")
+            elif 'selling' in conf.lower():
+                why_parts.append("Strong selling pressure = institutions distributing")
+                scenarios.append("Distribution often precedes drops")
+            elif 'fear' in conf.lower():
+                why_parts.append("Extreme fear = contrarian buy opportunity")
+                scenarios.append("Fear peaks often mark local bottoms")
+            elif 'greed' in conf.lower():
+                why_parts.append("Extreme greed = potential top forming")
+                scenarios.append("Greed peaks often mark local tops")
         
         # Add risk/reward context
-        why_parts.append(f"Risk/reward ratio of 1:{rr} offers favorable asymmetric opportunity")
+        why_parts.append(f"1:{rr} RR = risking {risk_pct:.1f}% to gain {reward_pct:.1f}%")
         
         # Combine into coherent reasoning
-        why_reason = ". ".join(why_parts) + "."
+        why_reason = ". ".join(why_parts[:3]) + "." if why_parts else f"Multiple signals align at {confidence}% probability."
         
-        # Fallback if no specific reasoning generated
-        if len(why_parts) <= 1:
-            why_reason = f"WHY {direction}: Multiple technical and fundamental factors align showing {confidence}% probability. {len(confirmations)} independent confirmations validate the setup on {timeframe} timeframe with 1:{rr} risk/reward."
+        # What to expect section
+        if scenarios:
+            scenario_text = scenarios[0]
+        else:
+            scenario_text = f"Price should move toward ${target:,.2f} as signals play out"
 
-        alert = (
-            f"{emoji} ELITE {direction} {symbol} {timeframe} ({confidence}%)\n"
-            f"Entry ${entry:,.2f} | SL ${stop:,.2f} | TP ${target:,.2f} | RR 1:{rr}\n"
-            f"{confirm_str}\n\n"
-            f"WHY {direction}: {why_reason}"
-        )
+        alert = f"""{emoji} ELITE {direction} {symbol} {timeframe} ({confidence}%)
+
+Entry ${entry:,.2f} | SL ${stop:,.2f} | TP ${target:,.2f}
+Risk: {risk_pct:.1f}% | Reward: {reward_pct:.1f}% | RR 1:{rr}
+
+✅ WHY {direction}:
+{why_reason}
+
+🎯 WHAT TO EXPECT:
+{scenario_text}
+• If confident: Enter at ${entry:,.2f}, set SL immediately
+• If cautious: Wait for pullback to ${entry * 0.995 if direction == 'LONG' else entry * 1.005:,.2f}
+
+⚠️ IF WRONG (Price hits ${stop:,.2f}):
+• EXIT immediately - stop loss is non-negotiable
+• Loss = {risk_pct:.1f}% on this position
+• DO NOT: Move stop, add to loser, or hope
+• WAIT: For next valid setup, don't revenge trade
+
+📋 PREPARATION:
+• Set alerts at entry zone before entering
+• Pre-calculate position size for {risk_pct:.1f}% risk
+• Know your exit BEFORE you enter"""
+        
         return alert
     
     async def get_stats(self) -> Dict:
