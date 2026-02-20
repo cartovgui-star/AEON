@@ -263,26 +263,20 @@ class FreeWillEngineV2:
                     trend = struct.get("trend", "")
                     bos = struct.get("bos")
                     
-                    # Only add trend if it aligns with the direction being analyzed
                     if trend == "UPTREND":
                         signals_buy += 1
-                        if signals_buy > signals_sell:  # Only if leaning LONG
-                            confirmations.append("📈 Uptrend (HH/HL)")
+                        bullish_reasons.append("Uptrend structure (HH/HL)")
                     elif trend == "DOWNTREND":
                         signals_sell += 1
-                        if signals_sell > signals_buy:  # Only if leaning SHORT
-                            confirmations.append("📉 Downtrend (LH/LL)")
+                        bearish_reasons.append("Downtrend structure (LH/LL)")
                     
-                    # BOS - only add if it aligns with overall direction
                     if bos:
                         if "BULLISH" in bos.get("type", ""):
                             signals_buy += 2
-                            if signals_buy > signals_sell:  # Only if leaning LONG
-                                confirmations.append("⚡ Bullish BOS")
+                            bullish_reasons.append("Bullish Break of Structure")
                         elif "BEARISH" in bos.get("type", ""):
                             signals_sell += 2
-                            if signals_sell > signals_buy:  # Only if leaning SHORT
-                                confirmations.append("⚡ Bearish BOS")
+                            bearish_reasons.append("Bearish Break of Structure")
                 except:
                     pass
             
@@ -297,10 +291,10 @@ class FreeWillEngineV2:
                     
                     if vwap_bias == "STRONG_BULLISH" and distance > 3:
                         signals_buy += 1
-                        confirmations.append(f"📊 Above VWAP +{distance:.1f}%")
+                        bullish_reasons.append(f"Above VWAP (+{distance:.1f}%)")
                     elif vwap_bias == "STRONG_BEARISH" and distance < -3:
                         signals_sell += 1
-                        confirmations.append(f"📊 Below VWAP {distance:.1f}%")
+                        bearish_reasons.append(f"Below VWAP ({distance:.1f}%)")
                 except:
                     pass
             
@@ -315,10 +309,10 @@ class FreeWillEngineV2:
                     
                     if cvd_bias == "BULLISH" and buy_pct > 58:
                         signals_buy += 2
-                        confirmations.append(f"💰 Strong buying ({buy_pct:.0f}%)")
+                        bullish_reasons.append(f"Strong buying pressure ({buy_pct:.0f}%)")
                     elif cvd_bias == "BEARISH" and buy_pct < 42:
                         signals_sell += 2
-                        confirmations.append(f"💰 Strong selling ({100-buy_pct:.0f}%)")
+                        bearish_reasons.append(f"Strong selling pressure ({100-buy_pct:.0f}%)")
                 except:
                     pass
             
@@ -329,7 +323,6 @@ class FreeWillEngineV2:
             if self.options_analyzer and base in ["BTC", "ETH"]:
                 try:
                     options = await self.options_analyzer.get_full_options_analysis(base)
-                    options_bias = options.get("overall_bias", "")
                     
                     mp = options.get("max_pain", {})
                     mp_distance = mp.get("distance_pct", 0)
@@ -337,21 +330,19 @@ class FreeWillEngineV2:
                     pcr = options.get("put_call_ratio", {})
                     pcr_sentiment = pcr.get("sentiment", "")
                     
-                    # Max pain analysis
                     if mp_distance > 5:
                         signals_buy += 1
-                        confirmations.append(f"🎯 Max pain above (+{mp_distance:.1f}%)")
+                        bullish_reasons.append(f"Price below max pain (+{mp_distance:.1f}% upside)")
                     elif mp_distance < -5:
                         signals_sell += 1
-                        confirmations.append(f"🎯 Max pain below ({mp_distance:.1f}%)")
+                        bearish_reasons.append(f"Price above max pain ({mp_distance:.1f}% downside)")
                     
-                    # Put/Call contrarian
                     if pcr_sentiment == "EXTREME_BEARISH":
                         signals_buy += 1
-                        confirmations.append("📈 PCR extreme bearish (contrarian buy)")
+                        bullish_reasons.append("Extreme put buying (contrarian buy)")
                     elif pcr_sentiment == "EXTREME_BULLISH":
                         signals_sell += 1
-                        confirmations.append("📉 PCR extreme bullish (contrarian sell)")
+                        bearish_reasons.append("Extreme call buying (contrarian sell)")
                 except:
                     pass
             
@@ -362,27 +353,25 @@ class FreeWillEngineV2:
                 try:
                     deriv = await self.derivatives_intel.get_full_derivatives_report(symbol.replace("/", ""))
                     
-                    # Funding rate
                     funding = deriv.get("funding", {})
                     avg_funding = funding.get("average_funding_rate", 0)
                     
-                    if avg_funding > 0.0005:  # >0.05% = longs paying
+                    if avg_funding > 0.0005:
                         signals_sell += 1
-                        confirmations.append("💸 High funding (long squeeze risk)")
-                    elif avg_funding < -0.0003:  # Negative = shorts paying
+                        bearish_reasons.append("High funding rate (long squeeze risk)")
+                    elif avg_funding < -0.0003:
                         signals_buy += 1
-                        confirmations.append("💸 Negative funding (short squeeze)")
+                        bullish_reasons.append("Negative funding (short squeeze setup)")
                     
-                    # Long/Short ratio
                     ls = deriv.get("long_short", {}).get("global", {})
                     long_pct = ls.get("long_pct", 50)
                     
                     if long_pct > 65:
                         signals_sell += 1
-                        confirmations.append(f"📊 Longs crowded ({long_pct:.0f}%)")
+                        bearish_reasons.append(f"Longs crowded ({long_pct:.0f}%)")
                     elif long_pct < 35:
                         signals_buy += 1
-                        confirmations.append(f"📊 Shorts crowded ({100-long_pct:.0f}%)")
+                        bullish_reasons.append(f"Shorts crowded ({100-long_pct:.0f}%)")
                 except:
                     pass
             
@@ -396,7 +385,7 @@ class FreeWillEngineV2:
                     
                     if fg_value < 20:
                         signals_buy += 1
-                        confirmations.append(f"😱 Extreme Fear ({fg_value})")
+                        bullish_reasons.append(f"Extreme Fear ({fg_value}) - contrarian buy")
                     elif fg_value > 80:
                         signals_sell += 1
                         confirmations.append(f"🤑 Extreme Greed ({fg_value})")
