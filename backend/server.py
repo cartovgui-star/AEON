@@ -2568,6 +2568,48 @@ Commands:
             response = trade_outcome_tracker.format_accuracy_message()
             context = "trading"
         
+        elif text_lower == '/leaderboard' or text_lower == '/top coins' or text_lower == '/lb':
+            report = trade_outcome_tracker.get_accuracy_report()
+            symbol_stats = report.get("by_symbol", {})
+            
+            # Build leaderboard
+            leaderboard = []
+            for symbol, stats in symbol_stats.items():
+                total = stats.get("wins", 0) + stats.get("losses", 0)
+                if total > 0:
+                    win_rate = (stats.get("wins", 0) / total) * 100
+                    leaderboard.append({
+                        "symbol": symbol.replace("/USDT", ""),
+                        "win_rate": win_rate,
+                        "wins": stats.get("wins", 0),
+                        "losses": stats.get("losses", 0),
+                        "total": total,
+                        "avg_pnl": stats.get("avg_pnl", 0)
+                    })
+            
+            # Sort by win rate
+            leaderboard.sort(key=lambda x: (x["win_rate"], x["total"]), reverse=True)
+            
+            if not leaderboard:
+                response = "📊 COIN LEADERBOARD\n\nNo completed trades yet. Track more trades to see performance by coin."
+            else:
+                response = "🏆 COIN LEADERBOARD (by Win Rate)\n\n"
+                
+                # Top performers
+                response += "🥇 TOP PERFORMERS:\n"
+                for i, coin in enumerate(leaderboard[:5], 1):
+                    medal = "🥇" if i == 1 else "🥈" if i == 2 else "🥉" if i == 3 else "  "
+                    response += f"{medal} {coin['symbol']}: {coin['win_rate']:.0f}% ({coin['wins']}W/{coin['losses']}L)\n"
+                
+                if len(leaderboard) > 5:
+                    response += "\n⚠️ WORST PERFORMERS:\n"
+                    for coin in leaderboard[-3:]:
+                        response += f"   {coin['symbol']}: {coin['win_rate']:.0f}% ({coin['wins']}W/{coin['losses']}L)\n"
+                
+                response += f"\n📊 Total Coins Tracked: {len(leaderboard)}"
+            
+            context = "trading"
+        
         elif text_lower == '/insights':
             insights = await memory_system.insights.get_latest_insights()
             
