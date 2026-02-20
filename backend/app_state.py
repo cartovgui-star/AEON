@@ -59,6 +59,9 @@ freewill_market_scan = None
 freewill_proactive = None
 send_daily_report = None
 
+# Trade outcome tracker
+trade_outcome_tracker = None
+
 # Other
 last_market_alert: Dict[int, datetime] = {}
 last_freewill_message: Dict[int, datetime] = {}
