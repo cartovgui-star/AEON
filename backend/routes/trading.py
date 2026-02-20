@@ -11,7 +11,7 @@ from voice_tts import generate_speech
 from emergentintegrations.llm.chat import LlmChat, UserMessage
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/api")
+router = APIRouter()  # Prefix added when mounting
 
 
 @router.post("/trading/toggle")

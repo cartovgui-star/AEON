@@ -2,7 +2,7 @@
 from fastapi import APIRouter
 import app_state as state
 
-router = APIRouter(prefix="/api")
+router = APIRouter()  # Prefix added when mounting
 
 
 # Multi-timeframe
