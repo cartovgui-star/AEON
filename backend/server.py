@@ -1099,41 +1099,7 @@ async def api_list_pairs():
 
 # Intel routes moved to routes/market.py (intel/* routes)
 # Derivatives routes moved to routes/market.py (derivatives/* routes)
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# ═══════════════════════════════════════════════════════════════════════════════
-# NEWS & SENTIMENT APIs
-# ═══════════════════════════════════════════════════════════════════════════════
-
-@api_router.get("/news/latest")
-async def api_latest_news(limit: int = 10, coin: str = None):
-    """Get latest crypto news"""
-    return await news_intel.get_latest_news(limit, coin)
-
-
-@api_router.get("/news/sentiment")
-async def api_news_sentiment():
-    """Get news sentiment summary"""
-    return await news_intel.get_news_sentiment_summary()
-
-
-@api_router.get("/onchain/btc")
-async def api_btc_onchain():
-    """Get Bitcoin on-chain stats"""
-    return await news_intel.get_btc_onchain_stats()
-
-
-@api_router.get("/onchain/flow")
-async def api_exchange_flow():
-    """Get exchange flow estimate"""
-    return await news_intel.get_exchange_flow_estimate()
-
-
-@api_router.get("/whales/activity")
-async def api_whale_activity():
-    """Get whale activity summary"""
-    return await news_intel.get_whale_summary()
+# News/onchain/whales routes moved to routes/market.py
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
