@@ -1124,44 +1124,7 @@ async def api_trend_alignment(symbol: str):
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# FUTURES CALCULATOR APIs
-# ═══════════════════════════════════════════════════════════════════════════════
-
-@api_router.get("/calc/pnl")
-async def api_calc_pnl(
-    entry: float,
-    exit: float,
-    size: float,
-    leverage: int = 1,
-    direction: str = "LONG"
-):
-    """Calculate futures PnL"""
-    return futures_calc.calculate_pnl(entry, exit, size, leverage, direction)
-
-
-@api_router.get("/calc/position")
-async def api_calc_position(
-    balance: float,
-    risk_pct: float,
-    entry: float,
-    stop: float,
-    leverage: int = 1
-):
-    """Calculate recommended position size"""
-    return futures_calc.calculate_position_size(balance, risk_pct, entry, stop, leverage)
-
-
-@api_router.get("/calc/scenarios")
-async def api_calc_scenarios(
-    entry: float,
-    size: float,
-    leverage: int = 1,
-    direction: str = "LONG"
-):
-    """Generate PnL scenarios at different price levels"""
-    return futures_calc.generate_scenarios(entry, size, leverage, direction)
-
-
+# BOT STATUS APIs
 # ═══════════════════════════════════════════════════════════════════════════════
 # ADVANCED STRATEGIES APIs (Divergence, Market Structure, VWAP)
 # ═══════════════════════════════════════════════════════════════════════════════
