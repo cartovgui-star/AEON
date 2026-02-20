@@ -1358,6 +1358,7 @@ Total PnL: {stats['total_pnl_pct']:+.2f}%"""
 /top100 - Top 10 by market cap
 /movers - 24h gainers/losers
 /trending - Most searched
+/news - Latest crypto news
 
 *DERIVATIVES*
 /funding [coin] - Funding rates
@@ -1371,6 +1372,11 @@ Total PnL: {stats['total_pnl_pct']:+.2f}%"""
 /open - Open positions
 /close [coin] - Close position
 /trail [coin] [%] - Set trailing stop
+
+*PERFORMANCE*
+/accuracy - Alert accuracy stats
+/leaderboard - Coin win rates
+/stats - Learning stats
 
 *ALERTS*
 /alerts - View active alerts
