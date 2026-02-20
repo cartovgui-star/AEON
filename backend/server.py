@@ -3470,12 +3470,22 @@ R:R: 1:{rr:.1f}
         elif text_lower == '/price':
             orderbook = get_mexc_orderbook()
             if "error" not in orderbook:
-                response = "MEXC ORDERBOOK\n\n"
-                for coin, data in orderbook.items():
-                    response += f"{coin}: {data['price']} ({data['change']})\n"
-                    response += f"  Bids: {data['bid_depth']} | Asks: {data['ask_depth']} | {data['imbalance']}\n\n"
+                response = "📊 LIVE PRICES (MEXC)\n\n"
+                symbols = orderbook.get("symbols", [])
+                for data in symbols:
+                    symbol = data.get('symbol', 'N/A').replace('/USDT', '')
+                    price = data.get('price', 0)
+                    change = data.get('change_24h', 0)
+                    bid_depth = data.get('bid_depth', 0)
+                    ask_depth = data.get('ask_depth', 0)
+                    imbalance = data.get('imbalance', 0)
+                    emoji = "🟢" if change > 0 else "🔴" if change < 0 else "⚪"
+                    response += f"{emoji} {symbol}: ${price:,.2f} ({change:+.2f}%)\n"
+                    response += f"  Depth: {bid_depth:,.0f} bid | {ask_depth:,.0f} ask | Imbal: {imbalance:+.1f}%\n\n"
+                if not symbols:
+                    response += "No data available"
             else:
-                response = f"Error: {orderbook['error']}"
+                response = f"Error: {orderbook.get('error', 'Unknown error')}"
             context = "trading"
         
         elif text_lower == '/intel' or text_lower == '/intelligence':
