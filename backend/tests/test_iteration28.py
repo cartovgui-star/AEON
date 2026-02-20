@@ -142,7 +142,7 @@ class TestMarketAPIs:
     
     def test_orderbook_endpoint(self):
         """Verify orderbook endpoint for dashboard"""
-        response = requests.get(f"{BASE_URL}/api/market/orderbook")
+        response = requests.get(f"{BASE_URL}/api/mexc/live")
         assert response.status_code == 200, f"Expected 200, got {response.status_code}"
         data = response.json()
         
