@@ -147,13 +147,16 @@ class TestMountedRouters:
         response = requests.get(f"{BASE_URL}/api/freewill/stats")
         assert response.status_code == 200
 
-    def test_derivatives_data_endpoint(self):
-        """Derivatives router should provide data"""
-        response = requests.get(f"{BASE_URL}/api/derivatives/data/BTC")
+    def test_derivatives_full_endpoint(self):
+        """Derivatives router should provide full derivatives data"""
+        response = requests.get(f"{BASE_URL}/api/derivatives/full/BTC")
         assert response.status_code == 200
         data = response.json()
-        # Should return derivatives data
-        assert "symbol" in data or "open_interest" in data or "funding_rate" in data or len(data) > 0
+        # Should return derivatives data with funding, OI, long/short ratio
+        assert "symbol" in data
+        assert "funding" in data
+        assert "open_interest" in data
+        assert "long_short" in data
 
     def test_intelligence_sentiment_endpoint(self):
         """Intelligence router should provide sentiment"""
