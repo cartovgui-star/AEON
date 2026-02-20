@@ -436,59 +436,85 @@ class TradingStyleEngine:
         return msg, True
     
     def format_alert(self, setup: Dict) -> str:
-        """Format alert message with detailed WHY reasoning"""
+        """Format alert message with detailed WHY reasoning and IF WRONG guidance"""
         direction = setup["direction"]
         symbol = setup["symbol"].replace("/USDT", "")
         conf = setup["confidence"]
         dir_emoji = "🟢" if direction == "LONG" else "🔴"
         style_badge = "⚡ DAY" if self.style == "AGGRESSIVE" else "🎯 LT"
+        
+        entry = setup['entry']
+        stop = setup['stop_loss']
+        target = setup['take_profit']
+        rr = setup['risk_reward']
+        
+        # Calculate percentages
+        risk_pct = abs(entry - stop) / entry * 100 if entry > 0 else 0
+        reward_pct = abs(target - entry) / entry * 100 if entry > 0 else 0
 
         confirms = setup.get('confirmations', [])[:4]
         confirm_str = " | ".join(confirms) if confirms else "Multiple signals"
         
-        # Generate DETAILED WHY reasoning
+        # Generate DETAILED WHY reasoning with scenarios
         style_name = "Day Trader" if self.style == "AGGRESSIVE" else "Long Term"
         why_parts = []
+        scenarios = []
         
         # Context about strategy
         if self.style == "AGGRESSIVE":
-            why_parts.append(f"Fast-paced {setup['timeframe']} setup targeting quick profits")
+            why_parts.append(f"Quick {setup['timeframe']} setup for fast profits")
+            scenarios.append("Expect move within 4-24 hours")
         else:
-            why_parts.append(f"Patient {setup['timeframe']} position for multi-week hold")
+            why_parts.append(f"Patient {setup['timeframe']} swing trade")
+            scenarios.append("Position may take 3-14 days to play out")
         
         # Analyze confirmations
-        for conf in confirms:
-            conf_lower = conf.lower()
-            if 'rsi' in conf_lower:
-                if 'oversold' in conf_lower:
-                    why_parts.append("RSI oversold indicates potential bounce from support")
-                elif 'overbought' in conf_lower:
-                    why_parts.append("RSI overbought suggests resistance and reversal ahead")
-            elif 'macd' in conf_lower:
-                if 'bullish' in conf_lower:
-                    why_parts.append("MACD crossover confirms bullish momentum building")
+        for c in confirms:
+            c_lower = c.lower()
+            if 'rsi' in c_lower:
+                if 'oversold' in c_lower:
+                    why_parts.append("RSI oversold = bounce setup")
+                    scenarios.append("Sellers exhausted, expect relief rally")
+                elif 'overbought' in c_lower:
+                    why_parts.append("RSI overbought = reversal setup")
+                    scenarios.append("Buyers exhausted, expect pullback")
+            elif 'macd' in c_lower:
+                if 'bullish' in c_lower:
+                    why_parts.append("MACD bullish = momentum up")
                 else:
-                    why_parts.append("MACD crossover confirms bearish momentum building")
-            elif 'trend' in conf_lower:
-                if 'bullish' in conf_lower or 'uptrend' in conf_lower:
-                    why_parts.append("Established uptrend provides tailwind for longs")
+                    why_parts.append("MACD bearish = momentum down")
+            elif 'trend' in c_lower or 'structure' in c_lower:
+                if 'bullish' in c_lower or 'uptrend' in c_lower:
+                    why_parts.append("Uptrend structure intact")
                 else:
-                    why_parts.append("Established downtrend favors short positions")
-            elif 'structure' in conf_lower:
-                why_parts.append("Market structure validates directional bias")
+                    why_parts.append("Downtrend structure intact")
         
-        # Add probability and risk context
-        why_parts.append(f"{conf}% probability based on historical pattern success rate")
-        why_parts.append(f"Risk/reward of 1:{setup['risk_reward']:.1f} offers asymmetric upside")
+        # Add probability context
+        why_parts.append(f"{conf}% probability based on backtested patterns")
         
-        why_reason = ". ".join(why_parts) + "."
+        why_reason = ". ".join(why_parts[:3]) + "."
+        scenario_text = scenarios[0] if scenarios else f"Targeting ${target:,.2f}"
 
-        msg = (
-            f"{dir_emoji} {style_badge} {direction} {symbol} {setup['timeframe']} ({conf}%)\n"
-            f"Entry ${setup['entry']:,.2f} | SL ${setup['stop_loss']:,.2f} | TP ${setup['take_profit']:,.2f} | RR {setup['risk_reward']:.1f}\n"
-            f"{confirm_str}\n\n"
-            f"WHY {direction}: {why_reason}"
-        )
+        msg = f"""{dir_emoji} {style_badge} {direction} {symbol} {setup['timeframe']} ({conf}%)
+
+Entry ${entry:,.2f} | SL ${stop:,.2f} | TP ${target:,.2f}
+Risk: {risk_pct:.1f}% | Reward: {reward_pct:.1f}% | RR {rr:.1f}
+
+✅ WHY {direction}:
+{why_reason}
+
+🎯 WHAT TO EXPECT:
+{scenario_text}
+
+⚠️ IF WRONG (SL hit at ${stop:,.2f}):
+• Exit immediately - don't move stop
+• Loss = {risk_pct:.1f}% on position
+• Wait for next setup - no revenge trades
+
+📋 PREP:
+• Set SL order immediately after entry
+• {style_name} style: {'Quick in/out' if self.style == 'AGGRESSIVE' else 'Be patient, let it work'}"""
+        
         return msg
     
     def get_stats(self) -> Dict:
