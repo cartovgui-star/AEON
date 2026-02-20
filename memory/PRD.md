@@ -12,30 +12,25 @@ Build a sophisticated trading bot named "Aeon" with:
 
 ---
 
-## Latest Session (Feb 20, 2026) - P0/P1 Bug Fixes & Refactoring
+## Latest Session (Feb 20, 2026) - Signal & UX Improvements
 
-### P0 FIX: Telegram Bot "Not Responding" - DONE
-- Fixed critical bug in `/price` command webhook handler
-- Issue: `orderbook.items()` was iterating over dict with `{"symbols": [...]}` instead of list
-- Solution: Now correctly accesses `orderbook.get("symbols", [])` and iterates over the list
-- Webhook now returns 200 OK instead of 500 error
+### Elite Signal WHY Explanation - DONE
+- Improved Free Will v2 signal analysis to collect bullish and bearish reasons separately
+- Confirmations now ONLY contain reasons that match the final direction (no contradictions)
+- Added `_build_why_explanation()` method for clear, categorized reasoning
+- Each signal now includes: Technical, Sentiment, Structure breakdown
 
-### P1 FIX: Dynamic Trading Styles Not Showing in UI - DONE
-- Added `trade_type` and `leverage` fields to `/api/trading/v2/live-positions` endpoint
-- Dashboard and Trading page now correctly display SCALP/DAY/SWING badges
-- Leverage values (60x, 75x, etc.) shown correctly instead of hardcoded 10x
+### Telegram Commands Cleanup - DONE  
+- Reorganized /help menu with markdown formatting (*SECTION*)
+- 8 logical categories: Quick Start, Analysis, Market Data, Derivatives, Trading, Alerts, Advanced, Mode
+- Removed redundant entries, cleaner formatting
+- Status indicators at bottom (Active/Paused, Mode)
 
-### P1: Server.py Refactoring Phase 2 - DONE
-- Removed 20 duplicate API endpoints (~168 lines)
-- Reduced server.py from 3705 lines to 3537 lines
-- Removed duplicate endpoints: alerts (8), strategies (8), freewill (4)
-- Mounted missing routers: derivatives_router, freewill_router, intelligence_router
-- Updated routes/freewill.py to use app_state.free_will_v2
-
-### Test Coverage
-- All fixes verified via testing_agent_v3 (iteration 3)
-- 15/15 backend tests passed
-- UI features verified on Dashboard and Trading pages
+### Previous Session Fixes
+- P0: Fixed Telegram `/price` webhook bug (was using dict.items() on list)
+- P1: Added trade_type/leverage to live-positions API
+- P1: Removed 20 duplicate endpoints from server.py (~168 lines)
+- P1: Mounted missing routers (freewill, derivatives, intelligence)
 
 ---
 
