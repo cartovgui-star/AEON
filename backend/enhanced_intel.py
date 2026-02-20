@@ -130,9 +130,10 @@ class EnhancedMarketIntel:
         return []
     
     async def get_global_market_data(self) -> Dict:
-        """Get global crypto market stats"""
+        """Get global crypto market stats - with MEXC fallback for BTC dominance"""
         url = f"{self.coingecko_base}/global"
         data = await self._fetch_json(url, "global")
+        
         if "data" in data:
             d = data["data"]
             return {
@@ -144,7 +145,29 @@ class EnhancedMarketIntel:
                 "markets": d.get("markets", 0),
                 "market_cap_change_24h": d.get("market_cap_change_percentage_24h_usd", 0),
             }
-        return {}
+        
+        # Fallback: try to get BTC price at minimum
+        try:
+            btc_ticker = self.mexc.fetch_ticker("BTC/USDT")
+            btc_price = btc_ticker.get("last", 0)
+            # Estimate market cap based on BTC price (rough approximation)
+            # BTC typically represents ~50% of crypto market
+            estimated_btc_mcap = btc_price * 19_700_000  # ~19.7M BTC supply
+            estimated_total = estimated_btc_mcap / 0.55  # Assume 55% dominance
+            
+            return {
+                "total_market_cap": estimated_total,
+                "total_volume_24h": 0,
+                "btc_dominance": 55.0,
+                "eth_dominance": 15.0,
+                "active_cryptos": 0,
+                "markets": 0,
+                "market_cap_change_24h": 0,
+                "estimated": True
+            }
+        except Exception as e:
+            logger.warning(f"Global market fallback failed: {e}")
+            return {}
     
     # ═══════════════════════════════════════════════════════════════════════════
     # FEAR & GREED INDEX
