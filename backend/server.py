@@ -1364,36 +1364,6 @@ async def api_dual_long_term_confidence(min_conf: int = 88):
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# FREE WILL v2 APIs (Ultra-selective)
-# ═══════════════════════════════════════════════════════════════════════════════
-
-@api_router.get("/freewill/stats")
-async def api_freewill_stats():
-    """Get Free Will v2 engine statistics"""
-    return await free_will_v2.get_stats()
-
-
-@api_router.get("/freewill/scan/{symbol}")
-async def api_freewill_scan_symbol(symbol: str, timeframe: str = "1h"):
-    """Manually scan a specific symbol/timeframe with full analysis"""
-    return await free_will_v2.analyze_setup_full(symbol.upper() + "/USDT", timeframe)
-
-
-@api_router.post("/freewill/toggle")
-async def api_freewill_toggle(active: bool = True):
-    """Toggle Free Will v2 engine on/off"""
-    free_will_v2.active = active
-    return {"active": free_will_v2.active}
-
-
-@api_router.post("/freewill/confidence")
-async def api_freewill_confidence(min_conf: int = 80):
-    """Set minimum confidence threshold (70-95)"""
-    free_will_v2.min_confidence = max(70, min(95, min_conf))
-    return {"min_confidence": free_will_v2.min_confidence}
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
 # ADDITIONAL DATA SOURCES API
 # ═══════════════════════════════════════════════════════════════════════════════
 
