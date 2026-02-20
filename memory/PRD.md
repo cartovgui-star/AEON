@@ -149,6 +149,12 @@ Build a sophisticated trading bot named "Aeon" with:
 
 ## Key Files
 
+### Modified (Feb 20, 2026)
+- `/app/frontend/src/components/Dashboard.jsx` - NEW: Upgraded dashboard with Kill Switch, Quick Trade, PnL Goal, Live Positions
+- `/app/backend/autonomous_trader_v2.py` - Enhanced with TRADE_STYLES config, determine_trade_style(), calculate_leverage()
+- `/app/backend/voice_tts.py` - Added OpenAI Whisper STT support
+- `/app/backend/server.py` - Added quick-trade, close-all, voice/transcribe, voice/info endpoints
+
 ### Modified (Feb 19, 2026)
 - `/app/frontend/src/components/Trading.jsx` - Fixed modal structure, position calling card
 - `/app/frontend/src/components/SettingsPanel.jsx` - Complete redesign with collapsible sections
