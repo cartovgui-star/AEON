@@ -1063,13 +1063,14 @@ class AutonomousTraderV2:
         }
     
     def format_signal_alert(self, signal: Dict) -> str:
-        """Format signal for Telegram alert"""
+        """Format signal for Telegram alert with detailed explanations and risk guidance"""
         direction = signal.get("direction", "")
         symbol = signal.get("symbol", "").replace("/USDT", "")
         timeframe = signal.get("timeframe", "")
         confidence = signal.get("confidence", 0)
         
         emoji = "🟢" if direction == "LONG" else "🔴"
+        opposite = "SHORT" if direction == "LONG" else "LONG"
         
         entry = signal.get("entry", 0)
         stop = signal.get("stop", 0)
@@ -1080,6 +1081,28 @@ class AutonomousTraderV2:
         
         confirmations = signal.get("confirmations", [])
         
+        # Calculate risk percentages
+        risk_pct = abs(entry - stop) / entry * 100 if entry > 0 else 0
+        reward_pct = abs(target - entry) / entry * 100 if entry > 0 else 0
+        
+        # Build detailed scenario analysis
+        why_parts = []
+        for c in confirmations[:4]:
+            c_lower = c.lower()
+            if 'rsi' in c_lower:
+                if 'oversold' in c_lower:
+                    why_parts.append(f"RSI oversold → bounce likely as sellers exhausted")
+                elif 'overbought' in c_lower:
+                    why_parts.append(f"RSI overbought → pullback likely as buyers exhausted")
+            elif 'macd' in c_lower:
+                why_parts.append(f"MACD confirms momentum shift favoring {direction.lower()}s")
+            elif 'trend' in c_lower or 'structure' in c_lower:
+                why_parts.append(f"Market structure supports {direction.lower()} bias")
+            elif 'buying' in c_lower or 'selling' in c_lower:
+                why_parts.append(f"Order flow shows institutional {direction.lower()} activity")
+        
+        why_reason = ". ".join(why_parts) if why_parts else f"Multiple signals align for {direction}"
+        
         alert = f"""{emoji} ELITE TRADE SIGNAL
 
 {direction} {symbol} ({timeframe})
@@ -1087,19 +1110,28 @@ Confidence: {confidence}%
 
 📊 ENTRY PLAN
 Entry: ${entry:,.2f}
-Stop Loss: ${stop:,.2f}
+Stop Loss: ${stop:,.2f} (-{risk_pct:.1f}%)
 Partial TP: ${partial:,.2f}
-Full Target: ${target:,.2f}
+Full Target: ${target:,.2f} (+{reward_pct:.1f}%)
 R:R Ratio: 1:{rr}
 
 💰 Position: {size}% of capital
 
-✅ {len(confirmations)} CONFIRMATIONS:
-"""
-        for c in confirmations[:8]:
-            alert += f"• {c}\n"
-        
-        alert += f"""
+✅ WHY {direction}:
+{why_reason}
+
+🎯 IF THIS WORKS:
+• Price moves toward ${target:,.2f}
+• Take partial profit at ${partial:,.2f} (+{reward_pct/2:.1f}%)
+• Move stop to breakeven after partial TP
+• Let remaining position run to full target
+
+⚠️ IF WRONG (Price hits ${stop:,.2f}):
+• Exit immediately at stop - NO HOPING
+• Max loss: {risk_pct:.1f}% × {size}% = {risk_pct * size / 100:.2f}% of account
+• Wait for next setup - don't revenge trade
+• Review: Was entry rushed? Did you ignore warnings?
+
 📡 MARKET CONTEXT
 Session: {signal.get('session', 'N/A')}
 Regime: {signal.get('market_regime', 'N/A')}
