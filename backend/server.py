@@ -1604,10 +1604,7 @@ free on/off - Toggle alerts
 • Vol Ratio: {ind.get('volume_ratio', 1):.1f}x avg
 
 💡 BOTTOM LINE:
-{f'RSI {rsi_status.split()[1]} + {macd_cross} MACD = Consider {direction}' if (rsi < 35 or rsi > 65) else 'No extreme RSI - use structure/trend for entries'}"""
-                
-                # Set direction variable for bottom line
-                direction = "LONG" if rsi < 40 else "SHORT" if rsi > 60 else "WAIT"
+{'RSI extreme detected - watch for reversal' if (rsi < 35 or rsi > 65) else 'No extreme RSI - use structure/trend for entries'}"""
                 
             context = "trading"
             
