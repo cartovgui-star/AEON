@@ -2160,23 +2160,70 @@ Max Loss at Stop: ${result['max_loss_at_stop']:,.2f}"""
             
             div = await advanced_strategies.detect_divergence(symbol + "/USDT", timeframe)
             
-            response = f"""📊 {symbol} DIVERGENCE ANALYSIS ({timeframe})
+            rsi = div.get('current_rsi', 50)
+            macd_hist = div.get('current_macd_hist', 0)
+            
+            response = f"""📊 {symbol} DIVERGENCE SCAN ({timeframe})
 
-RSI: {div.get('current_rsi', 50)}
-MACD Hist: {div.get('current_macd_hist', 0):.6f}
+📉 Current RSI: {rsi:.1f}
+📈 MACD Histogram: {macd_hist:.6f}
 
 """
             if div.get('has_divergence'):
                 for d in div.get('divergences', []):
-                    emoji = "🟢" if d['signal'] == 'BUY' else "🔴"
-                    response += f"""{emoji} {d['type']}
-Signal: {d['signal']}
-Strength: {d['strength']}
-{d['description']}
+                    div_type = d.get('type', '').upper()
+                    signal = d.get('signal', '')
+                    strength = d.get('strength', '')
+                    
+                    emoji = "🟢" if signal == 'BUY' else "🔴"
+                    
+                    # Explain what each divergence means
+                    if 'BULLISH' in div_type:
+                        div_explain = "Price making LOWER lows but indicator making HIGHER lows"
+                        what_happens = "Momentum is weakening for sellers → reversal UP likely"
+                        action = "Look for long entry when price confirms reversal"
+                        risk = "If price breaks below prior low, divergence fails - exit"
+                    else:  # BEARISH
+                        div_explain = "Price making HIGHER highs but indicator making LOWER highs"
+                        what_happens = "Momentum is weakening for buyers → reversal DOWN likely"
+                        action = "Look for short entry when price confirms reversal"
+                        risk = "If price breaks above prior high, divergence fails - exit"
+                    
+                    if 'HIDDEN' in div_type:
+                        div_explain = "Trend continuation signal - momentum aligning with trend"
+                        what_happens = f"Strong {'up' if signal == 'BUY' else 'down'}trend continuation expected"
+                    
+                    response += f"""{emoji} {div_type} DIVERGENCE DETECTED
+Signal: {signal}
+Strength: {strength}
+
+📖 WHAT THIS IS:
+• {div_explain}
+
+🎯 WHAT TO EXPECT:
+• {what_happens}
+
+💰 ACTION:
+• {action}
+
+⚠️ IF WRONG:
+• {risk}
 
 """
             else:
-                response += "No divergences detected on this timeframe.\n\nTry different timeframes: 15m, 1h, 4h, 1d"
+                response += """❌ NO DIVERGENCES DETECTED
+
+This means price and indicators are moving together (no disagreement).
+
+💡 TIPS:
+• Try different timeframes: /div btc 4h, /div btc 1d
+• Divergence works best at extremes (RSI <30 or >70)
+• Hidden divergences appear during strong trends
+
+📚 DIVERGENCE 101:
+• Regular Bullish: Price lower low + RSI higher low → BUY
+• Regular Bearish: Price higher high + RSI lower high → SELL
+• Hidden divergences signal trend continuation"""
             
             context = "trading"
         
