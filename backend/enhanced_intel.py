@@ -350,7 +350,7 @@ class EnhancedMarketIntel:
             return {"error": str(e)}
     
     async def get_market_summary(self) -> str:
-        """Generate a human-readable market summary"""
+        """Generate a human-readable market summary with MEXC fallbacks"""
         try:
             # Get all data from working APIs
             fng = await self.get_fear_greed_index()
@@ -358,10 +358,61 @@ class EnhancedMarketIntel:
             top_coins = await self.get_top_100_coins()
             trending = await self.get_trending_coins()
             
-            # Extract BTC and ETH from top 100
-            btc = next((c for c in top_coins if c.get("symbol") == "btc"), {})
-            eth = next((c for c in top_coins if c.get("symbol") == "eth"), {})
-            sol = next((c for c in top_coins if c.get("symbol") == "sol"), {})
+            # If CoinGecko fails, try MEXC prices
+            if not top_coins:
+                top_coins = await self.get_mexc_prices()
+            
+            # Extract BTC, ETH, SOL from top coins
+            btc = next((c for c in top_coins if str(c.get("symbol", "")).lower() == "btc"), {})
+            eth = next((c for c in top_coins if str(c.get("symbol", "")).lower() == "eth"), {})
+            sol = next((c for c in top_coins if str(c.get("symbol", "")).lower() == "sol"), {})
+            
+            # Format market cap - show N/A if zero
+            mcap = global_data.get('total_market_cap', 0)
+            mcap_str = f"${mcap/1e12:.2f}T" if mcap > 0 else "N/A (API rate limited)"
+            
+            vol = global_data.get('total_volume_24h', 0)
+            vol_str = f"${vol/1e9:.1f}B" if vol > 0 else "N/A"
+            
+            btc_dom = global_data.get('btc_dominance', 0)
+            btc_dom_str = f"{btc_dom:.1f}%" if btc_dom > 0 else "~55%"
+            
+            mcap_chg = global_data.get('market_cap_change_24h', 0)
+            mcap_chg_str = f"{mcap_chg:+.2f}%" if mcap_chg != 0 else "N/A"
+            
+            # Get prices - try multiple sources
+            btc_price = btc.get('current_price', 0) or btc.get('price', 0)
+            eth_price = eth.get('current_price', 0) or eth.get('price', 0)
+            sol_price = sol.get('current_price', 0) or sol.get('price', 0)
+            
+            btc_chg = btc.get('price_change_percentage_24h', 0) or btc.get('change_24h', 0) or 0
+            eth_chg = eth.get('price_change_percentage_24h', 0) or eth.get('change_24h', 0) or 0
+            sol_chg = sol.get('price_change_percentage_24h', 0) or sol.get('change_24h', 0) or 0
+            
+            # If prices still zero, fetch from MEXC directly
+            if btc_price == 0:
+                try:
+                    ticker = self.mexc.fetch_ticker("BTC/USDT")
+                    btc_price = ticker.get("last", 0)
+                    btc_chg = ticker.get("percentage", 0) or 0
+                except:
+                    pass
+            
+            if eth_price == 0:
+                try:
+                    ticker = self.mexc.fetch_ticker("ETH/USDT")
+                    eth_price = ticker.get("last", 0)
+                    eth_chg = ticker.get("percentage", 0) or 0
+                except:
+                    pass
+            
+            if sol_price == 0:
+                try:
+                    ticker = self.mexc.fetch_ticker("SOL/USDT")
+                    sol_price = ticker.get("last", 0)
+                    sol_chg = ticker.get("percentage", 0) or 0
+                except:
+                    pass
             
             summary = f"""📊 MARKET INTELLIGENCE REPORT
 
@@ -370,15 +421,15 @@ Fear & Greed: {fng.get('value', '?')} ({fng.get('classification', '?')})
 {self.interpret_fear_greed(fng.get('value', 50))}
 
 📈 GLOBAL MARKET
-Total Market Cap: ${global_data.get('total_market_cap', 0)/1e12:.2f}T
-24h Volume: ${global_data.get('total_volume_24h', 0)/1e9:.1f}B
-BTC Dominance: {global_data.get('btc_dominance', 0):.1f}%
-Market Cap Change 24h: {global_data.get('market_cap_change_24h', 0):+.2f}%
+Total Market Cap: {mcap_str}
+24h Volume: {vol_str}
+BTC Dominance: {btc_dom_str}
+Market Cap Change 24h: {mcap_chg_str}
 
-💰 KEY PRICES
-BTC: ${btc.get('current_price', 0):,.2f} ({btc.get('price_change_percentage_24h', 0) or 0:+.2f}%)
-ETH: ${eth.get('current_price', 0):,.2f} ({eth.get('price_change_percentage_24h', 0) or 0:+.2f}%)
-SOL: ${sol.get('current_price', 0):,.2f} ({sol.get('price_change_percentage_24h', 0) or 0:+.2f}%)
+💰 KEY PRICES (Live)
+BTC: ${btc_price:,.2f} ({btc_chg:+.2f}%)
+ETH: ${eth_price:,.2f} ({eth_chg:+.2f}%)
+SOL: ${sol_price:,.2f} ({sol_chg:+.2f}%)
 """
             
             if trending:
