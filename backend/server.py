@@ -2720,6 +2720,71 @@ Commands:
             context = "trading"
             context = "trading"
             
+        elif text_lower == '/riskcheck' or text_lower == '/risk':
+            # Get current risk metrics
+            stats = await autonomous_trader_v2.get_stats()
+            fg = autonomous_trader_v2.fear_greed
+            dd = stats.get('total_pnl_pct', 0)
+            open_trades = stats.get('open_trades', 0)
+            
+            # Calculate Kelly position sizing based on win rate
+            win_rate = stats.get('win_rate', 50)
+            avg_win = stats.get('avg_win_pct', 2)
+            avg_loss = abs(stats.get('avg_loss_pct', -1))
+            
+            if avg_loss > 0 and win_rate > 0:
+                p = win_rate / 100
+                q = 1 - p
+                b = avg_win / avg_loss if avg_loss > 0 else 1
+                kelly = max(0, (p * b - q) / b) * 100
+            else:
+                kelly = 2.0
+            
+            # Risk status
+            risk_status = "🟢 LOW RISK"
+            warnings = []
+            
+            if fg < 10:
+                risk_status = "🔴 EXTREME RISK"
+                warnings.append(f"⚠️ Fear & Greed at {fg} - trading PAUSED per rules")
+            elif fg < 20:
+                warnings.append(f"⚠️ Extreme Fear ({fg}) - contrarian opportunity but high vol")
+            
+            if dd < -7:
+                risk_status = "🔴 EXTREME RISK"
+                warnings.append(f"⚠️ Drawdown at {dd:.1f}% - exceeds 7% max")
+            elif dd < -5:
+                risk_status = "🟡 ELEVATED RISK"
+                warnings.append(f"⚠️ Drawdown at {dd:.1f}% - approaching 7% limit")
+            
+            if open_trades > 10:
+                warnings.append(f"⚠️ {open_trades} open positions - consider reducing exposure")
+            
+            response = f"""⚖️ RISK CHECK
+
+{risk_status}
+
+📊 PORTFOLIO METRICS
+Drawdown: {dd:+.2f}%
+Open Positions: {open_trades}
+Max DD Allowed: 7%
+
+📈 KELLY CRITERION
+Win Rate: {win_rate:.1f}%
+Avg Win: +{avg_win:.2f}%
+Avg Loss: -{avg_loss:.2f}%
+Kelly Fraction: {kelly:.1f}%
+Recommended Size: ${500 + (kelly * 80):.0f} per trade
+
+🌡️ SENTIMENT
+Fear & Greed: {fg}
+{'⚠️ <10 = No trading' if fg < 10 else '⚠️ <20 = Contrarian zone' if fg < 20 else '✅ Normal range' if fg < 80 else '⚠️ >80 = Extreme greed'}
+
+{''.join([w + chr(10) for w in warnings]) if warnings else '✅ All risk parameters within limits'}
+
+Execute /scan or ask edge?"""
+            context = "trading"
+            
         elif text_lower == '/auto on':
             autonomous_trader_v2.active = True
             response = """🟢 AUTONOMOUS TRADER v2 ENABLED
