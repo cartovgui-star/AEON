@@ -772,6 +772,33 @@ class AutonomousTraderV2:
                     confirmations.append("⚠️ Against BTC trend")
             
             # ═══════════════════════════════════════════════════════════════════
+            # CALCULATE CONFLUENCE SCORE (must hit 80%+ to trade)
+            # Tech (30%), SMC (20%), Derivatives (20%), On-Chain (15%), Sentiment (15%)
+            # ═══════════════════════════════════════════════════════════════════
+            
+            # Score each category (0-100 scale)
+            tech_score = min(100, (signals_buy if signals_buy > signals_sell else signals_sell) * 15)  # From RSI, MACD, BB, EMA
+            smc_score = sum([25 for c in confirmations if any(x in c for x in ["Order Block", "FVG", "BOS", "Structure", "structure"])]) 
+            deriv_score = sum([25 for c in confirmations if any(x in c for x in ["Funding", "OI", "Longs", "Shorts", "crowded"])])
+            onchain_score = sum([50 for c in confirmations if any(x in c for x in ["Whale", "whale", "inflow", "outflow"])])
+            sentiment_score = sum([50 for c in confirmations if any(x in c for x in ["Fear", "Greed", "BTC bullish", "BTC bearish"])])
+            
+            # Cap each at 100
+            smc_score = min(100, smc_score)
+            deriv_score = min(100, deriv_score)
+            onchain_score = min(100, onchain_score)
+            sentiment_score = min(100, sentiment_score)
+            
+            # Weighted confluence score
+            confluence_score = (
+                tech_score * 0.30 +
+                smc_score * 0.20 +
+                deriv_score * 0.20 +
+                onchain_score * 0.15 +
+                sentiment_score * 0.15
+            )
+            
+            # ═══════════════════════════════════════════════════════════════════
             # CALCULATE FINAL SIGNAL
             # ═══════════════════════════════════════════════════════════════════
             
@@ -785,8 +812,8 @@ class AutonomousTraderV2:
             else:
                 return None  # No clear signal
             
-            # Calculate base confidence
-            confidence = min(98, 50 + (signal_strength * 6))
+            # Use confluence score as confidence (must be 80%+ per spec)
+            confidence = confluence_score
             
             # Apply session quality modifier
             confidence = confidence * session_quality
@@ -795,7 +822,7 @@ class AutonomousTraderV2:
             if self.market_regime == "RANGING":
                 confidence *= 0.85  # Reduce for ranging markets
             elif self.market_regime == "VOLATILE":
-                confidence *= 0.9
+                confidence *= 0.95  # Slight reduction
             elif self.market_regime in ["TRENDING_UP", "TRENDING_DOWN"]:
                 # Boost if trading with trend
                 if (self.market_regime == "TRENDING_UP" and direction == "LONG") or \
@@ -804,7 +831,12 @@ class AutonomousTraderV2:
             
             confidence = min(98, max(50, confidence))
             
-            # Check minimum requirements
+            # RISK CHECK: Pause trading if Fear < 10 (extreme panic)
+            if self.fear_greed < 10:
+                logger.warning(f"Skipping {symbol} - Fear & Greed too low ({self.fear_greed})")
+                return None
+            
+            # Check minimum requirements (80%+ confluence per spec)
             if confidence < self.min_confidence:
                 return None
             
