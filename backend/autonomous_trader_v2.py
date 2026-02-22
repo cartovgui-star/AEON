@@ -2,15 +2,20 @@
 AEON AUTONOMOUS TRADER V2.5
 Ultimate trading engine with ALL data sources and smart execution
 
-Features:
-- Multi-source confirmation (8 data sources)
-- Smart entry timing (pullbacks to key levels)
-- Market regime filter (only trade trending markets)
-- Position sizing by confidence
-- BTC correlation filter for alts
-- Session awareness (Asia/London/NY)
-- Trail stops and partial profits
-- Unlimited signals (quality filtered)
+CONFLUENCE SCORING (must hit 80%+ to trade):
+- Technical (30%): RSI, MACD, BB, EMA, Stochastic
+- SMC (20%): Order blocks, FVG, BOS/CHOCH
+- Derivatives (20%): Funding, OI, L/S ratio
+- On-Chain (15%): Whale activity, exchange flows
+- Sentiment (15%): Fear & Greed, social volume
+
+RISK RULES:
+- Kelly Criterion position sizing
+- ATR-based leverage (ATR>2% = 10-25x; ATR<1% = 50-200x)
+- Trailing stops: 1-2% initial, tighten to 0.5% at +1R
+- Partial TP: 50% at 1:1 RR, trail rest
+- Max 5% per coin, pause if DD>7% or Fear<10
+- No trade unless 4/5 timeframes align + sentiment edge
 
 TRADE STYLES:
 - SCALP: 5m-15m, 50-200x leverage, quick in/out
