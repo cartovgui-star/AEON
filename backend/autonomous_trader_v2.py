@@ -171,14 +171,14 @@ class AutonomousTraderV2:
         else:  # 1d+
             return "SWING"
     
-    def calculate_leverage(self, confidence: float, market_regime: str = None, trade_style: str = None) -> int:
+    def calculate_leverage(self, confidence: float, market_regime: str = None, trade_style: str = None, atr_pct: float = None) -> int:
         """
-        Dynamic leverage calculation based on confidence, market conditions, and trade style.
-        Bot has FREE WILL to choose leverage - adds randomness for variety.
+        ATR-based leverage calculation (volatility-adjusted):
+        - ATR > 2% = 10-25x (volatile, conservative)
+        - ATR 1-2% = 25-75x (moderate)
+        - ATR < 1% = 50-200x (low vol, aggressive)
         
-        SCALP: 50-200x (aggressive, quick)
-        DAY: 20-75x (moderate, medium holds)
-        SWING: 10-25x (conservative, longer holds)
+        Bot has FREE WILL - adds randomness for variety.
         """
         if not self.dynamic_leverage:
             return self.min_leverage
@@ -189,25 +189,36 @@ class AutonomousTraderV2:
         style_min = style_config["min_leverage"]
         style_max = style_config["max_leverage"]
         
-        # Base leverage from confidence (normalized to style range)
-        style_min_conf = style_config["min_confidence"]
-        conf_normalized = (confidence - style_min_conf) / (95 - style_min_conf)
-        conf_normalized = max(0, min(1, conf_normalized))
-        
-        # Calculate base leverage within style bounds
-        base_leverage = style_min + (style_max - style_min) * conf_normalized
-        
-        # Add FREE WILL randomness (±20% variation)
         import random
-        variation = random.uniform(0.8, 1.2)
+        
+        # ATR-based leverage calculation
+        if atr_pct is not None:
+            if atr_pct > 2.0:
+                # High volatility = low leverage (10-25x range)
+                base_leverage = random.uniform(10, 25)
+            elif atr_pct > 1.0:
+                # Medium volatility = moderate leverage (25-75x)
+                base_leverage = random.uniform(25, 75)
+            else:
+                # Low volatility = high leverage (50-200x)
+                base_leverage = random.uniform(50, 200)
+        else:
+            # Fallback to confidence-based
+            style_min_conf = style_config["min_confidence"]
+            conf_normalized = (confidence - style_min_conf) / (95 - style_min_conf)
+            conf_normalized = max(0, min(1, conf_normalized))
+            base_leverage = style_min + (style_max - style_min) * conf_normalized
+        
+        # Add FREE WILL randomness (±15% variation)
+        variation = random.uniform(0.85, 1.15)
         leverage = base_leverage * variation
         
         # Adjust for market regime
         regime = market_regime or self.market_regime
         if regime == "VOLATILE":
-            leverage *= random.uniform(1.1, 1.4)  # MORE leverage in volatile
+            leverage *= random.uniform(0.7, 0.9)  # REDUCE in volatile (safety)
         elif regime == "TRENDING_UP" or regime == "TRENDING_DOWN":
-            leverage *= random.uniform(1.0, 1.3)  # Trend following
+            leverage *= random.uniform(1.0, 1.2)  # Trend following
         elif regime == "RANGING":
             leverage *= random.uniform(0.6, 0.8)  # Less in choppy
         
@@ -215,11 +226,45 @@ class AutonomousTraderV2:
         leverage = min(int(leverage), style_max)
         leverage = max(leverage, style_min)
         
-        # Round to nice numbers (multiples of 5 for cleaner display)
+        # Round to nice numbers (multiples of 5)
         leverage = round(leverage / 5) * 5
         leverage = max(style_min, min(style_max, leverage))
         
         return leverage
+    
+    def calculate_kelly_position_size(self, win_rate: float, avg_win: float, avg_loss: float, confidence: float) -> float:
+        """
+        Kelly Criterion position sizing: f = (p*b - q) / b
+        where p = win probability, q = 1-p, b = avg_win/avg_loss
+        
+        Caps: $500 (low conf) to $2500 (high conf)
+        """
+        base_size = self.default_position_size  # $1000
+        
+        # Calculate Kelly fraction
+        if avg_loss == 0 or win_rate <= 0:
+            kelly_fraction = 0.02  # Default 2%
+        else:
+            p = win_rate / 100  # Convert to decimal
+            q = 1 - p
+            b = abs(avg_win / avg_loss) if avg_loss != 0 else 1
+            
+            kelly_fraction = (p * b - q) / b if b > 0 else 0.02
+            kelly_fraction = max(0.01, min(0.25, kelly_fraction))  # Cap between 1-25%
+        
+        # Apply Kelly to base size
+        kelly_size = base_size * (kelly_fraction * 10)  # Scale up
+        
+        # Confidence multiplier
+        conf_mult = 0.5 + (confidence / 100)  # 0.5 to 1.5
+        
+        size = kelly_size * conf_mult
+        
+        # Hard bounds: $500 min, $2500 max
+        size = max(500, min(2500, size))
+        
+        # Round to nearest 50
+        return round(size / 50) * 50
     
     def calculate_position_size(self, confidence: float, position_size_pct: float = 2) -> float:
         """
