@@ -1179,82 +1179,60 @@ class AutonomousTraderV2:
         }
     
     def format_signal_alert(self, signal: Dict) -> str:
-        """Format signal for Telegram alert with detailed explanations and risk guidance"""
+        """
+        Format signal per AEON spec:
+        ALERT: [PAIR] [DIR] [STYLE] | Conf: XX% | Size: $X Lev:X | Entry: $Y | TP1: $Z (50%) Trail: X% | Why: [3 bull/bear reasons] | Risk: RR 1:X
+        """
         direction = signal.get("direction", "")
         symbol = signal.get("symbol", "").replace("/USDT", "")
         timeframe = signal.get("timeframe", "")
         confidence = signal.get("confidence", 0)
+        trade_type = signal.get("trade_type", "DAY")
         
         emoji = "🟢" if direction == "LONG" else "🔴"
-        opposite = "SHORT" if direction == "LONG" else "LONG"
         
         entry = signal.get("entry", 0)
         stop = signal.get("stop", 0)
         target = signal.get("target", 0)
         partial = signal.get("partial_target", 0)
         rr = signal.get("risk_reward", 0)
-        size = signal.get("position_size_pct", 2)
+        position_size = signal.get("position_size", 1000)
+        leverage = signal.get("leverage", 20)
         
         confirmations = signal.get("confirmations", [])
         
-        # Calculate risk percentages
-        risk_pct = abs(entry - stop) / entry * 100 if entry > 0 else 0
-        reward_pct = abs(target - entry) / entry * 100 if entry > 0 else 0
+        # Calculate trail percentage
+        trail_pct = abs(entry - stop) / entry * 100 if entry > 0 else 2
         
-        # Build detailed scenario analysis
-        why_parts = []
-        for c in confirmations[:4]:
-            c_lower = c.lower()
-            if 'rsi' in c_lower:
-                if 'oversold' in c_lower:
-                    why_parts.append(f"RSI oversold → bounce likely as sellers exhausted")
-                elif 'overbought' in c_lower:
-                    why_parts.append(f"RSI overbought → pullback likely as buyers exhausted")
-            elif 'macd' in c_lower:
-                why_parts.append(f"MACD confirms momentum shift favoring {direction.lower()}s")
-            elif 'trend' in c_lower or 'structure' in c_lower:
-                why_parts.append(f"Market structure supports {direction.lower()} bias")
-            elif 'buying' in c_lower or 'selling' in c_lower:
-                why_parts.append(f"Order flow shows institutional {direction.lower()} activity")
+        # Build 3 bull/bear reasons
+        reasons = []
+        for c in confirmations[:3]:
+            # Clean up confirmation text for concise display
+            reason = c.replace("📈 ", "").replace("📉 ", "").replace("🔥 ", "").replace("⚡ ", "")
+            reason = reason.replace("✅ ", "").replace("📊 ", "").replace("🎯 ", "")
+            reasons.append(reason)
         
-        why_reason = ". ".join(why_parts) if why_parts else f"Multiple signals align for {direction}"
+        reasons_text = " • ".join(reasons) if reasons else f"Multiple signals align for {direction}"
         
-        alert = f"""{emoji} ELITE TRADE SIGNAL
+        # Format in spec style
+        alert = f"""{emoji} ALERT: {symbol} {direction} {trade_type}
 
-{direction} {symbol} ({timeframe})
-Confidence: {confidence}%
+📊 Conf: {confidence:.0f}% | Size: ${position_size:,.0f} Lev: {leverage}x
 
-📊 ENTRY PLAN
-Entry: ${entry:,.2f}
-Stop Loss: ${stop:,.2f} (-{risk_pct:.1f}%)
-Partial TP: ${partial:,.2f}
-Full Target: ${target:,.2f} (+{reward_pct:.1f}%)
-R:R Ratio: 1:{rr}
+💰 Entry: ${entry:,.2f}
+🎯 TP1: ${partial:,.2f} (50%) | TP2: ${target:,.2f}
+🛑 Stop: ${stop:,.2f} | Trail: {trail_pct:.1f}%
 
-💰 Position: {size}% of capital
+📈 Why {direction}:
+{reasons_text}
 
-✅ WHY {direction}:
-{why_reason}
+⚖️ Risk: RR 1:{rr:.1f}
 
-🎯 IF THIS WORKS:
-• Price moves toward ${target:,.2f}
-• Take partial profit at ${partial:,.2f} (+{reward_pct/2:.1f}%)
-• Move stop to breakeven after partial TP
-• Let remaining position run to full target
+🌡️ Context:
+Session: {signal.get('session', 'N/A')} | Regime: {signal.get('market_regime', 'N/A')}
+BTC: {signal.get('btc_bias', 'NEUTRAL')} | F&G: {signal.get('fear_greed', 50)}
 
-⚠️ IF WRONG (Price hits ${stop:,.2f}):
-• Exit immediately at stop - NO HOPING
-• Max loss: {risk_pct:.1f}% × {size}% = {risk_pct * size / 100:.2f}% of account
-• Wait for next setup - don't revenge trade
-• Review: Was entry rushed? Did you ignore warnings?
-
-📡 MARKET CONTEXT
-Session: {signal.get('session', 'N/A')}
-Regime: {signal.get('market_regime', 'N/A')}
-BTC Bias: {signal.get('btc_bias', 'N/A')}
-Fear/Greed: {signal.get('fear_greed', 50)}
-
-⚠️ PAPER TRADE - DYOR"""
+⚠️ PAPER TRADE | Execute /scan or ask edge?"""
         
         return alert
 
