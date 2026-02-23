@@ -593,7 +593,7 @@ class AutonomousTraderV2:
                 confirmations.append("Volume spike")
             
             # ═══════════════════════════════════════════════════════════════════
-            # DIVERGENCE DETECTION (Critical for reversals)
+            # DIVERGENCE DETECTION (Critical for reversals - MANDATORY)
             # ═══════════════════════════════════════════════════════════════════
             if self.advanced_strategies:
                 try:
@@ -602,16 +602,17 @@ class AutonomousTraderV2:
                         for d in div.get("divergences", []):
                             strength = 3 if d.get("strength") == "STRONG" else 2
                             if d.get("signal") == "BUY":
-                                signals_buy += strength
-                                confirmations.append(f"🔀 {d.get('type')} divergence (BUY)")
+                                tech_signals_buy += strength
+                                confirmations.append(f"RSI div bull ({d.get('type')})")
                             elif d.get("signal") == "SELL":
-                                signals_sell += strength
-                                confirmations.append(f"🔀 {d.get('type')} divergence (SELL)")
+                                tech_signals_sell += strength
+                                confirmations.append(f"RSI div bear ({d.get('type')})")
                 except:
                     pass
             
             # ═══════════════════════════════════════════════════════════════════
-            # 3. MARKET STRUCTURE
+            # MARKET STRUCTURE / SMC (20% weight)
+            # HH/HL, LL/LH, BOS, CHoCH, FVG, Order Blocks
             # ═══════════════════════════════════════════════════════════════════
             if self.advanced_strategies:
                 try:
@@ -622,19 +623,19 @@ class AutonomousTraderV2:
                     resistance = struct.get("resistance", price * 1.05)
                     
                     if trend == "UPTREND":
-                        signals_buy += 2
-                        confirmations.append("📈 Uptrend structure (HH/HL)")
+                        smc_signals_buy += 2
+                        confirmations.append("HH/HL structure (bull)")
                     elif trend == "DOWNTREND":
-                        signals_sell += 2
-                        confirmations.append("📉 Downtrend structure (LH/LL)")
+                        smc_signals_sell += 2
+                        confirmations.append("LL/LH structure (bear)")
                     
                     if bos:
                         if "BULLISH" in bos.get("type", ""):
-                            signals_buy += 3
-                            confirmations.append("⚡ Bullish Break of Structure")
+                            smc_signals_buy += 3
+                            confirmations.append("BOS bullish")
                         elif "BEARISH" in bos.get("type", ""):
-                            signals_sell += 3
-                            confirmations.append("⚡ Bearish Break of Structure")
+                            smc_signals_sell += 3
+                            confirmations.append("BOS bearish")
                     
                     # Add key levels
                     entry_levels.append(("SUPPORT", support))
@@ -642,42 +643,62 @@ class AutonomousTraderV2:
                 except:
                     pass
             
-            # ═══════════════════════════════════════════════════════════════════
-            # 4. VWAP
-            # ═══════════════════════════════════════════════════════════════════
-            if self.advanced_strategies:
+            # SMC: FVG and Order Blocks
+            if self.smc_analysis:
                 try:
-                    vwap = await self.advanced_strategies.calculate_vwap(symbol, timeframe)
-                    vwap_price = vwap.get("vwap", price)
-                    vwap_bias = vwap.get("bias", "")
-                    distance = vwap.get("distance_pct", 0)
+                    smc = await self.smc_analysis.analyze(symbol, timeframe)
                     
-                    entry_levels.append(("VWAP", vwap_price))
+                    # Fair Value Gaps
+                    fvg = smc.get("fvg", {})
+                    if fvg.get("bullish_fvg"):
+                        smc_signals_buy += 2
+                        confirmations.append("FVG bullish")
+                        entry_levels.append(("FVG", fvg.get("level", price)))
+                    elif fvg.get("bearish_fvg"):
+                        smc_signals_sell += 2
+                        confirmations.append("FVG bearish")
                     
-                    if vwap_bias == "STRONG_BULLISH":
-                        signals_buy += 1
-                        confirmations.append(f"Above VWAP (+{distance:.1f}%)")
-                    elif vwap_bias == "STRONG_BEARISH":
-                        signals_sell += 1
-                        confirmations.append(f"Below VWAP ({distance:.1f}%)")
+                    # Order Blocks
+                    ob = smc.get("order_block", {})
+                    if ob.get("bullish_ob") and price <= ob.get("ob_high", price * 1.1):
+                        smc_signals_buy += 2
+                        confirmations.append("At bullish OB")
+                        entry_levels.append(("ORDER_BLOCK", ob.get("ob_mid", price)))
+                    elif ob.get("bearish_ob") and price >= ob.get("ob_low", price * 0.9):
+                        smc_signals_sell += 2
+                        confirmations.append("At bearish OB")
                     
-                    # Pullback to VWAP = good entry
-                    if abs(distance) < 0.5:
-                        confirmations.append("🎯 Price at VWAP (key level)")
+                    # Liquidity Sweeps
+                    liq = smc.get("liquidity", {})
+                    if liq.get("sweep_low"):
+                        smc_signals_buy += 1
+                        confirmations.append("Liq sweep low (long)")
+                    elif liq.get("sweep_high"):
+                        smc_signals_sell += 1
+                        confirmations.append("Liq sweep high (short)")
                 except:
                     pass
             
             # ═══════════════════════════════════════════════════════════════════
-            # 5. ORDER FLOW / CVD
+            # DERIVATIVES / ORDER FLOW (20% weight)
+            # Funding, OI, L/S Ratio, CVD
             # ═══════════════════════════════════════════════════════════════════
+            
+            # Order Flow / CVD
             if self.order_flow:
                 try:
                     cvd = await self.order_flow.calculate_cvd(symbol.replace("/USDT", ""))
                     cvd_bias = cvd.get("bias", "")
                     buy_pct = cvd.get("buy_pct", 50)
-                    cvd_trend = cvd.get("cvd_trend", "")
                     
-                    if cvd_bias == "BULLISH" and buy_pct > 58:
+                    if cvd_bias == "BULLISH" and buy_pct > 55:
+                        deriv_signals_buy += 2
+                        confirmations.append(f"+CVD ({buy_pct:.0f}% buys)")
+                    elif cvd_bias == "BEARISH" and buy_pct < 45:
+                        deriv_signals_sell += 2
+                        confirmations.append(f"-CVD ({buy_pct:.0f}% buys)")
+                except:
+                    pass
                         signals_buy += 2
                         confirmations.append(f"💰 Strong buying pressure ({buy_pct:.0f}%)")
                     elif cvd_bias == "BEARISH" and buy_pct < 42:
