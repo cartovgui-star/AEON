@@ -1112,12 +1112,12 @@ class AutonomousTraderV2:
         return trade
     
     async def evaluate_trades(self) -> List[Dict]:
-        """Evaluate all open trades and manage exits"""
+        """Evaluate all open trades and manage exits with momentum fade detection"""
         closed = []
         
         for trade in self.open_trades[:]:
             try:
-                # Get current price
+                # Get current price and indicators
                 ticker = await self.market_intel.get_ticker(trade["symbol"])
                 if not ticker or not ticker.get("price"):
                     continue
@@ -1129,9 +1129,31 @@ class AutonomousTraderV2:
                 target = trade["target_price"]
                 partial = trade["partial_target"]
                 
+                # Get current RSI for momentum fade detection
+                ta = await self.market_intel.get_technical_analysis(trade["symbol"].replace("/", ""), "1h")
+                current_rsi = ta.get("indicators", {}).get("rsi", 50)
+                
                 hit_stop = False
                 hit_target = False
                 hit_partial = False
+                momentum_exit = False
+                
+                # Calculate PnL percentage
+                if direction == "LONG":
+                    current_pnl_pct = ((current_price - entry) / entry) * 100
+                else:
+                    current_pnl_pct = ((entry - current_price) / entry) * 100
+                
+                # MOMENTUM FADE DETECTION - Exit early if momentum dying
+                if current_pnl_pct > 1.0:  # Only if in profit
+                    if direction == "LONG" and current_rsi > 70:
+                        # RSI overbought while long - momentum fading
+                        momentum_exit = True
+                        logger.info(f"🔄 MOMENTUM FADE: {trade['symbol']} RSI {current_rsi:.0f} (long in profit)")
+                    elif direction == "SHORT" and current_rsi < 30:
+                        # RSI oversold while short - momentum fading
+                        momentum_exit = True
+                        logger.info(f"🔄 MOMENTUM FADE: {trade['symbol']} RSI {current_rsi:.0f} (short in profit)")
                 
                 # Check for hits
                 if direction == "LONG":
@@ -1139,28 +1161,39 @@ class AutonomousTraderV2:
                         hit_stop = True
                     elif current_price >= target:
                         hit_target = True
-                    elif current_price >= partial and not trade["partial_closed"]:
+                    elif current_price >= partial and not trade.get("partial_closed"):
                         hit_partial = True
                     
-                    # Trail stop if in profit
-                    if current_price > entry * 1.01 and not trade["partial_closed"]:
-                        new_trail = current_price - (trade["target_price"] - trade["entry_price"]) * 0.3
+                    # TIGHTER TRAILING - Move stop faster when in profit
+                    if current_pnl_pct > 0.5:
+                        # After 0.5% profit, start trailing tighter
+                        trail_distance = (target - entry) * 0.2  # 20% of target distance
+                        new_trail = current_price - trail_distance
                         if new_trail > trade["trail_stop"]:
                             trade["trail_stop"] = new_trail
-                            
+                    
+                    # BREAKEVEN at +1%
+                    if current_pnl_pct > 1.0 and trade["trail_stop"] < entry:
+                        trade["trail_stop"] = entry * 1.001  # Tiny profit lock
+                        
                 else:  # SHORT
                     if current_price >= stop:
                         hit_stop = True
                     elif current_price <= target:
                         hit_target = True
-                    elif current_price <= partial and not trade["partial_closed"]:
+                    elif current_price <= partial and not trade.get("partial_closed"):
                         hit_partial = True
                     
-                    # Trail stop if in profit
-                    if current_price < entry * 0.99 and not trade["partial_closed"]:
-                        new_trail = current_price + (trade["entry_price"] - trade["target_price"]) * 0.3
+                    # TIGHTER TRAILING for shorts
+                    if current_pnl_pct > 0.5:
+                        trail_distance = (entry - target) * 0.2
+                        new_trail = current_price + trail_distance
                         if new_trail < trade["trail_stop"]:
                             trade["trail_stop"] = new_trail
+                    
+                    # BREAKEVEN at +1%
+                    if current_pnl_pct > 1.0 and trade["trail_stop"] > entry:
+                        trade["trail_stop"] = entry * 0.999
                 
                 # Handle partial profit
                 if hit_partial:
@@ -1169,9 +1202,9 @@ class AutonomousTraderV2:
                     trade["trail_stop"] = entry
                     logger.info(f"📊 PARTIAL PROFIT: {trade['symbol']} - Stop moved to breakeven")
                 
-                # Handle full exit
-                if hit_stop or hit_target:
-                    exit_price = stop if hit_stop else target
+                # Handle full exit (including momentum exit)
+                if hit_stop or hit_target or momentum_exit:
+                    exit_price = current_price if momentum_exit else (stop if hit_stop else target)
                     
                     if direction == "LONG":
                         pnl_pct = ((exit_price - entry) / entry) * 100
@@ -1182,7 +1215,11 @@ class AutonomousTraderV2:
                     trade["exit_price"] = exit_price
                     trade["pnl_pct"] = pnl_pct
                     trade["exit_time"] = datetime.now(timezone.utc)
-                    trade["exit_reason"] = "TARGET" if hit_target else "STOP"
+                    trade["exit_reason"] = "TARGET" if hit_target else ("MOMENTUM" if momentum_exit else "STOP")
+                    
+                    # Update pair stats (for blacklist/cooldown)
+                    is_win = pnl_pct > 0
+                    self.update_pair_stats(trade["symbol"], is_win)
                     
                     self.open_trades.remove(trade)
                     self.closed_trades.append(trade)
