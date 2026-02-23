@@ -2677,8 +2677,48 @@ Signals: {analysis.get('signals_breakdown', {}).get('buy_signals', 0)} Buy / {an
             context = "probe"
             
         elif text_lower == '/stats':
-            stats = await learning_system.get_prediction_stats()
-            response = await learning_system.generate_learning_summary()
+            # Simple dashboard stats
+            stats = await autonomous_trader_v2.get_stats()
+            pair_data = autonomous_trader_v2.get_best_worst_pairs()
+            last_10 = autonomous_trader_v2.closed_trades[-10:] if autonomous_trader_v2.closed_trades else []
+            wins = sum(1 for t in last_10 if t.get("pnl_pct", 0) > 0)
+            losses = len(last_10) - wins
+            
+            best_pairs = pair_data.get("best", [])
+            worst_pairs = pair_data.get("worst", [])
+            blacklisted = pair_data.get("blacklisted", [])
+            
+            response = f"""📊 AEON DASHBOARD
+
+📈 LAST 10 TRADES: {wins}W {losses}L
+{'🟢' * wins}{'🔴' * losses}
+
+🏆 BEST PAIRS:
+"""
+            for p in best_pairs[:3]:
+                response += f"  {p['symbol'].replace('/USDT', '')}: {p['win_rate']:.0f}% ({p['wins']}W/{p['losses']}L)\n"
+            
+            if not best_pairs:
+                response += "  No data yet\n"
+            
+            response += "\n⚠️ WORST PAIRS:\n"
+            for p in worst_pairs[:3]:
+                response += f"  {p['symbol'].replace('/USDT', '')}: {p['win_rate']:.0f}% ({p['wins']}W/{p['losses']}L)\n"
+            
+            if not worst_pairs:
+                response += "  No data yet\n"
+            
+            if blacklisted:
+                response += f"\n🚫 BLACKLISTED: {', '.join([p.replace('/USDT', '') for p in blacklisted])}\n"
+            
+            cooldowns = list(autonomous_trader_v2.pair_cooldowns.keys())
+            if cooldowns:
+                response += f"\n⏳ ON COOLDOWN: {', '.join([p.replace('/USDT', '') for p in cooldowns])}\n"
+            
+            response += f"""
+📉 DAILY: {autonomous_trader_v2.daily_trades}/{autonomous_trader_v2.max_daily_trades} trades
+🎯 Session: {stats.get('current_session', 'N/A')}
+"""
             context = "stats"
             
         elif text_lower == '/auto' or text_lower == '/autotrade':
