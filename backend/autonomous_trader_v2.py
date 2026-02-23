@@ -699,100 +699,45 @@ class AutonomousTraderV2:
                         confirmations.append(f"-CVD ({buy_pct:.0f}% buys)")
                 except:
                     pass
-                        signals_buy += 2
-                        confirmations.append(f"💰 Strong buying pressure ({buy_pct:.0f}%)")
-                    elif cvd_bias == "BEARISH" and buy_pct < 42:
-                        signals_sell += 2
-                        confirmations.append(f"💰 Strong selling pressure ({100-buy_pct:.0f}%)")
-                    
-                    # CVD trend confirmation
-                    if cvd_trend == "RISING" and signals_buy > signals_sell:
-                        signals_buy += 1
-                        confirmations.append("CVD rising (accumulation)")
-                    elif cvd_trend == "FALLING" and signals_sell > signals_buy:
-                        signals_sell += 1
-                        confirmations.append("CVD falling (distribution)")
-                except:
-                    pass
             
-            # ═══════════════════════════════════════════════════════════════════
-            # 6. OPTIONS DATA (BTC/ETH only)
-            # ═══════════════════════════════════════════════════════════════════
-            base = symbol.replace("/USDT", "")
-            if self.options_analyzer and base in ["BTC", "ETH"]:
-                try:
-                    options = await self.options_analyzer.get_full_options_analysis(base)
-                    
-                    mp = options.get("max_pain", {})
-                    mp_price = mp.get("max_pain", 0)
-                    mp_distance = mp.get("distance_pct", 0)
-                    
-                    pcr = options.get("put_call_ratio", {})
-                    pcr_sentiment = pcr.get("sentiment", "")
-                    
-                    if mp_price:
-                        entry_levels.append(("MAX_PAIN", mp_price))
-                    
-                    # Max pain analysis
-                    if mp_distance > 5:
-                        signals_buy += 1
-                        confirmations.append(f"🎯 Max pain above (+{mp_distance:.1f}%)")
-                    elif mp_distance < -5:
-                        signals_sell += 1
-                        confirmations.append(f"🎯 Max pain below ({mp_distance:.1f}%)")
-                    
-                    # Put/Call contrarian signals
-                    if pcr_sentiment == "EXTREME_BEARISH":
-                        signals_buy += 2
-                        confirmations.append("📊 Extreme put buying (contrarian BUY)")
-                    elif pcr_sentiment == "EXTREME_BULLISH":
-                        signals_sell += 2
-                        confirmations.append("📊 Extreme call buying (contrarian SELL)")
-                except:
-                    pass
-            
-            # ═══════════════════════════════════════════════════════════════════
-            # 7. DERIVATIVES (Funding, OI, L/S)
-            # ═══════════════════════════════════════════════════════════════════
+            # Derivatives: Funding, OI, L/S Ratio
             if self.derivatives_intel:
                 try:
                     deriv = await self.derivatives_intel.get_full_derivatives_report(symbol.replace("/", ""))
                     
-                    # Funding rate
+                    # Funding rate: >0.1% = short bias, <-0.1% = long bias
                     funding = deriv.get("funding", {})
                     avg_funding = funding.get("average_funding_rate", 0)
                     
-                    if avg_funding > 0.0008:  # >0.08% = very high
-                        signals_sell += 2
-                        confirmations.append("💸 High funding (long squeeze risk)")
-                    elif avg_funding > 0.0004:
-                        signals_sell += 1
-                        confirmations.append("💸 Elevated funding")
-                    elif avg_funding < -0.0003:
-                        signals_buy += 2
-                        confirmations.append("💸 Negative funding (short squeeze)")
+                    if avg_funding > 0.001:  # >0.1%
+                        deriv_signals_sell += 2
+                        confirmations.append(f"Funding +{avg_funding*100:.2f}% (short)")
+                    elif avg_funding < -0.001:  # <-0.1%
+                        deriv_signals_buy += 2
+                        confirmations.append(f"Funding {avg_funding*100:.2f}% (long)")
                     
-                    # Long/Short ratio
+                    # Long/Short ratio: >1.5 longs = short, <0.5 = long
                     ls = deriv.get("long_short", {}).get("global", {})
                     long_pct = ls.get("long_pct", 50)
+                    ls_ratio = long_pct / (100 - long_pct) if long_pct < 100 else 1
                     
-                    if long_pct > 70:
-                        signals_sell += 2
-                        confirmations.append(f"📊 Longs very crowded ({long_pct:.0f}%)")
-                    elif long_pct > 60:
-                        signals_sell += 1
-                        confirmations.append(f"📊 Longs crowded ({long_pct:.0f}%)")
-                    elif long_pct < 30:
-                        signals_buy += 2
-                        confirmations.append(f"📊 Shorts very crowded ({100-long_pct:.0f}%)")
-                    elif long_pct < 40:
-                        signals_buy += 1
-                        confirmations.append(f"📊 Shorts crowded ({100-long_pct:.0f}%)")
+                    if ls_ratio > 1.5:  # Longs overcrowded
+                        deriv_signals_sell += 2
+                        confirmations.append(f"L/S {ls_ratio:.1f} (crowded longs)")
+                    elif ls_ratio < 0.67:  # Shorts overcrowded (<0.5 equivalent)
+                        deriv_signals_buy += 2
+                        confirmations.append(f"L/S {ls_ratio:.1f} (crowded shorts)")
+                    
+                    # OI spike + price divergence = reversal
+                    oi = deriv.get("open_interest", {})
+                    oi_change = oi.get("change_24h", 0)
+                    if oi_change > 10:  # OI spike
+                        confirmations.append(f"OI spike +{oi_change:.0f}%")
                 except:
                     pass
             
             # ═══════════════════════════════════════════════════════════════════
-            # 8. FEAR & GREED (Context only - does NOT influence direction)
+            # F&G (Context display only - NO direction influence)
             # ═══════════════════════════════════════════════════════════════════
             if self.enhanced_intel:
                 try:
