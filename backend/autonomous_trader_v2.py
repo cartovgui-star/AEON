@@ -744,81 +744,64 @@ class AutonomousTraderV2:
                     fg = await self.enhanced_intel.get_fear_greed_index()
                     fg_value = fg.get("value", 50)
                     self.fear_greed = fg_value
-                    # Just track for context, no signal influence
-                    confirmations.append(f"🌡️ F&G: {fg_value}")
                 except:
                     pass
             
-            # BTC correlation for alts (still useful for confluence)
-            if symbol != "BTC/USDT" and self.btc_bias != "NEUTRAL":
-                if self.btc_bias == "BULLISH" and signals_buy > signals_sell:
-                    signals_buy += 1
-                    confirmations.append("₿ BTC bullish (aligned)")
-                elif self.btc_bias == "BEARISH" and signals_sell > signals_buy:
-                    signals_sell += 1
-                    confirmations.append("₿ BTC bearish (aligned)")
-            
             # ═══════════════════════════════════════════════════════════════════
-            # CALCULATE CONFLUENCE SCORE (must hit 80%+ to trade)
-            # Tech (30%), SMC (20%), Derivatives (20%), On-Chain (15%), Sentiment (15%)
+            # WEIGHTED CONFLUENCE SCORING
+            # Tech (60%), SMC (20%), Derivatives (20%)
             # ═══════════════════════════════════════════════════════════════════
             
-            # Score each category (0-100 scale)
-            tech_score = min(100, (signals_buy if signals_buy > signals_sell else signals_sell) * 15)  # From RSI, MACD, BB, EMA
-            smc_score = sum([25 for c in confirmations if any(x in c for x in ["Order Block", "FVG", "BOS", "Structure", "structure"])]) 
-            deriv_score = sum([25 for c in confirmations if any(x in c for x in ["Funding", "OI", "Longs", "Shorts", "crowded"])])
-            onchain_score = sum([50 for c in confirmations if any(x in c for x in ["Whale", "whale", "inflow", "outflow"])])
-            sentiment_score = sum([50 for c in confirmations if any(x in c for x in ["Fear", "Greed", "BTC bullish", "BTC bearish"])])
+            # Calculate total signals for each category
+            total_tech_buy = tech_signals_buy
+            total_tech_sell = tech_signals_sell
+            total_smc_buy = smc_signals_buy
+            total_smc_sell = smc_signals_sell
+            total_deriv_buy = deriv_signals_buy
+            total_deriv_sell = deriv_signals_sell
             
-            # Cap each at 100
-            smc_score = min(100, smc_score)
-            deriv_score = min(100, deriv_score)
-            onchain_score = min(100, onchain_score)
-            sentiment_score = min(100, sentiment_score)
-            
-            # Weighted confluence score
-            confluence_score = (
-                tech_score * 0.30 +
-                smc_score * 0.20 +
-                deriv_score * 0.20 +
-                onchain_score * 0.15 +
-                sentiment_score * 0.15
-            )
+            # Combined signals
+            signals_buy = total_tech_buy + total_smc_buy + total_deriv_buy
+            signals_sell = total_tech_sell + total_smc_sell + total_deriv_sell
             
             # ═══════════════════════════════════════════════════════════════════
-            # CALCULATE FINAL SIGNAL
+            # DETERMINE DIRECTION (4/5 confluences min)
             # ═══════════════════════════════════════════════════════════════════
+            
+            # Count confluence categories
+            buy_categories = sum([
+                1 if total_tech_buy >= 3 else 0,  # Tech confirmation
+                1 if total_smc_buy >= 2 else 0,   # SMC confirmation
+                1 if total_deriv_buy >= 2 else 0, # Derivatives confirmation
+            ])
+            sell_categories = sum([
+                1 if total_tech_sell >= 3 else 0,
+                1 if total_smc_sell >= 2 else 0,
+                1 if total_deriv_sell >= 2 else 0,
+            ])
             
             # Determine direction
-            if signals_buy > signals_sell and signals_buy >= 4:
+            if signals_buy > signals_sell and signals_buy >= 5 and buy_categories >= 2:
                 direction = "LONG"
                 signal_strength = signals_buy
-            elif signals_sell > signals_buy and signals_sell >= 4:
+                conf_level = "HIGH" if buy_categories >= 3 else "MED" if buy_categories >= 2 else "LOW"
+            elif signals_sell > signals_buy and signals_sell >= 5 and sell_categories >= 2:
                 direction = "SHORT"
                 signal_strength = signals_sell
+                conf_level = "HIGH" if sell_categories >= 3 else "MED" if sell_categories >= 2 else "LOW"
             else:
-                return None  # No clear signal
+                return None  # No clear signal (FLAT)
             
-            # Use confluence score as confidence (must be 80%+ per spec)
-            confidence = confluence_score
+            # Calculate weighted confidence score
+            tech_score = min(100, (total_tech_buy if direction == "LONG" else total_tech_sell) * 12)
+            smc_score = min(100, (total_smc_buy if direction == "LONG" else total_smc_sell) * 25)
+            deriv_score = min(100, (total_deriv_buy if direction == "LONG" else total_deriv_sell) * 25)
             
-            # Apply session quality modifier
-            confidence = confidence * session_quality
-            
-            # Apply market regime modifier
-            if self.market_regime == "RANGING":
-                confidence *= 0.85  # Reduce for ranging markets
-            elif self.market_regime == "VOLATILE":
-                confidence *= 0.95  # Slight reduction
-            elif self.market_regime in ["TRENDING_UP", "TRENDING_DOWN"]:
-                # Boost if trading with trend
-                if (self.market_regime == "TRENDING_UP" and direction == "LONG") or \
-                   (self.market_regime == "TRENDING_DOWN" and direction == "SHORT"):
-                    confidence *= 1.1
-            
+            # Weighted: Tech 60%, SMC 20%, Deriv 20%
+            confidence = (tech_score * 0.60) + (smc_score * 0.20) + (deriv_score * 0.20)
             confidence = min(98, max(50, confidence))
             
-            # Check minimum requirements (80%+ confluence per spec)
+            # Must hit minimum confidence
             if confidence < self.min_confidence:
                 return None
             
@@ -826,7 +809,7 @@ class AutonomousTraderV2:
                 return None
             
             # ═══════════════════════════════════════════════════════════════════
-            # CALCULATE ENTRY, STOP, TARGET
+            # CALCULATE ENTRY, STOP, TARGET (R:R min 2:1)
             # ═══════════════════════════════════════════════════════════════════
             
             # Smart entry - look for pullback level
