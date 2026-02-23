@@ -1437,7 +1437,9 @@ free on/off - Toggle alerts
                 try:
                     conf = int(parts[1])
                     free_will_v2.min_confidence = max(70, min(95, conf))
-                    response = f"✅ Free Will min confidence set to {free_will_v2.min_confidence}%"
+                    autonomous_trader_v2.min_confidence = free_will_v2.min_confidence  # Sync both
+                    await autonomous_trader_v2.save_settings()  # Persist to DB
+                    response = f"✅ Min confidence set to {free_will_v2.min_confidence}%"
                 except:
                     response = "Usage: /fwconf 80 (sets 80% minimum)"
             else:
