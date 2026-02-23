@@ -97,9 +97,11 @@ class AutonomousTraderV2:
     - Entry on pullbacks to key levels
     - Market regime filter
     - BTC correlation for alts
-    - Session awareness
+    - Session awareness (London/NY only)
     - Position sizing by confidence
-    - Trail stops
+    - Trail stops with momentum fade detection
+    - Auto-blacklist bad pairs
+    - Cooldown per pair after loss
     
     TRADE STYLES:
     - SCALP: Quick trades, high leverage (50-200x)
@@ -111,30 +113,39 @@ class AutonomousTraderV2:
         self.db = db
         self.active = True  # Always active
         
-        # AGGRESSIVE MODE - High leverage scalping/day trading
-        self.min_confidence = 60  # Lower threshold = more trades
-        self.min_confirmations = 2  # Need 2+ data sources agreeing
+        # QUALITY MODE - High win rate focus
+        self.min_confidence = 80  # Higher threshold = better quality
+        self.min_confirmations = 3  # Need 3+ data sources agreeing
         
         # LEVERAGE SETTINGS (Bot has FREE WILL to choose)
         self.max_leverage = 200  # Up to 200x
         self.min_leverage = 10   # Minimum 10x
         self.dynamic_leverage = True  # Auto-adjust based on confidence
         
-        # Position sizing (aggressive)
+        # Position sizing (scaled entry)
         self.base_position_pct = 5   # 5% of capital per trade
         self.max_position_pct = 15   # Max 15% for highest confidence
         self.default_position_size = 1000  # $1000 per trade base
         
-        # Risk management (aggressive but controlled)
-        self.max_open_trades = 15  # More concurrent positions
-        self.default_stop_atr = 1.5  # Tighter stop 1.5x ATR
-        self.default_target_atr = 3.0  # 3x ATR for target (2:1 R:R)
+        # Risk management (tighter stops)
+        self.max_open_trades = 10  # Fewer concurrent positions
+        self.default_stop_atr = 1.0  # Tighter stop 1x ATR (was 1.5)
+        self.default_target_atr = 2.5  # 2.5x ATR for target (2.5:1 R:R)
+        self.max_daily_trades = 3  # Max 3 new trades per day
         
         # Trade tracking
         self.open_trades: List[Dict] = []
         self.closed_trades: List[Dict] = []
         self.total_signals = 0
         self.total_trades = 0
+        self.daily_trades = 0
+        self.last_trade_date = None
+        
+        # Pair management
+        self.pair_cooldowns: Dict[str, datetime] = {}  # Cooldown after loss
+        self.pair_stats: Dict[str, Dict] = {}  # Win/loss per pair
+        self.blacklisted_pairs: List[str] = []  # Auto-blacklist bad performers
+        self.cooldown_hours = 4  # Wait 4h after loss on same pair
         
         # Market state
         self.btc_bias = "NEUTRAL"
