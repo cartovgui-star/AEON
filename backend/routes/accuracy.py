@@ -55,6 +55,36 @@ async def api_leaderboard():
     }
 
 
+@router.get("/dashboard")
+async def api_accuracy_dashboard():
+    """Simple dashboard stats - last 10 trades, best/worst pairs"""
+    from server import autonomous_trader_v2
+    
+    # Get last 10 trades
+    last_10 = autonomous_trader_v2.closed_trades[-10:] if autonomous_trader_v2.closed_trades else []
+    wins = sum(1 for t in last_10 if t.get("pnl_pct", 0) > 0)
+    losses = len(last_10) - wins
+    
+    # Get best/worst pairs from trader
+    pair_data = autonomous_trader_v2.get_best_worst_pairs()
+    
+    return {
+        "last_10_trades": {
+            "wins": wins,
+            "losses": losses,
+            "display": f"{wins}W {losses}L",
+            "trades": [{"symbol": t.get("symbol", "").replace("/USDT", ""), 
+                       "pnl": t.get("pnl_pct", 0),
+                       "direction": t.get("direction", "")} for t in last_10[-5:]]
+        },
+        "best_pairs": pair_data.get("best", []),
+        "worst_pairs": pair_data.get("worst", []),
+        "blacklisted": pair_data.get("blacklisted", []),
+        "daily_trades": f"{autonomous_trader_v2.daily_trades}/{autonomous_trader_v2.max_daily_trades}",
+        "cooldowns": list(autonomous_trader_v2.pair_cooldowns.keys())
+    }
+
+
 @router.post("/record")
 async def api_accuracy_record(request: Request):
     """Record outcome for an alert"""
