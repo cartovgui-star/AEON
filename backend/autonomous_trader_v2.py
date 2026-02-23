@@ -161,6 +161,7 @@ class AutonomousTraderV2:
         self.order_flow = None
         self.options_analyzer = None
         self.learning_system = None
+        self.smc_analysis = None  # Smart Money Concepts
         
         # Alert callback
         self.send_alert = None
