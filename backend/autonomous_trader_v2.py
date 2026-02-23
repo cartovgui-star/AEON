@@ -733,30 +733,19 @@ class AutonomousTraderV2:
                     pass
             
             # ═══════════════════════════════════════════════════════════════════
-            # 8. FEAR & GREED + BTC CORRELATION
+            # 8. FEAR & GREED (Context only - does NOT influence direction)
             # ═══════════════════════════════════════════════════════════════════
             if self.enhanced_intel:
                 try:
                     fg = await self.enhanced_intel.get_fear_greed_index()
                     fg_value = fg.get("value", 50)
                     self.fear_greed = fg_value
-                    
-                    if fg_value < 20:
-                        signals_buy += 2
-                        confirmations.append(f"😱 Extreme Fear ({fg_value}) - contrarian BUY")
-                    elif fg_value < 30:
-                        signals_buy += 1
-                        confirmations.append(f"😰 Fear ({fg_value})")
-                    elif fg_value > 80:
-                        signals_sell += 2
-                        confirmations.append(f"🤑 Extreme Greed ({fg_value}) - contrarian SELL")
-                    elif fg_value > 70:
-                        signals_sell += 1
-                        confirmations.append(f"😎 Greed ({fg_value})")
+                    # Just track for context, no signal influence
+                    confirmations.append(f"🌡️ F&G: {fg_value}")
                 except:
                     pass
             
-            # BTC correlation for alts
+            # BTC correlation for alts (still useful for confluence)
             if symbol != "BTC/USDT" and self.btc_bias != "NEUTRAL":
                 if self.btc_bias == "BULLISH" and signals_buy > signals_sell:
                     signals_buy += 1
@@ -764,12 +753,6 @@ class AutonomousTraderV2:
                 elif self.btc_bias == "BEARISH" and signals_sell > signals_buy:
                     signals_sell += 1
                     confirmations.append("₿ BTC bearish (aligned)")
-                elif self.btc_bias == "BULLISH" and signals_sell > signals_buy:
-                    signals_sell -= 1  # Reduce confidence for counter-BTC trade
-                    confirmations.append("⚠️ Against BTC trend")
-                elif self.btc_bias == "BEARISH" and signals_buy > signals_sell:
-                    signals_buy -= 1
-                    confirmations.append("⚠️ Against BTC trend")
             
             # ═══════════════════════════════════════════════════════════════════
             # CALCULATE CONFLUENCE SCORE (must hit 80%+ to trade)
