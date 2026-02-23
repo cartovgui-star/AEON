@@ -128,10 +128,10 @@ class AutonomousTraderV2:
         self.default_position_size = 1000  # $1000 per trade base
         
         # Risk management (tighter stops)
-        self.max_open_trades = 10  # Fewer concurrent positions
-        self.default_stop_atr = 1.0  # Tighter stop 1x ATR (was 1.5)
+        self.max_open_trades = 15  # Can hold multiple positions
+        self.default_stop_atr = 1.0  # Tighter stop 1x ATR
         self.default_target_atr = 2.5  # 2.5x ATR for target (2.5:1 R:R)
-        self.max_daily_trades = 3  # Max 3 new trades per day
+        # NO daily trade limit - trade when DATA says to trade
         
         # Trade tracking
         self.open_trades: List[Dict] = []
