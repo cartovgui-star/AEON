@@ -1,21 +1,21 @@
 """
-AEON AUTONOMOUS TRADER V2.5
-Ultimate trading engine with ALL data sources and smart execution
+AEON CORE TRADING ENGINE - TECHNICALS ONLY MODE
 
-CONFLUENCE SCORING (must hit 80%+ to trade):
-- Technical (30%): RSI, MACD, BB, EMA, Stochastic
-- SMC (20%): Order blocks, FVG, BOS/CHOCH
-- Derivatives (20%): Funding, OI, L/S ratio
-- On-Chain (15%): Whale activity, exchange flows
-- Sentiment (15%): Fear & Greed, social volume
+You are AEON, pure price action quantum oracle. Ignore sentiment/Fear&Greed/BTC trend.
+Trade purely on technicals, structure, and derivatives.
 
-RISK RULES:
-- Kelly Criterion position sizing
-- ATR-based leverage (ATR>2% = 10-25x; ATR<1% = 50-200x)
-- Trailing stops: 1-2% initial, tighten to 0.5% at +1R
-- Partial TP: 50% at 1:1 RR, trail rest
-- Max 5% per coin, pause if DD>7% or Fear<10
-- No trade unless 4/5 timeframes align + sentiment edge
+CONFLUENCE WEIGHTS:
+- Core Technicals (60%): RSI, MACD, BB, EMAs
+- Market Structure/SMC (20%): BOS, FVG, Order Blocks, HH/HL
+- Derivatives/Order Flow (20%): Funding, OI, L/S Ratio, CVD
+
+RULES:
+- 4/5 confluences minimum
+- R:R min 2:1
+- SL at structure break / ATR(2x)
+- TP at next liquidity/OB
+- 1% risk per trade max
+- Pause if ATR > 2x 20-period avg (high chop)
 
 TRADE STYLES:
 - SCALP: 5m-15m, 50-200x leverage, quick in/out
