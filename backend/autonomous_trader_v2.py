@@ -566,10 +566,41 @@ class AutonomousTraderV2:
         """
         Complete multi-source signal analysis
         Returns signal only if quality threshold met
+        
+        PRE-CHECKS:
+        1. Pair not blacklisted
+        2. Pair not on cooldown
+        3. Good session (London/NY)
+        4. Daily limit not hit
+        5. ATR volatility filter
         """
         self.total_signals += 1
         
         try:
+            # ═══════════════════════════════════════════════════════════════════
+            # PRE-CHECKS - Skip bad conditions
+            # ═══════════════════════════════════════════════════════════════════
+            
+            # Check if pair is blacklisted
+            if self.is_pair_blacklisted(symbol):
+                logger.debug(f"Skipping {symbol} - BLACKLISTED")
+                return None
+            
+            # Check if pair is on cooldown
+            if self.is_pair_on_cooldown(symbol):
+                logger.debug(f"Skipping {symbol} - ON COOLDOWN")
+                return None
+            
+            # Check if good session (London/NY only)
+            if not self.is_good_session():
+                logger.debug(f"Skipping {symbol} - Bad session ({self.current_session})")
+                return None
+            
+            # Check daily trade limit
+            if not self.check_daily_limit():
+                logger.debug(f"Skipping {symbol} - Daily limit reached ({self.daily_trades}/{self.max_daily_trades})")
+                return None
+            
             confirmations = []
             tech_signals_buy = 0
             tech_signals_sell = 0
