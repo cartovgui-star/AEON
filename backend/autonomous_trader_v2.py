@@ -306,6 +306,95 @@ class AutonomousTraderV2:
         """Get configuration for a trade style"""
         return TRADE_STYLES.get(trade_style, TRADE_STYLES["DAY"])
     
+    # ═══════════════════════════════════════════════════════════════════════════
+    # PAIR MANAGEMENT - Cooldowns, Blacklist, Stats
+    # ═══════════════════════════════════════════════════════════════════════════
+    
+    def is_pair_on_cooldown(self, symbol: str) -> bool:
+        """Check if pair is on cooldown after a loss"""
+        if symbol in self.pair_cooldowns:
+            cooldown_until = self.pair_cooldowns[symbol]
+            if datetime.now(timezone.utc) < cooldown_until:
+                return True
+            else:
+                del self.pair_cooldowns[symbol]
+        return False
+    
+    def set_pair_cooldown(self, symbol: str):
+        """Set cooldown for a pair after a loss"""
+        self.pair_cooldowns[symbol] = datetime.now(timezone.utc) + timedelta(hours=self.cooldown_hours)
+        logger.info(f"Cooldown set for {symbol} - {self.cooldown_hours}h")
+    
+    def update_pair_stats(self, symbol: str, is_win: bool):
+        """Track win/loss stats per pair"""
+        if symbol not in self.pair_stats:
+            self.pair_stats[symbol] = {"wins": 0, "losses": 0, "trades": 0}
+        
+        self.pair_stats[symbol]["trades"] += 1
+        if is_win:
+            self.pair_stats[symbol]["wins"] += 1
+        else:
+            self.pair_stats[symbol]["losses"] += 1
+            self.set_pair_cooldown(symbol)  # Cooldown after loss
+        
+        # Auto-blacklist check: <30% win rate after 10 trades
+        stats = self.pair_stats[symbol]
+        if stats["trades"] >= 10:
+            win_rate = (stats["wins"] / stats["trades"]) * 100
+            if win_rate < 30 and symbol not in self.blacklisted_pairs:
+                self.blacklisted_pairs.append(symbol)
+                logger.warning(f"AUTO-BLACKLIST: {symbol} ({win_rate:.0f}% WR after {stats['trades']} trades)")
+    
+    def is_pair_blacklisted(self, symbol: str) -> bool:
+        """Check if pair is blacklisted due to poor performance"""
+        return symbol in self.blacklisted_pairs
+    
+    def get_pair_win_rate(self, symbol: str) -> float:
+        """Get win rate for a specific pair"""
+        if symbol in self.pair_stats:
+            stats = self.pair_stats[symbol]
+            if stats["trades"] > 0:
+                return (stats["wins"] / stats["trades"]) * 100
+        return 50.0  # Default assumption
+    
+    def is_good_session(self) -> bool:
+        """Only trade during high-volume sessions (London/NY)"""
+        session = self.get_current_session()
+        # Best sessions: LONDON, NEW_YORK, LONDON_NY_OVERLAP
+        return session in ["LONDON", "NEW_YORK", "OVERLAP"]
+    
+    def check_daily_limit(self) -> bool:
+        """Check if we've hit daily trade limit"""
+        today = datetime.now(timezone.utc).date()
+        if self.last_trade_date != today:
+            self.daily_trades = 0
+            self.last_trade_date = today
+        return self.daily_trades < self.max_daily_trades
+    
+    def increment_daily_trades(self):
+        """Increment daily trade counter"""
+        today = datetime.now(timezone.utc).date()
+        if self.last_trade_date != today:
+            self.daily_trades = 0
+            self.last_trade_date = today
+        self.daily_trades += 1
+    
+    def get_best_worst_pairs(self) -> Dict:
+        """Get best and worst performing pairs"""
+        sorted_pairs = []
+        for symbol, stats in self.pair_stats.items():
+            if stats["trades"] >= 3:  # Min 3 trades
+                wr = (stats["wins"] / stats["trades"]) * 100
+                sorted_pairs.append({"symbol": symbol, "win_rate": wr, **stats})
+        
+        sorted_pairs.sort(key=lambda x: x["win_rate"], reverse=True)
+        
+        return {
+            "best": sorted_pairs[:3] if sorted_pairs else [],
+            "worst": sorted_pairs[-3:] if len(sorted_pairs) >= 3 else [],
+            "blacklisted": self.blacklisted_pairs
+        }
+    
     def set_dependencies(self, **kwargs):
         """Set all external dependencies"""
         self.market_intel = kwargs.get('market_intel')
