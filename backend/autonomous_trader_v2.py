@@ -405,6 +405,7 @@ class AutonomousTraderV2:
         self.order_flow = kwargs.get('order_flow')
         self.options_analyzer = kwargs.get('options_analyzer')
         self.learning_system = kwargs.get('learning_system')
+        self.smc_analysis = kwargs.get('smc_analysis')  # Smart Money Concepts
         self.send_alert = kwargs.get('send_alert')
         self.chat_ids = kwargs.get('chat_ids', set())
     
