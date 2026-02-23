@@ -1145,16 +1145,14 @@ class AutonomousTraderV2:
     
     def format_signal_alert(self, signal: Dict) -> str:
         """
-        Format signal per AEON spec:
-        ALERT: [PAIR] [DIR] [STYLE] | Conf: XX% | Size: $X Lev:X | Entry: $Y | TP1: $Z (50%) Trail: X% | Why: [3 bull/bear reasons] | Risk: RR 1:X
+        Format per AEON TECHNICALS ONLY spec:
+        🧠 AEON: [ASSET] [LONG/SHORT] | Signals: [list 4-5 hits] | Confidence: HIGH/MED/LOW | Entry: $X | SL: $Y | TP: $Z | Reason: [1-sentence]
         """
         direction = signal.get("direction", "")
         symbol = signal.get("symbol", "").replace("/USDT", "")
-        timeframe = signal.get("timeframe", "")
         confidence = signal.get("confidence", 0)
         trade_type = signal.get("trade_type", "DAY")
-        
-        emoji = "🟢" if direction == "LONG" else "🔴"
+        conf_level = signal.get("conf_level", "MED")
         
         entry = signal.get("entry", 0)
         stop = signal.get("stop", 0)
@@ -1166,38 +1164,34 @@ class AutonomousTraderV2:
         
         confirmations = signal.get("confirmations", [])
         
-        # Calculate trail percentage
-        trail_pct = abs(entry - stop) / entry * 100 if entry > 0 else 2
+        # Build signal list (4-5 hits)
+        signal_list = ", ".join(confirmations[:5])
         
-        # Build 3 bull/bear reasons
-        reasons = []
-        for c in confirmations[:3]:
-            # Clean up confirmation text for concise display
-            reason = c.replace("📈 ", "").replace("📉 ", "").replace("🔥 ", "").replace("⚡ ", "")
-            reason = reason.replace("✅ ", "").replace("📊 ", "").replace("🎯 ", "")
-            reasons.append(reason)
+        # Build 1-sentence reason
+        if direction == "LONG":
+            reason = "Bullish internals align" + (f" at {signal.get('entry_reason', 'key level')}" if signal.get('entry_reason') else "")
+        else:
+            reason = "Bearish internals align" + (f" at {signal.get('entry_reason', 'key level')}" if signal.get('entry_reason') else "")
         
-        reasons_text = " • ".join(reasons) if reasons else f"Multiple signals align for {direction}"
-        
-        # Format in spec style
-        alert = f"""{emoji} ALERT: {symbol} {direction} {trade_type}
+        # Format per spec
+        alert = f"""🧠 AEON: {symbol}USDT {direction} | {trade_type}
 
-📊 Conf: {confidence:.0f}% | Size: ${position_size:,.0f} Lev: {leverage}x
+📊 Signals: {signal_list}
 
-💰 Entry: ${entry:,.2f}
-🎯 TP1: ${partial:,.2f} (50%) | TP2: ${target:,.2f}
-🛑 Stop: ${stop:,.2f} | Trail: {trail_pct:.1f}%
+⚡ Confidence: {conf_level} ({confidence:.0f}%)
 
-📈 Why {direction}:
-{reasons_text}
+💰 Trade Setup:
+Entry: ${entry:,.2f}
+SL: ${stop:,.2f} (ATR-based)
+TP1: ${partial:,.2f} (50%)
+TP2: ${target:,.2f}
+R:R 1:{rr:.1f}
 
-⚖️ Risk: RR 1:{rr:.1f}
+📐 Position: ${position_size:,.0f} @ {leverage}x
 
-🌡️ Context:
-Session: {signal.get('session', 'N/A')} | Regime: {signal.get('market_regime', 'N/A')}
-BTC: {signal.get('btc_bias', 'NEUTRAL')} | F&G: {signal.get('fear_greed', 50)}
+💡 {reason}
 
-⚠️ PAPER TRADE | Execute /scan or ask edge?"""
+⚠️ PAPER TRADE | 1% risk max"""
         
         return alert
 
