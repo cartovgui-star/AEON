@@ -471,16 +471,20 @@ class AutonomousTraderV2:
         
         try:
             confirmations = []
-            signals_buy = 0
-            signals_sell = 0
+            tech_signals_buy = 0
+            tech_signals_sell = 0
+            smc_signals_buy = 0
+            smc_signals_sell = 0
+            deriv_signals_buy = 0
+            deriv_signals_sell = 0
             entry_levels = []
             
             # Get current session
             self.current_session = self.get_current_session()
-            session_quality = self.get_session_quality(self.current_session)
             
             # ═══════════════════════════════════════════════════════════════════
-            # 1. TECHNICAL ANALYSIS
+            # CORE TECHNICALS (60% weight)
+            # RSI, MACD, BB, EMAs - Pure price action
             # ═══════════════════════════════════════════════════════════════════
             if not self.market_intel:
                 return None
@@ -498,64 +502,98 @@ class AutonomousTraderV2:
             bb_upper = indicators.get("bb_upper", price * 1.02)
             bb_lower = indicators.get("bb_lower", price * 0.98)
             bb_middle = indicators.get("bb_middle", price)
+            ema_9 = indicators.get("ema_9", price)
             ema_20 = indicators.get("ema_20", price)
+            ema_21 = indicators.get("ema_21", ema_20)
             ema_50 = indicators.get("ema_50", price)
             ema_200 = indicators.get("ema_200", price)
             atr = indicators.get("atr", price * 0.02)
+            atr_avg = indicators.get("atr_avg", atr)
             volume_spike = indicators.get("volume_spike", False)
+            stoch_k = indicators.get("stoch_k", 50)
+            stoch_d = indicators.get("stoch_d", 50)
             
-            # RSI signals
+            # VOLATILITY FILTER - Pause if ATR > 2x average (high chop)
+            atr_pct = (atr / price) * 100 if price > 0 else 0
+            if atr > (atr_avg * 2):
+                logger.info(f"Skipping {symbol} - ATR too high (chop filter)")
+                return None
+            
+            # RSI (14): <30 long bias, >70 short bias
             if rsi < 25:
-                signals_buy += 3
-                confirmations.append(f"RSI extreme oversold ({rsi:.0f})")
-                entry_levels.append(("RSI_OVERSOLD", price))
+                tech_signals_buy += 3
+                confirmations.append(f"RSI<30 extreme ({rsi:.0f})")
             elif rsi < 30:
-                signals_buy += 2
-                confirmations.append(f"RSI oversold ({rsi:.0f})")
+                tech_signals_buy += 2
+                confirmations.append(f"RSI<30 ({rsi:.0f})")
             elif rsi > 75:
-                signals_sell += 3
-                confirmations.append(f"RSI extreme overbought ({rsi:.0f})")
-                entry_levels.append(("RSI_OVERBOUGHT", price))
+                tech_signals_sell += 3
+                confirmations.append(f"RSI>70 extreme ({rsi:.0f})")
             elif rsi > 70:
-                signals_sell += 2
-                confirmations.append(f"RSI overbought ({rsi:.0f})")
+                tech_signals_sell += 2
+                confirmations.append(f"RSI>70 ({rsi:.0f})")
             
-            # MACD
-            if "BULLISH" in str(macd_signal).upper() and macd_hist > 0:
-                signals_buy += 2
-                confirmations.append("MACD bullish crossover")
-            elif "BEARISH" in str(macd_signal).upper() and macd_hist < 0:
-                signals_sell += 2
-                confirmations.append("MACD bearish crossover")
+            # MACD (12,26,9): Crossover + histogram expansion
+            if "BULLISH" in str(macd_signal).upper():
+                if macd_hist > 0:
+                    tech_signals_buy += 2
+                    confirmations.append("MACD bull cross + expansion")
+                else:
+                    tech_signals_buy += 1
+                    confirmations.append("MACD bull cross")
+            elif "BEARISH" in str(macd_signal).upper():
+                if macd_hist < 0:
+                    tech_signals_sell += 2
+                    confirmations.append("MACD bear cross + expansion")
+                else:
+                    tech_signals_sell += 1
+                    confirmations.append("MACD bear cross")
             
-            # Bollinger Bands
+            # Bollinger Bands (20,2): Squeeze breakout or band touch
+            bb_width = (bb_upper - bb_lower) / bb_middle if bb_middle > 0 else 0
             if price <= bb_lower:
-                signals_buy += 2
-                confirmations.append("Price at BB lower band")
+                tech_signals_buy += 2
+                confirmations.append("BB lower band touch")
                 entry_levels.append(("BB_LOWER", bb_lower))
             elif price >= bb_upper:
-                signals_sell += 2
-                confirmations.append("Price at BB upper band")
+                tech_signals_sell += 2
+                confirmations.append("BB upper band touch")
                 entry_levels.append(("BB_UPPER", bb_upper))
+            if bb_width < 0.02:  # Squeeze
+                confirmations.append("BB squeeze (breakout pending)")
             
-            # EMA Stack
-            if ema_20 > ema_50 > ema_200:
-                signals_buy += 1
-                confirmations.append("Bullish EMA stack (20>50>200)")
-            elif ema_20 < ema_50 < ema_200:
-                signals_sell += 1
-                confirmations.append("Bearish EMA stack (20<50<200)")
+            # EMAs (9/21/50): Stack alignment
+            if ema_9 > ema_21 > ema_50:
+                tech_signals_buy += 2
+                confirmations.append("Bullish EMA stack (9>21>50)")
+            elif ema_9 < ema_21 < ema_50:
+                tech_signals_sell += 2
+                confirmations.append("Bearish EMA stack (9<21<50)")
+            
+            # EMA pullback entry
+            if ema_9 > ema_21 > ema_50 and price < ema_21 and price > ema_50:
+                tech_signals_buy += 1
+                confirmations.append("Pullback to EMA21 (long)")
+                entry_levels.append(("EMA21_PULLBACK", ema_21))
+            elif ema_9 < ema_21 < ema_50 and price > ema_21 and price < ema_50:
+                tech_signals_sell += 1
+                confirmations.append("Pullback to EMA21 (short)")
+                entry_levels.append(("EMA21_PULLBACK", ema_21))
+            
+            # Stochastic crossover
+            if stoch_k < 20 and stoch_k > stoch_d:
+                tech_signals_buy += 1
+                confirmations.append(f"Stoch bullish cross ({stoch_k:.0f})")
+            elif stoch_k > 80 and stoch_k < stoch_d:
+                tech_signals_sell += 1
+                confirmations.append(f"Stoch bearish cross ({stoch_k:.0f})")
             
             # Volume confirmation
             if volume_spike:
-                confirmations.append("Volume spike detected")
-                if signals_buy > signals_sell:
-                    signals_buy += 1
-                elif signals_sell > signals_buy:
-                    signals_sell += 1
+                confirmations.append("Volume spike")
             
             # ═══════════════════════════════════════════════════════════════════
-            # 2. DIVERGENCE DETECTION
+            # DIVERGENCE DETECTION (Critical for reversals)
             # ═══════════════════════════════════════════════════════════════════
             if self.advanced_strategies:
                 try:
