@@ -814,11 +814,6 @@ class AutonomousTraderV2:
             
             confidence = min(98, max(50, confidence))
             
-            # RISK CHECK: Pause trading if Fear < 10 (extreme panic)
-            if self.fear_greed < 10:
-                logger.warning(f"Skipping {symbol} - Fear & Greed too low ({self.fear_greed})")
-                return None
-            
             # Check minimum requirements (80%+ confluence per spec)
             if confidence < self.min_confidence:
                 return None
