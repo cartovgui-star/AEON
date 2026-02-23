@@ -566,6 +566,7 @@ async def autonomous_trading_loop():
         order_flow=order_flow,
         options_analyzer=options_analyzer,
         learning_system=learning_system,
+        smc_analysis=smc_analyzer,  # Smart Money Concepts
         send_alert=send_telegram_message,
         chat_ids=chat_ids
     )
