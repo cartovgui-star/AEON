@@ -591,15 +591,8 @@ class AutonomousTraderV2:
                 logger.debug(f"Skipping {symbol} - ON COOLDOWN")
                 return None
             
-            # Check if good session (London/NY only)
-            if not self.is_good_session():
-                logger.debug(f"Skipping {symbol} - Bad session ({self.current_session})")
-                return None
-            
-            # Check daily trade limit
-            if not self.check_daily_limit():
-                logger.debug(f"Skipping {symbol} - Daily limit reached ({self.daily_trades}/{self.max_daily_trades})")
-                return None
+            # NO SESSION FILTER - Trade based on DATA, not time
+            # Price action doesn't care about sessions
             
             confirmations = []
             tech_signals_buy = 0
