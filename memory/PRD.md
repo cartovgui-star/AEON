@@ -12,7 +12,55 @@ Build a sophisticated trading bot named "Aeon" with:
 
 ---
 
-## Latest Session (Feb 24, 2026) - Aggressive Scalper Integration
+## Latest Session (Feb 24, 2026) - Auto-Learning Scalper & V2.1 Integration
+
+### Auto-Learning Aggressive Scalper (P0) - DONE
+Enhanced the Aggressive Scalper with self-optimization and V2.1 integration:
+
+**Auto-Learning System:**
+- Created `/app/backend/scalper_learning.py` - Auto-learning engine with:
+  - `AutoLearningSystem` class - Continuous parameter optimization
+  - `ReversalPatternDetector` - Smart exit detection (Doji, Hammer, Engulfing, RSI Divergence)
+  - `ScalperV2Integration` - Signal queue for V2.1 autonomous trader
+- Optimization runs every 1 hour, adjusts parameters based on 24h performance
+- Win rate driven adjustments: tighten/loosen targets, stops, volume thresholds, RSI bounds
+
+**V2.1 Integration:**
+- Scalper signals (strength ≥2) are queued and fed to V2.1 autonomous trader
+- Added `process_scalper_signals()` to `autonomous_trader_v2.py` (line 1439+)
+- Scalper runs independently while informing V2.1 trades
+
+**New API Endpoints:**
+- `GET /api/scalper/learning/status` - Auto-learning system status & recent performance
+- `POST /api/scalper/learning/optimize` - Force optimization now
+- `GET /api/scalper/learning/performance` - Detailed performance analysis
+- `POST /api/scalper/learning/toggle` - Enable/disable auto-learning
+- `GET /api/scalper/v2/status` - V2.1 integration status & signal queue
+- `POST /api/scalper/v2/toggle` - Enable/disable V2.1 integration
+- `GET /api/scalper/v2/queued` - Get signals queued for V2.1
+- `GET /api/scalper/reversals/analyze/{symbol}` - Reversal pattern detection
+- `POST /api/scalper/reversals/toggle` - Enable/disable reversal exits
+
+**Frontend Updates (ScalperDashboard.jsx):**
+- New **Auto-Learning** tab:
+  - Shows optimization status, last optimized timestamp
+  - "Optimize Now" button to force optimization
+  - 24h performance stats (trades, win rate, PnL)
+  - Displays current optimized parameters
+- New **V2.1 Integration** tab:
+  - Shows integration enabled/disabled status
+  - "Signal Queue for V2.1" with queued signal details
+  - Toggle button to enable/disable
+- Settings summary now shows "Auto-Learning ON" and "V2.1 Connected" badges
+
+**Testing Results (Iteration 34):**
+- All 12 backend API tests passed (100%)
+- All frontend tabs, buttons, interactions working (100%)
+- Reversal patterns detected correctly (HAMMER for BTC, etc.)
+
+---
+
+## Previous Session (Feb 24, 2026) - Aggressive Scalper Integration
 
 ### Aggressive Scalper (P1) - DONE
 Integrated comprehensive hybrid scalping strategy alongside V2.1:
