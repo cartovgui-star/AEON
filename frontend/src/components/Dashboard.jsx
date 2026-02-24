@@ -468,7 +468,7 @@ export default function Dashboard({
                   </span>
                 </div>
                 <p className="text-lg font-bold text-white">
-                  ${(sym.price || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: sym.price > 100 ? 0 : 2 })}
+                  ${formatPrice(sym.price)}
                 </p>
                 <div className="mt-2 flex items-center gap-1">
                   <div className="flex-1 h-1.5 bg-zinc-700 rounded-full overflow-hidden">
