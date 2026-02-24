@@ -572,6 +572,11 @@ export default function SettingsPanel() {
         <MorningBriefingTab />
       )}
 
+      {/* Weekly Report Tab */}
+      {activeTab === 'weekly' && (
+        <WeeklyReportTab />
+      )}
+
       {/* Profile Tab */}
       {activeTab === 'profile' && (
         <div className="grid md:grid-cols-2 gap-4">
