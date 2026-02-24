@@ -485,15 +485,19 @@ class BacktestV21Engine:
         return {"outcome": outcome, "exit_price": last_price, "candles": len(future_klines)}
     
     async def run_backtest(self, symbol: str, interval: str = "1h", days: int = 30) -> Dict:
-        """Run backtest for a single symbol"""
-        logger.info(f"Fetching {days} days of {interval} data for {symbol}...")
-        klines = await self.fetch_klines(symbol, interval, days)
+        """Run backtest for a single symbol using MEXC data"""
+        self.current_symbol = symbol
+        logger.info(f"Fetching {days} days of {interval} data for {symbol} from MEXC...")
+        
+        # Convert symbol format for MEXC (e.g., BTCUSDT -> BTC/USDT)
+        mexc_symbol = symbol.replace("USDT", "/USDT")
+        klines = await self.fetch_klines(mexc_symbol, interval, days)
         
         if not klines:
-            logger.error(f"Failed to fetch data for {symbol}")
-            return {}
+            logger.error(f"Failed to fetch data for {symbol} from MEXC")
+            return {"symbol": symbol, "error": "No data from MEXC"}
         
-        logger.info(f"Got {len(klines)} candles for {symbol}")
+        logger.info(f"Got {len(klines)} candles for {symbol} from MEXC")
         
         symbol_results = {
             "symbol": symbol,
