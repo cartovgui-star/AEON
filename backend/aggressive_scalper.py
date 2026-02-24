@@ -72,6 +72,11 @@ class AggressiveScalper:
     2. Order Flow/Support-Resistance - Quick bounces off key levels
     3. Momentum - Price spikes/drops with directional confirmation
     
+    Advanced Features:
+    - Auto-learning parameter optimization
+    - Reversal pattern detection for smart exits
+    - V2.1 integration for unified trading
+    
     Targets: 0.5-3% per trade with tight stops and fast exits
     """
     
@@ -80,6 +85,40 @@ class AggressiveScalper:
         self.active_signals = {}  # symbol -> signal data
         self.signal_history = []
         self.is_scanning = False
+        self.last_auto_learn = None
+        self.learning_interval = 3600  # 1 hour
+        
+        # Initialize learning system
+        asyncio.create_task(self._init_learning())
+    
+    async def _init_learning(self):
+        """Initialize learning from database"""
+        try:
+            await auto_learner.load_from_db()
+            if auto_learner.current_params:
+                # Apply learned parameters
+                for key, value in auto_learner.current_params.items():
+                    if key in self.settings:
+                        self.settings[key] = value
+                logger.info(f"Applied learned parameters: {auto_learner.current_params}")
+        except Exception as e:
+            logger.error(f"Error initializing learning: {e}")
+    
+    async def auto_optimize(self):
+        """Run auto-optimization if enabled and due"""
+        if not self.settings.get('auto_learn', True):
+            return
+        
+        if await auto_learner.should_optimize():
+            new_settings = await auto_learner.optimize_parameters(self.settings)
+            
+            # Apply optimized settings
+            for key, value in new_settings.items():
+                if key in self.settings and key not in ['enabled', 'auto_learn', 'use_reversal_exits', 'send_to_v2']:
+                    self.settings[key] = value
+            
+            self.last_auto_learn = datetime.now(timezone.utc)
+            logger.info("Auto-optimization completed")
         
     async def fetch_ohlcv(self, symbol: str, timeframe: str = '5m', limit: int = 100) -> List:
         """Fetch OHLCV data from MEXC"""
