@@ -487,6 +487,47 @@ export default function Dashboard({
 
       {/* Trading Intelligence & Activity */}
       <div className="grid md:grid-cols-2 gap-6">
+        {/* V2.1 Strategy Settings */}
+        <Card className="bg-zinc-800/30 border-zinc-700/50">
+          <CardContent className="p-6">
+            <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+              <Target className="w-5 h-5 text-amber-400" />
+              V2.1 Strategy Settings
+              <span className={`ml-auto px-2 py-0.5 text-xs rounded ${v2Settings?.active ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                {v2Settings?.active ? 'ACTIVE' : 'PAUSED'}
+              </span>
+            </h3>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between py-2 border-b border-zinc-800">
+                <span className="text-zinc-400">Min Confidence</span>
+                <span className="font-medium text-amber-400">{v2Settings?.min_confidence || 90}%</span>
+              </div>
+              <div className="flex items-center justify-between py-2 border-b border-zinc-800">
+                <span className="text-zinc-400">Confirmations</span>
+                <span className="font-medium text-white">{v2Settings?.min_confirmations || 5}/5</span>
+              </div>
+              <div className="flex items-center justify-between py-2 border-b border-zinc-800">
+                <span className="text-zinc-400">Min R:R Ratio</span>
+                <span className="font-medium text-cyan-400">{v2Settings?.min_rr_ratio || 3.0}:1</span>
+              </div>
+              <div className="flex items-center justify-between py-2 border-b border-zinc-800">
+                <span className="text-zinc-400">Max Open Trades</span>
+                <span className="font-medium text-white">{v2Settings?.max_open_trades || 5}</span>
+              </div>
+              <div className="flex items-center justify-between py-2">
+                <span className="text-zinc-400">Filters Active</span>
+                <div className="flex gap-1 flex-wrap justify-end">
+                  {v2Settings?.ema_200_filter_enabled && <span className="px-2 py-0.5 bg-purple-500/20 text-purple-400 text-xs rounded">EMA</span>}
+                  {v2Settings?.adx_filter_enabled && <span className="px-2 py-0.5 bg-blue-500/20 text-blue-400 text-xs rounded">ADX</span>}
+                  {v2Settings?.volume_filter_enabled && <span className="px-2 py-0.5 bg-green-500/20 text-green-400 text-xs rounded">VOL</span>}
+                  {v2Settings?.session_filter_enabled && <span className="px-2 py-0.5 bg-amber-500/20 text-amber-400 text-xs rounded">SESSION</span>}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* AI Engine Status */}
         <Card className="bg-zinc-800/30 border-zinc-700/50">
           <CardContent className="p-6">
             <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
@@ -528,8 +569,10 @@ export default function Dashboard({
             </div>
           </CardContent>
         </Card>
+      </div>
 
-        {/* Recent Messages */}
+      {/* Recent Activity */}
+      <div className="grid md:grid-cols-1 gap-6">
         <Card className="bg-zinc-800/30 border-zinc-700/50">
           <CardContent className="p-6">
             <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
