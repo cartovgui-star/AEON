@@ -643,19 +643,6 @@ export default function BacktestV21() {
             </select>
           </div>
         </div>
-            <label className="block text-xs text-zinc-400 mb-2">Period</label>
-            <select
-              value={days}
-              onChange={(e) => setDays(parseInt(e.target.value))}
-              data-testid="backtest-v21-days"
-              className="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-4 py-3 text-white text-sm focus:border-amber-500 focus:outline-none"
-            >
-              {DAYS_OPTIONS.map(d => (
-                <option key={d} value={d}>{d} days</option>
-              ))}
-            </select>
-          </div>
-        </div>
 
         {/* Run Button */}
         <button
@@ -667,18 +654,20 @@ export default function BacktestV21() {
           {loading ? (
             <>
               <Loader2 className="w-5 h-5 animate-spin" />
-              Running Backtest... {status?.progress || 0}%
+              {testMode === 'standard' ? `Running Backtest... ${status?.progress || 0}%` : 'Analyzing...'}
             </>
           ) : (
             <>
               <Play className="w-5 h-5" />
-              Run V2.1 Backtest
+              {testMode === 'standard' && 'Run V2.1 Backtest'}
+              {testMode === 'confidence' && 'Test Confidence Range (65-90%)'}
+              {testMode === 'timeframe' && 'Compare Timeframes (15m, 1h, 4h)'}
             </>
           )}
         </button>
 
         {/* Progress indicator */}
-        {loading && status && (
+        {loading && status && testMode === 'standard' && (
           <div className="w-full bg-zinc-800 rounded-full h-2 overflow-hidden">
             <div 
               className="h-full bg-gradient-to-r from-amber-500 to-orange-500 transition-all duration-300"
@@ -696,8 +685,50 @@ export default function BacktestV21() {
         </div>
       )}
 
-      {/* Results Section */}
-      {result && (
+      {/* Confidence Range Results */}
+      {confidenceResult && testMode === 'confidence' && (
+        <div className="space-y-6" data-testid="confidence-results">
+          <ConfidenceRangeChart results={confidenceResult.results} />
+          {confidenceResult.optimal && (
+            <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-4">
+              <p className="text-green-400 font-medium flex items-center gap-2">
+                <Trophy className="w-5 h-5" />
+                Optimal: {confidenceResult.optimal.confidence_level}% confidence
+              </p>
+              <p className="text-sm text-zinc-400 mt-1">
+                {confidenceResult.optimal.win_rate}% win rate with {confidenceResult.optimal.total_trades} trades
+              </p>
+            </div>
+          )}
+          {confidenceResult.recommendation && (
+            <Recommendations recommendations={[confidenceResult.recommendation]} />
+          )}
+        </div>
+      )}
+
+      {/* Timeframe Comparison Results */}
+      {timeframeResult && testMode === 'timeframe' && (
+        <div className="space-y-6" data-testid="timeframe-results">
+          <TimeframeComparisonChart results={timeframeResult.results} />
+          {timeframeResult.best_timeframe && (
+            <div className="bg-purple-500/10 border border-purple-500/30 rounded-xl p-4">
+              <p className="text-purple-400 font-medium flex items-center gap-2">
+                <Trophy className="w-5 h-5" />
+                Best Timeframe: {timeframeResult.best_timeframe.timeframe}
+              </p>
+              <p className="text-sm text-zinc-400 mt-1">
+                {timeframeResult.best_timeframe.win_rate}% win rate with {timeframeResult.best_timeframe.total_trades} trades
+              </p>
+            </div>
+          )}
+          {timeframeResult.recommendation && (
+            <Recommendations recommendations={[timeframeResult.recommendation]} />
+          )}
+        </div>
+      )}
+
+      {/* Standard Results Section */}
+      {result && testMode === 'standard' && (
         <div className="space-y-6" data-testid="backtest-v21-results">
           {/* Key Metrics */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
