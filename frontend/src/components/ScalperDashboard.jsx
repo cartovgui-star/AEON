@@ -599,6 +599,7 @@ export default function ScalperDashboard() {
             <button
               onClick={runBacktest}
               disabled={loading}
+              data-testid="scalper-run-backtest-btn"
               className="flex items-center gap-2 px-4 py-2 bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/50 rounded-lg text-sm text-purple-400 transition-all"
             >
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
@@ -615,6 +616,21 @@ export default function ScalperDashboard() {
             </div>
           )}
         </div>
+      )}
+
+      {activeTab === 'learning' && (
+        <AutoLearningPanel 
+          learningStatus={learningStatus} 
+          onForceOptimize={forceOptimize}
+          isOptimizing={isOptimizing}
+        />
+      )}
+
+      {activeTab === 'v2' && (
+        <V2IntegrationPanel 
+          v2Status={v2Status} 
+          onToggle={toggleV2Integration}
+        />
       )}
 
       {/* Settings Summary */}
