@@ -3,7 +3,7 @@ import {
   Bot, Activity, TrendingUp, Target, Users, BarChart3, 
   MessageCircle, Brain, Zap, AlertTriangle, Radio, Power,
   Flame, ChevronRight, Ban, ThumbsUp, ThumbsDown, Timer, Scale, FlaskConical, Bell,
-  Sparkles, Link2, Calendar
+  Sparkles, Link2, Calendar, BookOpen, Lightbulb
 } from 'lucide-react';
 import { Card, CardContent } from './ui/card';
 import { ScrollArea } from './ui/scroll-area';
@@ -36,6 +36,7 @@ export default function Dashboard({
   const [v2Settings, setV2Settings] = useState(null);
   const [scalperStatus, setScalperStatus] = useState(null);
   const [weeklyReport, setWeeklyReport] = useState(null);
+  const [learningStatus, setLearningStatus] = useState(null);
 
   // Fetch live positions for quick view
   useEffect(() => {
