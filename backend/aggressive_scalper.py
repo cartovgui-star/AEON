@@ -2,8 +2,12 @@
 AEON AGGRESSIVE SCALPER
 Hybrid Scalping Strategy: Volume Breakout + Order Flow + Momentum
 
-Runs alongside V2.1 strategy for additional high-frequency trades.
-Uses MEXC live data across 5m, 15m, 30m timeframes.
+Features:
+- Runs alongside V2.1 strategy for additional high-frequency trades
+- Uses MEXC live data across 5m, 15m, 30m timeframes
+- Auto-learning parameter optimization
+- Reversal pattern detection for smart exits
+- Integration with V2.1 autonomous trader
 """
 
 import asyncio
@@ -13,6 +17,12 @@ from typing import Dict, List, Optional, Tuple
 from concurrent.futures import ThreadPoolExecutor
 import ccxt
 import numpy as np
+
+# Import learning and reversal systems
+from scalper_learning import (
+    ReversalPatternDetector, AutoLearningSystem, ScalperV2Integration,
+    auto_learner, v2_integration, reversal_detector
+)
 
 logger = logging.getLogger(__name__)
 
