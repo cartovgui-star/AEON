@@ -10,6 +10,14 @@ import BacktestV21Modal from './BacktestV21Modal';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
+// Format price based on value
+const formatPrice = (price) => {
+  if (!price) return '0.00';
+  if (price > 1000) return price.toLocaleString(undefined, { maximumFractionDigits: 0 });
+  if (price > 1) return price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return price.toLocaleString(undefined, { minimumFractionDigits: 4, maximumFractionDigits: 4 });
+};
+
 export default function Dashboard({ 
   stats, 
   tradingStats, 
