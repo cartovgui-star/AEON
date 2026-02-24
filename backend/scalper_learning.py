@@ -239,7 +239,7 @@ class AutoLearningSystem:
     
     async def save_to_db(self, params: Dict, performance: Dict):
         """Save learned parameters and performance to database"""
-        if not scalper_params_collection:
+        if scalper_params_collection is None:
             return
         
         try:
