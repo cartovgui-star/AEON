@@ -24,7 +24,7 @@ except Exception as e:
     logger.error(f"Failed to init MEXC: {e}")
     mexc = None
 
-# V2.1 Filter Settings
+# V2.1 Filter Settings (Default - can be overridden in backtest)
 V21_SETTINGS = {
     "min_confidence": 90,
     "min_confirmations": 5,
@@ -34,6 +34,12 @@ V21_SETTINGS = {
     "min_volume_multiplier": 1.5,
     "session_filter": True,  # Only trade London/NY
 }
+
+# Confidence levels to test (65% to 90%)
+CONFIDENCE_LEVELS = [65, 70, 75, 80, 85, 90]
+
+# Timeframes for multi-timeframe testing
+MTF_TIMEFRAMES = ["15m", "1h", "4h"]
 
 class BacktestV21Engine:
     """
