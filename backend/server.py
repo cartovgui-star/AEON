@@ -1518,6 +1518,84 @@ Commands:
 free on/off - Toggle alerts
 /fwconf 80 - Set min confidence (70-95)"""
             context = "settings"
+        
+        # ============= NEW COMMANDS: BRIEFING, WEEKLY, LEARNING =============
+        elif text_lower == '/briefing' or text_lower == '/brief':
+            # Get morning briefing preview
+            preview = await morning_briefing.generate_briefing()
+            response = preview
+            context = "briefing"
+        
+        elif text_lower == '/weekly' or text_lower == '/report':
+            # Get weekly report preview
+            preview = await weekly_report.generate_report()
+            response = preview
+            context = "report"
+        
+        elif text_lower == '/learn' or text_lower == '/learning':
+            # Get learning engine status
+            status = await continuous_learner.get_status()
+            recs = await continuous_learner.get_recommendations()
+            
+            insights = continuous_learner.daily_insights[:5] if continuous_learner.daily_insights else ["No insights yet - need more trades"]
+            
+            response = f"""🧠 24/7 LEARNING ENGINE
+
+Status: {'🟢 ACTIVE' if status['active'] else '🔴 PAUSED'}
+Next Summary: {status.get('next_daily_summary', '9 PM CT')}
+
+📊 KNOWLEDGE BASE
+Patterns Learned: {status['knowledge_stats']['patterns_learned']}
+Coins Analyzed: {status['knowledge_stats']['coins_analyzed']}
+Optimizations Run: {status['knowledge_stats']['optimizations_run']}
+Today's Insights: {status['daily_insights_count']}
+
+⏰ LAST CYCLES
+• Pattern: {status['last_cycles']['pattern_learning'][:16] if status['last_cycles']['pattern_learning'] else 'Pending'}
+• Market: {status['last_cycles']['market_analysis'][:16] if status['last_cycles']['market_analysis'] else 'Pending'}
+• Optimization: {status['last_cycles']['optimization'][:16] if status['last_cycles']['optimization'] else 'Pending'}
+
+💡 TODAY'S INSIGHTS
+{chr(10).join(['• ' + i for i in insights])}
+
+📌 RECOMMENDATIONS
+• Coins to favor: {', '.join([c['coin'] for c in recs['pattern_recommendations'].get('coins_to_favor', [])[:3]]) or 'Need more data'}
+• Coins to avoid: {', '.join([c['coin'] for c in recs['pattern_recommendations'].get('coins_to_avoid', [])[:3]]) or 'None yet'}
+
+The engine learns 24/7 and sends daily summaries at 9 PM CT!"""
+            context = "learning"
+        
+        elif text_lower == '/scalper' or text_lower == '/scalp':
+            # Get scalper status
+            from aggressive_scalper import scalper
+            from scalper_learning import auto_learner, v2_integration
+            
+            status = scalper.get_status()
+            learning = auto_learner.get_status()
+            v2_status = v2_integration.get_status()
+            
+            response = f"""⚡ AGGRESSIVE SCALPER
+
+Status: {'🟢 ACTIVE' if status['enabled'] else '🔴 PAUSED'}
+Active Signals: {status['active_signals']}
+
+⚙️ SETTINGS
+• Profit Target: {status['settings_summary']['profit_target']}
+• Stop Loss: {status['settings_summary']['stop_loss']}
+• Volume Threshold: {status['settings_summary']['volume_threshold']}
+• RSI Range: {status['settings_summary']['rsi_range']}
+
+🧠 AUTO-LEARNING
+• Status: {'ON' if learning.get('auto_learn_enabled') else 'OFF'}
+• Last Optimized: {learning.get('last_optimization', 'Never')[:16] if learning.get('last_optimization') else 'Never'}
+
+🔗 V2.1 INTEGRATION
+• Status: {'CONNECTED' if v2_status.get('v2_integration_enabled') else 'DISABLED'}
+• Min Strength: {v2_status.get('min_strength_for_v2', 2)}
+• Queued Signals: {v2_status.get('queued_signals', 0)}
+
+Scalper runs alongside V2.1 with auto-learning!"""
+            context = "scalper"
             
         elif text_lower.startswith('/fwconf'):
             parts = text_lower.split()
