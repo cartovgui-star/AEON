@@ -156,29 +156,8 @@ MODEL_CONFIGS = {
 }
 DEFAULT_MODEL = "gpt"
 
-async def get_user_model(chat_id: int) -> str:
-    """Get user's preferred AI model from database"""
-    try:
-        settings = await db.user_settings.find_one({"chat_id": chat_id})
-        if settings and settings.get("ai_model"):
-            return settings.get("ai_model")
-    except:
-        pass
-    return DEFAULT_MODEL
-
-async def set_user_model(chat_id: int, model: str) -> bool:
-    """Set user's preferred AI model in database"""
-    if model not in MODEL_CONFIGS:
-        return False
-    try:
-        await db.user_settings.update_one(
-            {"chat_id": chat_id},
-            {"$set": {"ai_model": model, "model_updated_at": datetime.now(timezone.utc)}},
-            upsert=True
-        )
-        return True
-    except:
-        return False
+# In-memory cache for user model preferences (backed by DB)
+user_model_cache: Dict[int, str] = {}
 
 def get_model_config(model_key: str) -> Dict:
     """Get model configuration"""
