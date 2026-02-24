@@ -1162,6 +1162,7 @@ class AutonomousTraderV2:
             # ═══════════════════════════════════════════════════════════════════
             # WEIGHTED CONFLUENCE SCORING
             # Tech (60%), SMC (20%), Derivatives (20%)
+            # V2.1: ALL 5 categories must agree for valid signal
             # ═══════════════════════════════════════════════════════════════════
             
             # Calculate total signals for each category
@@ -1177,32 +1178,50 @@ class AutonomousTraderV2:
             signals_sell = total_tech_sell + total_smc_sell + total_deriv_sell
             
             # ═══════════════════════════════════════════════════════════════════
-            # DETERMINE DIRECTION (4/5 confluences min)
+            # DETERMINE DIRECTION (5/5 confluences - ALL must agree)
             # ═══════════════════════════════════════════════════════════════════
             
-            # Count confluence categories
-            buy_categories = sum([
-                1 if total_tech_buy >= 3 else 0,  # Tech confirmation
-                1 if total_smc_buy >= 2 else 0,   # SMC confirmation
-                1 if total_deriv_buy >= 2 else 0, # Derivatives confirmation
-            ])
-            sell_categories = sum([
-                1 if total_tech_sell >= 3 else 0,
-                1 if total_smc_sell >= 2 else 0,
-                1 if total_deriv_sell >= 2 else 0,
-            ])
+            # Count confirmation categories (need ALL 5 to agree)
+            # 1. Technicals, 2. SMC Structure, 3. Derivatives, 4. 200 EMA Trend, 5. Volume
+            buy_confirmations = [
+                total_tech_buy >= 4,  # Strong tech confirmation
+                total_smc_buy >= 2,   # SMC confirmation
+                total_deriv_buy >= 2, # Derivatives confirmation
+                ema_200_trend == "BULLISH",  # 200 EMA agrees
+                volume_spike or (volume / volume_avg if volume_avg > 0 else 1) >= self.min_volume_multiplier,  # Volume confirms
+            ]
+            sell_confirmations = [
+                total_tech_sell >= 4,
+                total_smc_sell >= 2,
+                total_deriv_sell >= 2,
+                ema_200_trend == "BEARISH",
+                volume_spike or (volume / volume_avg if volume_avg > 0 else 1) >= self.min_volume_multiplier,
+            ]
             
-            # Determine direction
-            if signals_buy > signals_sell and signals_buy >= 5 and buy_categories >= 2:
+            buy_categories = sum(buy_confirmations)
+            sell_categories = sum(sell_confirmations)
+            
+            # V2.1: Need ALL 5 categories (5/5) for valid signal
+            if signals_buy > signals_sell and buy_categories >= 5:
                 direction = "LONG"
                 signal_strength = signals_buy
-                conf_level = "HIGH" if buy_categories >= 3 else "MED" if buy_categories >= 2 else "LOW"
-            elif signals_sell > signals_buy and signals_sell >= 5 and sell_categories >= 2:
+                conf_level = "ULTRA" if buy_categories == 5 else "HIGH"
+            elif signals_sell > signals_buy and sell_categories >= 5:
                 direction = "SHORT"
                 signal_strength = signals_sell
-                conf_level = "HIGH" if sell_categories >= 3 else "MED" if sell_categories >= 2 else "LOW"
+                conf_level = "ULTRA" if sell_categories == 5 else "HIGH"
             else:
-                return None  # No clear signal (FLAT)
+                # Not enough confirmations
+                self.filter_stats["confidence_filtered"] += 1
+                return None
+            
+            # Verify direction matches 200 EMA trend (double check)
+            if direction == "LONG" and ema_200_trend != "BULLISH":
+                self.filter_stats["ema_200_filtered"] += 1
+                return None
+            if direction == "SHORT" and ema_200_trend != "BEARISH":
+                self.filter_stats["ema_200_filtered"] += 1
+                return None
             
             # Calculate weighted confidence score
             tech_score = min(100, (total_tech_buy if direction == "LONG" else total_tech_sell) * 12)
@@ -1213,15 +1232,32 @@ class AutonomousTraderV2:
             confidence = (tech_score * 0.60) + (smc_score * 0.20) + (deriv_score * 0.20)
             confidence = min(98, max(50, confidence))
             
-            # Must hit minimum confidence
+            # V2.1: Must hit 90% minimum confidence
             if confidence < self.min_confidence:
+                self.filter_stats["confidence_filtered"] += 1
+                logger.debug(f"Skipping {symbol} - Confidence {confidence:.1f}% < {self.min_confidence}% required")
                 return None
             
             if len(confirmations) < self.min_confirmations:
+                self.filter_stats["confidence_filtered"] += 1
                 return None
             
             # ═══════════════════════════════════════════════════════════════════
-            # CALCULATE ENTRY, STOP, TARGET (R:R min 2:1)
+            # SESSION FILTER (for SCALP/DAY only)
+            # ═══════════════════════════════════════════════════════════════════
+            
+            # Determine trade style first to check session
+            atr_pct_calc = (atr / price * 100) if price > 0 else None
+            trade_style = self.determine_trade_style(timeframe, confidence, atr_pct_calc)
+            
+            if not self.is_good_session_for_style(trade_style):
+                self.filter_stats["session_filtered"] += 1
+                logger.debug(f"Skipping {symbol} - Bad session for {trade_style} trade")
+                return None
+            
+            # ═══════════════════════════════════════════════════════════════════
+            # CALCULATE ENTRY, STOP, TARGET (R:R min 3:1)
+            # SMART STOP LOSS at support/resistance levels
             # ═══════════════════════════════════════════════════════════════════
             
             # Smart entry - look for pullback level
@@ -1230,7 +1266,7 @@ class AutonomousTraderV2:
             
             for level_type, level_price in entry_levels:
                 if direction == "LONG" and level_price < price and level_price > price * 0.97:
-                    if level_price > best_entry * 0.99:  # Closer pullback level
+                    if level_price > best_entry * 0.99:
                         best_entry = level_price
                         entry_reason = level_type
                 elif direction == "SHORT" and level_price > price and level_price < price * 1.03:
@@ -1238,20 +1274,54 @@ class AutonomousTraderV2:
                         best_entry = level_price
                         entry_reason = level_type
             
-            # Calculate stops and targets based on ATR
-            if direction == "LONG":
-                stop = best_entry - (atr * self.default_stop_atr)
-                target = best_entry + (atr * self.default_target_atr)
-                partial_target = best_entry + (atr * 2)  # 1:1 R:R for partial
-            else:
-                stop = best_entry + (atr * self.default_stop_atr)
-                target = best_entry - (atr * self.default_target_atr)
-                partial_target = best_entry - (atr * 2)
+            # SMART STOP LOSS - Place at support/resistance, bounded by ATR
+            min_stop_distance = atr * 1.0  # Minimum 1x ATR
+            max_stop_distance = atr * 2.0  # Maximum 2x ATR
             
-            # Risk/Reward calculation
+            if direction == "LONG":
+                # Stop below support level
+                ideal_stop = support - (atr * 0.2)  # Slightly below support
+                distance_to_ideal = best_entry - ideal_stop
+                
+                # Bound by ATR range
+                if distance_to_ideal < min_stop_distance:
+                    stop = best_entry - min_stop_distance
+                elif distance_to_ideal > max_stop_distance:
+                    stop = best_entry - max_stop_distance
+                else:
+                    stop = ideal_stop
+                
+                # Calculate target for 3:1 R:R
+                risk = best_entry - stop
+                target = best_entry + (risk * self.min_rr_ratio)
+                partial_target = best_entry + (risk * 1.5)  # 1.5:1 for partial
+            else:
+                # Stop above resistance level
+                ideal_stop = resistance + (atr * 0.2)  # Slightly above resistance
+                distance_to_ideal = ideal_stop - best_entry
+                
+                # Bound by ATR range
+                if distance_to_ideal < min_stop_distance:
+                    stop = best_entry + min_stop_distance
+                elif distance_to_ideal > max_stop_distance:
+                    stop = best_entry + max_stop_distance
+                else:
+                    stop = ideal_stop
+                
+                # Calculate target for 3:1 R:R
+                risk = stop - best_entry
+                target = best_entry - (risk * self.min_rr_ratio)
+                partial_target = best_entry - (risk * 1.5)
+            
+            # Verify R:R ratio meets minimum
             risk = abs(best_entry - stop)
             reward = abs(target - best_entry)
             rr_ratio = reward / risk if risk > 0 else 0
+            
+            if rr_ratio < self.min_rr_ratio:
+                self.filter_stats["rr_filtered"] += 1
+                logger.debug(f"Skipping {symbol} - R:R {rr_ratio:.1f}:1 < {self.min_rr_ratio}:1 required")
+                return None
             
             # Position size based on confidence
             position_size_pct = self.base_position_pct
@@ -1261,14 +1331,9 @@ class AutonomousTraderV2:
                 position_size_pct = self.max_position_pct * 0.8
             elif confidence >= 90:
                 position_size_pct = self.max_position_pct * 0.6
-            elif confidence >= 88:
-                position_size_pct = self.base_position_pct * 1.5
             
-            # Calculate ATR percentage for trade style determination
-            atr_pct_calc = (atr / price * 100) if price > 0 else None
-            
-            # Determine trade style dynamically
-            trade_style = self.determine_trade_style(timeframe, confidence, atr_pct_calc)
+            # Track passed signal
+            self.filter_stats["total_passed"] += 1
             
             return {
                 "symbol": symbol,
