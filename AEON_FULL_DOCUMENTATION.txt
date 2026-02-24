@@ -8,7 +8,7 @@
                               ║  Trading Intelligence  ║
                               ╚═══════════════════╝
 
-                    Live URL: https://aeon-backtest.preview.emergentagent.com
+                    Live URL: https://aeon-trading-ai.preview.emergentagent.com
 
 ═══════════════════════════════════════════════════════════════════════════════
                               TABLE OF CONTENTS
@@ -913,7 +913,7 @@ BACKEND (.env):
 
 FRONTEND (.env):
 ┌────────────────────────┬────────────────────────────────────────────────────┐
-│ REACT_APP_BACKEND_URL  │ https://aeon-backtest.preview.emergentagent.com │
+│ REACT_APP_BACKEND_URL  │ https://aeon-trading-ai.preview.emergentagent.com │
 └────────────────────────┴────────────────────────────────────────────────────┘
 
 
@@ -991,4 +991,4 @@ Document Version: 2.0
 Last Updated: February 24, 2026
 Author: AEON Trading System
 
-Live URL: https://aeon-backtest.preview.emergentagent.com
+Live URL: https://aeon-trading-ai.preview.emergentagent.com

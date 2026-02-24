@@ -3,7 +3,7 @@
 
 ---
 
-**Live URL**: https://aeon-backtest.preview.emergentagent.com
+**Live URL**: https://aeon-trading-ai.preview.emergentagent.com
 
 ---
 
@@ -368,7 +368,7 @@ POL/USDT, SHIB/USDT, BCH/USDT, ETC/USDT, XLM/USDT
 ### Frontend (.env)
 | Variable | Value |
 |----------|-------|
-| REACT_APP_BACKEND_URL | https://aeon-backtest.preview.emergentagent.com |
+| REACT_APP_BACKEND_URL | https://aeon-trading-ai.preview.emergentagent.com |
 
 ---
 
@@ -393,4 +393,4 @@ AEON is a comprehensive autonomous trading system featuring:
 
 **Document Version**: 2.0  
 **Last Updated**: February 24, 2026  
-**Live URL**: https://aeon-backtest.preview.emergentagent.com
+**Live URL**: https://aeon-trading-ai.preview.emergentagent.com

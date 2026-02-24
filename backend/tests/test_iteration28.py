@@ -13,7 +13,7 @@ import requests
 import os
 import re
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://aeon-backtest.preview.emergentagent.com').rstrip('/')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://aeon-trading-ai.preview.emergentagent.com').rstrip('/')
 
 
 class TestFreeWillStatsAPI:

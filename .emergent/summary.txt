@@ -1,79 +1,85 @@
-<analysis>**original_problem_statement**: The user wants to build a sophisticated crypto trading bot named Aeon.
+<analysis>**original_problem_statement**: The user wants to build a sophisticated crypto trading bot named Aeon, with autonomous trading, advanced AI, a rich UI, and a Telegram interface. The primary goal is to improve the bot's profitability from a low 19% win rate.
 
 **PRODUCT REQUIREMENTS**:
-1.  **Autonomous Paper Trading**: The bot should trade autonomously using simulated trades based on real market data. The strategy has been iteratively refined to improve a low win rate.
+1.  **Autonomous Paper Trading**: The bot should trade autonomously using simulated trades based on real market data.
 2.  **Advanced Conversational AI**: The bot needs a sophisticated personality (Aeon) and the ability to respond via text and voice.
-3.  **Enhanced UI/UX**:
-    *   A main dashboard for key stats and market data.
-    *   A detailed trading UI and a complete trade history page with modals for deep-diving into trade specifics and the bot's logic.
-    *   A UI settings panel to control the bot's trading features.
-4.  **Alerts & Notifications**: An alert system that provides detailed, data-driven reasoning for every signal.
-5.  **Telegram Bot**: The primary interface for interaction, with a comprehensive list of commands.
-6.  **Performance Tracking & Improvement**: Track alert accuracy, PnL, and win rate. The primary goal is to improve the bot's profitability from a 19% win rate.
-7.  **Dynamic & Intelligent Trading Logic (V2.1 - HIGH WIN RATE MODE)**: The user mandated a complete overhaul of the trading logic to fix the low win rate. This includes:
-    *   **Strict Filters**: 200 EMA trend, ADX market condition, session timing, and volume confirmation.
-    *   **Higher Standards**: 90% confidence, 5/5 confirmations, and 3:1 R:R.
-    *   **Smarter Logic**: Trend-aware RSI, support/resistance-based stop losses.
-    *   **Refined Mechanics**: Improved position scaling and reduced max open positions.
+3.  **Enhanced UI/UX**: A main dashboard for key stats, a detailed trading UI, trade history, and a settings panel.
+4.  **Alerts & Notifications**: An alert system that provides data-driven reasoning for every signal.
+5.  **Telegram Bot**: The primary interface for interaction.
+6.  **Performance Tracking & Improvement**: Track alert accuracy, PnL, and win rate to improve profitability.
+7.  **Dynamic & Intelligent Trading Logic (V2.1 - HIGH WIN RATE MODE)**: A complete overhaul of the trading logic with strict filters (200 EMA, ADX, Volume, etc.) to fix the low win rate.
+8.  **Backtesting Engine**: A system to validate trading strategies against historical data.
+9.  **Aggressive Scalping Strategy**: A secondary, high-frequency trading model to run alongside the main strategy.
+10. **Auto-Learning System**: A mechanism for strategies to self-optimize their parameters over time.
 
 **User's preferred language**: en
 
 **what currently exists?**
-The application is a full-stack crypto trading bot with a React frontend, FastAPI backend, and MongoDB. The agent has just completed a major overhaul of the trading engine, implementing V2.1 - HIGH WIN RATE MODE with a comprehensive set of strict new rules as specified by the user to fix the bot's low (19%) win rate.
+The application is a full-stack crypto trading bot with a React frontend, FastAPI backend, and MongoDB. The agent has implemented a comprehensive backtesting system for the V2.1 HIGH WIN RATE MODE strategy, including a dedicated page and dashboard modal. This system was further enhanced to support testing across multiple confidence levels (65-90%) and timeframes (15m, 1h, 4h).
 
-Additionally, the agent implemented several significant features in this session: a new dashboard stats section, a file download endpoint for documentation, and a complete trade history page with a detailed modal for viewing individual trades and a breakdown of the new trading logic. The agent also debugged a critical issue where new settings were not loading due to updates being applied to the wrong database instance.
+Based on backtest results, the live trading settings were updated to a more optimal 65% confidence level. The main dashboard has been significantly improved to display live data for 15 cryptocurrencies (up from 3) and a new card showing the active V2.1 strategy settings.
+
+Most recently, the agent integrated a new Aggressive Scalper strategy provided by the user. This scalper runs alongside the main V2.1 strategy and has its own dedicated page in the UI for monitoring signals and running backtests. The agent has just begun building an auto-learning system for this new scalper.
 
 **Last working item**:
--   **Last item agent was working**: The user requested a backtest to validate the new V2.1 - HIGH WIN RATE MODE strategy. The agent was preparing to create a backtesting script to run the new logic against 30 days of historical data for BTC, ETH, and SOL to measure the expected win rate improvement and see which filters were most effective.
--   **Status**: NOT STARTED
+-   **Last item agent was working**: The user requested a major enhancement to the newly added Aggressive Scalper strategy. This involves:
+    1.  Adding enhanced exit intelligence using reversal patterns.
+    2.  Creating an auto-learning system that continuously optimizes the scalper's parameters.
+    3.  Integrating the scalper to run alongside the main V2.1 autonomous trader.
+    The agent started by creating a new  service and began modifying  to include the hooks for auto-learning, reversal pattern exits, and V2.1 integration status.
+-   **Status**: IN PROGRESS
 -   **Agent Testing Done**: N
--   **Which testing method agent to use?**: backend testing agent. The agent should create a new backtesting service/script (e.g., ), which will fetch historical data, apply the  logic from  to each data point, and generate a report summarizing the performance (win rate, total trades, filtered trades per rule).
+-   **Which testing method agent to use?**: both
 -   **User Testing Done**: N
 
 **All Pending/In progress Issue list**:
--   None.
+-   Issue 1: Backend Route Consolidation (P1)
+
+  **Issues Detail**:
+  -   **Issue 1**:  contains many duplicate routes that already exist in more specific files like , , etc. This creates code duplication and potential for confusion.
+      -   **Attempted fixes**: None. The agent inspected the files but deferred the fix to prioritize feature development.
+      -   **Next debug checklist**:
+          1.  Carefully diff  against other route files (, , , ).
+          2.  Remove the redundant router includes and endpoint definitions from .
+          3.  Ensure  correctly registers all individual route files.
+          4.  Restart the backend and test the affected endpoints to ensure no functionality is lost.
+      -   **Why fix this issue and what will be achieved with the fix?**: To improve code maintainability, reduce redundancy, and prevent bugs where changes are made to the wrong file.
+      -   **Status**: NOT STARTED
+      -   **Is recurring issue?**: N
+      -   **Should Test frontend/backend/both after fix?**: backend
+      -   **Blocked on other issue**: None
 
 **In progress Task List**:
--   Task 1: Backtest the new V2.1 HIGH WIN RATE MODE strategy (P0)
+-   Task 1: Complete the Auto-Learning Aggressive Scalper (P0)
 
-**Task Detail**:
--   **Task 1: Backtest the new V2.1 Trading Strategy**
-    -   **Where to resume**: Create a new backtesting script/service in the backend. This script needs to:
-        1.  Fetch at least 30 days of historical data (OHLCV) for BTC, ETH, and SOL.
-        2.  Iterate through the data, applying the full V2.1  logic from  to simulate trade decisions.
-        3.  Track the outcome of simulated trades.
-        4.  Aggregate statistics on win rate, total trades, and the number of trades filtered out by each new rule (EMA, ADX, Volume, etc.).
-        5.  Create a new API endpoint to expose these backtest results.
-        6.  Display the results on the frontend, potentially in a new Backtest tab or modal.
-    -   **What will be achieved with this?**: This will validate the effectiveness of the new, stricter trading rules and provide the user with data-driven evidence of the expected performance improvement, as requested.
-    -   **Status**: NOT STARTED
-    -   **Should Test frontend/backend/both after fix?**: Both
-    -   **Blocked on something**: None
+  **Task Detail**:
+  -   **Task 1**:
+      -   **Where to resume**: The agent has created  and modified . The next steps are:
+          1.  Flesh out the logic in  in  to perform parameter optimization (e.g., using grid search over backtest results).
+          2.  Complete the  logic in .
+          3.  Fully implement the integration logic in  to determine how scalper signals interact with the V2.1 trader.
+          4.  Update the  method to correctly trigger the .
+          5.  Update the Scalper API routes in  to expose the learning status and results.
+          6.  Update the frontend  to display the learning status, optimized parameters, and V2.1 integration status.
+      -   **What will be achieved with this?**: This will deliver the user's request for a self-optimizing trading strategy that runs in parallel with the existing V2.1 engine and uses more advanced exit logic.
+      -   **Status**: IN PROGRESS
+      -   **Should Test frontend/backend/both after fix?**: Both
+      -   **Blocked on something**: None
 
 **Upcoming and Future Tasks**
--   **(P1) Consolidate Backend Routes**: The agent previously identified overlapping route files ( + ,  + ). These should be consolidated to improve code maintainability.
--   **(P2) Enhance Exit Intelligence**: The current exit logic could be improved beyond ATR-based stops by adding more sophisticated exit reasons, such as detecting reversal patterns on a lower timeframe.
--   **(P3) Fine-tune V2.1 Filters**: Based on the backtest results, the user may request further adjustments to the filter thresholds (e.g., changing ADX from 25 to 27).
+-   **(P1) Integrate Scalper Signals with V2.1 Trader**: The user wants the signals from the Aggressive Scalper to be considered by the main V2.1 autonomous trader, while also having the scalper run independently. This requires defining the interaction logic.
+-   **(P2) Enhance V2.1 Exit Intelligence**: Implement reversal pattern detection for the main V2.1 strategy, not just the scalper, to enable smarter, earlier exits from trades.
+-   **(P3) Fine-tune V2.1 Filters**: Based on ongoing backtest results, the user may request further adjustments to filter thresholds (e.g., ADX, Volume).
 
 **Completed work in this session**
--   **Trading Strategy Overhaul (V2.1 HIGH WIN RATE MODE)**: Implemented a completely new, stricter set of trading rules in .
-    -   Added **200 EMA Trend Filter** (trades must align with the long-term trend).
-    -   Added **ADX Market Condition Filter** (trades only when ADX > 25).
-    -   Added **Volume Confirmation** (signal candle volume must be >1.5x the 20-period average).
-    -   Added **Session Filter** (restricts SCALP/DAY trades to London/NY sessions).
-    -   Increased requirements: **90% confidence**, **5/5 confirmations**, **3:1 R:R**.
-    -   Reduced **max open positions** from 15 to 5.
-    -   Improved **RSI logic** to be trend-aware.
-    -   Fixed **position scaling** to require profit before scaling in.
-    -   Added **Smarter Stop Loss** placement based on support/resistance levels.
--   **Trade History & Logic UI**: Created a new feature-rich History page () with filterable/sortable trades, a detailed trade modal, and a How AEON Decides to Trade modal explaining the new V2.1 logic.
--   **Dashboard UI Enhancement**: Added a new section to the dashboard to display best/worst pairs and risk management stats.
--   **Dynamic Trade Style Fix**: Corrected the logic to dynamically assign SCALP, DAY, or SWING trade styles based on market volatility (ATR).
--   **Documentation & Download Endpoint**: Created comprehensive documentation for the bot and a  endpoint to serve it as a PDF.
--   **Critical Bug Fix (Settings Cache)**: Diagnosed and resolved an issue where new settings weren't loading because the agent was interacting with the wrong database instance ( is the correct one).
+-   **V2.1 Backtesting System**: Created a backtesting engine (), API (), and a dedicated UI page () and dashboard modal.
+-   **Enhanced Backtesting Features**: Implemented Confidence Range and Multi-Timeframe testing modes with corresponding UI updates.
+-   **Live Strategy & Dashboard Update**: Updated live settings to 65% confidence, expanded the dashboard market data to 15 cryptos, added a live settings display card, and fixed a price formatting bug.
+-   **Aggressive Scalper Integration**: Integrated a user-provided scalping strategy () with its own API () and UI page ().
+-   **Auto-Learning Scaffolding**: Began implementation of an auto-learning layer for the scalper by creating .
 
 **Earlier issues found/mentioned but not fixed**
--   None.
+-   The backend route consolidation in  remains pending. (See All Pending/In progress Issue list).
 
 **Known issue recurrence from previous fork**
 -   None.
@@ -82,58 +88,62 @@ Additionally, the agent implemented several significant features in this session
 
 
 **Key Technical Concepts**
--   **Trading Logic (V2.1)**: 200 EMA Trend Filter, ADX Market Condition, Volume Confirmation, Session Filtering, Trend-Aware RSI, Support/Resistance Stop Loss, Kelly Criterion, ATR-based leverage/style.
--   **Backend**: FastAPI, Background Tasks (APScheduler), Modular Services. The agent correctly identified and fixed an issue where settings were being read from an incorrect DB instance.
--   **Frontend**: React,  for data fetching, component-based UI, Modals for detailed views.
--   **Database**: MongoDB. The  collection in the  was updated with new fields for the V2.1 strategy.
+-   **Backtesting**: A robust framework capable of processing historical data against complex trading rules and evaluating performance across variable parameters (confidence, timeframe).
+-   **Aggressive Scalping Strategy**: A new trading model combining Volume Breakouts, Order Flow (S/R levels), and Momentum (RSI/ROC) for high-frequency trading.
+-   **Auto-Learning (In-Progress)**: Scaffolding for a system that can programmatically run backtests with varying parameters to find the optimal configuration for the scalping strategy.
+-   **API Development**: Created new, dedicated RESTful API endpoints for the backtesting and scalping features.
+-   **React Frontend**: Developed new pages and components, managed state with /, and handled asynchronous data fetching.
 
 **key DB schema**
--   **autonomous_trader_settings**:  - Stores the V2.1 strategy configuration.
--   **trade_history**: Stores closed trades, now viewed on the  page.
+-   **autonomous_trader_settings**:  - This document in  is now successfully updated via the API to control live strategy parameters.
 
 **changes in tech stack**
 -   None.
 
 **All files of reference**
--   : **(CRITICAL)** Contains the new V2.1 HIGH WIN RATE MODE trading logic. This is the core file for the backtest.
--   : Handles loading the new settings and managing trade execution/scaling.
--   : The new page for displaying trade history.
--   : The modal that explains the new V2.1 strategy to the user.
--   : Modified to add the  endpoint.
--   : New utility for checking trading sessions.
+-   : **(CRITICAL)** The new scalping strategy, currently being modified to support auto-learning.
+-   : **(CRITICAL)** The new, in-progress service for the self-optimizing logic.
+-   : The completed backtesting engine for the V2.1 strategy.
+-   : Heavily modified to show more market data and live strategy settings.
+-   : The new UI for the aggressive scalper.
+-   : Identified as needing refactoring.
 
 **Areas that need refactoring**:
--   **Consolidate Backend Routes**: Overlapping responsibilities between route files like / and / could still be merged for clarity.
+-   **Backend Routes**: Consolidate routes from  into their respective files to eliminate code duplication.
 
 **key api endpoints**
--   : **(GET)** Fetches all open and closed trades for the new history page.
--   : **(GET)** Gets blacklist and pair performance stats for the dashboard.
--   : **(GET/POST)** Reads and writes the V2.1 settings from/to the database.
--   : **(GET)** New endpoint to download the bot's PDF specification.
+-   : **(POST)** Runs the backtest across multiple confidence levels.
+-   : **(POST)** Runs the backtest across multiple timeframes.
+-   : **(POST)** Updates the complete V2.1 live trading settings.
+-   : **(GET)** Scans for live scalping signals.
+-   : **(POST)** Runs a backtest for the scalping strategy.
+-   : **(GET)** Now returns data for 15 cryptocurrencies.
 
 **Critical Info for New Agent**
--   **Immediate Priority (P0)**: The user's last request was to run a backtest on the new V2.1 strategy. You must build this functionality next. This involves creating a script to process historical data with the new rules and report the results.
--   **User Goal**: The single most important goal is to improve the bot's win rate. The user is very technical and provides highly specific, rule-based instructions. All work should be framed around this goal.
--   **Database Context**: Be aware that the application connects to . The previous agent spent time debugging an issue where settings were being read from a default DB instance instead of the correct one. Always verify you are interacting with  when working with MongoDB.
--   **Frontend Build Issue**: The agent encountered a Maximum call stack size exceeded error with the React development server, related to a . The agent disabled it in  to resolve the issue. If frontend build issues arise, this is a good place to check.
+-   **Top Priority (P0)**: Your immediate task is to complete the . The user wants this to be a self-optimizing system with smarter exits that runs alongside the current V2.1 strategy. Resume work in  and .
+-   **User Persona**: The user is highly technical and provides detailed, code-level specifications. They expect features to be implemented exactly as requested and are focused on data-driven results.
+-   **Two Active Strategies**: The bot now has two distinct trading engines: the long-term V2.1 strategy and the high-frequency Aggressive Scalper. The user's goal is to have them run in parallel and eventually inform each other.
+-   **Refactoring Task**: Be aware of the pending route consolidation task. While not a blocker, it's a known code quality issue that should be addressed when possible.
 
 **documents and test reports created in this job**
--   
--   
--   
 -   
 -    (Updated)
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  : User requested a full trade history page with clickable details. (Status: COMPLETED)
-2.  : User requested a detailed breakdown of the trading logic. (Status: COMPLETED)
-3.  : User provided a detailed list of 8 specific, strict rules to create a HIGH WIN RATE MODE and fix the low 19% win rate. (Status: COMPLETED)
-4.  User provides completion of the list of changes. (Status: COMPLETED)
-5.  : After implementation, the user requested a backtest to validate the new strategy and quantify the improvement. (Status: **PENDING**, this is the current P0 task).
+10. : User requested the next set of major features for the scalper, including self-optimization. (Status: **IN PROGRESS**)
+9.  : User re-emphasized the importance of the auto-learning/self-optimizing capability. (Status: **IN PROGRESS**)
+8.  : User provided the full Python script for a new aggressive scalping strategy. (Status: COMPLETED)
+7.  : User clarified the scalper should run *alongside* the V2.1 strategy on all 15 cryptos and on 5m, 15m, and 30m timeframes. (Status: COMPLETED)
+6.  : User agreed with the plan to consolidate routes, apply optimal settings, and update the dashboard. (Status: COMPLETED)
+5.  : User requested the backtester to test a range of confidence levels. (Status: COMPLETED)
+4.  : User approved the plan to add multi-timeframe backtesting and other enhancements. (Status: COMPLETED)
+3.  : User confirmed that MEXC data should be used for backtesting. (Status: COMPLETED)
+2.  The agent proposed a plan to build the backtest system. (Status: COMPLETED)
+1.  User requested a backtest to validate the new V2.1 strategy. (Status: COMPLETED)
 
 **Project Health Check:**
--   **Broken**: None. The application is running with the new V2.1 strategy implemented.
--   **Mocked**: Backtest results are pending creation and are effectively mocked until the backtest is run.
+-   **Broken**: None.
+-   **Mocked**: The auto-learning functionality for the scalper is scaffolded but not yet functional.
 
 **3rd Party Integrations**
 -   **Market Data**: MEXC, Binance, CoinGecko, CoinGlass.
@@ -142,13 +152,14 @@ Additionally, the agent implemented several significant features in this session
 -   **News**: CryptoCompare/CryptoPanic.
 
 **Testing status**
--   **Testing agent used after significant changes**: NO (it timed out).
+-   **Testing agent used after significant changes**: YES, for the initial V2.1 backtest feature.
 -   **Troubleshoot agent used after agent stuck in loop**: NO.
 -   **Test files created**: No.
--   **Known regressions**: None. Agent performed manual curl tests and visual verification with screenshots to ensure core functionality was not broken after the major refactor.
+-   **Known regressions**: None.
 
 **Credentials to test flow:**
 -   N/A
 
 **What agent forgot to execute**
--   The agent was about to begin the final user request of the session: to build and run a backtest for the new V2.1 trading strategy. This is the top-priority task for the next agent.</analysis>
+-   The route consolidation task ( cleanup) was identified and planned but deferred to prioritize user-requested features.
+-   The implementation of the auto-learning scalper is the main piece of unfinished work.</analysis>
