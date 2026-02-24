@@ -40,6 +40,22 @@ export default function Dashboard({
     return () => clearInterval(interval);
   }, []);
 
+  // Fetch dashboard stats (best/worst pairs, blacklist, scaling)
+  useEffect(() => {
+    const fetchDashboardStats = async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/stats/dashboard`);
+        const data = await res.json();
+        setDashboardStats(data);
+      } catch (err) {
+        console.error('Failed to fetch dashboard stats:', err);
+      }
+    };
+    fetchDashboardStats();
+    const interval = setInterval(fetchDashboardStats, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
   // Calculate total leverage exposure
   const totalLeverageExposure = livePositions.reduce((sum, p) => 
     sum + ((p.position_size || 1000) * (p.leverage || 10) / 1000), 0
