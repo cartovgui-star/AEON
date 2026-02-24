@@ -307,21 +307,22 @@ def build_user_prompt(text: str, analysis: Dict, recent_messages: List[Dict], ma
         parts.append(f"\n🔴 CRITICAL - USE THIS REAL MARKET DATA: {market_data}")
         parts.append("⚠️ YOU MUST USE THE EXACT PRICE ABOVE. DO NOT MAKE UP OR HALLUCINATE ANY PRICES.")
     
-    # Recent conversation context (for continuity)
+    # Recent conversation context (for continuity and memory)
     if recent_messages:
-        convo_context = "\n--- Recent conversation (for context, DON'T repeat these) ---"
-        for msg in reversed(recent_messages[-3:]):  # Last 3 exchanges
-            user_msg = msg.get("user_message", "")[:60]
-            bot_msg = msg.get("bot_response", "")[:80]
+        convo_context = "\n--- CONVERSATION HISTORY (remember this context) ---"
+        for msg in reversed(recent_messages[-5:]):  # Last 5 exchanges for better memory
+            user_msg = msg.get("user_message", "")[:100]
+            bot_msg = msg.get("bot_response", "")[:150]
             if user_msg and bot_msg:
-                convo_context += f"\nThem: {user_msg}..."
-                convo_context += f"\nYou said: {bot_msg}..."
+                convo_context += f"\nUser: {user_msg}"
+                convo_context += f"\nAeon: {bot_msg}..."
         parts.append(convo_context)
+        parts.append("--- END HISTORY (reference naturally, build on it) ---")
         
         # Explicit anti-repetition
         recent_bot_responses = [m.get("bot_response", "")[:100] for m in recent_messages[:3] if m.get("bot_response")]
         if recent_bot_responses:
-            parts.append("\n⚠️ DO NOT START YOUR RESPONSE LIKE ANY OF THESE (you already said them):")
+            parts.append("\n⚠️ DON'T repeat yourself. You already said things like:")
             for resp in recent_bot_responses:
                 parts.append(f'  - "{resp}"')
     
