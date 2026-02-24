@@ -653,6 +653,16 @@ export default function ScalperDashboard() {
             <span className="px-2 py-1 bg-purple-500/10 text-purple-400 rounded">
               RSI: {status.settings_summary?.rsi_range}
             </span>
+            {learningStatus?.auto_learn_enabled && (
+              <span className="px-2 py-1 bg-emerald-500/10 text-emerald-400 rounded flex items-center gap-1">
+                <Brain className="w-3 h-3" /> Auto-Learning ON
+              </span>
+            )}
+            {v2Status?.v2_integration_enabled && (
+              <span className="px-2 py-1 bg-blue-500/10 text-blue-400 rounded flex items-center gap-1">
+                <Link2 className="w-3 h-3" /> V2.1 Connected
+              </span>
+            )}
           </div>
         </div>
       )}
