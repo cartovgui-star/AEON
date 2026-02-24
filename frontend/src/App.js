@@ -343,6 +343,9 @@ function App() {
         {/* Page: Trading */}
         {currentPage === 'trading' && <Trading />}
 
+        {/* Page: Scalper */}
+        {currentPage === 'scalper' && <ScalperDashboard />}
+
         {/* Page: Analytics */}
         {currentPage === 'analytics' && <Analytics />}
 
