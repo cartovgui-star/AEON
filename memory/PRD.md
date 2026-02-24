@@ -411,19 +411,17 @@ All alerts now include: WHY, WHAT TO EXPECT, IF WRONG, PREPARATION
 ## Backlog
 
 ### P1 (Next)
-- **Consolidate Backend Routes** - Merge overlapping route files (analysis.py has duplicates of advanced.py, orderflow.py)
-- **Enhance Exit Intelligence** - Add reversal pattern detection for smarter exits
+- **Enhance Exit Intelligence** - Add reversal pattern detection for smarter exits (candlestick patterns, divergences)
 
 ### P2 (When Ready)
-- **Apply Optimal Settings** - Based on backtest results, apply 65% confidence + 15m timeframe for live trading
-- Trade notification sounds
+- Trade notification sounds (different for LONG vs SHORT)
 - PnL Goal customization UI
 
 ### P3 (Future)
-- Real-money trading
-- More exchange integrations
+- Real-money trading integration
+- More exchange integrations (Binance futures, Bybit)
 - Portfolio tracking
-- Discord/Slack integration
+- Discord/Slack alerts
 
 ---
 
