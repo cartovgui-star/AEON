@@ -75,6 +75,7 @@ from routes import (
 )
 from routes.backtest_v21 import router as backtest_v21_router
 from routes.scalper import router as scalper_router
+from routes.briefing import router as briefing_router
 from voice_tts import generate_speech, VOICES
 from price_alerts import price_alert_system, PriceAlertSystem
 from strategy_engine import StrategyEngine
@@ -82,6 +83,7 @@ from sentiment_analyzer import sentiment_analyzer, SentimentAnalyzer
 from arbitrage_detector import arbitrage_detector, ArbitrageDetector
 from strategy_health import strategy_health, StrategyHealth
 from self_healer import self_healer, SelfHealer
+from morning_briefing import morning_briefing, MorningBriefing
 import app_state
 
 ROOT_DIR = Path(__file__).parent
