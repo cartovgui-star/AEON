@@ -785,11 +785,12 @@ function TradingLogicModal({ onClose }) {
                 </div>
               </div>
               <div className="mt-4 p-4 bg-cyan-500/10 border border-cyan-500/30 rounded-lg">
-                <p className="text-cyan-400 font-medium mb-2">Position Scaling (50/50)</p>
-                <p className="text-zinc-300 text-sm">
-                  Entry is split: 50% on initial signal, 50% when price moves 0.3-1.5% in our favor (confirmation).
-                  This improves average entry price.
-                </p>
+                <p className="text-cyan-400 font-medium mb-2">Position Scaling (50/50) - V2.1 Improved</p>
+                <ul className="text-zinc-300 text-sm space-y-1">
+                  <li>• Initial entry: 50% on signal</li>
+                  <li>• Scale-in: 50% only when +0.5% profitable (raised from 0.3%)</li>
+                  <li>• Timeout: Scale-in cancelled after 2 hours if not triggered</li>
+                </ul>
               </div>
             </div>
           </section>
