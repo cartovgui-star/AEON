@@ -722,9 +722,10 @@ All alerts now include: WHY, WHAT TO EXPECT, IF WRONG, PREPARATION
 | Aggressive Scalper | ACTIVE | Auto-learning enabled, V2.1 integrated |
 | Morning Briefing | ACTIVE | 6 AM CT daily, 38 users |
 | Weekly Report | ACTIVE | Sunday 8 PM CT, 38 users |
+| **Continuous Learning** | **ACTIVE** | **24/7 pattern recognition, 9 PM CT summaries** |
 | Paper Trading | ACTIVE | 9 closed, ~9 open trades |
 | Price Alerts v2 | ACTIVE | Batched RSI, vol-confirmed breakouts |
-| Self-Healer | ACTIVE | 7 services monitored (incl. weekly report) |
+| Self-Healer | ACTIVE | 8 services monitored |
 | Sentiment | ACTIVE | News + Fear/Greed |
 | Arbitrage | ACTIVE | 5 exchanges |
 | Strategy Health | ACTIVE | Auto-bench enabled |
@@ -747,6 +748,7 @@ All alerts now include: WHY, WHAT TO EXPECT, IF WRONG, PREPARATION
 - More exchange integrations (Binance futures, Bybit)
 - Portfolio tracking
 - Discord/Slack notification channels
+- Kimi K2.5 AI integration (GPU required)
 - Discord/Slack alerts
 
 ---
