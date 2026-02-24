@@ -1086,3 +1086,208 @@ function MorningBriefingTab() {
     </div>
   );
 }
+
+
+// Weekly Report Tab Component
+function WeeklyReportTab() {
+  const [status, setStatus] = useState(null);
+  const [preview, setPreview] = useState(null);
+  const [strategyStats, setStrategyStats] = useState(null);
+  const [coinPerformance, setCoinPerformance] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [sendingTest, setSendingTest] = useState(false);
+  const [testSent, setTestSent] = useState(false);
+
+  const API_URL = process.env.REACT_APP_BACKEND_URL;
+
+  useEffect(() => {
+    fetchStatus();
+    fetchStrategyStats();
+    fetchCoinPerformance();
+  }, []);
+
+  const fetchStatus = async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/report/status`);
+      const data = await res.json();
+      setStatus(data);
+    } catch (err) {
+      console.error('Failed to fetch report status:', err);
+    }
+  };
+
+  const fetchStrategyStats = async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/report/strategy-stats`);
+      const data = await res.json();
+      setStrategyStats(data);
+    } catch (err) {
+      console.error('Failed to fetch strategy stats:', err);
+    }
+  };
+
+  const fetchCoinPerformance = async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/report/coin-performance`);
+      const data = await res.json();
+      setCoinPerformance(data);
+    } catch (err) {
+      console.error('Failed to fetch coin performance:', err);
+    }
+  };
+
+  const fetchPreview = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_URL}/api/report/preview`);
+      const data = await res.json();
+      setPreview(data.preview);
+    } catch (err) {
+      console.error('Failed to fetch preview:', err);
+    }
+    setLoading(false);
+  };
+
+  const sendTestReport = async () => {
+    setSendingTest(true);
+    try {
+      await fetch(`${API_URL}/api/report/test`, { method: 'POST' });
+      setTestSent(true);
+      setTimeout(() => setTestSent(false), 5000);
+    } catch (err) {
+      console.error('Failed to send test:', err);
+    }
+    setSendingTest(false);
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Report Status */}
+      <div className="bg-zinc-800/30 rounded-xl border border-blue-500/30 overflow-hidden">
+        <div className="flex items-center gap-3 px-5 py-4 border-b border-blue-500/20">
+          <BarChart3 className="w-5 h-5 text-blue-400" />
+          <h3 className="font-semibold text-white">Weekly Performance Report</h3>
+          <span className={`ml-auto px-2 py-0.5 rounded text-xs ${
+            status?.enabled ? 'bg-green-500/20 text-green-400' : 'bg-zinc-700 text-zinc-400'
+          }`}>
+            {status?.enabled ? 'ACTIVE' : 'PAUSED'}
+          </span>
+        </div>
+        <div className="p-5 space-y-4">
+          <div className="flex items-center justify-between p-4 bg-zinc-900/50 rounded-xl">
+            <div>
+              <p className="text-white font-medium">Trading Performance Summary</p>
+              <p className="text-zinc-500 text-sm">Sent every {status?.scheduled_day} at {status?.scheduled_time}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-blue-400 font-bold">{status?.scheduled_day} {status?.scheduled_time}</p>
+              <p className="text-xs text-zinc-500">{status?.timezone}</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-3">
+            <div className="p-3 bg-zinc-900/50 rounded-lg text-center">
+              <p className="text-sm text-zinc-400">Trades This Week</p>
+              <p className="text-xl font-bold text-white">{status?.trades_this_week || 0}</p>
+            </div>
+            <div className="p-3 bg-zinc-900/50 rounded-lg text-center">
+              <p className="text-sm text-zinc-400">Next Report</p>
+              <p className="text-blue-400 font-medium text-sm">{status?.next_report?.split(' ')[0] || '-'}</p>
+            </div>
+            <div className="p-3 bg-zinc-900/50 rounded-lg text-center">
+              <p className="text-sm text-zinc-400">Recipients</p>
+              <p className="text-xl font-bold text-white">{status?.active_users || 0}</p>
+            </div>
+          </div>
+
+          <div className="flex gap-2">
+            <button
+              onClick={fetchPreview}
+              disabled={loading}
+              data-testid="report-preview-btn"
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-zinc-700 hover:bg-zinc-600 rounded-xl text-white transition-colors"
+            >
+              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+              Preview This Week's Report
+            </button>
+            <button
+              onClick={sendTestReport}
+              disabled={sendingTest}
+              data-testid="report-send-test-btn"
+              className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl transition-colors ${
+                testSent ? 'bg-green-500 text-white' : 'bg-blue-500 hover:bg-blue-600 text-white'
+              }`}
+            >
+              {sendingTest ? <Loader2 className="w-4 h-4 animate-spin" /> : testSent ? <CheckCircle2 className="w-4 h-4" /> : <Send className="w-4 h-4" />}
+              {testSent ? 'Sent!' : 'Send Now'}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Preview */}
+      {preview && (
+        <div className="bg-zinc-800/30 rounded-xl border border-zinc-700/50 overflow-hidden">
+          <div className="flex items-center gap-3 px-5 py-4 border-b border-zinc-700/50">
+            <Calendar className="w-5 h-5 text-blue-400" />
+            <h3 className="font-semibold text-white">Report Preview</h3>
+          </div>
+          <div className="p-5">
+            <pre className="whitespace-pre-wrap text-sm text-zinc-300 font-mono bg-zinc-900/50 p-4 rounded-xl max-h-96 overflow-y-auto">
+              {preview}
+            </pre>
+          </div>
+        </div>
+      )}
+
+      {/* Strategy Performance */}
+      {strategyStats?.strategies && Object.keys(strategyStats.strategies).length > 0 && (
+        <div className="bg-zinc-800/30 rounded-xl border border-zinc-700/50 overflow-hidden">
+          <div className="flex items-center gap-3 px-5 py-4 border-b border-zinc-700/50">
+            <Target className="w-5 h-5 text-purple-400" />
+            <h3 className="font-semibold text-white">Strategy Performance (This Week)</h3>
+          </div>
+          <div className="p-5 space-y-3">
+            {Object.entries(strategyStats.strategies).map(([name, stats]) => (
+              <div key={name} className="flex items-center justify-between p-3 bg-zinc-900/50 rounded-lg">
+                <div>
+                  <p className="text-white font-medium">{name}</p>
+                  <p className="text-xs text-zinc-500">{stats.total_trades} trades</p>
+                </div>
+                <div className="flex items-center gap-4">
+                  <div className="text-center">
+                    <p className={`text-sm font-medium ${stats.win_rate >= 50 ? 'text-green-400' : 'text-amber-400'}`}>
+                      {stats.win_rate}%
+                    </p>
+                    <p className="text-xs text-zinc-500">Win Rate</p>
+                  </div>
+                  <div className="text-center">
+                    <p className={`text-sm font-medium ${stats.total_pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                      {stats.total_pnl > 0 ? '+' : ''}{stats.total_pnl}%
+                    </p>
+                    <p className="text-xs text-zinc-500">PnL</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Info */}
+      <div className="flex items-start gap-3 p-4 bg-blue-500/10 border border-blue-500/30 rounded-xl">
+        <Info className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
+        <div className="text-sm text-blue-200">
+          <p className="font-medium mb-1">What's included in the weekly report?</p>
+          <ul className="text-blue-200/80 space-y-1">
+            <li>• Win rate by strategy (V2.1, Scalper, Day Trader, Long Term)</li>
+            <li>• Best and worst performing coins</li>
+            <li>• Total PnL breakdown</li>
+            <li>• Weekly highlights (biggest win, biggest loss)</li>
+            <li>• Strategy recommendations based on performance</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  );
+}
