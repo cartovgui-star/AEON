@@ -12,63 +12,45 @@ Build a sophisticated trading bot named "Aeon" with:
 
 ---
 
-## Latest Session (Feb 24, 2026) - Multi-Confidence & Multi-Timeframe Backtesting
+## Latest Session (Feb 24, 2026) - Dashboard Upgrade & Route Consolidation
 
-### Multi-Confidence Backtesting (P0) - DONE
-Added ability to test confidence levels from 65% to 90% to find optimal threshold.
+### Route Consolidation (P1) - DONE
+- Cleaned up `/app/backend/routes/analysis.py` - removed duplicate endpoints
+- Kept only unique routes: MTF, Calculators, Backtest strategies, Multi-strategy scans
+- Routes for Advanced, OrderFlow, Options, Coinglass now in dedicated files only
 
-**New Backend Endpoints:**
-- `GET /api/backtest/v21/confidence-range?days=30` - Test 65%, 75%, 85%, 90% confidence
-- `POST /api/backtest/v21/multi-confidence` - Custom confidence level array
+### Optimal Settings Applied (P2) - DONE
+- Updated live trading settings to use **65% confidence** (down from 90%)
+- Added new API endpoints:
+  - `GET /api/trading/v2/settings` - Get all V2.1 settings
+  - `POST /api/trading/v2/settings` - Update V2.1 settings
+- Settings are persisted in MongoDB
+
+### Dashboard Upgrade - DONE
+**Expanded Crypto Coverage:**
+- Now tracking **15 cryptos** (was 3): BTC, ETH, SOL, BNB, XRP, DOGE, ADA, AVAX, DOT, LINK, UNI, ATOM, LTC, ARB, OP
+- 5-column responsive grid layout for better display
+- Smart price formatting (e.g., $63,228 for BTC, $0.0913 for DOGE)
+
+**New V2.1 Strategy Settings Card:**
+- Shows current Min Confidence (65%), Confirmations (5/5), R:R (3:1)
+- Displays active filters (EMA, ADX, VOL, SESSION)
+- Shows strategy active/paused status
+
+---
+
+## Previous Session - Multi-Confidence & Multi-Timeframe Backtesting (DONE)
+Added ability to test confidence levels from 65% to 90% and multiple timeframes.
+
+**New Endpoints:**
+- `GET /api/backtest/v21/confidence-range?days=30` - Test 65%, 75%, 85%, 90%
 - `GET /api/backtest/v21/timeframe-comparison?days=30&confidence=75` - Compare 15m/1h/4h
-- `POST /api/backtest/v21/multi-timeframe` - Custom timeframe testing
-- `POST /api/backtest/v21/comprehensive` - Full analysis (all confidence + all timeframes)
-
-**New Backend Functions:**
-- `run_multi_confidence_backtest()` - Test multiple confidence thresholds
-- `run_multi_timeframe_backtest()` - Test multiple timeframes
-- `run_comprehensive_backtest()` - Combined analysis finding optimal combo
-
-**Frontend Updates:**
-- Added Test Mode selector: Standard Test | Confidence Range | Multi-Timeframe
-- Added `ConfidenceRangeChart` component with bar chart visualization
-- Added `TimeframeComparisonChart` component with bar chart visualization
-- Dynamic run button text based on selected mode
-- Mode-specific help text explaining what each test does
+- `POST /api/backtest/v21/multi-confidence` - Custom confidence array
+- `POST /api/backtest/v21/multi-timeframe` - Custom timeframe array
 
 **Key Results:**
-- 15m timeframe with 65% confidence: 25% WR with 16 trades (best combination)
-- 1h/4h timeframes show 0 trades (filters too strict)
-- Data confirms lower confidence + faster timeframe = more trades
-
----
-
-## Previous Session - V2.1 Backtest System (DONE)
-Built comprehensive backtest system for the V2.1 HIGH WIN RATE strategy using MEXC historical data.
-
-**API Endpoints:**
-- `GET /api/backtest/v21/settings` - V2.1 filter settings
-- `GET /api/backtest/v21/status` - Backtest status
-- `GET /api/backtest/v21/result` - Last backtest result
-- `POST /api/backtest/v21/run` - Start async backtest
-- `GET /api/backtest/v21/quick/{symbol}` - Sync single-symbol backtest
-- `GET /api/backtest/v21/compare` - Compare BTC/ETH/SOL
-
-**V2.1 Filters:**
-- 200 EMA Trend Filter, ADX > 25, Volume > 1.5x average
-- Session Filter (London/NY), 90% Confidence, 5/5 Confirmations, 3:1 R:R
-
----
-
-## V2.1 HIGH WIN RATE MODE Implementation (DONE)
-- 200 EMA Trend Filter (trades must align with long-term trend)
-- ADX Market Condition Filter (trades only when ADX > 25)
-- Volume Confirmation (1.5x 20-period average)
-- Session Filter (London/NY for SCALP/DAY)
-- Increased requirements: 90% confidence, 5/5 confirmations, 3:1 R:R
-- Reduced max open positions from 15 to 5
-- Trend-aware RSI logic
-- Support/resistance-based stop losses
+- 15m timeframe + 65% confidence showed best balance of trade frequency and filtering
+- This led to updating live settings to 65% confidence
 - Initial entry: 50% of position size on signal
 - Scale-in: 50% when position moves 0.3-1.5% in favor (confirmation)
 - New methods: `calculate_scaled_position()`, `check_scale_in_opportunities()`
