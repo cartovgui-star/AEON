@@ -52,6 +52,76 @@ async def api_trading_v2_stats():
     return await state.autonomous_trader_v2.get_stats()
 
 
+@router.get("/stats/dashboard")
+async def api_stats_dashboard():
+    """Get comprehensive dashboard stats including best/worst pairs, blacklist, and scaling status"""
+    trader = state.autonomous_trader_v2
+    
+    # Get best/worst pairs
+    pair_data = trader.get_best_worst_pairs()
+    
+    # Get pairs on cooldown
+    cooldowns = []
+    for symbol, until in trader.pair_cooldowns.items():
+        time_left = (until - datetime.now(timezone.utc)).total_seconds() / 60
+        if time_left > 0:
+            cooldowns.append({
+                "symbol": symbol,
+                "minutes_left": round(time_left, 0),
+                "until": until.isoformat()
+            })
+    
+    # Get position scaling status
+    positions_pending_scale = [
+        {"symbol": t["symbol"], "current_size": t["position_size"], "full_size": t.get("original_full_size", t["position_size"])}
+        for t in trader.open_trades if t.get("pending_scale_in", False)
+    ]
+    
+    return {
+        "best_pairs": pair_data.get("best", []),
+        "worst_pairs": pair_data.get("worst", []),
+        "blacklisted_pairs": pair_data.get("blacklisted", []),
+        "pairs_on_cooldown": cooldowns,
+        "position_scaling": {
+            "enabled": trader.position_scaling_enabled,
+            "initial_entry_pct": trader.initial_entry_pct,
+            "pending_scale_ins": len(positions_pending_scale),
+            "positions": positions_pending_scale
+        },
+        "trading_config": {
+            "min_confidence": trader.min_confidence,
+            "min_confirmations": trader.min_confirmations,
+            "max_open_trades": trader.max_open_trades,
+            "cooldown_hours": trader.cooldown_hours
+        }
+    }
+
+
+@router.post("/trading/v2/set-confidence")
+async def api_set_confidence(request: Request):
+    """Set minimum confidence level for autonomous trader"""
+    try:
+        data = await request.json()
+        min_conf = data.get("min_confidence", 80)
+        min_conf = max(60, min(98, min_conf))
+        state.autonomous_trader_v2.min_confidence = min_conf
+        await state.autonomous_trader_v2.save_settings()
+        return {"success": True, "min_confidence": min_conf}
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@router.post("/trading/v2/toggle-scaling")
+async def api_toggle_scaling(enabled: bool = True):
+    """Toggle position scaling feature"""
+    state.autonomous_trader_v2.position_scaling_enabled = enabled
+    return {
+        "success": True,
+        "position_scaling_enabled": enabled,
+        "message": f"Position scaling {'enabled' if enabled else 'disabled'}"
+    }
+
+
 @router.get("/trading/v2/open")
 async def api_trading_v2_open():
     return {
