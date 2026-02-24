@@ -278,7 +278,7 @@ class AutoLearningSystem:
     
     async def analyze_performance(self, lookback_hours: int = 24) -> Dict:
         """Analyze recent trading performance"""
-        if not scalper_trades_collection:
+        if scalper_trades_collection is None:
             return {}
         
         try:
