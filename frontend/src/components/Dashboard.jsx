@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { 
   Bot, Activity, TrendingUp, Target, Users, BarChart3, 
   MessageCircle, Brain, Zap, AlertTriangle, Radio, Power,
-  Flame, ChevronRight, Ban, ThumbsUp, ThumbsDown, Timer, Scale
+  Flame, ChevronRight, Ban, ThumbsUp, ThumbsDown, Timer, Scale, FlaskConical, Bell
 } from 'lucide-react';
 import { Card, CardContent } from './ui/card';
 import { ScrollArea } from './ui/scroll-area';
+import BacktestV21Modal from './BacktestV21Modal';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
