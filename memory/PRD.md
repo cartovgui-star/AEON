@@ -439,6 +439,13 @@ All alerts now include: WHY, WHAT TO EXPECT, IF WRONG, PREPARATION
 
 ## Key Files
 
+### Modified (Feb 24, 2026) - Auto-Learning Scalper
+- `/app/backend/scalper_learning.py` - NEW: Auto-learning, reversal patterns, V2 integration
+- `/app/backend/aggressive_scalper.py` - Enhanced with auto-learning hooks, reversal exits
+- `/app/backend/routes/scalper.py` - Added learning, V2 integration, reversals endpoints
+- `/app/backend/autonomous_trader_v2.py` - Added process_scalper_signals() for V2 integration
+- `/app/frontend/src/components/ScalperDashboard.jsx` - New Auto-Learning and V2.1 Integration tabs
+
 ### Modified (Feb 20, 2026)
 - `/app/frontend/src/components/Dashboard.jsx` - NEW: Upgraded dashboard with Kill Switch, Quick Trade, PnL Goal, Live Positions
 - `/app/backend/autonomous_trader_v2.py` - Enhanced with TRADE_STYLES config, determine_trade_style(), calculate_leverage()
