@@ -1060,6 +1060,32 @@ async def root():
     return {"message": "Aeon Market Intelligence Active", "status": "online"}
 
 
+@api_router.get("/download/spec")
+async def download_spec():
+    """Download AEON complete specification PDF"""
+    pdf_path = Path("/app/AEON_COMPLETE_SPECIFICATION.pdf")
+    if pdf_path.exists():
+        return FileResponse(
+            path=str(pdf_path),
+            filename="AEON_Complete_Specification.pdf",
+            media_type="application/pdf"
+        )
+    raise HTTPException(status_code=404, detail="PDF not found")
+
+
+@api_router.get("/download/docs")
+async def download_docs():
+    """Download AEON full documentation text file"""
+    txt_path = Path("/app/AEON_FULL_DOCUMENTATION.txt")
+    if txt_path.exists():
+        return FileResponse(
+            path=str(txt_path),
+            filename="AEON_Full_Documentation.txt",
+            media_type="text/plain"
+        )
+    raise HTTPException(status_code=404, detail="Documentation not found")
+
+
 # NOTE: The following endpoints moved to routes/:
 # - /ws/stats -> routes/system.py
 # - /confluence/{symbol} -> routes/confluence.py
