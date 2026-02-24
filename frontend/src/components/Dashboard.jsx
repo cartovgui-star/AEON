@@ -34,6 +34,8 @@ export default function Dashboard({
   const [showKillSwitch, setShowKillSwitch] = useState(false);
   const [showBacktestModal, setShowBacktestModal] = useState(false);
   const [v2Settings, setV2Settings] = useState(null);
+  const [scalperStatus, setScalperStatus] = useState(null);
+  const [weeklyReport, setWeeklyReport] = useState(null);
 
   // Fetch live positions for quick view
   useEffect(() => {
