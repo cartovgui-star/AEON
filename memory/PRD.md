@@ -512,6 +512,7 @@ All alerts now include: WHY, WHAT TO EXPECT, IF WRONG, PREPARATION
 | Day Trader | ACTIVE | 75% conf, 15m/1h/4h |
 | Long Term | ACTIVE | 88% conf, 4h/1d |
 | Free Will v2 | ACTIVE | 80% conf, scan bug fixed |
+| Aggressive Scalper | ACTIVE | Auto-learning enabled, V2.1 integrated |
 | Paper Trading | ACTIVE | 9 closed, ~9 open trades |
 | Price Alerts v2 | ACTIVE | Batched RSI, vol-confirmed breakouts |
 | Self-Healer | ACTIVE | 5 services monitored |
@@ -526,13 +527,13 @@ All alerts now include: WHY, WHAT TO EXPECT, IF WRONG, PREPARATION
 ## Backlog
 
 ### P1 (Next)
-- **Enhance Exit Intelligence** - Add reversal pattern detection for smarter exits (candlestick patterns, divergences)
-- **Integrate Scalper with V2.1** - Feed scalper signals into autonomous trader for execution
+- **Enhance V2.1 Exit Intelligence** - Apply reversal pattern detection (already in scalper) to main V2.1 strategy
+- **Dashboard scalper integration widget** - Show scalper status on main dashboard
 
 ### P2 (When Ready)
 - Trade notification sounds (different for LONG vs SHORT)
 - PnL Goal customization UI
-- Scalper parameter optimization based on backtest results
+- Multi-timeframe scalper correlation analysis
 
 ### P3 (Future)
 - Real-money trading integration
