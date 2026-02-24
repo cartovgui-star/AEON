@@ -424,8 +424,11 @@ class BacktestV21Engine:
         # Calculate confidence
         confidence = min(98, 60 + (signal_strength * 6))
         
-        # 7. CONFIDENCE CHECK (90% min)
-        if confidence < V21_SETTINGS["min_confidence"]:
+        # Store confidence in result even if it doesn't pass threshold
+        result["confidence"] = confidence
+        
+        # 7. CONFIDENCE CHECK (use dynamic threshold)
+        if confidence < conf_threshold:
             result["filtered_by"] = "low_confidence"
             self.results["filters"]["confidence_filtered"] += 1
             return result
