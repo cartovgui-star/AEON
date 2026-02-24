@@ -3487,5 +3487,6 @@ app.include_router(mtf_router, prefix="/api")
 app.include_router(confluence_router, prefix="/api")
 app.include_router(backtest_v21_router, prefix="/api")
 app.include_router(scalper_router, prefix="/api")
+app.include_router(briefing_router, prefix="/api")
 
 app.add_middleware(CORSMiddleware, allow_credentials=True, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
