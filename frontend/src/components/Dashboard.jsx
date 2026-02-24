@@ -123,6 +123,22 @@ export default function Dashboard({
     fetchWeeklyReport();
   }, []);
 
+  // Fetch Learning Engine status
+  useEffect(() => {
+    const fetchLearningStatus = async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/learning/status`);
+        const data = await res.json();
+        setLearningStatus(data);
+      } catch (err) {
+        console.error('Failed to fetch learning status:', err);
+      }
+    };
+    fetchLearningStatus();
+    const interval = setInterval(fetchLearningStatus, 60000); // Every minute
+    return () => clearInterval(interval);
+  }, []);
+
   // Calculate total leverage exposure
   const totalLeverageExposure = livePositions.reduce((sum, p) => 
     sum + ((p.position_size || 1000) * (p.leverage || 10) / 1000), 0
