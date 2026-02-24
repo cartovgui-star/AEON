@@ -320,6 +320,98 @@ function Recommendations({ recommendations }) {
   );
 }
 
+function ConfidenceRangeChart({ results }) {
+  if (!results || results.length === 0) return null;
+  
+  const chartData = results.map(r => ({
+    confidence: `${r.confidence_level}%`,
+    winRate: r.win_rate,
+    trades: r.total_trades
+  }));
+  
+  return (
+    <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
+      <h3 className="text-sm font-medium text-zinc-400 mb-4 flex items-center gap-2">
+        <Sliders className="w-4 h-4" />
+        Win Rate by Confidence Level
+      </h3>
+      <ResponsiveContainer width="100%" height={250}>
+        <BarChart data={chartData}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#3f3f46" />
+          <XAxis dataKey="confidence" stroke="#71717a" fontSize={12} />
+          <YAxis stroke="#71717a" fontSize={12} />
+          <Tooltip 
+            contentStyle={{ 
+              background: '#18181b', 
+              border: '1px solid #3f3f46', 
+              borderRadius: '8px' 
+            }}
+            formatter={(value, name) => [
+              name === 'winRate' ? `${value}%` : value,
+              name === 'winRate' ? 'Win Rate' : 'Trades'
+            ]}
+          />
+          <Bar dataKey="winRate" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+        </BarChart>
+      </ResponsiveContainer>
+      <div className="mt-4 grid grid-cols-3 gap-2">
+        {results.map((r, idx) => (
+          <div key={idx} className="text-center p-2 bg-zinc-800/50 rounded-lg">
+            <p className="text-amber-400 font-bold">{r.confidence_level}%</p>
+            <p className="text-xs text-zinc-400">{r.win_rate}% WR | {r.total_trades} trades</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function TimeframeComparisonChart({ results }) {
+  if (!results || results.length === 0) return null;
+  
+  const chartData = results.map(r => ({
+    timeframe: r.timeframe,
+    winRate: r.win_rate,
+    trades: r.total_trades
+  }));
+  
+  return (
+    <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
+      <h3 className="text-sm font-medium text-zinc-400 mb-4 flex items-center gap-2">
+        <Layers className="w-4 h-4" />
+        Win Rate by Timeframe
+      </h3>
+      <ResponsiveContainer width="100%" height={250}>
+        <BarChart data={chartData}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#3f3f46" />
+          <XAxis dataKey="timeframe" stroke="#71717a" fontSize={12} />
+          <YAxis stroke="#71717a" fontSize={12} />
+          <Tooltip 
+            contentStyle={{ 
+              background: '#18181b', 
+              border: '1px solid #3f3f46', 
+              borderRadius: '8px' 
+            }}
+            formatter={(value, name) => [
+              name === 'winRate' ? `${value}%` : value,
+              name === 'winRate' ? 'Win Rate' : 'Trades'
+            ]}
+          />
+          <Bar dataKey="winRate" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+        </BarChart>
+      </ResponsiveContainer>
+      <div className="mt-4 grid grid-cols-3 gap-2">
+        {results.map((r, idx) => (
+          <div key={idx} className="text-center p-2 bg-zinc-800/50 rounded-lg">
+            <p className="text-purple-400 font-bold">{r.timeframe}</p>
+            <p className="text-xs text-zinc-400">{r.win_rate}% WR | {r.total_trades} trades</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function BacktestV21() {
   const [selectedSymbols, setSelectedSymbols] = useState(['BTC/USDT', 'ETH/USDT', 'SOL/USDT']);
   const [timeframe, setTimeframe] = useState('1h');
@@ -329,6 +421,9 @@ export default function BacktestV21() {
   const [error, setError] = useState(null);
   const [status, setStatus] = useState(null);
   const [polling, setPolling] = useState(false);
+  const [testMode, setTestMode] = useState('standard');
+  const [confidenceResult, setConfidenceResult] = useState(null);
+  const [timeframeResult, setTimeframeResult] = useState(null);
 
   const toggleSymbol = (symbol) => {
     if (selectedSymbols.includes(symbol)) {
