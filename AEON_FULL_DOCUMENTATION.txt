@@ -1,0 +1,994 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+#                              AEON TRADING BOT
+#                         COMPLETE SYSTEM DOCUMENTATION
+# ═══════════════════════════════════════════════════════════════════════════════
+
+                              ╔═══════════════════╗
+                              ║       AEON        ║
+                              ║  Trading Intelligence  ║
+                              ╚═══════════════════╝
+
+                    Live URL: https://aeon-paper-trade.preview.emergentagent.com
+
+═══════════════════════════════════════════════════════════════════════════════
+                              TABLE OF CONTENTS
+═══════════════════════════════════════════════════════════════════════════════
+
+1. EXECUTIVE SUMMARY
+2. SYSTEM ARCHITECTURE
+3. AI & API INTEGRATIONS
+4. TRADING ENGINE SPECIFICATIONS
+5. FRONTEND DASHBOARD
+6. TELEGRAM BOT
+7. DATABASE SCHEMA
+8. API ENDPOINTS (FULL LIST)
+9. FILE STRUCTURE
+10. DEPLOYMENT & INFRASTRUCTURE
+
+═══════════════════════════════════════════════════════════════════════════════
+                           1. EXECUTIVE SUMMARY
+═══════════════════════════════════════════════════════════════════════════════
+
+AEON is an autonomous cryptocurrency paper trading bot that operates 24/7,
+analyzing markets and executing trades based on technical analysis, smart
+money concepts, and derivatives data.
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  BOT TYPE:        Autonomous Paper Trading Bot                              │
+│  MARKETS:         Crypto Futures (25 pairs)                                 │
+│  EXCHANGES:       MEXC, Binance (data feeds)                                │
+│  TRADING MODE:    Paper Trading (simulated)                                 │
+│  OPERATION:       24/7 Autonomous                                           │
+│  AI POWERED:      Yes - GPT-4o for conversation                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+KEY STATISTICS (Current):
+• Total Trades Executed: 103+
+• Win Rate: 19%
+• Active Positions: 2-3
+• Trading Pairs: 25
+• Active Users: 38+
+
+
+═══════════════════════════════════════════════════════════════════════════════
+                          2. SYSTEM ARCHITECTURE
+═══════════════════════════════════════════════════════════════════════════════
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           SYSTEM OVERVIEW                                    │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+                         ┌─────────────────────┐
+                         │      USERS          │
+                         │  (Web / Telegram)   │
+                         └──────────┬──────────┘
+                                    │
+                    ┌───────────────┼───────────────┐
+                    │               │               │
+              ┌─────▼─────┐  ┌─────▼─────┐  ┌─────▼─────┐
+              │  WEB UI   │  │ TELEGRAM  │  │  VOICE    │
+              │  (React)  │  │   BOT     │  │   CHAT    │
+              └─────┬─────┘  └─────┬─────┘  └─────┬─────┘
+                    │              │              │
+                    └──────────────┼──────────────┘
+                                   │
+                         ┌─────────▼─────────┐
+                         │    FASTAPI        │
+                         │    BACKEND        │
+                         │   (Port 8001)     │
+                         └─────────┬─────────┘
+                                   │
+         ┌─────────────────────────┼─────────────────────────┐
+         │                         │                         │
+   ┌─────▼─────┐           ┌──────▼──────┐          ┌──────▼──────┐
+   │  TRADING  │           │   MARKET    │          │     AI      │
+   │  ENGINE   │           │   DATA      │          │  SERVICES   │
+   │           │           │   FEEDS     │          │             │
+   └─────┬─────┘           └──────┬──────┘          └──────┬──────┘
+         │                        │                        │
+         │                        │                        │
+   ┌─────▼─────┐           ┌──────▼──────┐          ┌──────▼──────┐
+   │  MongoDB  │           │ MEXC/Binance│          │  OpenAI     │
+   │  Database │           │ CoinGecko   │          │  GPT-4o     │
+   │           │           │ CoinGlass   │          │  Whisper    │
+   └───────────┘           └─────────────┘          └─────────────┘
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          TECHNOLOGY STACK                                    │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+BACKEND:
+┌────────────────────┬────────────────────────────────────────────────────────┐
+│ Framework          │ FastAPI (Python 3.11)                                  │
+│ Database           │ MongoDB with Motor (async driver)                      │
+│ Task Scheduling    │ APScheduler                                            │
+│ Async Runtime      │ asyncio                                                │
+│ Process Manager    │ Supervisor                                             │
+│ Web Server         │ Uvicorn                                                │
+└────────────────────┴────────────────────────────────────────────────────────┘
+
+FRONTEND:
+┌────────────────────┬────────────────────────────────────────────────────────┐
+│ Framework          │ React 18                                               │
+│ Build Tool         │ Create React App + Craco                               │
+│ UI Components      │ Shadcn/UI                                              │
+│ Styling            │ Tailwind CSS                                           │
+│ Charts             │ Recharts                                               │
+│ Icons              │ Lucide React                                           │
+└────────────────────┴────────────────────────────────────────────────────────┘
+
+INFRASTRUCTURE:
+┌────────────────────┬────────────────────────────────────────────────────────┐
+│ Hosting            │ Emergent Platform (Kubernetes)                         │
+│ Container          │ Docker                                                 │
+│ Proxy              │ Nginx                                                  │
+│ SSL                │ Cloudflare                                             │
+│ Backend Port       │ 8001                                                   │
+│ Frontend Port      │ 3000                                                   │
+└────────────────────┴────────────────────────────────────────────────────────┘
+
+
+═══════════════════════════════════════════════════════════════════════════════
+                         3. AI & API INTEGRATIONS
+═══════════════════════════════════════════════════════════════════════════════
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          AI SERVICES                                         │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+1. OPENAI GPT-4o (Conversation AI)
+   ├── Purpose: Powers "Talk to Aeon" voice/text chat
+   ├── Model: gpt-4o-mini
+   ├── Integration: Emergent LLM Key (Universal Key)
+   ├── Features:
+   │   ├── Natural language trading questions
+   │   ├── Market analysis explanations
+   │   ├── Personalized responses
+   │   └── Context-aware conversation
+   └── File: /app/backend/routes/trading.py (voice_respond endpoint)
+
+2. OPENAI WHISPER (Speech-to-Text)
+   ├── Purpose: Transcribe user voice input
+   ├── Integration: Emergent LLM Key
+   ├── Endpoint: /api/voice/transcribe
+   └── File: /app/backend/voice_tts.py
+
+3. EDGE TTS (Text-to-Speech)
+   ├── Purpose: Generate Aeon's voice responses
+   ├── Voices: Multiple options (guy, female, etc.)
+   ├── Output: MP3 audio
+   └── File: /app/backend/voice_tts.py
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                       MARKET DATA APIs                                       │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+1. MEXC EXCHANGE API
+   ├── Purpose: Primary price data & orderbook
+   ├── Endpoints Used:
+   │   ├── /api/v3/ticker/24hr - 24h price stats
+   │   ├── /api/v3/klines - Candlestick data
+   │   ├── /api/v3/depth - Order book
+   │   └── /api/v3/trades - Recent trades
+   ├── Rate Limit: 1200 requests/minute
+   └── Auth: API Key + Secret (in .env)
+
+2. BINANCE API
+   ├── Purpose: Technical indicators, funding rates
+   ├── Endpoints Used:
+   │   ├── /fapi/v1/klines - Futures candles
+   │   ├── /fapi/v1/fundingRate - Funding rates
+   │   ├── /fapi/v1/openInterest - Open interest
+   │   └── /fapi/v1/ticker/24hr - 24h stats
+   └── Auth: Public endpoints (no key needed)
+
+3. COINGECKO API
+   ├── Purpose: Market cap, global data, coin info
+   ├── Endpoints Used:
+   │   ├── /api/v3/global - Global market data
+   │   ├── /api/v3/simple/price - Simple prices
+   │   └── /api/v3/coins/{id} - Coin details
+   ├── Rate Limit: 10-30 calls/minute (free tier)
+   └── Auth: None (free tier)
+
+4. COINGLASS API
+   ├── Purpose: Derivatives data, liquidations
+   ├── Endpoints Used:
+   │   ├── /api/futures/openInterest
+   │   ├── /api/futures/longShortRatio
+   │   └── /api/futures/liquidation
+   └── Auth: API Key (optional)
+
+5. CRYPTOCOMPARE API
+   ├── Purpose: News aggregation
+   ├── Endpoint: /data/v2/news/
+   └── Auth: API Key
+
+6. CRYPTOPANIC API
+   ├── Purpose: Crypto news feed
+   ├── Endpoint: /api/v1/posts/
+   └── Auth: API Key
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                      TELEGRAM BOT API                                        │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+Platform: Telegram Bot API
+├── Token: TELEGRAM_TOKEN (in .env)
+├── Webhook: Auto-configured on startup
+├── Endpoint: /webhook (receives updates)
+├── Features:
+│   ├── Inline keyboards
+│   ├── Message formatting (Markdown)
+│   ├── Real-time alerts
+│   └── Command handling
+└── File: /app/backend/telegram/handlers.py
+
+
+═══════════════════════════════════════════════════════════════════════════════
+                      4. TRADING ENGINE SPECIFICATIONS
+═══════════════════════════════════════════════════════════════════════════════
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    CONFLUENCE SCORING SYSTEM                                 │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+The trading engine uses a weighted confluence score to determine trade quality:
+
+                    ┌─────────────────────────────────┐
+                    │     CONFLUENCE WEIGHTS          │
+                    ├─────────────────────────────────┤
+                    │  Core Technicals      60%      │
+                    │  Market Structure     20%      │
+                    │  Derivatives          20%      │
+                    └─────────────────────────────────┘
+
+CORE TECHNICALS (60% Weight):
+┌──────────────────┬──────────────────────────────────────────────────────────┐
+│ RSI (14)         │ <30 = Oversold (Long), >70 = Overbought (Short)         │
+│ MACD (12,26,9)   │ Crossovers + Histogram expansion                        │
+│ Bollinger Bands  │ Band touches (20,2), Squeeze detection                  │
+│ EMA Stack        │ 9/21/50 alignment, Pullback entries                     │
+│ Stochastic       │ <20 = Long, >80 = Short, Crossovers                     │
+│ ATR              │ Stop loss calculation, Volatility filter                │
+└──────────────────┴──────────────────────────────────────────────────────────┘
+
+MARKET STRUCTURE / SMC (20% Weight):
+┌──────────────────┬──────────────────────────────────────────────────────────┐
+│ HH/HL Pattern    │ Higher Highs/Higher Lows = Uptrend                      │
+│ LL/LH Pattern    │ Lower Lows/Lower Highs = Downtrend                      │
+│ BOS              │ Break of Structure                                       │
+│ CHoCH            │ Change of Character                                      │
+│ FVG              │ Fair Value Gaps (imbalance zones)                       │
+│ Order Blocks     │ Institutional entry zones                               │
+│ Liquidity Sweeps │ Stop hunts at key levels                                │
+└──────────────────┴──────────────────────────────────────────────────────────┘
+
+DERIVATIVES / ORDER FLOW (20% Weight):
+┌──────────────────┬──────────────────────────────────────────────────────────┐
+│ Funding Rate     │ >0.1% = Short bias, <-0.1% = Long bias                  │
+│ Open Interest    │ OI spike = Potential reversal                           │
+│ Long/Short Ratio │ >1.5 = Crowded longs (short), <0.67 = Short (long)      │
+│ CVD              │ Cumulative Volume Delta for buyer/seller pressure       │
+└──────────────────┴──────────────────────────────────────────────────────────┘
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                      TRADE STYLES                                            │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+Trade style is DYNAMICALLY assigned based on ATR volatility:
+
+┌─────────┬────────────┬─────────────┬───────────────┬────────────────────────┐
+│ Style   │ Timeframes │ Leverage    │ ATR Trigger   │ Hold Duration          │
+├─────────┼────────────┼─────────────┼───────────────┼────────────────────────┤
+│ SCALP   │ 5m, 15m    │ 50-200x     │ ATR > 2%      │ Minutes to 4 hours     │
+│ DAY     │ 1h, 4h     │ 20-75x      │ ATR 1-2%      │ Hours to 24 hours      │
+│ SWING   │ 4h, 1d     │ 10-25x      │ ATR < 1%      │ Days to 1 week         │
+└─────────┴────────────┴─────────────┴───────────────┴────────────────────────┘
+
+DYNAMIC STYLE LOGIC (from autonomous_trader_v2.py):
+
+    if atr_pct > 2.0:        # High volatility
+        → SCALP (quick trades, high leverage)
+    elif atr_pct > 1.0:      # Medium volatility  
+        → DAY (moderate holds)
+    else:                     # Low volatility
+        → SWING (longer positions)
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    POSITION SIZING                                           │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+KELLY CRITERION FORMULA:
+    f = (p × b - q) / b
+    
+    Where:
+    p = Win probability
+    q = Loss probability (1 - p)
+    b = Average win / Average loss ratio
+
+POSITION SIZE RANGE:
+    ┌──────────────────────────────────────────┐
+    │  Minimum Position:    $500               │
+    │  Maximum Position:    $2,500             │
+    │  Base Position:       $1,000             │
+    │  Risk Per Trade:      1% max             │
+    └──────────────────────────────────────────┘
+
+POSITION SCALING (50/50 Entry):
+    ┌──────────────────────────────────────────┐
+    │  Initial Entry:  50% of calculated size  │
+    │  Scale-In:       50% on confirmation     │
+    │  Confirmation:   Price moves 0.3-1.5%    │
+    │                  in favorable direction  │
+    └──────────────────────────────────────────┘
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    RISK MANAGEMENT                                           │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────┬───────────────────────────────────────────────────────┐
+│ Auto-Blacklist      │ Pairs with <30% win rate after 10 trades             │
+│ Cooldown Period     │ 4 hours after losing trade on same pair              │
+│ Volatility Filter   │ Skip if ATR > 2x 20-period average                   │
+│ Max Open Trades     │ 15 positions maximum                                 │
+│ Min Confidence      │ 80% threshold for trade entry                        │
+│ Min Confirmations   │ 3+ data sources must agree                           │
+│ Trailing Stop       │ Moves to breakeven at +1% profit                     │
+│ Momentum Exit       │ Early exit if RSI diverges while in profit           │
+└─────────────────────┴───────────────────────────────────────────────────────┘
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    SUPPORTED TRADING PAIRS                                   │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+25 TRADING PAIRS (USDT Perpetual Futures):
+
+    Row 1:  BTC    ETH    SOL    BNB    XRP
+    Row 2:  DOGE   ADA    AVAX   LINK   DOT
+    Row 3:  ATOM   UNI    LTC    ARB    OP
+    Row 4:  INJ    NEAR   APT    FIL    TRX
+    Row 5:  POL    SHIB   BCH    ETC    XLM
+
+
+═══════════════════════════════════════════════════════════════════════════════
+                         5. FRONTEND DASHBOARD
+═══════════════════════════════════════════════════════════════════════════════
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                       NAVIGATION MENU                                        │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────┬──────────┬──────────┬──────────┬──────────┬──────────┬──────────┐
+│Dashboard │ Trading  │ History  │ Alerts   │ Backtest │  Intel   │Analytics │
+├──────────┼──────────┼──────────┼──────────┼──────────┼──────────┼──────────┤
+│   SMC    │ Journal  │ Commands │  Health  │ Settings │   Live   │Talk to   │
+│          │          │          │          │          │          │  Aeon    │
+└──────────┴──────────┴──────────┴──────────┴──────────┴──────────┴──────────┘
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                       DASHBOARD PAGE                                         │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+QUICK ACTIONS BAR:
+    [⚡ Quick Trade]  [🔔 View Alerts]  ................  [⚠️ Kill Switch]
+
+STATS CARDS (6 metrics):
+    ┌─────────┬─────────┬─────────┬─────────┬─────────┬─────────┐
+    │ Status  │Win Rate │Total PnL│  Open   │Leverage │  Users  │
+    │ ACTIVE  │  19%    │-22.29%  │ Trades 3│  48x    │   38    │
+    └─────────┴─────────┴─────────┴─────────┴─────────┴─────────┘
+
+DAILY GOAL PROGRESS:
+    ┌─────────────────────────────────────────────────────────────┐
+    │ Daily Goal Progress                              -446%     │
+    │ [████████████████████████████████████████████] ←──────────│
+    │ Current: -22.29%                              Target: +5%  │
+    └─────────────────────────────────────────────────────────────┘
+
+LIVE POSITIONS:
+    ┌─────────────────────────────────────────────────────────────┐
+    │ 📡 Live Positions                           View All →     │
+    ├─────────────────────────────────────────────────────────────┤
+    │ [LONG] BTC  [SWING] 75x                        -105.75%    │
+    │ [LONG] OP   [SWING] 30x                         +47.40%    │
+    │ [SHORT] BCH [DAY]   20x                          +2.40%    │
+    └─────────────────────────────────────────────────────────────┘
+
+PERFORMANCE STATS (3 cards):
+    ┌─────────────────┬─────────────────┬─────────────────────────┐
+    │  👍 Best Pairs  │  👎 Worst Pairs │  🚫 Risk Management     │
+    │                 │                 │                         │
+    │  No data yet    │  No data yet    │  Auto-Blacklisted: 0    │
+    │                 │                 │  On Cooldown: 0         │
+    │                 │                 │  Position Scaling: ON   │
+    └─────────────────┴─────────────────┴─────────────────────────┘
+
+LIVE MARKET DATA:
+    ┌─────────────────┬─────────────────┬─────────────────────────┐
+    │      BTC        │      ETH        │         SOL             │
+    │   $63,358.67    │   $1,830.45     │       $76.84            │
+    │    ↘ 2.23%      │    ↘ 1.59%      │       ↘ 0.69%           │
+    │ [████████░░] 32%│ [██████░░░] 15% │ [████████░░] 29%        │
+    └─────────────────┴─────────────────┴─────────────────────────┘
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                       TRADING PAGE                                           │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+POSITION CARD MODAL (Click any position):
+    ┌─────────────────────────────────────────────────────────────┐
+    │                    BTC/USDT LONG                            │
+    │                                                             │
+    │  PnL: -105.75% (-$1,057.50)        ROI: [HIGH RISK]        │
+    │                                                             │
+    │  ┌─────────────────────────────────────────────────────┐   │
+    │  │ Entry Price:     $65,873.60                         │   │
+    │  │ Current Price:   $63,358.67                         │   │
+    │  │ Stop Loss:       $64,342.00                         │   │
+    │  │ Take Profit:     $68,936.81                         │   │
+    │  │ Leverage:        75x                                │   │
+    │  │ Position Size:   $1,000                             │   │
+    │  │ Margin Used:     $13.33                             │   │
+    │  └─────────────────────────────────────────────────────┘   │
+    │                                                             │
+    │  Confirmations:                                             │
+    │  ✓ Price at BB lower band                                  │
+    │  ✓ REGULAR_BULLISH divergence                              │
+    │  ✓ Downtrend structure (LH/LL)                             │
+    │                                                             │
+    │  Quick Close: [25%] [50%] [75%] [100%]                     │
+    │                                                             │
+    │  Trailing Stop: [_____%]  [Set Trail]                      │
+    │                                                             │
+    │  [Close Position]                           [Back]          │
+    └─────────────────────────────────────────────────────────────┘
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                       VOICE CHAT ("Talk to Aeon")                            │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+    ┌─────────────────────────────────────────────────────────────┐
+    │                    🎙️ Talk to Aeon                          │
+    │                                                             │
+    │     [Click microphone to speak or type below]               │
+    │                                                             │
+    │         🎤 ← Click to start voice input                     │
+    │                                                             │
+    │     "Prefer typing? Click here"                             │
+    │                                                             │
+    │  ┌─────────────────────────────────────────────────────┐   │
+    │  │ You: "What's your outlook on BTC?"                  │   │
+    │  │                                                     │   │
+    │  │ Aeon: "BTC is in a downtrend with LH/LL structure. │   │
+    │  │        Fear & Greed at 8 - extreme fear. I'd wait  │   │
+    │  │        for a clear reversal signal before going    │   │
+    │  │        long. Watch the $63k support level."        │   │
+    │  │                                            🔊 [▶️]  │   │
+    │  └─────────────────────────────────────────────────────┘   │
+    └─────────────────────────────────────────────────────────────┘
+
+
+═══════════════════════════════════════════════════════════════════════════════
+                           6. TELEGRAM BOT
+═══════════════════════════════════════════════════════════════════════════════
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    TELEGRAM COMMANDS (50+)                                   │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+GETTING STARTED:
+    /start          - Initialize bot and register
+    /help           - Show all commands
+    /menu           - Interactive menu
+
+TRADING COMMANDS:
+    /trade [COIN]   - Quick trade analysis
+    /scan [COIN]    - Full market scan with SMC
+    /positions      - View all open positions
+    /close [COIN]   - Close specific position
+    /closeall       - Emergency close all positions
+    /pnl            - Today's profit/loss summary
+
+ANALYSIS COMMANDS:
+    /ta [COIN]      - Technical analysis (RSI, MACD, BB)
+    /smc [COIN]     - Smart Money Concepts analysis
+    /structure [COIN] - Market structure (HH/HL, BOS)
+    /divergence [COIN] - RSI divergence detection
+    /vwap [COIN]    - VWAP levels and analysis
+    /orderflow [COIN] - CVD and order flow
+
+DERIVATIVES COMMANDS:
+    /funding        - Funding rates across exchanges
+    /oi [COIN]      - Open interest analysis
+    /positions      - Long/Short ratio (crowd positioning)
+    /liquidations   - Recent liquidations
+
+SENTIMENT COMMANDS:
+    /fear           - Fear & Greed index
+    /sentiment      - Composite sentiment score
+    /news           - Latest crypto news
+
+STATISTICS COMMANDS:
+    /stats          - Trading statistics
+    /accuracy       - Alert accuracy by category
+    /leaderboard    - Coin performance ranking
+    /riskcheck      - Portfolio risk assessment
+
+SETTINGS COMMANDS:
+    /settings       - View current settings
+    /confidence [N] - Set minimum confidence (70-95)
+    /alerts on/off  - Toggle alert notifications
+    /freewill on/off - Toggle autonomous trading
+
+ALERT FORMAT (Example):
+    ┌─────────────────────────────────────────────────────────────┐
+    │ 🧠 AEON: BTCUSDT LONG | DAY                                │
+    │                                                             │
+    │ 📊 Signals: RSI<30, BB lower touch, MACD bull cross,       │
+    │            Bullish OB, +CVD                                 │
+    │                                                             │
+    │ ⚡ Confidence: HIGH (87%)                                   │
+    │                                                             │
+    │ 💰 Trade Setup:                                             │
+    │ Entry: $63,500.00                                           │
+    │ SL: $62,800.00 (ATR-based)                                 │
+    │ TP1: $64,200.00 (50%)                                      │
+    │ TP2: $65,000.00                                            │
+    │ R:R 1:2.5                                                   │
+    │                                                             │
+    │ 📐 Position: $1,200 @ 50x                                   │
+    │                                                             │
+    │ 💡 Bullish internals align at Order Block                  │
+    │                                                             │
+    │ ⚠️ PAPER TRADE | 1% risk max                               │
+    └─────────────────────────────────────────────────────────────┘
+
+
+═══════════════════════════════════════════════════════════════════════════════
+                          7. DATABASE SCHEMA
+═══════════════════════════════════════════════════════════════════════════════
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                       MONGODB COLLECTIONS                                    │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+DATABASE: aeon_trading
+
+COLLECTIONS:
+
+1. v2_open_trades
+   ┌────────────────────────────────────────────────────────────────────────┐
+   │ {                                                                      │
+   │   "_id": "trade_103",                                                  │
+   │   "symbol": "BCH/USDT",                                               │
+   │   "direction": "LONG",                                                │
+   │   "entry_price": 495.30,                                              │
+   │   "stop_price": 482.09,                                               │
+   │   "target_price": 528.33,                                             │
+   │   "position_size": 1200,                                              │
+   │   "leverage": 25,                                                     │
+   │   "confidence": 70.0,                                                 │
+   │   "trade_type": "SWING",                                              │
+   │   "timeframe": "4h",                                                  │
+   │   "confirmations": ["RSI<30", "BB touch", "EMA stack"],               │
+   │   "entry_time": "2026-02-23T23:55:30Z",                              │
+   │   "status": "OPEN",                                                   │
+   │   "trail_stop": 482.09,                                               │
+   │   "pending_scale_in": true,                                           │
+   │   "original_full_size": 2400                                          │
+   │ }                                                                      │
+   └────────────────────────────────────────────────────────────────────────┘
+
+2. v2_closed_trades
+   ┌────────────────────────────────────────────────────────────────────────┐
+   │ {                                                                      │
+   │   "_id": "trade_99",                                                   │
+   │   "symbol": "ETH/USDT",                                               │
+   │   "direction": "SHORT",                                               │
+   │   "entry_price": 1950.00,                                             │
+   │   "exit_price": 1920.00,                                              │
+   │   "pnl_pct": 1.54,                                                    │
+   │   "exit_reason": "TARGET",                                            │
+   │   "exit_time": "2026-02-22T14:30:00Z"                                │
+   │ }                                                                      │
+   └────────────────────────────────────────────────────────────────────────┘
+
+3. trader_settings
+   ┌────────────────────────────────────────────────────────────────────────┐
+   │ {                                                                      │
+   │   "_id": "v2_settings",                                               │
+   │   "active": true,                                                     │
+   │   "min_confidence": 80,                                               │
+   │   "min_confirmations": 3,                                             │
+   │   "max_open_trades": 15,                                              │
+   │   "position_scaling_enabled": true                                    │
+   │ }                                                                      │
+   └────────────────────────────────────────────────────────────────────────┘
+
+4. chat_messages
+   ┌────────────────────────────────────────────────────────────────────────┐
+   │ {                                                                      │
+   │   "chat_id": 123456789,                                               │
+   │   "username": "trader_john",                                          │
+   │   "text": "/ta BTC",                                                  │
+   │   "timestamp": "2026-02-24T10:30:00Z",                               │
+   │   "context": "telegram"                                               │
+   │ }                                                                      │
+   └────────────────────────────────────────────────────────────────────────┘
+
+5. user_settings
+   ┌────────────────────────────────────────────────────────────────────────┐
+   │ {                                                                      │
+   │   "chat_id": 123456789,                                               │
+   │   "free_will": true,                                                  │
+   │   "alerts_enabled": true,                                             │
+   │   "preferred_coins": ["BTC", "ETH", "SOL"]                            │
+   │ }                                                                      │
+   └────────────────────────────────────────────────────────────────────────┘
+
+6. trade_outcomes (Alert Accuracy Tracking)
+   ┌────────────────────────────────────────────────────────────────────────┐
+   │ {                                                                      │
+   │   "alert_id": "alert_xyz",                                            │
+   │   "symbol": "BTC/USDT",                                               │
+   │   "direction": "LONG",                                                │
+   │   "entry_price": 64000,                                               │
+   │   "target_price": 66000,                                              │
+   │   "stop_price": 63000,                                                │
+   │   "outcome": "WIN",                                                   │
+   │   "pnl_pct": 3.12                                                     │
+   │ }                                                                      │
+   └────────────────────────────────────────────────────────────────────────┘
+
+
+═══════════════════════════════════════════════════════════════════════════════
+                        8. API ENDPOINTS (FULL LIST)
+═══════════════════════════════════════════════════════════════════════════════
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                       TRADING ENDPOINTS                                      │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+GET  /api/trading/v2/stats           - Full trading statistics
+GET  /api/trading/v2/open            - Open trades list
+GET  /api/trading/v2/closed          - Closed trades list
+GET  /api/trading/v2/live-positions  - Live positions with current PnL
+GET  /api/trading/v2/pnl-history     - PnL history over time
+GET  /api/trading/analyze/{symbol}   - Analyze specific symbol
+POST /api/trading/toggle             - Pause/resume trading
+POST /api/trading/v2/close/{symbol}  - Close specific position
+POST /api/trading/v2/trail/{symbol}  - Set trailing stop
+POST /api/trading/v2/tp/{symbol}     - Update take profit
+POST /api/trading/v2/confidence      - Set min confidence
+POST /api/trading/v2/toggle-scaling  - Enable/disable position scaling
+POST /api/trading/v2/set-confidence  - Set confidence level
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                       DASHBOARD & STATS ENDPOINTS                            │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+GET  /api/stats/dashboard            - Best/worst pairs, blacklist, cooldowns
+GET  /api/bot/stats                  - User and message statistics
+GET  /api/accuracy/leaderboard       - Coin performance leaderboard
+GET  /api/accuracy/stats             - Alert accuracy statistics
+GET  /api/system/health              - Service health status
+GET  /api/system/news                - Aggregated crypto news
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                       MARKET DATA ENDPOINTS                                  │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+GET  /api/mexc/live                  - Live MEXC orderbook data
+GET  /api/market/scan/{symbol}       - Full market scan
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                       ANALYSIS ENDPOINTS                                     │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+GET  /api/analysis/{symbol}          - Technical analysis
+GET  /api/smc/{symbol}               - Smart Money Concepts
+GET  /api/advanced/structure/{sym}   - Market structure analysis
+GET  /api/advanced/divergence/{sym}  - Divergence detection
+GET  /api/advanced/vwap/{symbol}     - VWAP analysis
+GET  /api/orderflow/{symbol}         - Order flow / CVD
+GET  /api/mtf/{symbol}               - Multi-timeframe analysis
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                       DERIVATIVES ENDPOINTS                                  │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+GET  /api/derivatives/{symbol}       - Full derivatives report
+GET  /api/coinglass/funding          - Funding rates
+GET  /api/coinglass/oi/{symbol}      - Open interest
+GET  /api/coinglass/ls/{symbol}      - Long/Short ratio
+GET  /api/options/maxpain/{symbol}   - Options max pain
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                       SENTIMENT ENDPOINTS                                    │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+GET  /api/sentiment/composite        - Composite sentiment score
+GET  /api/sentiment/fear-greed       - Fear & Greed index
+GET  /api/sentiment/news             - News sentiment
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                       ALERTS ENDPOINTS                                       │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+GET  /api/alerts/stats               - Alert statistics
+GET  /api/alerts/dashboard           - Dashboard alerts
+GET  /api/alerts/custom              - Custom price alerts
+POST /api/alerts/add                 - Add price alert
+DELETE /api/alerts/{id}              - Remove alert
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                       BACKTESTING ENDPOINTS                                  │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+GET  /api/backtest/rsi/{symbol}      - RSI strategy backtest
+GET  /api/backtest/bb/{symbol}       - Bollinger Bands backtest
+GET  /api/backtest/ema/{symbol}      - EMA crossover backtest
+GET  /api/backtest/compare/{symbol}  - Compare all strategies
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                       DUAL ENGINE ENDPOINTS                                  │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+GET  /api/dual/stats                 - Dual engine statistics
+POST /api/dual/toggle                - Toggle dual engine
+POST /api/dual/day-trader/toggle     - Toggle day trader
+POST /api/dual/long-term/toggle      - Toggle long term
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                       FREE WILL ENDPOINTS                                    │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+GET  /api/freewill/stats             - Free Will v2 statistics
+GET  /api/freewill/scan/{symbol}     - Free Will analysis
+POST /api/freewill/toggle            - Toggle Free Will
+POST /api/freewill/confidence        - Set confidence
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                       VOICE ENDPOINTS                                        │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+POST /api/voice/respond              - Voice conversation (TTS response)
+POST /api/voice/transcribe           - Transcribe audio (Whisper STT)
+GET  /api/voice/info                 - Voice service info
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                       USER PROFILE ENDPOINTS                                 │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+GET  /api/user/profile               - Get user profile
+GET  /api/user/profile/{chat_id}     - Get specific user profile
+POST /api/user/profile/{id}/fact     - Add user fact
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                       TRADE NOTES ENDPOINTS                                  │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+GET  /api/trades/{trade_id}/notes    - Get trade notes
+POST /api/trades/{trade_id}/notes    - Add/update trade notes
+GET  /api/trades/export              - Export trades as CSV
+GET  /api/trades/closed              - Get closed trades
+
+
+═══════════════════════════════════════════════════════════════════════════════
+                          9. FILE STRUCTURE
+═══════════════════════════════════════════════════════════════════════════════
+
+/app
+├── backend/
+│   ├── server.py                    # Main FastAPI application
+│   ├── autonomous_trader_v2.py      # Core trading engine (1400+ lines)
+│   ├── market_intelligence.py       # Technical analysis service
+│   ├── free_will_v2.py             # Elite signal generation
+│   ├── dual_trading_engine.py      # Day Trader + Long Term engines
+│   ├── confluence_analyzer.py      # Confluence scoring
+│   ├── sentiment_analyzer.py       # Sentiment analysis
+│   ├── strategy_health.py          # Strategy performance tracking
+│   ├── price_alerts.py             # Price alert system
+│   ├── order_flow.py               # Order flow / CVD analysis
+│   ├── user_profiler.py            # User preference learning
+│   ├── voice_tts.py                # Text-to-speech / Speech-to-text
+│   ├── additional_data.py          # Extra data sources (news, etc)
+│   ├── news_intel.py               # News aggregation
+│   ├── backtesting.py              # Strategy backtesting
+│   ├── app_state.py                # Global state management
+│   │
+│   ├── routes/                     # Modular API routes (26 files)
+│   │   ├── trading.py              # Trading endpoints
+│   │   ├── analysis.py             # Analysis endpoints
+│   │   ├── smc.py                  # Smart Money Concepts
+│   │   ├── derivatives.py          # Derivatives data
+│   │   ├── coinglass.py            # CoinGlass integration
+│   │   ├── sentiment.py            # Sentiment endpoints
+│   │   ├── alerts.py               # Alert management
+│   │   ├── backtest.py             # Backtesting endpoints
+│   │   ├── accuracy.py             # Accuracy tracking
+│   │   ├── advanced.py             # Advanced analysis
+│   │   ├── bot.py                  # Bot stats
+│   │   ├── calculators.py          # Trading calculators
+│   │   ├── confluence.py           # Confluence analysis
+│   │   ├── data.py                 # Data endpoints
+│   │   ├── dual.py                 # Dual engine control
+│   │   ├── freewill.py             # Free Will control
+│   │   ├── intelligence.py         # Market intelligence
+│   │   ├── learning.py             # Learning system
+│   │   ├── market.py               # Market data
+│   │   ├── memory.py               # Memory management
+│   │   ├── mtf.py                  # Multi-timeframe
+│   │   ├── news.py                 # News endpoints
+│   │   ├── options.py              # Options data
+│   │   ├── orderflow.py            # Order flow
+│   │   ├── strategies.py           # Strategy endpoints
+│   │   ├── strategy_health.py      # Strategy health
+│   │   ├── system.py               # System endpoints
+│   │   ├── user.py                 # User profile
+│   │   └── voice.py                # Voice endpoints
+│   │
+│   ├── telegram/
+│   │   ├── handlers.py             # Telegram command handlers
+│   │   └── __init__.py
+│   │
+│   ├── helpers/
+│   │   └── db_helpers.py           # Database utilities
+│   │
+│   ├── tasks/
+│   │   └── background.py           # Background task scheduler
+│   │
+│   └── tests/                      # Pytest test files
+│       ├── test_trader_v2.py
+│       ├── test_bot_routes.py
+│       └── test_learning_routes.py
+│
+├── frontend/
+│   ├── src/
+│   │   ├── App.js                  # Main React app
+│   │   ├── index.js                # Entry point
+│   │   │
+│   │   └── components/
+│   │       ├── Dashboard.jsx       # Main dashboard (540+ lines)
+│   │       ├── Trading.jsx         # Trading page with position modal
+│   │       ├── SettingsPanel.jsx   # Settings configuration
+│   │       ├── Analytics.jsx       # Analytics charts
+│   │       ├── TradeAnalytics.jsx  # Trade performance
+│   │       ├── TradeHistory.jsx    # Trade history
+│   │       ├── Backtesting.jsx     # Backtesting interface
+│   │       ├── Intelligence.jsx    # Market intelligence
+│   │       ├── SMCAnalysis.jsx     # Smart Money analysis
+│   │       ├── PriceAlerts.jsx     # Alert management
+│   │       ├── Journal.jsx         # Trade journaling
+│   │       ├── CommandsReference.jsx # Telegram commands
+│   │       ├── SystemHealth.jsx    # Service health
+│   │       ├── VoiceConversation.jsx # Voice chat
+│   │       ├── QuickScanModal.jsx  # Quick coin scan
+│   │       │
+│   │       └── ui/                 # Shadcn UI components (50+ files)
+│   │           ├── button.jsx
+│   │           ├── card.jsx
+│   │           ├── dialog.jsx
+│   │           └── ...
+│   │
+│   ├── craco.config.js            # Build configuration
+│   ├── tailwind.config.js         # Tailwind CSS config
+│   └── package.json               # Dependencies
+│
+├── memory/
+│   └── PRD.md                     # Product requirements document
+│
+├── AEON_COMPLETE_SPEC.md          # This specification document
+└── AEON_FULL_OVERVIEW.md          # Bot overview
+
+
+═══════════════════════════════════════════════════════════════════════════════
+                      10. DEPLOYMENT & INFRASTRUCTURE
+═══════════════════════════════════════════════════════════════════════════════
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                       ENVIRONMENT VARIABLES                                  │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+BACKEND (.env):
+┌────────────────────────┬────────────────────────────────────────────────────┐
+│ MONGO_URL              │ MongoDB connection string                          │
+│ DB_NAME                │ Database name (aeon_trading)                       │
+│ TELEGRAM_TOKEN         │ Telegram bot token                                 │
+│ MEXC_API_KEY           │ MEXC exchange API key                              │
+│ MEXC_SECRET_KEY        │ MEXC exchange secret                               │
+│ EMERGENT_KEY           │ Emergent LLM universal key (for OpenAI)            │
+└────────────────────────┴────────────────────────────────────────────────────┘
+
+FRONTEND (.env):
+┌────────────────────────┬────────────────────────────────────────────────────┐
+│ REACT_APP_BACKEND_URL  │ https://aeon-paper-trade.preview.emergentagent.com │
+└────────────────────────┴────────────────────────────────────────────────────┘
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                       SUPERVISOR SERVICES                                    │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+SERVICE CONFIGURATION:
+
+┌─────────────┬───────────┬─────────────────────────────────────────────────────┐
+│ Service     │ Port      │ Command                                             │
+├─────────────┼───────────┼─────────────────────────────────────────────────────┤
+│ backend     │ 8001      │ uvicorn server:app --host 0.0.0.0 --port 8001      │
+│ frontend    │ 3000      │ yarn start                                          │
+│ mongodb     │ 27017     │ mongod --dbpath /data/db                            │
+└─────────────┴───────────┴─────────────────────────────────────────────────────┘
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                       BACKGROUND TASKS                                       │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+SCHEDULED TASKS (APScheduler):
+
+┌─────────────────────────┬───────────────┬───────────────────────────────────┐
+│ Task                    │ Interval      │ Description                       │
+├─────────────────────────┼───────────────┼───────────────────────────────────┤
+│ autonomous_trading_v2   │ 60 seconds    │ Scan markets, execute trades      │
+│ free_will_v2            │ 90 seconds    │ Elite signal generation           │
+│ dual_engine             │ 120 seconds   │ Day trader + Long term scans      │
+│ price_alerts            │ 30 seconds    │ Check price alert triggers        │
+│ trade_evaluation        │ 30 seconds    │ Evaluate open trades, trail stops │
+│ self_healer             │ 60 seconds    │ Monitor service health            │
+└─────────────────────────┴───────────────┴───────────────────────────────────┘
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                       RATE LIMITS                                            │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────┬────────────────────────────────────────────────────────────┐
+│ MEXC            │ 1200 requests/minute                                       │
+│ Binance         │ 1200 requests/minute                                       │
+│ CoinGecko       │ 10-30 requests/minute (free tier)                         │
+│ CoinGlass       │ 30 requests/minute                                         │
+│ Telegram        │ 30 messages/second                                         │
+│ OpenAI          │ Based on tier (via Emergent key)                          │
+└─────────────────┴────────────────────────────────────────────────────────────┘
+
+
+═══════════════════════════════════════════════════════════════════════════════
+                              SUMMARY
+═══════════════════════════════════════════════════════════════════════════════
+
+AEON is a comprehensive autonomous trading system featuring:
+
+✓ 24/7 autonomous paper trading
+✓ 25 crypto pairs coverage
+✓ Weighted confluence scoring (Tech 60%, SMC 20%, Derivatives 20%)
+✓ Dynamic trade styles (SCALP/DAY/SWING) based on volatility
+✓ Position scaling (50/50 entry system)
+✓ Risk management (auto-blacklist, cooldowns, trailing stops)
+✓ AI-powered voice/text chat (GPT-4o)
+✓ Full web dashboard with real-time data
+✓ Telegram bot with 50+ commands
+✓ Comprehensive API (70+ endpoints)
+✓ MongoDB persistence
+✓ Self-healing system monitoring
+
+═══════════════════════════════════════════════════════════════════════════════
+                         END OF SPECIFICATION
+═══════════════════════════════════════════════════════════════════════════════
+
+Document Version: 2.0
+Last Updated: February 24, 2026
+Author: AEON Trading System
+
+Live URL: https://aeon-paper-trade.preview.emergentagent.com
