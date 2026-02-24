@@ -215,3 +215,161 @@ async def api_scalper_compare_timeframes(days: int = 7):
         "best_timeframe": best_tf,
         "recommendation": f"Best performance on {best_tf} with {results[best_tf]['win_rate']}% win rate"
     }
+
+
+# ===== AUTO-LEARNING ENDPOINTS =====
+
+@router.get("/learning/status")
+async def api_scalper_learning_status():
+    """Get auto-learning system status and recent performance"""
+    from aggressive_scalper import scalper
+    
+    return await scalper.get_learning_status()
+
+
+@router.post("/learning/optimize")
+async def api_scalper_force_optimize():
+    """Force run auto-optimization now"""
+    from aggressive_scalper import scalper
+    
+    return await scalper.force_optimize()
+
+
+@router.get("/learning/performance")
+async def api_scalper_performance(hours: int = 24):
+    """Get detailed performance analysis"""
+    from scalper_learning import auto_learner
+    
+    return await auto_learner.analyze_performance(hours)
+
+
+@router.post("/learning/toggle")
+async def api_scalper_toggle_learning(enabled: bool = True):
+    """Enable or disable auto-learning"""
+    from aggressive_scalper import scalper
+    
+    scalper.settings['auto_learn'] = enabled
+    
+    return {
+        "success": True,
+        "auto_learn_enabled": enabled,
+        "message": f"Auto-learning {'enabled' if enabled else 'disabled'}"
+    }
+
+
+# ===== V2.1 INTEGRATION ENDPOINTS =====
+
+@router.get("/v2/status")
+async def api_scalper_v2_status():
+    """Get V2.1 integration status"""
+    from aggressive_scalper import scalper
+    
+    return await scalper.get_v2_integration_status()
+
+
+@router.get("/v2/queued")
+async def api_scalper_v2_queued():
+    """Get signals queued for V2.1"""
+    from scalper_learning import v2_integration
+    
+    return {
+        "queued_count": len(v2_integration.signal_queue),
+        "signals": v2_integration.signal_queue
+    }
+
+
+@router.post("/v2/toggle")
+async def api_scalper_v2_toggle(enabled: bool = True):
+    """Enable or disable V2.1 integration"""
+    from aggressive_scalper import scalper
+    from scalper_learning import v2_integration
+    
+    scalper.settings['send_to_v2'] = enabled
+    v2_integration.enabled = enabled
+    
+    return {
+        "success": True,
+        "v2_integration_enabled": enabled,
+        "message": f"V2.1 integration {'enabled' if enabled else 'disabled'}"
+    }
+
+
+# ===== REVERSAL PATTERNS ENDPOINTS =====
+
+@router.get("/reversals/analyze/{symbol}")
+async def api_scalper_reversal_analysis(symbol: str, timeframe: str = "5m"):
+    """Analyze reversal patterns for a symbol"""
+    from aggressive_scalper import scalper
+    from scalper_learning import reversal_detector
+    
+    # Format symbol
+    if "/" not in symbol:
+        symbol = symbol.upper() + "/USDT"
+    
+    ohlcv = await scalper.fetch_ohlcv(symbol, timeframe, limit=20)
+    
+    if len(ohlcv) < 10:
+        return {"error": "Insufficient data"}
+    
+    candles = [{'open': o[1], 'high': o[2], 'low': o[3], 'close': o[4]} for o in ohlcv[-10:]]
+    closes = [c[4] for c in ohlcv]
+    rsi_values = [scalper.calculate_rsi(closes[:i+1], 14) for i in range(len(closes)-10, len(closes))]
+    
+    # Current candle patterns
+    curr = candles[-1]
+    
+    patterns_detected = []
+    
+    # Check doji
+    if reversal_detector.detect_doji(curr['open'], curr['high'], curr['low'], curr['close']):
+        patterns_detected.append({"pattern": "DOJI", "type": "indecision", "confidence": 0.3})
+    
+    # Check hammer/shooting star
+    hammer = reversal_detector.detect_hammer(curr['open'], curr['high'], curr['low'], curr['close'])
+    if hammer:
+        patterns_detected.append({
+            "pattern": hammer,
+            "type": "bullish_reversal" if hammer == "HAMMER" else "bearish_reversal",
+            "confidence": 0.7
+        })
+    
+    # Check engulfing
+    engulfing = reversal_detector.detect_engulfing(candles)
+    if engulfing:
+        patterns_detected.append({
+            "pattern": engulfing,
+            "type": "bullish_reversal" if "BULLISH" in engulfing else "bearish_reversal",
+            "confidence": 0.8
+        })
+    
+    # Check divergence
+    divergence = reversal_detector.detect_rsi_divergence(closes, rsi_values)
+    if divergence:
+        patterns_detected.append({
+            "pattern": divergence,
+            "type": "bullish_reversal" if "BULLISH" in divergence else "bearish_reversal",
+            "confidence": 0.9
+        })
+    
+    return {
+        "symbol": symbol,
+        "timeframe": timeframe,
+        "patterns_detected": patterns_detected,
+        "total_patterns": len(patterns_detected),
+        "current_candle": curr,
+        "rsi": round(rsi_values[-1], 1) if rsi_values else None
+    }
+
+
+@router.post("/reversals/toggle")
+async def api_scalper_reversal_toggle(enabled: bool = True):
+    """Enable or disable reversal pattern exits"""
+    from aggressive_scalper import scalper
+    
+    scalper.settings['use_reversal_exits'] = enabled
+    
+    return {
+        "success": True,
+        "reversal_exits_enabled": enabled,
+        "message": f"Reversal pattern exits {'enabled' if enabled else 'disabled'}"
+    }
