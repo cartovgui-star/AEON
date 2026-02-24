@@ -180,6 +180,7 @@ function App() {
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: Home },
     { id: 'trading', label: 'Trading', icon: Wallet },
+    { id: 'scalper', label: 'Scalper', icon: Zap },
     { id: 'trades', label: 'History', icon: History },
     { id: 'alerts', label: 'Alerts', icon: Bell },
     { id: 'backtest', label: 'Backtest', icon: FlaskConical },
