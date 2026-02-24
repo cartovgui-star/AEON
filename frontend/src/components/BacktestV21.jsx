@@ -2,11 +2,11 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   FlaskConical, Play, TrendingUp, TrendingDown, Check, X,
   Loader2, Trophy, RefreshCw, Settings, Filter, BarChart3,
-  Clock, Target, Shield, Zap, Activity
+  Clock, Target, Shield, Zap, Activity, Layers, Sliders
 } from 'lucide-react';
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend
+  Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, LineChart, Line
 } from 'recharts';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
