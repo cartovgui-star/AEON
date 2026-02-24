@@ -1641,6 +1641,63 @@ Active Signals: {status['active_signals']}
 
 Scalper runs alongside V2.1 with auto-learning!"""
             context = "scalper"
+        
+        # ============= MODEL SWITCHING COMMANDS =============
+        elif text_lower.startswith('/model'):
+            parts = text_lower.split()
+            
+            if len(parts) == 1 or parts[1] == 'status':
+                # Show current model
+                current_model = await get_user_model(chat_id)
+                config = get_model_config(current_model)
+                response = f"""🤖 AI MODEL STATUS
+
+Current Model: {config['display_name']}
+Provider: {config['provider'].upper()}
+
+{config['description']}
+
+Commands:
+• /model gpt - Switch to GPT-4o
+• /model claude - Switch to Claude Sonnet 4.5
+• /model list - Show all models"""
+                context = "settings"
+            
+            elif parts[1] == 'list':
+                # List available models
+                models_list = []
+                current = await get_user_model(chat_id)
+                for key, config in MODEL_CONFIGS.items():
+                    marker = "✓" if key == current else "○"
+                    models_list.append(f"{marker} {config['display_name']} (/model {key})\n   {config['description']}")
+                
+                response = f"""🤖 AVAILABLE AI MODELS
+
+{chr(10).join(models_list)}
+
+Use /model [name] to switch."""
+                context = "settings"
+            
+            elif parts[1] in MODEL_CONFIGS:
+                # Switch model
+                new_model = parts[1]
+                success = await set_user_model(chat_id, new_model)
+                if success:
+                    config = get_model_config(new_model)
+                    response = f"""✓ Switched to {config['display_name']}
+
+I'll now respond using {config['provider'].upper()}'s capabilities.
+{config['description']}"""
+                else:
+                    response = "❌ Failed to switch model. Try again."
+                context = "settings"
+            
+            else:
+                response = f"""❌ Unknown model: {parts[1]}
+
+Available: gpt, claude
+Use /model list to see all options."""
+                context = "settings"
             
         elif text_lower.startswith('/fwconf'):
             parts = text_lower.split()
