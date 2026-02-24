@@ -85,6 +85,43 @@ export default function Dashboard({
     fetchV2Settings();
   }, []);
 
+  // Fetch Scalper status
+  useEffect(() => {
+    const fetchScalperStatus = async () => {
+      try {
+        const [statusRes, learningRes] = await Promise.all([
+          fetch(`${API_URL}/api/scalper/status`),
+          fetch(`${API_URL}/api/scalper/learning/status`)
+        ]);
+        const statusData = await statusRes.json();
+        const learningData = await learningRes.json();
+        setScalperStatus({
+          ...statusData,
+          learning: learningData
+        });
+      } catch (err) {
+        console.error('Failed to fetch scalper status:', err);
+      }
+    };
+    fetchScalperStatus();
+    const interval = setInterval(fetchScalperStatus, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Fetch Weekly Report status
+  useEffect(() => {
+    const fetchWeeklyReport = async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/report/status`);
+        const data = await res.json();
+        setWeeklyReport(data);
+      } catch (err) {
+        console.error('Failed to fetch weekly report:', err);
+      }
+    };
+    fetchWeeklyReport();
+  }, []);
+
   // Calculate total leverage exposure
   const totalLeverageExposure = livePositions.reduce((sum, p) => 
     sum + ((p.position_size || 1000) * (p.leverage || 10) / 1000), 0
