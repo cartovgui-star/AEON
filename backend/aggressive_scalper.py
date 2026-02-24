@@ -320,6 +320,9 @@ class AggressiveScalper:
         self.is_scanning = True
         signals = []
         
+        # Run auto-optimization if due
+        await self.auto_optimize()
+        
         for symbol in SCALP_SYMBOLS:
             try:
                 result = await self.analyze_symbol(symbol, timeframe)
