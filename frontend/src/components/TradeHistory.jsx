@@ -639,47 +639,64 @@ function TradingLogicModal({ onClose }) {
               Entry Requirements (Must ALL Pass)
             </h3>
             <div className="bg-zinc-800/50 rounded-xl p-6">
+              <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-3 mb-4">
+                <p className="text-green-400 font-medium">V2.1 HIGH WIN RATE MODE - All filters active</p>
+              </div>
               <div className="grid md:grid-cols-2 gap-4">
                 <div className="flex items-start gap-3">
                   <CheckCircle className="w-5 h-5 text-green-400 mt-0.5" />
                   <div>
-                    <p className="text-white font-medium">Minimum 4/5 Confirmations</p>
-                    <p className="text-zinc-400 text-sm">Multiple indicators must agree on direction</p>
+                    <p className="text-white font-medium">200 EMA Trend Filter (FIRST)</p>
+                    <p className="text-zinc-400 text-sm">LONG only above 200 EMA, SHORT only below. Skip if within 0.5%</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-3">
                   <CheckCircle className="w-5 h-5 text-green-400 mt-0.5" />
                   <div>
-                    <p className="text-white font-medium">80%+ Confidence Score</p>
-                    <p className="text-zinc-400 text-sm">Weighted confluence must exceed threshold</p>
+                    <p className="text-white font-medium">ADX &gt; 25 (Trending Market)</p>
+                    <p className="text-zinc-400 text-sm">Skip ranging/choppy markets entirely</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-3">
                   <CheckCircle className="w-5 h-5 text-green-400 mt-0.5" />
                   <div>
-                    <p className="text-white font-medium">R:R Minimum 2:1</p>
-                    <p className="text-zinc-400 text-sm">Potential profit must be 2x potential loss</p>
+                    <p className="text-white font-medium">Volume &gt; 1.5x Average</p>
+                    <p className="text-zinc-400 text-sm">Signal candle must have above-average volume</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-3">
                   <CheckCircle className="w-5 h-5 text-green-400 mt-0.5" />
                   <div>
-                    <p className="text-white font-medium">ATR &lt; 2x Average</p>
-                    <p className="text-zinc-400 text-sm">Skip choppy/volatile markets</p>
+                    <p className="text-white font-medium">5/5 Confirmations (ALL Agree)</p>
+                    <p className="text-zinc-400 text-sm">Tech + SMC + Derivatives + Trend + Volume</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-3">
                   <CheckCircle className="w-5 h-5 text-green-400 mt-0.5" />
                   <div>
-                    <p className="text-white font-medium">Not Blacklisted</p>
-                    <p className="text-zinc-400 text-sm">Pair not auto-blacklisted (&lt;30% win rate)</p>
+                    <p className="text-white font-medium">90%+ Confidence Score</p>
+                    <p className="text-zinc-400 text-sm">Raised from 80% for higher quality</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-3">
                   <CheckCircle className="w-5 h-5 text-green-400 mt-0.5" />
                   <div>
-                    <p className="text-white font-medium">Not on Cooldown</p>
-                    <p className="text-zinc-400 text-sm">4h cooldown after losing trade on same pair</p>
+                    <p className="text-white font-medium">R:R Minimum 3:1</p>
+                    <p className="text-zinc-400 text-sm">Raised from 2:1 for better risk/reward</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <CheckCircle className="w-5 h-5 text-green-400 mt-0.5" />
+                  <div>
+                    <p className="text-white font-medium">RSI Agrees With Trend</p>
+                    <p className="text-zinc-400 text-sm">No counter-trend RSI signals allowed</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <CheckCircle className="w-5 h-5 text-green-400 mt-0.5" />
+                  <div>
+                    <p className="text-white font-medium">Session Filter (SCALP/DAY)</p>
+                    <p className="text-zinc-400 text-sm">London (3-12 EST) or NY (8-17 EST) only</p>
                   </div>
                 </div>
               </div>
