@@ -770,6 +770,239 @@ async def main():
     return results
 
 
+async def run_multi_confidence_backtest(
+    symbols: List[str] = None,
+    days: int = 30,
+    confidence_levels: List[int] = None
+) -> Dict:
+    """
+    Run backtest across multiple confidence levels (65-90%)
+    to find optimal threshold
+    """
+    if symbols is None:
+        symbols = ["BTC/USDT", "ETH/USDT", "SOL/USDT"]
+    
+    if confidence_levels is None:
+        confidence_levels = CONFIDENCE_LEVELS
+    
+    results_by_confidence = []
+    
+    for conf_level in confidence_levels:
+        logger.info(f"Testing confidence level: {conf_level}%")
+        
+        engine = BacktestV21Engine()
+        
+        # Temporarily override the confidence threshold
+        original_conf = V21_SETTINGS["min_confidence"]
+        V21_SETTINGS["min_confidence"] = conf_level
+        
+        try:
+            result = await engine.run_full_backtest(
+                symbols=symbols,
+                interval="1h",
+                days=days
+            )
+            
+            results_by_confidence.append({
+                "confidence_level": conf_level,
+                "win_rate": result.get("win_rate", 0),
+                "total_trades": result.get("total_trades", 0),
+                "wins": result.get("wins", 0),
+                "losses": result.get("losses", 0),
+                "signal_reduction_pct": result.get("signal_reduction_pct", 0),
+            })
+        finally:
+            V21_SETTINGS["min_confidence"] = original_conf
+    
+    # Find optimal confidence level (best balance of win rate and trade count)
+    optimal = None
+    best_score = 0
+    
+    for r in results_by_confidence:
+        if r["total_trades"] > 0:
+            # Score = win_rate * log(trades + 1) to balance both
+            import math
+            score = r["win_rate"] * math.log(r["total_trades"] + 1)
+            if score > best_score:
+                best_score = score
+                optimal = r
+    
+    return {
+        "test_type": "multi_confidence",
+        "data_source": "MEXC",
+        "symbols": symbols,
+        "days": days,
+        "confidence_levels_tested": confidence_levels,
+        "results_by_confidence": results_by_confidence,
+        "optimal_confidence": optimal,
+        "recommendation": f"Optimal confidence: {optimal['confidence_level']}% with {optimal['win_rate']}% win rate and {optimal['total_trades']} trades" if optimal else "Not enough data",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+async def run_multi_timeframe_backtest(
+    symbols: List[str] = None,
+    days: int = 30,
+    timeframes: List[str] = None,
+    min_confidence: int = 75
+) -> Dict:
+    """
+    Run backtest across multiple timeframes (15m, 1h, 4h)
+    to find which timeframe works best with V2.1 strategy
+    """
+    if symbols is None:
+        symbols = ["BTC/USDT", "ETH/USDT", "SOL/USDT"]
+    
+    if timeframes is None:
+        timeframes = MTF_TIMEFRAMES
+    
+    results_by_timeframe = []
+    
+    # Override confidence for this test
+    original_conf = V21_SETTINGS["min_confidence"]
+    V21_SETTINGS["min_confidence"] = min_confidence
+    
+    try:
+        for tf in timeframes:
+            logger.info(f"Testing timeframe: {tf}")
+            
+            engine = BacktestV21Engine()
+            
+            result = await engine.run_full_backtest(
+                symbols=symbols,
+                interval=tf,
+                days=days
+            )
+            
+            results_by_timeframe.append({
+                "timeframe": tf,
+                "win_rate": result.get("win_rate", 0),
+                "total_trades": result.get("total_trades", 0),
+                "wins": result.get("wins", 0),
+                "losses": result.get("losses", 0),
+                "signal_reduction_pct": result.get("signal_reduction_pct", 0),
+                "filter_breakdown": result.get("filter_breakdown", {}),
+            })
+    finally:
+        V21_SETTINGS["min_confidence"] = original_conf
+    
+    # Find best timeframe
+    best_tf = None
+    best_win_rate = 0
+    
+    for r in results_by_timeframe:
+        if r["total_trades"] >= 3 and r["win_rate"] > best_win_rate:
+            best_win_rate = r["win_rate"]
+            best_tf = r
+    
+    return {
+        "test_type": "multi_timeframe",
+        "data_source": "MEXC",
+        "symbols": symbols,
+        "days": days,
+        "min_confidence_used": min_confidence,
+        "timeframes_tested": timeframes,
+        "results_by_timeframe": results_by_timeframe,
+        "best_timeframe": best_tf,
+        "recommendation": f"Best timeframe: {best_tf['timeframe']} with {best_tf['win_rate']}% win rate" if best_tf else "Not enough data",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+async def run_comprehensive_backtest(
+    symbols: List[str] = None,
+    days: int = 30
+) -> Dict:
+    """
+    Run comprehensive backtest testing:
+    1. Multiple confidence levels (65-90%)
+    2. Multiple timeframes (15m, 1h, 4h)
+    3. Find optimal combination
+    """
+    if symbols is None:
+        symbols = ["BTC/USDT", "ETH/USDT", "SOL/USDT"]
+    
+    logger.info("=" * 70)
+    logger.info("RUNNING COMPREHENSIVE BACKTEST (MEXC DATA)")
+    logger.info("=" * 70)
+    
+    # Test multiple confidence levels
+    logger.info("\n[1/2] Testing confidence levels 65-90%...")
+    confidence_results = await run_multi_confidence_backtest(
+        symbols=symbols,
+        days=days,
+        confidence_levels=[65, 70, 75, 80, 85, 90]
+    )
+    
+    # Get optimal confidence for timeframe test
+    optimal_conf = 75  # Default
+    if confidence_results.get("optimal_confidence"):
+        optimal_conf = confidence_results["optimal_confidence"].get("confidence_level", 75)
+    
+    # Test multiple timeframes with optimal confidence
+    logger.info(f"\n[2/2] Testing timeframes with {optimal_conf}% confidence...")
+    timeframe_results = await run_multi_timeframe_backtest(
+        symbols=symbols,
+        days=days,
+        timeframes=["15m", "1h", "4h"],
+        min_confidence=optimal_conf
+    )
+    
+    # Build comprehensive summary
+    summary = {
+        "test_type": "comprehensive",
+        "data_source": "MEXC",
+        "symbols": symbols,
+        "days": days,
+        "confidence_analysis": {
+            "levels_tested": confidence_results.get("confidence_levels_tested", []),
+            "results": confidence_results.get("results_by_confidence", []),
+            "optimal": confidence_results.get("optimal_confidence"),
+        },
+        "timeframe_analysis": {
+            "timeframes_tested": timeframe_results.get("timeframes_tested", []),
+            "results": timeframe_results.get("results_by_timeframe", []),
+            "best": timeframe_results.get("best_timeframe"),
+        },
+        "recommendations": [],
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+    
+    # Generate recommendations
+    recs = summary["recommendations"]
+    
+    if confidence_results.get("optimal_confidence"):
+        opt = confidence_results["optimal_confidence"]
+        recs.append(f"✅ Best confidence: {opt['confidence_level']}% ({opt['win_rate']}% WR, {opt['total_trades']} trades)")
+    
+    if timeframe_results.get("best_timeframe"):
+        best = timeframe_results["best_timeframe"]
+        recs.append(f"✅ Best timeframe: {best['timeframe']} ({best['win_rate']}% WR, {best['total_trades']} trades)")
+    
+    # Find the sweet spot
+    best_combo = None
+    best_score = 0
+    for conf_r in confidence_results.get("results_by_confidence", []):
+        for tf_r in timeframe_results.get("results_by_timeframe", []):
+            if conf_r["total_trades"] > 0 and tf_r["total_trades"] > 0:
+                # Combined score
+                import math
+                score = (conf_r["win_rate"] + tf_r["win_rate"]) / 2 * math.log(conf_r["total_trades"] + tf_r["total_trades"] + 1)
+                if score > best_score:
+                    best_score = score
+                    best_combo = {
+                        "confidence": conf_r["confidence_level"],
+                        "timeframe": tf_r["timeframe"],
+                        "estimated_win_rate": (conf_r["win_rate"] + tf_r["win_rate"]) / 2
+                    }
+    
+    if best_combo:
+        summary["best_combination"] = best_combo
+        recs.append(f"🎯 Suggested combo: {best_combo['confidence']}% confidence on {best_combo['timeframe']} timeframe")
+    
+    return summary
+
+
 # Global instance for API access
 backtest_v21_engine = BacktestV21Engine()
 
