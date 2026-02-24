@@ -57,6 +57,9 @@ SCALPER_SETTINGS = {
     'roc_threshold': 0.5,
     'max_hold_bars': 50,
     'enabled': True,
+    'auto_learn': True,  # Enable auto-learning
+    'use_reversal_exits': True,  # Use reversal patterns for exits
+    'send_to_v2': True,  # Send signals to V2.1
 }
 
 
