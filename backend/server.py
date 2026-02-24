@@ -453,8 +453,12 @@ Give me your take:
 2. Entry, target, stop
 3. What could go wrong"""
 
+        # Get user's preferred model
+        user_model = await get_user_model(chat_id)
+        model_config = get_model_config(user_model)
+        
         chat = LlmChat(api_key=emergent_key, session_id=f"trade-{chat_id}",
-                      system_message=TRADING_ANALYSIS_SYSTEM).with_model("openai", "gpt-4o-mini")
+                      system_message=TRADING_ANALYSIS_SYSTEM).with_model(model_config["provider"], model_config["model"])
         
         response = await chat.send_message(UserMessage(text=prompt))
         return response
