@@ -3038,7 +3038,7 @@ Signals: {analysis.get('signals_breakdown', {}).get('buy_signals', 0)} Buy / {an
                 response += f"\n⏳ ON COOLDOWN: {', '.join([p.replace('/USDT', '') for p in cooldowns])}\n"
             
             response += f"""
-📉 DAILY: {autonomous_trader_v2.daily_trades}/{autonomous_trader_v2.max_daily_trades} trades
+📉 TODAY: {autonomous_trader_v2.daily_trades} trades
 🎯 Session: {stats.get('current_session', 'N/A')}
 """
             context = "stats"
