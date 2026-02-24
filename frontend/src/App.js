@@ -22,6 +22,7 @@ import CommandsReference from "./components/CommandsReference";
 import QuickScanModal from "./components/QuickScanModal";
 import PriceAlerts from "./components/PriceAlerts";
 import Backtesting from "./components/Backtesting";
+import BacktestV21 from "./components/BacktestV21";
 import Intelligence from "./components/Intelligence";
 import SystemHealth from "./components/SystemHealth";
 import Dashboard from "./components/Dashboard";
