@@ -735,6 +735,78 @@ export default function Dashboard({
         </Card>
       </div>
 
+      {/* 24/7 Learning Engine */}
+      <Card className="bg-gradient-to-r from-zinc-800/30 to-purple-900/20 border-purple-500/30">
+        <CardContent className="p-6">
+          <div className="flex items-start justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-xl bg-purple-500/20 flex items-center justify-center">
+                <Brain className="w-6 h-6 text-purple-400 animate-pulse" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                  24/7 Learning Engine
+                  <span className={`px-2 py-0.5 text-xs rounded ${learningStatus?.active ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                    {learningStatus?.active ? 'LEARNING' : 'PAUSED'}
+                  </span>
+                </h3>
+                <p className="text-zinc-500 text-sm">Continuously learning patterns, optimizing strategies</p>
+              </div>
+            </div>
+            <div className="text-right">
+              <p className="text-xs text-zinc-500">Next Summary</p>
+              <p className="text-sm text-purple-400">{learningStatus?.next_daily_summary || '9 PM CT'}</p>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-4 gap-4 mt-6">
+            <div className="bg-zinc-900/50 rounded-xl p-4 text-center">
+              <div className="flex items-center justify-center gap-1 mb-1">
+                <BookOpen className="w-4 h-4 text-purple-400" />
+              </div>
+              <p className="text-2xl font-bold text-white">{learningStatus?.knowledge_stats?.patterns_learned || 0}</p>
+              <p className="text-xs text-zinc-500">Patterns</p>
+            </div>
+            <div className="bg-zinc-900/50 rounded-xl p-4 text-center">
+              <div className="flex items-center justify-center gap-1 mb-1">
+                <Target className="w-4 h-4 text-cyan-400" />
+              </div>
+              <p className="text-2xl font-bold text-white">{learningStatus?.knowledge_stats?.coins_analyzed || 0}</p>
+              <p className="text-xs text-zinc-500">Coins</p>
+            </div>
+            <div className="bg-zinc-900/50 rounded-xl p-4 text-center">
+              <div className="flex items-center justify-center gap-1 mb-1">
+                <Lightbulb className="w-4 h-4 text-amber-400" />
+              </div>
+              <p className="text-2xl font-bold text-white">{learningStatus?.daily_insights_count || 0}</p>
+              <p className="text-xs text-zinc-500">Insights</p>
+            </div>
+            <div className="bg-zinc-900/50 rounded-xl p-4 text-center">
+              <div className="flex items-center justify-center gap-1 mb-1">
+                <Sparkles className="w-4 h-4 text-green-400" />
+              </div>
+              <p className="text-2xl font-bold text-white">{learningStatus?.knowledge_stats?.optimizations_run || 0}</p>
+              <p className="text-xs text-zinc-500">Optimizations</p>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-4 mt-4 pt-4 border-t border-zinc-700/50 text-xs text-zinc-500">
+            <span className="flex items-center gap-1">
+              <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+              Pattern Learning: {learningStatus?.last_cycles?.pattern_learning ? new Date(learningStatus.last_cycles.pattern_learning).toLocaleTimeString() : 'Pending'}
+            </span>
+            <span className="flex items-center gap-1">
+              <div className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
+              Market Analysis: {learningStatus?.last_cycles?.market_analysis ? new Date(learningStatus.last_cycles.market_analysis).toLocaleTimeString() : 'Pending'}
+            </span>
+            <span className="flex items-center gap-1">
+              <div className="w-2 h-2 rounded-full bg-purple-400 animate-pulse" />
+              Optimization: {learningStatus?.last_cycles?.optimization ? new Date(learningStatus.last_cycles.optimization).toLocaleTimeString() : 'Pending'}
+            </span>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Recent Activity */}
       <div className="grid md:grid-cols-1 gap-6">
         <Card className="bg-zinc-800/30 border-zinc-700/50">
