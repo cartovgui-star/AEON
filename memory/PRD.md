@@ -12,13 +12,42 @@ Build a sophisticated trading bot named "Aeon" with:
 - **Daily Morning Briefing** - 6 AM CT market overview for all cryptos
 - **Weekly Performance Report** - Sunday 8 PM CT strategy/coin performance summary
 - **24/7 Continuous Learning** - Always learning patterns, optimizing strategies
+- **Multi-Model AI** - Switch between GPT-4o and Claude Sonnet 4.5
 
 ---
 
-## Latest Session (Feb 24, 2026) - 24/7 Continuous Learning Engine
+## Latest Session (Feb 24, 2026) - Multi-Model AI Switching
 
-### 24/7 Continuous Learning System (P0) - DONE
-Autonomous intelligence system that learns 24/7 and optimizes trading:
+### Multi-Model AI Support (P0) - DONE
+Users can now switch between GPT-4o and Claude Sonnet 4.5:
+
+**Implementation:**
+- Added `MODEL_CONFIGS` with GPT and Claude configurations
+- User model preference stored in database (persists across sessions)
+- All LLM calls now use user's selected model
+- Added helper functions: `get_user_model()`, `set_user_model()`, `get_model_config()`
+
+**New Telegram Commands:**
+- `/model` or `/model status` - Show current AI model
+- `/model gpt` - Switch to GPT-4o (fast, direct responses)
+- `/model claude` - Switch to Claude Sonnet 4.5 (detailed analysis)
+- `/model list` - Show all available models
+
+**Models Available:**
+| Model | Provider | Best For |
+|-------|----------|----------|
+| GPT-4o | OpenAI | Fast answers, quick tasks |
+| Claude Sonnet 4.5 | Anthropic | Complex analysis, reasoning |
+
+**What Uses Selected Model:**
+- Chat responses
+- Trade analysis (/scan)
+- Alchemy mode responses
+- All AI-generated content
+
+---
+
+## Previous Session (Feb 24, 2026) - 24/7 Continuous Learning Engine
 
 **Backend Implementation:**
 - Created `/app/backend/continuous_learning.py` - Full learning engine with:
