@@ -188,10 +188,11 @@ async def get_user_model(chat_id: int) -> str:
         pref = await db.user_preferences.find_one({"chat_id": chat_id})
         if pref and "model" in pref:
             model = pref["model"]
-            # Validate model exists in config
-            if model in MODEL_CONFIGS:
-                user_model_cache[chat_id] = model
-                return model
+            # Resolve any old aliases stored in DB
+            resolved = resolve_model_key(model)
+            if resolved in MODEL_CONFIGS:
+                user_model_cache[chat_id] = resolved
+                return resolved
         
         # Default model for new users
         user_model_cache[chat_id] = DEFAULT_MODEL
@@ -203,20 +204,23 @@ async def get_user_model(chat_id: int) -> str:
 
 async def set_user_model(chat_id: int, model: str) -> bool:
     """Set user's preferred AI model in DB and cache"""
+    # Resolve alias to actual key
+    resolved = resolve_model_key(model)
+    
     # Validate model exists
-    if model not in MODEL_CONFIGS:
+    if resolved not in MODEL_CONFIGS:
         return False
     
     try:
-        # Update database
+        # Update database with resolved key
         await db.user_preferences.update_one(
             {"chat_id": chat_id},
-            {"$set": {"model": model, "updated_at": datetime.now(timezone.utc)}},
+            {"$set": {"model": resolved, "updated_at": datetime.now(timezone.utc)}},
             upsert=True
         )
         # Update cache
-        user_model_cache[chat_id] = model
-        logger.info(f"User {chat_id} switched to model: {model}")
+        user_model_cache[chat_id] = resolved
+        logger.info(f"User {chat_id} switched to model: {resolved}")
         return True
     except Exception as e:
         logger.error(f"Error setting user model: {e}")
