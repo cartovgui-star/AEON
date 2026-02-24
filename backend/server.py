@@ -141,10 +141,10 @@ stock_reports_sent: Dict[str, List[int]] = {}
 
 # Model configurations for multi-model switching
 MODEL_CONFIGS = {
-    "gpt": {
+    "openai": {
         "provider": "openai",
         "model": "gpt-4o",
-        "display_name": "GPT-4o",
+        "display_name": "OpenAI GPT-4o",
         "description": "Fast, direct responses - good for quick answers"
     },
     "claude": {
@@ -154,14 +154,27 @@ MODEL_CONFIGS = {
         "description": "Detailed, nuanced responses - great for analysis"
     }
 }
-DEFAULT_MODEL = "gpt"
+# Aliases for easier commands
+MODEL_ALIASES = {
+    "gpt": "openai",
+    "gpt4": "openai", 
+    "gpt-4o": "openai",
+    "anthropic": "claude",
+    "sonnet": "claude"
+}
+DEFAULT_MODEL = "openai"
 
 # In-memory cache for user model preferences (backed by DB)
 user_model_cache: Dict[int, str] = {}
 
+def resolve_model_key(key: str) -> str:
+    """Resolve model alias to actual key"""
+    return MODEL_ALIASES.get(key, key)
+
 def get_model_config(model_key: str) -> Dict:
     """Get model configuration"""
-    return MODEL_CONFIGS.get(model_key, MODEL_CONFIGS[DEFAULT_MODEL])
+    resolved = resolve_model_key(model_key)
+    return MODEL_CONFIGS.get(resolved, MODEL_CONFIGS[DEFAULT_MODEL])
 
 
 async def get_user_model(chat_id: int) -> str:
