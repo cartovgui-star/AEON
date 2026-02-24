@@ -24,6 +24,7 @@ export default function Dashboard({
   const [pnlGoal, setPnlGoal] = useState({ daily: 5, weekly: 25 });
   const [showKillSwitch, setShowKillSwitch] = useState(false);
   const [showBacktestModal, setShowBacktestModal] = useState(false);
+  const [v2Settings, setV2Settings] = useState(null);
 
   // Fetch live positions for quick view
   useEffect(() => {
@@ -55,6 +56,22 @@ export default function Dashboard({
     fetchDashboardStats();
     const interval = setInterval(fetchDashboardStats, 30000);
     return () => clearInterval(interval);
+  }, []);
+
+  // Fetch V2.1 settings
+  useEffect(() => {
+    const fetchV2Settings = async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/trading/v2/settings`);
+        const data = await res.json();
+        if (!data.error) {
+          setV2Settings(data);
+        }
+      } catch (err) {
+        console.error('Failed to fetch V2 settings:', err);
+      }
+    };
+    fetchV2Settings();
   }, []);
 
   // Calculate total leverage exposure
