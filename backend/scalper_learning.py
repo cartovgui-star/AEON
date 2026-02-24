@@ -267,7 +267,7 @@ class AutoLearningSystem:
     
     async def record_trade(self, trade: Dict):
         """Record a trade for learning"""
-        if not scalper_trades_collection:
+        if scalper_trades_collection is None:
             return
         
         try:
