@@ -1525,6 +1525,12 @@ Total PnL: {stats['total_pnl_pct']:+.2f}%"""
 /weekly - Weekly performance report
 /learn - 24/7 learning status
 
+*AI MODEL*
+/model - Current AI model
+/model gpt - Switch to GPT-4o
+/model claude - Switch to Claude
+/model list - All models
+
 *ADVANCED*
 /intel - Full market intelligence
 /arbi - Multi-exchange arbitrage
