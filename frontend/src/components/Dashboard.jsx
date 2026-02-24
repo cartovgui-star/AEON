@@ -619,6 +619,105 @@ export default function Dashboard({
         </Card>
       </div>
 
+      {/* Scalper & Reports Row */}
+      <div className="grid md:grid-cols-2 gap-6">
+        {/* Aggressive Scalper Widget */}
+        <Card className="bg-zinc-800/30 border-purple-500/30">
+          <CardContent className="p-6">
+            <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+              <Zap className="w-5 h-5 text-purple-400" />
+              Aggressive Scalper
+              <span className={`ml-auto px-2 py-0.5 text-xs rounded ${scalperStatus?.enabled ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                {scalperStatus?.enabled ? 'ACTIVE' : 'PAUSED'}
+              </span>
+            </h3>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between py-2 border-b border-zinc-800">
+                <span className="text-zinc-400">Active Signals</span>
+                <span className="font-medium text-purple-400">{scalperStatus?.active_signals || 0}</span>
+              </div>
+              <div className="flex items-center justify-between py-2 border-b border-zinc-800">
+                <span className="text-zinc-400">Settings</span>
+                <div className="flex gap-1 flex-wrap justify-end">
+                  <span className="px-2 py-0.5 bg-green-500/20 text-green-400 text-xs rounded">
+                    Target: {scalperStatus?.settings_summary?.profit_target || '1.5%'}
+                  </span>
+                  <span className="px-2 py-0.5 bg-red-500/20 text-red-400 text-xs rounded">
+                    Stop: {scalperStatus?.settings_summary?.stop_loss || '0.5%'}
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-center justify-between py-2 border-b border-zinc-800">
+                <span className="text-zinc-400">Auto-Learning</span>
+                <span className={`px-2 py-0.5 text-xs rounded flex items-center gap-1 ${
+                  scalperStatus?.learning?.auto_learn_enabled ? 'bg-emerald-500/20 text-emerald-400' : 'bg-zinc-700 text-zinc-400'
+                }`}>
+                  <Sparkles className="w-3 h-3" />
+                  {scalperStatus?.learning?.auto_learn_enabled ? 'ON' : 'OFF'}
+                </span>
+              </div>
+              <div className="flex items-center justify-between py-2">
+                <span className="text-zinc-400">V2.1 Integration</span>
+                <span className={`px-2 py-0.5 text-xs rounded flex items-center gap-1 ${
+                  scalperStatus?.learning?.v2_integration_enabled ? 'bg-blue-500/20 text-blue-400' : 'bg-zinc-700 text-zinc-400'
+                }`}>
+                  <Link2 className="w-3 h-3" />
+                  {scalperStatus?.learning?.v2_integration_enabled ? 'CONNECTED' : 'DISABLED'}
+                </span>
+              </div>
+            </div>
+            <button
+              onClick={() => onNavigate && onNavigate('scalper')}
+              className="w-full mt-4 flex items-center justify-center gap-2 px-4 py-2 bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/50 rounded-lg text-purple-400 text-sm transition-colors"
+            >
+              <Zap className="w-4 h-4" />
+              View Scalper Dashboard
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </CardContent>
+        </Card>
+
+        {/* Weekly Report Widget */}
+        <Card className="bg-zinc-800/30 border-amber-500/30">
+          <CardContent className="p-6">
+            <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+              <Calendar className="w-5 h-5 text-amber-400" />
+              Weekly Performance Report
+              <span className={`ml-auto px-2 py-0.5 text-xs rounded ${weeklyReport?.enabled ? 'bg-green-500/20 text-green-400' : 'bg-zinc-700 text-zinc-400'}`}>
+                {weeklyReport?.enabled ? 'ACTIVE' : 'PAUSED'}
+              </span>
+            </h3>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between py-2 border-b border-zinc-800">
+                <span className="text-zinc-400">Schedule</span>
+                <span className="font-medium text-amber-400">{weeklyReport?.scheduled_day} {weeklyReport?.scheduled_time}</span>
+              </div>
+              <div className="flex items-center justify-between py-2 border-b border-zinc-800">
+                <span className="text-zinc-400">Trades This Week</span>
+                <span className="font-medium text-white">{weeklyReport?.trades_this_week || 0}</span>
+              </div>
+              <div className="flex items-center justify-between py-2 border-b border-zinc-800">
+                <span className="text-zinc-400">Next Report</span>
+                <span className="font-medium text-cyan-400 text-sm">{weeklyReport?.next_report?.split(' ')[0] || '-'}</span>
+              </div>
+              <div className="flex items-center justify-between py-2">
+                <span className="text-zinc-400">Recipients</span>
+                <span className="font-medium text-white">{weeklyReport?.active_users || 0} users</span>
+              </div>
+            </div>
+            <div className="flex gap-2 mt-4">
+              <button
+                onClick={() => onNavigate && onNavigate('settings')}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/50 rounded-lg text-amber-400 text-sm transition-colors"
+              >
+                <Calendar className="w-4 h-4" />
+                View Reports
+              </button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
       {/* Recent Activity */}
       <div className="grid md:grid-cols-1 gap-6">
         <Card className="bg-zinc-800/30 border-zinc-700/50">
