@@ -166,6 +166,7 @@ class AutonomousTraderV2:
         self.total_signals = 0
         self.total_trades = 0
         self.daily_trades = 0
+        self.max_daily_trades = 10  # Max trades per day
         self.last_trade_date = None
         
         # Filter statistics (for reporting)
