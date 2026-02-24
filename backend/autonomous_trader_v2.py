@@ -642,11 +642,37 @@ class AutonomousTraderV2:
                     "active": self.active,
                     "min_confidence": self.min_confidence,
                     "min_confirmations": self.min_confirmations,
+                    "min_rr_ratio": self.min_rr_ratio,
                     "max_open_trades": self.max_open_trades,
+                    "ema_200_filter_enabled": self.ema_200_filter_enabled,
+                    "adx_filter_enabled": self.adx_filter_enabled,
+                    "volume_filter_enabled": self.volume_filter_enabled,
+                    "session_filter_enabled": self.session_filter_enabled,
+                    "filter_stats": self.filter_stats,
                     "updated_at": datetime.now(timezone.utc)
                 }},
                 upsert=True
             )
+        except Exception as e:
+            logger.error(f"Failed to save settings: {e}")
+    
+    def get_filter_stats(self) -> Dict:
+        """Get statistics on how many trades were filtered by each rule"""
+        total_analyzed = sum(self.filter_stats.values())
+        return {
+            "total_signals_analyzed": self.total_signals,
+            "filters": {
+                "200_ema_trend": self.filter_stats.get("ema_200_filtered", 0),
+                "adx_ranging": self.filter_stats.get("adx_filtered", 0),
+                "low_volume": self.filter_stats.get("volume_filtered", 0),
+                "bad_session": self.filter_stats.get("session_filtered", 0),
+                "low_confidence": self.filter_stats.get("confidence_filtered", 0),
+                "poor_rr_ratio": self.filter_stats.get("rr_filtered", 0),
+                "rsi_counter_trend": self.filter_stats.get("rsi_trend_filtered", 0),
+            },
+            "passed_all_filters": self.filter_stats.get("total_passed", 0),
+            "pass_rate": f"{(self.filter_stats.get('total_passed', 0) / max(1, self.total_signals)) * 100:.1f}%"
+        }
         except Exception as e:
             logger.error(f"Failed to save settings: {e}")
     
