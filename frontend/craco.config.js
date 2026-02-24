@@ -6,10 +6,10 @@ require("dotenv").config();
 // Craco sets NODE_ENV=development for start, NODE_ENV=production for build
 const isDevServer = process.env.NODE_ENV !== "production";
 
-// Environment variable overrides
+// Environment variable overrides - disable visual edits to fix babel issues
 const config = {
   enableHealthCheck: process.env.ENABLE_HEALTH_CHECK === "true",
-  enableVisualEdits: isDevServer, // Only enable during dev server
+  enableVisualEdits: false, // Disabled due to babel plugin issues with complex JSX
 };
 
 // Conditionally load visual edits modules only in dev mode
