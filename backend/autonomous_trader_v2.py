@@ -167,19 +167,61 @@ class AutonomousTraderV2:
         self.send_alert = None
         self.chat_ids: Set[int] = set()
     
-    def determine_trade_style(self, timeframe: str, confidence: float) -> str:
+    def determine_trade_style(self, timeframe: str, confidence: float, atr_pct: float = None) -> str:
         """
-        Determine the best trade style based on timeframe and confidence.
+        Determine the best trade style based on timeframe, confidence, AND volatility.
         Bot has FREE WILL to choose the optimal style.
+        
+        Logic:
+        - 5m/15m -> SCALP (quick trades)
+        - 1h -> SCALP if low vol (<1%), DAY if medium vol
+        - 4h -> DAY if moderate vol, SWING if low vol (<0.5%)
+        - 1d -> SWING always
+        
+        Volatility (ATR %) overrides timeframe:
+        - ATR > 2% = More aggressive style (can scalp on 4h)
+        - ATR < 0.5% = More conservative style (prefer SWING)
         """
+        # Volatility-based adjustments
+        if atr_pct is not None:
+            if atr_pct > 2.0:
+                # High volatility = fast moves = SCALP/DAY preferred
+                if timeframe in ["5m", "15m"]:
+                    return "SCALP"
+                elif timeframe == "1h":
+                    return "SCALP"  # Quick scalps in high vol
+                elif timeframe == "4h":
+                    return "DAY"  # DAY trades in high vol 4h
+                else:
+                    return "SWING"
+            elif atr_pct > 1.0:
+                # Medium volatility
+                if timeframe in ["5m", "15m"]:
+                    return "SCALP"
+                elif timeframe == "1h":
+                    return "DAY"  # DAY trades in medium vol
+                elif timeframe == "4h":
+                    return "DAY"
+                else:
+                    return "SWING"
+            else:
+                # Low volatility (<1%) = slower moves = prefer longer holds
+                if timeframe in ["5m", "15m"]:
+                    return "SCALP"
+                elif timeframe == "1h":
+                    return "DAY"
+                elif timeframe == "4h":
+                    return "SWING" if atr_pct < 0.5 else "DAY"
+                else:
+                    return "SWING"
+        
+        # Fallback: timeframe-only logic
         if timeframe in ["5m", "15m"]:
             return "SCALP"
-        elif timeframe in ["1h", "4h"]:
-            # Higher confidence -> prefer DAY trading
-            if confidence >= 75:
-                return "DAY"
-            else:
-                return "SCALP" if timeframe == "1h" else "DAY"
+        elif timeframe == "1h":
+            return "SCALP" if confidence < 70 else "DAY"
+        elif timeframe == "4h":
+            return "DAY"
         else:  # 1d+
             return "SWING"
     
