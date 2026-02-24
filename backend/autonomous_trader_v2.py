@@ -433,6 +433,21 @@ class AutonomousTraderV2:
                 continue
             
             try:
+                # Check if scale-in timeout exceeded (2 hours)
+                entry_time = trade.get("entry_time")
+                if isinstance(entry_time, str):
+                    entry_time = datetime.fromisoformat(entry_time.replace('Z', '+00:00'))
+                
+                hours_since_entry = (datetime.now(timezone.utc) - entry_time).total_seconds() / 3600
+                if hours_since_entry > self.scale_in_max_hours:
+                    # Cancel scale-in after 2 hours
+                    trade["pending_scale_in"] = False
+                    trade["is_fully_scaled"] = True  # Mark as done (won't scale)
+                    trade["scale_in_cancelled"] = True
+                    await self.save_open_trade(trade)
+                    logger.info(f"Scale-in CANCELLED for {trade['symbol']} - exceeded {self.scale_in_max_hours}h timeout")
+                    continue
+                
                 # Get current price
                 ticker = await self.market_intel.get_ticker(trade["symbol"])
                 if not ticker or not ticker.get("price"):
@@ -448,8 +463,9 @@ class AutonomousTraderV2:
                 else:
                     pnl_pct = ((entry - current_price) / entry) * 100
                 
-                # Scale in if price moved 0.3-1.5% in our favor (confirmation zone)
-                if 0.3 <= pnl_pct <= 1.5:
+                # V2.1: Scale in only if PROFITABLE and moved at least 0.5% in our favor
+                # Must be between 0.5% and 2% profit (confirmation zone)
+                if self.scale_in_min_profit_pct <= pnl_pct <= 2.0:
                     # Calculate scale-in size
                     full_size = trade["original_full_size"]
                     scale_size = self.calculate_scaled_position(full_size, is_initial=False)
@@ -470,15 +486,19 @@ class AutonomousTraderV2:
                     # Persist to DB
                     await self.save_open_trade(trade)
                     
-                    logger.info(f"📈 SCALED IN: {trade['symbol']} +${scale_size:.0f} @ ${current_price:,.2f} | Total: ${trade['position_size']:.0f}")
+                    logger.info(f"📈 SCALED IN: {trade['symbol']} +${scale_size:.0f} @ ${current_price:,.2f} | PnL: +{pnl_pct:.2f}% | Total: ${trade['position_size']:.0f}")
                     
                     scaled.append({
                         "trade_id": trade["id"],
                         "symbol": trade["symbol"],
                         "scale_size": scale_size,
                         "scale_price": current_price,
-                        "total_size": trade["position_size"]
+                        "total_size": trade["position_size"],
+                        "pnl_at_scale": pnl_pct
                     })
+                elif pnl_pct < 0:
+                    # Position is in loss - don't scale in, will check again later
+                    logger.debug(f"Scale-in deferred for {trade['symbol']} - position in loss ({pnl_pct:.2f}%)")
                     
             except Exception as e:
                 logger.error(f"Scale-in check error for {trade['symbol']}: {e}")
