@@ -356,6 +356,95 @@ class AutonomousTraderV2:
         return TRADE_STYLES.get(trade_style, TRADE_STYLES["DAY"])
     
     # ═══════════════════════════════════════════════════════════════════════════
+    # POSITION SCALING - Scale into positions for better entries
+    # ═══════════════════════════════════════════════════════════════════════════
+    
+    def calculate_scaled_position(self, full_size: float, is_initial: bool = True) -> float:
+        """
+        Calculate position size for scaled entry.
+        Initial entry = 50% of full size, scale-in = remaining 50%
+        """
+        if not self.position_scaling_enabled:
+            return full_size
+        
+        if is_initial:
+            return full_size * (self.initial_entry_pct / 100)
+        else:
+            return full_size * (self.scale_in_pct / 100)
+    
+    async def check_scale_in_opportunities(self) -> List[Dict]:
+        """
+        Check for scale-in opportunities on existing positions.
+        Scale in when:
+        1. Price moves in our favor slightly (confirmation)
+        2. Original signal still valid
+        3. Position not yet scaled
+        """
+        scaled = []
+        
+        for trade in self.open_trades[:]:
+            # Skip if already fully scaled or scaling disabled
+            if trade.get("is_fully_scaled", False) or not self.position_scaling_enabled:
+                continue
+            
+            # Skip if not marked for scaling
+            if not trade.get("pending_scale_in", False):
+                continue
+            
+            try:
+                # Get current price
+                ticker = await self.market_intel.get_ticker(trade["symbol"])
+                if not ticker or not ticker.get("price"):
+                    continue
+                
+                current_price = ticker["price"]
+                entry = trade["entry_price"]
+                direction = trade["direction"]
+                
+                # Calculate current PnL
+                if direction == "LONG":
+                    pnl_pct = ((current_price - entry) / entry) * 100
+                else:
+                    pnl_pct = ((entry - current_price) / entry) * 100
+                
+                # Scale in if price moved 0.3-1.5% in our favor (confirmation zone)
+                if 0.3 <= pnl_pct <= 1.5:
+                    # Calculate scale-in size
+                    full_size = trade["original_full_size"]
+                    scale_size = self.calculate_scaled_position(full_size, is_initial=False)
+                    
+                    # Update trade with scaled position
+                    old_size = trade["position_size"]
+                    trade["position_size"] = old_size + scale_size
+                    trade["is_fully_scaled"] = True
+                    trade["pending_scale_in"] = False
+                    trade["scale_in_price"] = current_price
+                    trade["scale_in_time"] = datetime.now(timezone.utc)
+                    
+                    # Calculate new average entry
+                    old_entry = trade["entry_price"]
+                    new_avg = ((old_entry * old_size) + (current_price * scale_size)) / (old_size + scale_size)
+                    trade["avg_entry_price"] = new_avg
+                    
+                    # Persist to DB
+                    await self.save_open_trade(trade)
+                    
+                    logger.info(f"📈 SCALED IN: {trade['symbol']} +${scale_size:.0f} @ ${current_price:,.2f} | Total: ${trade['position_size']:.0f}")
+                    
+                    scaled.append({
+                        "trade_id": trade["id"],
+                        "symbol": trade["symbol"],
+                        "scale_size": scale_size,
+                        "scale_price": current_price,
+                        "total_size": trade["position_size"]
+                    })
+                    
+            except Exception as e:
+                logger.error(f"Scale-in check error for {trade['symbol']}: {e}")
+        
+        return scaled
+
+    # ═══════════════════════════════════════════════════════════════════════════
     # PAIR MANAGEMENT - Cooldowns, Blacklist, Stats
     # ═══════════════════════════════════════════════════════════════════════════
     
