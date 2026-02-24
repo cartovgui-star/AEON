@@ -570,6 +570,47 @@ class AggressiveScalper:
             if key in self.settings:
                 self.settings[key] = value
         return self.settings.copy()
+    
+    async def get_learning_status(self) -> Dict:
+        """Get auto-learning system status"""
+        performance = await auto_learner.analyze_performance(24)
+        return {
+            "auto_learn_enabled": self.settings.get('auto_learn', True),
+            "last_optimization": self.last_auto_learn.isoformat() if self.last_auto_learn else None,
+            "learning_interval_hours": self.learning_interval / 3600,
+            "current_learned_params": auto_learner.current_params,
+            "recent_performance": performance,
+            "learning_summary": auto_learner.get_learning_summary()
+        }
+    
+    async def get_v2_integration_status(self) -> Dict:
+        """Get V2.1 integration status"""
+        return {
+            "v2_integration_enabled": self.settings.get('send_to_v2', True),
+            "min_strength_for_v2": v2_integration.min_strength_for_v2,
+            "queued_signals": len(v2_integration.signal_queue),
+            "signals_in_queue": v2_integration.signal_queue[:5]  # Show first 5
+        }
+    
+    async def force_optimize(self) -> Dict:
+        """Force run auto-optimization now"""
+        old_settings = self.settings.copy()
+        new_settings = await auto_learner.optimize_parameters(self.settings)
+        
+        changes = {}
+        for key, value in new_settings.items():
+            if key in old_settings and old_settings[key] != value:
+                changes[key] = {"old": old_settings[key], "new": value}
+                self.settings[key] = value
+        
+        self.last_auto_learn = datetime.now(timezone.utc)
+        
+        return {
+            "success": True,
+            "changes": changes,
+            "new_settings": self.settings,
+            "optimized_at": datetime.now(timezone.utc).isoformat()
+        }
 
 
 # Global scalper instance
