@@ -147,6 +147,12 @@ class AutonomousTraderV2:
         self.blacklisted_pairs: List[str] = []  # Auto-blacklist bad performers
         self.cooldown_hours = 4  # Wait 4h after loss on same pair
         
+        # Position Scaling Settings
+        self.position_scaling_enabled = True  # Enable scaled entries
+        self.initial_entry_pct = 50  # 50% position on initial signal
+        self.scale_in_pct = 50  # 50% on confirmation
+        self.pending_scale_ins: Dict[str, Dict] = {}  # Tracks positions waiting for scale-in
+        
         # Market state
         self.btc_bias = "NEUTRAL"
         self.market_regime = "UNKNOWN"
