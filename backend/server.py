@@ -999,12 +999,24 @@ async def lifespan(app: FastAPI):
     app_state.get_user_settings = get_user_settings
     app_state.update_user_settings = update_user_settings
     
+    # Initialize morning briefing
+    morning_briefing.set_dependencies(
+        market_intel=market_intel,
+        derivatives_intel=derivatives_intel,
+        enhanced_intel=enhanced_intel,
+        send_message=send_telegram_message,
+        get_user_settings=get_user_settings,
+        chat_ids=chat_ids,
+        db=db
+    )
+    
     # Start background tasks
     ritual_task = asyncio.create_task(eternal_rituals())
     trading_task = asyncio.create_task(autonomous_trading_loop())
     freewill_task = asyncio.create_task(free_will_scanner())
     dual_task = asyncio.create_task(dual_trading_scanner())
     alert_task = asyncio.create_task(price_alert_system.run_forever())
+    briefing_task = asyncio.create_task(morning_briefing.run_scheduler())
     
     # Register all services with self-healer for auto-recovery
     self_healer.register("rituals", ritual_task, eternal_rituals)
@@ -1012,6 +1024,7 @@ async def lifespan(app: FastAPI):
     self_healer.register("free_will", freewill_task, free_will_scanner)
     self_healer.register("dual_engine", dual_task, dual_trading_scanner)
     self_healer.register("price_alerts", alert_task, price_alert_system.run_forever)
+    self_healer.register("morning_briefing", briefing_task, morning_briefing.run_scheduler)
     healer_task = asyncio.create_task(self_healer.monitor_loop())
     
     logger.info(f"AEON PAPER TRADING ACTIVATED - {autonomous_trader_v2.min_confidence}%+ conf, {autonomous_trader_v2.min_confirmations}+ confirmations")
@@ -1019,16 +1032,19 @@ async def lifespan(app: FastAPI):
     logger.info("DUAL ENGINE ACTIVATED - Day Trader (aggressive) + Long Term (smart)")
     logger.info("AEON PRICE ALERT SYSTEM v2 - Lean batched alerts")
     logger.info("SELF-HEALER ACTIVATED - Auto error detection & recovery")
+    logger.info("MORNING BRIEFING ACTIVATED - Daily 6 AM CT market overview")
     
     yield
     
     self_healer.active = False
+    morning_briefing.is_active = False
     healer_task.cancel()
     ritual_task.cancel()
     trading_task.cancel()
     freewill_task.cancel()
     dual_task.cancel()
     alert_task.cancel()
+    briefing_task.cancel()
     client.close()
 
 
