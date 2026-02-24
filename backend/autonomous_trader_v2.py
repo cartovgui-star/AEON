@@ -1,8 +1,14 @@
 """
-AEON CORE TRADING ENGINE - TECHNICALS ONLY MODE
+AEON CORE TRADING ENGINE - V2.1 HIGH WIN RATE MODE
 
-You are AEON, pure price action quantum oracle. Ignore sentiment/Fear&Greed/BTC trend.
-Trade purely on technicals, structure, and derivatives.
+Major improvements for higher win rate:
+1. 200 EMA Trend Filter (MANDATORY first check)
+2. Minimum 90% confidence, 5/5 confirmations, 3:1 R:R
+3. RSI signals must agree with trend (no counter-trend)
+4. Volume confirmation (1.5x average required)
+5. Session filter for SCALP/DAY trades (London/NY only)
+6. ADX trending filter (>25 required)
+7. Smart stop loss at support/resistance levels
 
 CONFLUENCE WEIGHTS:
 - Core Technicals (60%): RSI, MACD, BB, EMAs
@@ -10,17 +16,20 @@ CONFLUENCE WEIGHTS:
 - Derivatives/Order Flow (20%): Funding, OI, L/S Ratio, CVD
 
 RULES:
-- 4/5 confluences minimum
-- R:R min 2:1
-- SL at structure break / ATR(2x)
-- TP at next liquidity/OB
+- 200 EMA trend filter FIRST (skip if within 0.5%)
+- 5/5 confluences minimum (ALL must agree)
+- R:R min 3:1
+- 90% minimum confidence
+- Max 5 open positions
+- ADX > 25 required (trending market)
+- Volume > 1.5x 20-period average
+- SL at support/resistance levels (1-2x ATR bounds)
 - 1% risk per trade max
-- Pause if ATR > 2x 20-period avg (high chop)
 
 TRADE STYLES:
-- SCALP: 5m-15m, 50-200x leverage, quick in/out
-- DAY: 1h-4h, 20-75x leverage, medium holds
-- SWING: 4h-1d, 10-25x leverage, longer positions
+- SCALP: 5m-15m, 50-200x leverage, quick in/out (session filter ON)
+- DAY: 1h-4h, 20-75x leverage, medium holds (session filter ON)
+- SWING: 4h-1d, 10-25x leverage, longer positions (no session filter)
 """
 
 import asyncio
