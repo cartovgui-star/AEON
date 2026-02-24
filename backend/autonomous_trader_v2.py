@@ -1740,9 +1740,9 @@ class AutonomousTraderV2:
                     trade["trail_stop"] = entry
                     logger.info(f"📊 PARTIAL PROFIT: {trade['symbol']} - Stop moved to breakeven")
                 
-                # Handle full exit (including momentum exit)
-                if hit_stop or hit_target or momentum_exit:
-                    exit_price = current_price if momentum_exit else (stop if hit_stop else target)
+                # Handle full exit (including momentum exit and reversal exit)
+                if hit_stop or hit_target or momentum_exit or reversal_exit:
+                    exit_price = current_price if (momentum_exit or reversal_exit) else (stop if hit_stop else target)
                     
                     if direction == "LONG":
                         pnl_pct = ((exit_price - entry) / entry) * 100
@@ -1753,7 +1753,16 @@ class AutonomousTraderV2:
                     trade["exit_price"] = exit_price
                     trade["pnl_pct"] = pnl_pct
                     trade["exit_time"] = datetime.now(timezone.utc)
-                    trade["exit_reason"] = "TARGET" if hit_target else ("MOMENTUM" if momentum_exit else "STOP")
+                    
+                    # Determine exit reason with pattern info
+                    if hit_target:
+                        trade["exit_reason"] = "TARGET"
+                    elif momentum_exit:
+                        trade["exit_reason"] = "MOMENTUM"
+                    elif reversal_exit:
+                        trade["exit_reason"] = f"REVERSAL_{reversal_pattern}" if reversal_pattern else "REVERSAL"
+                    else:
+                        trade["exit_reason"] = "STOP"
                     
                     # Update pair stats (for blacklist/cooldown)
                     is_win = pnl_pct > 0
