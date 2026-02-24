@@ -10,10 +10,68 @@ Build a sophisticated trading bot named "Aeon" with:
 - Moltbot-inspired features (sentiment, arbitrage, self-improving strategies)
 - Self-healing system that auto-detects and recovers from errors
 - **Daily Morning Briefing** - 6 AM CT market overview for all cryptos
+- **Weekly Performance Report** - Sunday 8 PM CT strategy/coin performance summary
 
 ---
 
-## Latest Session (Feb 24, 2026) - Morning Briefing System
+## Latest Session (Feb 24, 2026) - Weekly Report & V2.1 Exit Intelligence
+
+### Weekly Performance Report (P0) - DONE
+Comprehensive trading performance summary sent every Sunday at 8 PM CT:
+
+**Backend Implementation:**
+- Created `/app/backend/weekly_report.py` - Weekly report system with:
+  - `WeeklyPerformanceReport` class - Scheduler, statistics aggregation, recommendations
+  - Runs every Sunday at 8:00 PM America/Chicago (Austin, TX) timezone
+  - Analyzes all trades from Mon-Sun
+  - Sends to all Telegram users with free_will enabled
+- Created `/app/backend/routes/weekly_report.py` - API endpoints
+
+**Report Content:**
+- **Overall Summary** - Total trades, win rate (with emoji indicator), total PnL, trading days
+- **Strategy Performance** - Win rate & PnL by strategy (V2.1, Scalper, Day Trader, Long Term)
+- **Top Performers** - Best performing coins with PnL & win rate
+- **Underperformers** - Worst performing coins to avoid
+- **Weekly Highlights** - Biggest win, biggest loss, most traded coin
+- **Recommendations** - Actionable strategy suggestions based on performance
+
+**New API Endpoints:**
+- `GET /api/report/status` - Report scheduler status
+- `GET /api/report/preview` - Preview current week's report
+- `GET /api/report/strategy-stats` - Strategy performance breakdown
+- `GET /api/report/coin-performance` - Coin performance data
+- `POST /api/report/test` - Send test report
+- `POST /api/report/toggle` - Enable/disable report
+
+**Frontend Updates:**
+- **Dashboard** - New Scalper Widget & Weekly Report Widget
+- **Settings** - New "Weekly Report" tab with preview, send now, strategy stats
+
+### V2.1 Exit Intelligence with Reversal Patterns (P1) - DONE
+Enhanced V2.1 autonomous trader with smart reversal-based exits:
+
+- Added reversal pattern detection (Lines 1672-1694 in `autonomous_trader_v2.py`)
+- Detects: DOJI, HAMMER, SHOOTING_STAR, ENGULFING, RSI_DIVERGENCE
+- Exits LONG when bearish reversal detected (in profit >0.5%)
+- Exits SHORT when bullish reversal detected (in profit >0.5%)
+- Uses `scalper_learning.reversal_detector` module
+
+### Dashboard Scalper Widget (P1) - DONE
+- Shows scalper status (ACTIVE/PAUSED)
+- Active signals count
+- Settings (Target %, Stop %)
+- Auto-Learning status
+- V2.1 Integration status
+- "View Scalper Dashboard" button
+
+**Testing Results (Iteration 36):**
+- All 18 backend tests passed (100%)
+- All frontend widgets working (100%)
+- V2.1 reversal exit logic confirmed in code
+
+---
+
+## Previous Session (Feb 24, 2026) - Morning Briefing System
 
 ### Daily Morning Briefing (P0) - DONE
 Implemented comprehensive 6 AM Central Time daily market briefing via Telegram:
