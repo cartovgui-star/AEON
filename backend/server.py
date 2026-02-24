@@ -3646,9 +3646,13 @@ Use /unbench [strategy] to force-activate"""
                 # Determine context for storage
                 context = "trading" if "trading" in analysis.get("topic_hints", []) else "chat"
                 
-                # Generate response with Aeon's unified personality
+                # Get user's preferred AI model
+                user_model = await get_user_model(chat_id)
+                model_config = get_model_config(user_model)
+                
+                # Generate response with Aeon's unified personality using selected model
                 chat = LlmChat(api_key=emergent_key, session_id=f"aeon-v4-{chat_id}",
-                              system_message=system_prompt).with_model("openai", "gpt-4o-mini")
+                              system_message=system_prompt).with_model(model_config["provider"], model_config["model"])
                 response = await chat.send_message(UserMessage(text=user_prompt))
         
         # Send response
