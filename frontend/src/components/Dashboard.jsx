@@ -23,6 +23,7 @@ export default function Dashboard({
   const [dashboardStats, setDashboardStats] = useState(null);
   const [pnlGoal, setPnlGoal] = useState({ daily: 5, weekly: 25 });
   const [showKillSwitch, setShowKillSwitch] = useState(false);
+  const [showBacktestModal, setShowBacktestModal] = useState(false);
 
   // Fetch live positions for quick view
   useEffect(() => {
