@@ -459,10 +459,12 @@ All alerts now include: WHY, WHAT TO EXPECT, IF WRONG, PREPARATION
 
 ### P1 (Next)
 - **Enhance Exit Intelligence** - Add reversal pattern detection for smarter exits (candlestick patterns, divergences)
+- **Integrate Scalper with V2.1** - Feed scalper signals into autonomous trader for execution
 
 ### P2 (When Ready)
 - Trade notification sounds (different for LONG vs SHORT)
 - PnL Goal customization UI
+- Scalper parameter optimization based on backtest results
 
 ### P3 (Future)
 - Real-money trading integration
