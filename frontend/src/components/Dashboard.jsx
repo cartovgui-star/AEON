@@ -1,9 +1,8 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
-  Bot, Activity, TrendingUp, TrendingDown, Target, Users, BarChart3, 
-  MessageCircle, Brain, Zap, AlertTriangle, Shield, Radio, Power,
-  Volume2, DollarSign, Percent, Clock, Flame, ChevronRight, Ban, 
-  ThumbsUp, ThumbsDown, Timer, Scale
+  Bot, Activity, TrendingUp, Target, Users, BarChart3, 
+  MessageCircle, Brain, Zap, AlertTriangle, Radio, Power,
+  Flame, ChevronRight, Ban, ThumbsUp, ThumbsDown, Timer, Scale
 } from 'lucide-react';
 import { Card, CardContent } from './ui/card';
 import { ScrollArea } from './ui/scroll-area';
