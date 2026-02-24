@@ -867,15 +867,29 @@ function TradingLogicModal({ onClose }) {
                 <div className="flex items-start gap-3 p-3 bg-zinc-900/50 rounded-lg">
                   <Crosshair className="w-5 h-5 text-red-400 mt-0.5" />
                   <div>
-                    <p className="text-white font-medium">Max Positions</p>
-                    <p className="text-zinc-400 text-sm">Maximum 15 open trades at any time</p>
+                    <p className="text-white font-medium">Max 5 Positions</p>
+                    <p className="text-zinc-400 text-sm">Reduced from 15 for higher quality focus</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-3 p-3 bg-zinc-900/50 rounded-lg">
                   <Percent className="w-5 h-5 text-green-400 mt-0.5" />
                   <div>
-                    <p className="text-white font-medium">High Confidence Only</p>
-                    <p className="text-zinc-400 text-sm">Only trades with 80%+ confidence are taken</p>
+                    <p className="text-white font-medium">90%+ Confidence Only</p>
+                    <p className="text-zinc-400 text-sm">Raised from 80% - quality over quantity</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3 p-3 bg-zinc-900/50 rounded-lg">
+                  <Target className="w-5 h-5 text-blue-400 mt-0.5" />
+                  <div>
+                    <p className="text-white font-medium">Smart Stop Loss</p>
+                    <p className="text-zinc-400 text-sm">Placed at support/resistance levels, bounded 1-2x ATR</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3 p-3 bg-zinc-900/50 rounded-lg">
+                  <Activity className="w-5 h-5 text-purple-400 mt-0.5" />
+                  <div>
+                    <p className="text-white font-medium">ADX Trending Filter</p>
+                    <p className="text-zinc-400 text-sm">Only trade when ADX &gt; 25 (no ranging markets)</p>
                   </div>
                 </div>
               </div>
