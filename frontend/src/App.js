@@ -350,6 +350,9 @@ function App() {
         {/* Page: Backtesting */}
         {currentPage === 'backtest' && <Backtesting />}
 
+        {/* Page: V2.1 Backtest */}
+        {currentPage === 'backtest-v21' && <BacktestV21 />}
+
         {/* Page: Intelligence */}
         {currentPage === 'intel' && <Intelligence />}
 
