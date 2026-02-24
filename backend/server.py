@@ -1698,7 +1698,32 @@ Active Signals: {status['active_signals']}
 Scalper runs alongside V2.1 with auto-learning!"""
             context = "scalper"
         
-        # ============= MODEL SWITCHING COMMANDS =============
+        # ============= QUICK MODEL SWITCH COMMANDS =============
+        elif text_lower == '/openai' or text_lower == '/gpt':
+            success = await set_user_model(chat_id, "openai")
+            if success:
+                response = """✅ SWITCHED TO OPENAI GPT-4o
+
+Fast, direct responses - good for quick answers.
+
+Switch back: /claude"""
+            else:
+                response = "❌ Failed to switch. Try again."
+            context = "settings"
+        
+        elif text_lower == '/claude' or text_lower == '/anthropic':
+            success = await set_user_model(chat_id, "claude")
+            if success:
+                response = """✅ SWITCHED TO CLAUDE SONNET 4.5
+
+Detailed, nuanced responses - great for analysis.
+
+Switch back: /openai"""
+            else:
+                response = "❌ Failed to switch. Try again."
+            context = "settings"
+        
+        # ============= MODEL STATUS COMMAND =============
         elif text_lower.startswith('/model'):
             parts = text_lower.split()
             
