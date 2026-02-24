@@ -140,6 +140,77 @@ async def api_toggle_scaling(enabled: bool = True):
     }
 
 
+@router.get("/trading/v2/settings")
+async def api_get_v2_settings():
+    """Get all V2.1 trading settings"""
+    trader = state.autonomous_trader_v2
+    return {
+        "min_confidence": trader.min_confidence,
+        "min_confirmations": trader.min_confirmations,
+        "min_rr_ratio": trader.min_rr_ratio,
+        "max_open_trades": trader.max_open_trades,
+        "ema_200_filter_enabled": trader.ema_200_filter_enabled,
+        "adx_filter_enabled": trader.adx_filter_enabled,
+        "volume_filter_enabled": trader.volume_filter_enabled,
+        "session_filter_enabled": trader.session_filter_enabled,
+        "position_scaling_enabled": trader.position_scaling_enabled,
+        "active": trader.active,
+    }
+
+
+@router.post("/trading/v2/settings")
+async def api_update_v2_settings(request: Request):
+    """Update V2.1 trading settings"""
+    try:
+        data = await request.json()
+        trader = state.autonomous_trader_v2
+        
+        # Update settings if provided
+        if "min_confidence" in data:
+            trader.min_confidence = max(60, min(98, data["min_confidence"]))
+        if "min_confirmations" in data:
+            trader.min_confirmations = max(1, min(6, data["min_confirmations"]))
+        if "min_rr_ratio" in data:
+            trader.min_rr_ratio = max(1.0, min(5.0, data["min_rr_ratio"]))
+        if "max_open_trades" in data:
+            trader.max_open_trades = max(1, min(20, data["max_open_trades"]))
+        if "ema_200_filter_enabled" in data:
+            trader.ema_200_filter_enabled = data["ema_200_filter_enabled"]
+        if "adx_filter_enabled" in data:
+            trader.adx_filter_enabled = data["adx_filter_enabled"]
+        if "volume_filter_enabled" in data:
+            trader.volume_filter_enabled = data["volume_filter_enabled"]
+        if "session_filter_enabled" in data:
+            trader.session_filter_enabled = data["session_filter_enabled"]
+        if "position_scaling_enabled" in data:
+            trader.position_scaling_enabled = data["position_scaling_enabled"]
+        if "active" in data:
+            trader.active = data["active"]
+        
+        # Save to database
+        await trader.save_settings()
+        
+        return {
+            "success": True,
+            "message": "Settings updated",
+            "settings": {
+                "min_confidence": trader.min_confidence,
+                "min_confirmations": trader.min_confirmations,
+                "min_rr_ratio": trader.min_rr_ratio,
+                "max_open_trades": trader.max_open_trades,
+                "ema_200_filter_enabled": trader.ema_200_filter_enabled,
+                "adx_filter_enabled": trader.adx_filter_enabled,
+                "volume_filter_enabled": trader.volume_filter_enabled,
+                "session_filter_enabled": trader.session_filter_enabled,
+                "position_scaling_enabled": trader.position_scaling_enabled,
+                "active": trader.active,
+            }
+        }
+    except Exception as e:
+        logger.error(f"Settings update error: {e}")
+        return {"error": str(e)}
+
+
 @router.get("/trading/v2/open")
 async def api_trading_v2_open():
     return {
