@@ -31,6 +31,14 @@ const TIMEFRAMES = [
 
 const DAYS_OPTIONS = [7, 14, 30, 60, 90];
 
+const CONFIDENCE_LEVELS = [65, 70, 75, 80, 85, 90];
+
+const TEST_MODES = [
+  { id: 'standard', label: 'Standard Test', icon: FlaskConical },
+  { id: 'confidence', label: 'Confidence Range', icon: Sliders },
+  { id: 'timeframe', label: 'Multi-Timeframe', icon: Layers },
+];
+
 const FILTER_COLORS = {
   ema_200: '#f59e0b',
   adx: '#8b5cf6',
