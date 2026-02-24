@@ -12,7 +12,44 @@ Build a sophisticated trading bot named "Aeon" with:
 
 ---
 
-## Latest Session (Dec 20, 2025) - Full Cleanup, Features & Tests
+## Latest Session (Feb 24, 2026) - Dynamic Trade Styles, Position Scaling & Dashboard Stats
+
+### Dynamic Trade Styles (P0) - DONE
+- Fixed trade style assignment that was defaulting to SWING
+- `determine_trade_style()` now uses ATR volatility percentage:
+  - ATR > 2% (high vol): Prefers SCALP/DAY styles
+  - ATR 1-2% (medium): Standard timeframe-based logic
+  - ATR < 0.5% (low vol): Prefers longer holds (SWING)
+- Trade styles now dynamically assigned: SCALP, DAY, or SWING based on market conditions
+- Both `analyze_signal()` and `take_trade()` use the new logic
+
+### Position Scaling (P1) - NEW
+- Implemented 50/50 scaled entry system
+- Initial entry: 50% of position size on signal
+- Scale-in: 50% when position moves 0.3-1.5% in favor (confirmation)
+- New methods: `calculate_scaled_position()`, `check_scale_in_opportunities()`
+- Toggle endpoint: `/api/trading/v2/toggle-scaling`
+- Positions track: `pending_scale_in`, `is_fully_scaled`, `original_full_size`
+
+### Dashboard Stats UI (P1) - NEW
+- New `/api/stats/dashboard` endpoint showing:
+  - Best/worst performing pairs by win rate
+  - Auto-blacklisted pairs (<30% WR after 10 trades)
+  - Pairs on cooldown (4h after loss)
+  - Position scaling status
+- Dashboard UI shows 3 new cards:
+  - Best Pairs (sorted by win rate)
+  - Worst Pairs (sorted by win rate)
+  - Risk Management (blacklist, cooldowns, scaling status)
+
+### Bug Fix: Babel Plugin Issue
+- Disabled visual-edits babel plugin in craco.config.js
+- Plugin was causing "Maximum call stack size exceeded" errors in dev mode
+- Production builds unaffected
+
+---
+
+## Previous Session (Dec 20, 2025) - Full Cleanup, Features & Tests
 
 ### Position Card Modal Fix (P0) - DONE
 - Fixed duplicate modal rendering in Trading.jsx
