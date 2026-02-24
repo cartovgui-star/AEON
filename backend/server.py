@@ -1569,9 +1569,9 @@ Total PnL: {stats['total_pnl_pct']:+.2f}%"""
 
 *AI MODEL*
 /model - Current AI model
-/model gpt - Switch to GPT-4o
-/model claude - Switch to Claude
-/model list - All models
+/model openai - Switch to OpenAI GPT-4o
+/model claude - Switch to Claude Sonnet
+(aliases: gpt, gpt4, anthropic, sonnet)
 
 *ADVANCED*
 /intel - Full market intelligence
