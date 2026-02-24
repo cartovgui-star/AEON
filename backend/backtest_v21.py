@@ -581,13 +581,20 @@ class BacktestV21Engine:
         
         return symbol_results
     
-    async def run_full_backtest(self, symbols: List[str] = ["BTCUSDT", "ETHUSDT", "SOLUSDT"], days: int = 30):
-        """Run backtest for multiple symbols"""
+    async def run_full_backtest(self, symbols: List[str] = None, interval: str = "1h", days: int = 30) -> Dict:
+        """Run backtest for multiple symbols using MEXC data"""
+        if symbols is None:
+            symbols = ["BTC/USDT", "ETH/USDT", "SOL/USDT"]
+        
+        self.is_running = True
+        self.progress = 0
+        
         print("=" * 70)
-        print("AEON V2.1 HIGH WIN RATE BACKTEST")
+        print("AEON V2.1 HIGH WIN RATE BACKTEST (MEXC Data)")
         print("=" * 70)
         print(f"Testing {len(symbols)} symbols over {days} days")
-        print(f"Interval: 1h candles")
+        print(f"Interval: {interval} candles")
+        print(f"Data Source: MEXC Exchange")
         print()
         print("V2.1 Settings:")
         for key, value in V21_SETTINGS.items():
@@ -608,37 +615,47 @@ class BacktestV21Engine:
             "confidence": 0,
             "rr": 0,
         }
+        all_trades = []
         
-        for symbol in symbols:
-            result = await self.run_backtest(symbol, "1h", days)
-            if result:
+        for idx, symbol in enumerate(symbols):
+            self.progress = int((idx / len(symbols)) * 100)
+            
+            # Convert symbol to format without slash for internal processing
+            internal_symbol = symbol.replace("/", "")
+            result = await self.run_backtest(internal_symbol, interval, days)
+            
+            if result and "error" not in result:
                 all_results.append(result)
-                total_old_signals += result["old_signals"]
-                total_new_signals += result["new_signals"]
+                total_old_signals += result.get("old_signals", 0)
+                total_new_signals += result.get("new_signals", 0)
                 
-                for trade in result["trades"]:
+                for trade in result.get("trades", []):
                     if trade["outcome"] == "WIN":
                         total_wins += 1
                     else:
                         total_losses += 1
+                    all_trades.append({**trade, "symbol": symbol})
                 
                 for key in all_filter_breakdown:
-                    all_filter_breakdown[key] += result["filter_breakdown"].get(key, 0)
+                    all_filter_breakdown[key] += result.get("filter_breakdown", {}).get(key, 0)
+        
+        self.progress = 100
+        self.is_running = False
         
         # Print results
         print("\n" + "=" * 70)
-        print("BACKTEST RESULTS")
+        print("BACKTEST RESULTS (MEXC DATA)")
         print("=" * 70)
         
         for result in all_results:
-            print(f"\n{result['symbol']}:")
-            print(f"  Candles analyzed: {result['total_candles']}")
-            print(f"  Signals checked: {result['signals_checked']}")
-            print(f"  Old rules signals: {result['old_signals']}")
-            print(f"  V2.1 signals (passed): {result['new_signals']}")
+            print(f"\n{result.get('symbol', 'Unknown')}:")
+            print(f"  Candles analyzed: {result.get('total_candles', 0)}")
+            print(f"  Signals checked: {result.get('signals_checked', 0)}")
+            print(f"  Old rules signals: {result.get('old_signals', 0)}")
+            print(f"  V2.1 signals (passed): {result.get('new_signals', 0)}")
             
-            wins = sum(1 for t in result["trades"] if t["outcome"] == "WIN")
-            losses = sum(1 for t in result["trades"] if t["outcome"] == "LOSS")
+            wins = sum(1 for t in result.get("trades", []) if t["outcome"] == "WIN")
+            losses = sum(1 for t in result.get("trades", []) if t["outcome"] == "LOSS")
             total = wins + losses
             win_rate = (wins / total * 100) if total > 0 else 0
             
@@ -647,7 +664,7 @@ class BacktestV21Engine:
             print(f"  Win Rate: {win_rate:.1f}%")
             
             print(f"  Filter breakdown:")
-            for key, value in result["filter_breakdown"].items():
+            for key, value in result.get("filter_breakdown", {}).items():
                 if value > 0:
                     print(f"    - {key}: {value}")
         
@@ -661,7 +678,8 @@ class BacktestV21Engine:
         
         print(f"\nTotal signals under OLD rules: {total_old_signals}")
         print(f"Total signals under V2.1 rules: {total_new_signals}")
-        print(f"Reduction: {((total_old_signals - total_new_signals) / total_old_signals * 100):.1f}% fewer trades")
+        if total_old_signals > 0:
+            print(f"Reduction: {((total_old_signals - total_new_signals) / total_old_signals * 100):.1f}% fewer trades")
         
         print(f"\nSimulated Trade Results (V2.1):")
         print(f"  Total trades: {total_trades}")
@@ -684,29 +702,43 @@ class BacktestV21Engine:
         print("RECOMMENDATIONS")
         print("=" * 70)
         
-        # Analyze which filters are most effective
+        recommendations = []
         if total_trades > 0:
             if new_win_rate >= 50:
-                print("✅ V2.1 filters are working well!")
-                print("   Win rate significantly improved from 19% baseline.")
+                recommendations.append("✅ V2.1 filters are working well!")
+                recommendations.append("   Win rate significantly improved from 19% baseline.")
             elif new_win_rate >= 35:
-                print("⚠️ Moderate improvement. Consider:")
-                print("   - Increasing min_confidence to 92%")
-                print("   - Requiring 6/6 confirmations")
+                recommendations.append("⚠️ Moderate improvement. Consider:")
+                recommendations.append("   - Increasing min_confidence to 92%")
+                recommendations.append("   - Requiring 6/6 confirmations")
             else:
-                print("❌ Win rate still low. Consider:")
-                print("   - More aggressive filtering")
-                print("   - Adding multi-timeframe confirmation")
+                recommendations.append("❌ Win rate still low. Consider:")
+                recommendations.append("   - More aggressive filtering")
+                recommendations.append("   - Adding multi-timeframe confirmation")
+        
+        for rec in recommendations:
+            print(rec)
         
         return {
+            "data_source": "MEXC",
+            "symbols": symbols,
+            "interval": interval,
+            "days": days,
+            "settings": V21_SETTINGS,
             "old_signals": total_old_signals,
             "new_signals": total_new_signals,
+            "signal_reduction_pct": round(((total_old_signals - total_new_signals) / max(1, total_old_signals)) * 100, 1),
             "total_trades": total_trades,
             "wins": total_wins,
             "losses": total_losses,
-            "win_rate": new_win_rate,
+            "win_rate": round(new_win_rate, 1),
+            "old_win_rate": old_win_rate,
+            "improvement": round(new_win_rate - old_win_rate, 1),
             "filter_breakdown": all_filter_breakdown,
             "results_by_symbol": all_results,
+            "recent_trades": all_trades[-20:],  # Last 20 trades
+            "recommendations": recommendations,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
 
