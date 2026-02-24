@@ -660,28 +660,49 @@ class AutonomousTraderV2:
     # ═══════════════════════════════════════════════════════════════════════════
     
     def get_current_session(self) -> str:
-        """Detect current trading session"""
-        now = datetime.now(pytz.UTC)
+        """
+        Detect current trading session based on EST time.
+        
+        High liquidity sessions (OK to trade SCALP/DAY):
+        - London: 3:00 AM - 12:00 PM EST
+        - New York: 8:00 AM - 5:00 PM EST
+        - Overlap: 8:00 AM - 12:00 PM EST (best)
+        
+        Low liquidity (AVOID for SCALP/DAY):
+        - 5:00 PM - 3:00 AM EST
+        """
+        # Convert to EST
+        est = pytz.timezone('America/New_York')
+        now = datetime.now(est)
         hour = now.hour
         
-        # Trading sessions (UTC)
-        # Asia: 00:00 - 08:00 UTC
-        # London: 08:00 - 16:00 UTC
-        # New York: 13:00 - 21:00 UTC
-        # London/NY overlap: 13:00 - 16:00 UTC (best volume)
-        
-        if 13 <= hour < 16:
+        # Trading sessions (EST)
+        if 8 <= hour < 12:
             return "LONDON_NY_OVERLAP"  # Best time to trade
-        elif 8 <= hour < 16:
-            return "LONDON"
-        elif 13 <= hour < 21:
-            return "NEW_YORK"
-        elif 0 <= hour < 8:
-            return "ASIA"  # Lower volume, avoid
-        else:
-            return "OFF_HOURS"
+        elif 3 <= hour < 8:
+            return "LONDON"  # Good
+        elif 12 <= hour < 17:
+            return "NEW_YORK"  # Good
+        elif 17 <= hour or hour < 3:
+            return "OFF_HOURS"  # Avoid for SCALP/DAY
         
         return "UNKNOWN"
+    
+    def is_good_session_for_style(self, trade_style: str) -> bool:
+        """
+        Check if current session is good for the trade style.
+        SWING trades ignore session filter.
+        SCALP and DAY trades must be in London or NY session.
+        """
+        if not self.session_filter_enabled:
+            return True
+        
+        if trade_style == "SWING":
+            return True  # SWING can trade anytime
+        
+        session = self.get_current_session()
+        good_sessions = ["LONDON", "NEW_YORK", "LONDON_NY_OVERLAP"]
+        return session in good_sessions
     
     def get_session_quality(self, session: str) -> float:
         """Get session quality multiplier"""
