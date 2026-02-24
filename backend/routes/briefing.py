@@ -43,10 +43,12 @@ async def get_briefing_status():
 
 @router.post("/test")
 async def send_test_briefing():
-    """Send a test briefing immediately"""
+    """Send a test briefing immediately (runs in background)"""
     try:
-        result = await morning_briefing.send_test_briefing()
-        return result
+        # Run in background to avoid timeout
+        import asyncio
+        asyncio.create_task(morning_briefing.send_test_briefing())
+        return {"success": True, "message": "Test briefing started - check Telegram"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
