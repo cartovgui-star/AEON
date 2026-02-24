@@ -73,6 +73,7 @@ from routes import (
     accuracy_router, learning_router, bot_router,
     system_router, mtf_router, confluence_router,
 )
+from routes.backtest_v21 import router as backtest_v21_router
 from voice_tts import generate_speech, VOICES
 from price_alerts import price_alert_system, PriceAlertSystem
 from strategy_engine import StrategyEngine
