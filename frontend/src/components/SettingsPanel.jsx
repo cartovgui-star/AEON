@@ -566,6 +566,11 @@ export default function SettingsPanel() {
         </div>
       )}
 
+      {/* Daily Briefing Tab */}
+      {activeTab === 'briefing' && (
+        <MorningBriefingTab />
+      )}
+
       {/* Profile Tab */}
       {activeTab === 'profile' && (
         <div className="grid md:grid-cols-2 gap-4">
