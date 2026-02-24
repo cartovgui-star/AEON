@@ -594,7 +594,7 @@ class BacktestV21Engine:
         print("=" * 70)
         print(f"Testing {len(symbols)} symbols over {days} days")
         print(f"Interval: {interval} candles")
-        print(f"Data Source: MEXC Exchange")
+        print("Data Source: MEXC Exchange")
         print()
         print("V2.1 Settings:")
         for key, value in V21_SETTINGS.items():
@@ -663,7 +663,7 @@ class BacktestV21Engine:
             print(f"  Wins: {wins}, Losses: {losses}")
             print(f"  Win Rate: {win_rate:.1f}%")
             
-            print(f"  Filter breakdown:")
+            print("  Filter breakdown:")
             for key, value in result.get("filter_breakdown", {}).items():
                 if value > 0:
                     print(f"    - {key}: {value}")
@@ -681,18 +681,18 @@ class BacktestV21Engine:
         if total_old_signals > 0:
             print(f"Reduction: {((total_old_signals - total_new_signals) / total_old_signals * 100):.1f}% fewer trades")
         
-        print(f"\nSimulated Trade Results (V2.1):")
+        print("\nSimulated Trade Results (V2.1):")
         print(f"  Total trades: {total_trades}")
         print(f"  Wins: {total_wins}")
         print(f"  Losses: {total_losses}")
         print(f"  WIN RATE: {new_win_rate:.1f}%")
         
-        print(f"\nComparison:")
+        print("\nComparison:")
         print(f"  OLD win rate (actual): {old_win_rate}%")
         print(f"  NEW win rate (simulated): {new_win_rate:.1f}%")
         print(f"  IMPROVEMENT: +{new_win_rate - old_win_rate:.1f}%")
         
-        print(f"\nFilter Effectiveness (total filtered):")
+        print("\nFilter Effectiveness (total filtered):")
         total_filtered = sum(all_filter_breakdown.values())
         for key, value in sorted(all_filter_breakdown.items(), key=lambda x: x[1], reverse=True):
             pct = (value / total_filtered * 100) if total_filtered > 0 else 0
