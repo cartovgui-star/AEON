@@ -850,3 +850,233 @@ function VoiceTab({ settings, setSettings }) {
     </div>
   );
 }
+
+// Morning Briefing Tab Component
+function MorningBriefingTab() {
+  const [status, setStatus] = useState(null);
+  const [preview, setPreview] = useState(null);
+  const [movers, setMovers] = useState(null);
+  const [setups, setSetups] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [sendingTest, setSendingTest] = useState(false);
+  const [testSent, setTestSent] = useState(false);
+
+  const API_URL = process.env.REACT_APP_BACKEND_URL;
+
+  useEffect(() => {
+    fetchStatus();
+    fetchMovers();
+    fetchSetups();
+  }, []);
+
+  const fetchStatus = async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/briefing/status`);
+      const data = await res.json();
+      setStatus(data);
+    } catch (err) {
+      console.error('Failed to fetch briefing status:', err);
+    }
+  };
+
+  const fetchMovers = async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/briefing/movers`);
+      const data = await res.json();
+      setMovers(data);
+    } catch (err) {
+      console.error('Failed to fetch movers:', err);
+    }
+  };
+
+  const fetchSetups = async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/briefing/setups`);
+      const data = await res.json();
+      setSetups(data.setups || []);
+    } catch (err) {
+      console.error('Failed to fetch setups:', err);
+    }
+  };
+
+  const fetchPreview = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_URL}/api/briefing/preview`);
+      const data = await res.json();
+      setPreview(data.preview);
+    } catch (err) {
+      console.error('Failed to fetch preview:', err);
+    }
+    setLoading(false);
+  };
+
+  const sendTestBriefing = async () => {
+    setSendingTest(true);
+    try {
+      await fetch(`${API_URL}/api/briefing/test`, { method: 'POST' });
+      setTestSent(true);
+      setTimeout(() => setTestSent(false), 5000);
+    } catch (err) {
+      console.error('Failed to send test:', err);
+    }
+    setSendingTest(false);
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Briefing Status */}
+      <div className="bg-zinc-800/30 rounded-xl border border-amber-500/30 overflow-hidden">
+        <div className="flex items-center gap-3 px-5 py-4 border-b border-amber-500/20">
+          <Sun className="w-5 h-5 text-amber-400" />
+          <h3 className="font-semibold text-white">Morning Briefing</h3>
+          <span className={`ml-auto px-2 py-0.5 rounded text-xs ${
+            status?.enabled ? 'bg-green-500/20 text-green-400' : 'bg-zinc-700 text-zinc-400'
+          }`}>
+            {status?.enabled ? 'ACTIVE' : 'PAUSED'}
+          </span>
+        </div>
+        <div className="p-5 space-y-4">
+          <div className="flex items-center justify-between p-4 bg-zinc-900/50 rounded-xl">
+            <div>
+              <p className="text-white font-medium">Daily Market Overview</p>
+              <p className="text-zinc-500 text-sm">Sent every day at 6:00 AM Central Time (Austin, TX)</p>
+            </div>
+            <div className="text-right">
+              <p className="text-amber-400 font-bold">{status?.scheduled_time}</p>
+              <p className="text-xs text-zinc-500">{status?.timezone}</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="p-3 bg-zinc-900/50 rounded-lg text-center">
+              <p className="text-sm text-zinc-400">Current Time (CT)</p>
+              <p className="text-white font-medium">{status?.current_time_ct?.split(' ')[1]}</p>
+            </div>
+            <div className="p-3 bg-zinc-900/50 rounded-lg text-center">
+              <p className="text-sm text-zinc-400">Next Briefing</p>
+              <p className="text-amber-400 font-medium">{status?.next_briefing?.split(' ')[1]}</p>
+            </div>
+          </div>
+
+          <div className="flex gap-2">
+            <button
+              onClick={fetchPreview}
+              disabled={loading}
+              data-testid="briefing-preview-btn"
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-zinc-700 hover:bg-zinc-600 rounded-xl text-white transition-colors"
+            >
+              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+              Preview Today's Briefing
+            </button>
+            <button
+              onClick={sendTestBriefing}
+              disabled={sendingTest}
+              data-testid="briefing-send-test-btn"
+              className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl transition-colors ${
+                testSent ? 'bg-green-500 text-white' : 'bg-amber-500 hover:bg-amber-600 text-white'
+              }`}
+            >
+              {sendingTest ? <Loader2 className="w-4 h-4 animate-spin" /> : testSent ? <CheckCircle2 className="w-4 h-4" /> : <Send className="w-4 h-4" />}
+              {testSent ? 'Sent!' : 'Send Now'}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Preview */}
+      {preview && (
+        <div className="bg-zinc-800/30 rounded-xl border border-zinc-700/50 overflow-hidden">
+          <div className="flex items-center gap-3 px-5 py-4 border-b border-zinc-700/50">
+            <Calendar className="w-5 h-5 text-amber-400" />
+            <h3 className="font-semibold text-white">Briefing Preview</h3>
+          </div>
+          <div className="p-5">
+            <pre className="whitespace-pre-wrap text-sm text-zinc-300 font-mono bg-zinc-900/50 p-4 rounded-xl max-h-96 overflow-y-auto">
+              {preview}
+            </pre>
+          </div>
+        </div>
+      )}
+
+      {/* Live Data Cards */}
+      <div className="grid md:grid-cols-2 gap-4">
+        {/* Overnight Movers */}
+        <div className="bg-zinc-800/30 rounded-xl border border-zinc-700/50 overflow-hidden">
+          <div className="flex items-center gap-3 px-5 py-4 border-b border-zinc-700/50">
+            <TrendingUp className="w-5 h-5 text-green-400" />
+            <h3 className="font-semibold text-white">Overnight Movers</h3>
+          </div>
+          <div className="p-5 space-y-3">
+            {movers?.losers?.length > 0 && (
+              <div>
+                <p className="text-xs text-zinc-500 mb-2">Biggest Losers</p>
+                {movers.losers.slice(0, 3).map((coin, i) => (
+                  <div key={i} className="flex items-center justify-between py-1">
+                    <span className="text-white">{coin.symbol}</span>
+                    <span className="text-red-400 font-medium">{coin.change_24h}%</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            {movers?.gainers?.length > 0 && (
+              <div>
+                <p className="text-xs text-zinc-500 mb-2">Biggest Gainers</p>
+                {movers.gainers.slice(0, 3).map((coin, i) => (
+                  <div key={i} className="flex items-center justify-between py-1">
+                    <span className="text-white">{coin.symbol}</span>
+                    <span className="text-green-400 font-medium">+{coin.change_24h}%</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            {!movers?.losers?.length && !movers?.gainers?.length && (
+              <p className="text-zinc-500 text-center py-4">No significant moves</p>
+            )}
+          </div>
+        </div>
+
+        {/* Setups to Watch */}
+        <div className="bg-zinc-800/30 rounded-xl border border-zinc-700/50 overflow-hidden">
+          <div className="flex items-center gap-3 px-5 py-4 border-b border-zinc-700/50">
+            <Target className="w-5 h-5 text-purple-400" />
+            <h3 className="font-semibold text-white">Setups to Watch</h3>
+          </div>
+          <div className="p-5 space-y-2">
+            {setups?.length > 0 ? setups.slice(0, 4).map((setup, i) => (
+              <div key={i} className="flex items-center justify-between p-2 bg-zinc-900/50 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <span className={`w-2 h-2 rounded-full ${
+                    setup.direction === 'LONG' ? 'bg-green-400' : setup.direction === 'SHORT' ? 'bg-red-400' : 'bg-yellow-400'
+                  }`} />
+                  <span className="text-white font-medium">{setup.symbol}</span>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs text-zinc-400">{setup.setup}</p>
+                  <p className="text-xs text-zinc-500">RSI: {setup.rsi}</p>
+                </div>
+              </div>
+            )) : (
+              <p className="text-zinc-500 text-center py-4">No setups identified</p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Info */}
+      <div className="flex items-start gap-3 p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl">
+        <Info className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
+        <div className="text-sm text-amber-200">
+          <p className="font-medium mb-1">What's included in the briefing?</p>
+          <ul className="text-amber-200/80 space-y-1">
+            <li>• BTC & ETH market structure and trend analysis</li>
+            <li>• Fear & Greed Index with actionable insights</li>
+            <li>• Overnight price movers (gainers/losers)</li>
+            <li>• Top setups to watch for the day</li>
+            <li>• Key support/resistance levels</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  );
+}
