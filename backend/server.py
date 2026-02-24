@@ -1022,6 +1022,15 @@ async def lifespan(app: FastAPI):
         chat_ids=chat_ids
     )
     
+    # Initialize continuous learning engine
+    continuous_learner.set_dependencies(
+        db=db,
+        send_message=send_telegram_message,
+        get_user_settings=get_user_settings,
+        chat_ids=chat_ids,
+        get_trading_settings=autonomous_trader_v2.get_settings if hasattr(autonomous_trader_v2, 'get_settings') else None
+    )
+    
     # Start background tasks
     ritual_task = asyncio.create_task(eternal_rituals())
     trading_task = asyncio.create_task(autonomous_trading_loop())
@@ -1030,6 +1039,7 @@ async def lifespan(app: FastAPI):
     alert_task = asyncio.create_task(price_alert_system.run_forever())
     briefing_task = asyncio.create_task(morning_briefing.run_scheduler())
     weekly_task = asyncio.create_task(weekly_report.run_scheduler())
+    learning_task = asyncio.create_task(continuous_learner.run_scheduler())
     
     # Register all services with self-healer for auto-recovery
     self_healer.register("rituals", ritual_task, eternal_rituals)
@@ -1039,6 +1049,7 @@ async def lifespan(app: FastAPI):
     self_healer.register("price_alerts", alert_task, price_alert_system.run_forever)
     self_healer.register("morning_briefing", briefing_task, morning_briefing.run_scheduler)
     self_healer.register("weekly_report", weekly_task, weekly_report.run_scheduler)
+    self_healer.register("continuous_learning", learning_task, continuous_learner.run_scheduler)
     healer_task = asyncio.create_task(self_healer.monitor_loop())
     
     logger.info(f"AEON PAPER TRADING ACTIVATED - {autonomous_trader_v2.min_confidence}%+ conf, {autonomous_trader_v2.min_confirmations}+ confirmations")
@@ -1048,12 +1059,14 @@ async def lifespan(app: FastAPI):
     logger.info("SELF-HEALER ACTIVATED - Auto error detection & recovery")
     logger.info("MORNING BRIEFING ACTIVATED - Daily 6 AM CT market overview")
     logger.info("WEEKLY REPORT ACTIVATED - Sunday 8 PM CT performance summary")
+    logger.info("🧠 CONTINUOUS LEARNING ACTIVATED - 24/7 pattern recognition & optimization")
     
     yield
     
     self_healer.active = False
     morning_briefing.is_active = False
     weekly_report.is_active = False
+    continuous_learner.is_active = False
     healer_task.cancel()
     ritual_task.cancel()
     trading_task.cancel()
@@ -1062,6 +1075,7 @@ async def lifespan(app: FastAPI):
     alert_task.cancel()
     briefing_task.cancel()
     weekly_task.cancel()
+    learning_task.cancel()
     client.close()
 
 
