@@ -1726,66 +1726,31 @@ Switch back: /openai"""
         elif text_lower.startswith('/model'):
             parts = text_lower.split()
             
-            if len(parts) == 1 or parts[1] == 'status':
+            if len(parts) == 1:
                 # Show current model
                 current_model = await get_user_model(chat_id)
                 config = get_model_config(current_model)
-                response = f"""🤖 CURRENT AI MODEL
+                response = f"""🤖 CURRENT AI: {config['display_name']}
 
-{config['display_name']}
 {config['description']}
 
-━━━━━━━━━━━━━━━━━━━━
-SWITCH MODEL:
-• /model openai - GPT-4o (fast)
-• /model claude - Claude Sonnet (detailed)
-
-Aliases: gpt, gpt4, anthropic, sonnet"""
-                context = "settings"
-            
-            elif parts[1] == 'list':
-                # List available models
-                models_list = []
-                current_raw = await get_user_model(chat_id)
-                current = resolve_model_key(current_raw)
-                for key, config in MODEL_CONFIGS.items():
-                    marker = "✓" if key == current else "○"
-                    models_list.append(f"{marker} {config['display_name']} (/model {key})")
-                
-                response = f"""🤖 AVAILABLE AI MODELS
-
-{chr(10).join(models_list)}
-
-━━━━━━━━━━━━━━━━━━━━
-SWITCH: /model openai or /model claude
-Aliases: gpt, gpt4, anthropic, sonnet"""
+SWITCH: /openai or /claude"""
                 context = "settings"
             
             else:
-                # Try to resolve alias and switch
+                # Try to switch model
                 requested = parts[1]
                 resolved = resolve_model_key(requested)
                 
                 if resolved in MODEL_CONFIGS:
-                    # Switch model
                     success = await set_user_model(chat_id, resolved)
                     if success:
                         config = get_model_config(resolved)
-                        response = f"""✅ SWITCHED TO {config['display_name'].upper()}
-
-{config['description']}
-
-All my responses will now use {config['provider'].upper()}."""
+                        response = f"✅ Switched to {config['display_name']}"
                     else:
-                        response = "❌ Failed to switch model. Try again."
+                        response = "❌ Failed to switch. Try /openai or /claude"
                 else:
-                    response = f"""❌ Unknown model: {requested}
-
-AVAILABLE MODELS:
-• /model openai - GPT-4o (fast responses)
-• /model claude - Claude Sonnet (detailed analysis)
-
-Aliases: gpt, gpt4, anthropic, sonnet"""
+                    response = "❌ Unknown model. Use /openai or /claude"
                 context = "settings"
             
         elif text_lower.startswith('/fwconf'):
