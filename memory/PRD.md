@@ -526,7 +526,17 @@ All alerts now include: WHY, WHAT TO EXPECT, IF WRONG, PREPARATION
 
 ## API Endpoints Summary
 
-### New Endpoints (This Session - Auto-Learning Scalper)
+### New Endpoints (Feb 24, 2026) - Morning Briefing
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| /api/briefing/status | GET | Scheduler status, timezone, next briefing time |
+| /api/briefing/preview | GET | Preview full briefing content |
+| /api/briefing/movers | GET | Overnight price movers (gainers/losers) |
+| /api/briefing/setups | GET | Potential setups to watch |
+| /api/briefing/test | POST | Send test briefing immediately |
+| /api/briefing/toggle | POST | Enable/disable briefing |
+
+### Endpoints (Feb 24, 2026) - Auto-Learning Scalper
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | /api/scalper/learning/status | GET | Auto-learning status & performance |
