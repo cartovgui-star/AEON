@@ -295,8 +295,12 @@ async def send_telegram_message(chat_id: int, text: str, retry: int = 2, parse_m
 def get_mexc_orderbook() -> Dict[str, Any]:
     """Get MEXC orderbook data for main tracked symbols (dashboard)"""
     try:
-        # Main 3 coins for dashboard (faster loading)
-        symbols_to_fetch = ['BTC/USDT', 'ETH/USDT', 'SOL/USDT']
+        # All tracked coins
+        symbols_to_fetch = [
+            'BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'BNB/USDT', 'XRP/USDT',
+            'DOGE/USDT', 'ADA/USDT', 'AVAX/USDT', 'DOT/USDT', 'LINK/USDT',
+            'UNI/USDT', 'ATOM/USDT', 'LTC/USDT', 'ARB/USDT', 'OP/USDT'
+        ]
         tickers = mexc.fetch_tickers(symbols_to_fetch)
         symbols = []
         for symbol in symbols_to_fetch:
@@ -305,21 +309,22 @@ def get_mexc_orderbook() -> Dict[str, Any]:
                 bid_depth = sum([b[1] for b in book['bids'][:10]])
                 ask_depth = sum([a[1] for a in book['asks'][:10]])
                 imbalance = ((bid_depth - ask_depth) / (bid_depth + ask_depth) * 100) if (bid_depth + ask_depth) > 0 else 0
-                ticker = tickers[symbol]
-                symbols.append({
-                    'symbol': symbol,
-                    'price': ticker['last'],
-                    'change_24h': ticker.get('percentage', 0),
-                    'high_24h': ticker.get('high', 0),
-                    'low_24h': ticker.get('low', 0),
-                    'volume_24h': ticker.get('quoteVolume', 0),
-                    'bid_depth': bid_depth,
-                    'ask_depth': ask_depth,
-                    'imbalance': imbalance,
-                })
+                ticker = tickers.get(symbol, {})
+                if ticker:
+                    symbols.append({
+                        'symbol': symbol,
+                        'price': ticker.get('last', 0),
+                        'change_24h': ticker.get('percentage', 0),
+                        'high_24h': ticker.get('high', 0),
+                        'low_24h': ticker.get('low', 0),
+                        'volume_24h': ticker.get('quoteVolume', 0),
+                        'bid_depth': bid_depth,
+                        'ask_depth': ask_depth,
+                        'imbalance': imbalance,
+                    })
             except:
                 continue
-        return {"symbols": symbols}
+        return {"symbols": symbols, "total": len(symbols)}
     except Exception as e:
         return {"symbols": [], "error": str(e)}
 
