@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { 
   Bot, Activity, TrendingUp, Target, Users, BarChart3, 
   MessageCircle, Brain, Zap, AlertTriangle, Radio, Power,
-  Flame, ChevronRight, Ban, ThumbsUp, ThumbsDown, Timer, Scale, FlaskConical, Bell
+  Flame, ChevronRight, Ban, ThumbsUp, ThumbsDown, Timer, Scale, FlaskConical, Bell,
+  Sparkles, Link2, Calendar
 } from 'lucide-react';
 import { Card, CardContent } from './ui/card';
 import { ScrollArea } from './ui/scroll-area';
