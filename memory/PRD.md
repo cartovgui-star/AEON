@@ -41,10 +41,13 @@ The model switching feature was scaffolded but broken - the `get_user_model()` a
 - Helper functions: `get_user_model()`, `set_user_model()`, `get_model_config()`
 
 **New Telegram Commands:**
-- `/model` or `/model status` - Show current AI model
-- `/model gpt` - Switch to GPT-4o (fast, direct responses)
-- `/model claude` - Switch to Claude Sonnet 4.5 (detailed analysis)
-- `/model list` - Show all available models
+- `/openai` - Switch to OpenAI GPT-4o (fast)
+- `/claude` - Switch to Claude Sonnet 4.5 (detailed)
+- `/model` - Show current AI model
+
+**Also works (aliases):**
+- `/gpt`, `/gpt4` → OpenAI
+- `/anthropic`, `/sonnet` → Claude
 
 **Models Available:**
 | Model | Provider | Best For |
