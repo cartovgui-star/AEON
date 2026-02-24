@@ -1020,6 +1020,12 @@ class AutonomousTraderV2:
             elif confidence >= 88:
                 position_size_pct = self.base_position_pct * 1.5
             
+            # Calculate ATR percentage for trade style determination
+            atr_pct_calc = (atr / price * 100) if price > 0 else None
+            
+            # Determine trade style dynamically
+            trade_style = self.determine_trade_style(timeframe, confidence, atr_pct_calc)
+            
             return {
                 "symbol": symbol,
                 "timeframe": timeframe,
@@ -1039,6 +1045,11 @@ class AutonomousTraderV2:
                 "partial_target": round(partial_target, 2),
                 "risk_reward": round(rr_ratio, 2),
                 "atr": round(atr, 2),
+                "atr_pct": round(atr_pct_calc, 3) if atr_pct_calc else None,
+                
+                # Trade style (dynamically determined)
+                "trade_type": trade_style,
+                "conf_level": conf_level,
                 
                 # Position sizing
                 "position_size_pct": round(position_size_pct, 1),
