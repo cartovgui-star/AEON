@@ -666,6 +666,20 @@ All alerts now include: WHY, WHAT TO EXPECT, IF WRONG, PREPARATION
 | /api/report/test | POST | Send test report |
 | /api/report/toggle | POST | Enable/disable report |
 
+### Endpoints (Feb 24, 2026) - Continuous Learning Engine
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| /api/learning/status | GET | Learning engine status & stats |
+| /api/learning/recommendations | GET | Current recommendations |
+| /api/learning/insights | GET | Daily insights |
+| /api/learning/force-cycle | POST | Force all learning cycles |
+| /api/learning/summary/preview | GET | Preview daily summary |
+| /api/learning/summary/send | POST | Send summary immediately |
+| /api/learning/patterns | GET | Learned patterns with win rates |
+| /api/learning/coins | GET | Coin analysis & rankings |
+| /api/learning/sessions | GET | Session/hour/day performance |
+| /api/learning/toggle | POST | Enable/disable learning |
+
 ### Endpoints (Feb 24, 2026) - Auto-Learning Scalper
 | Endpoint | Method | Description |
 |----------|--------|-------------|
