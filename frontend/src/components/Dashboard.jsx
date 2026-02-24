@@ -98,6 +98,14 @@ export default function Dashboard({
           View Alerts
         </button>
         <button
+          onClick={() => setShowBacktestModal(true)}
+          data-testid="quick-backtest-btn"
+          className="flex items-center gap-2 px-4 py-2 bg-amber-500/20 border border-amber-500/30 rounded-lg text-amber-400 hover:bg-amber-500/30 transition-all"
+        >
+          <FlaskConical className="w-4 h-4" />
+          V2.1 Backtest
+        </button>
+        <button
           onClick={() => setShowKillSwitch(true)}
           data-testid="kill-switch-btn"
           className="flex items-center gap-2 px-4 py-2 bg-red-500/20 border border-red-500/30 rounded-lg text-red-400 hover:bg-red-500/30 transition-all ml-auto"
