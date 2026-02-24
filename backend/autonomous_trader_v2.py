@@ -1669,6 +1669,30 @@ class AutonomousTraderV2:
                         momentum_exit = True
                         logger.info(f"🔄 MOMENTUM FADE: {trade['symbol']} RSI {current_rsi:.0f} (short in profit)")
                 
+                # REVERSAL PATTERN DETECTION - Exit on reversal candle patterns
+                reversal_exit = False
+                reversal_pattern = None
+                if current_pnl_pct > 0.5 and not momentum_exit:  # In profit, check for reversals
+                    try:
+                        from scalper_learning import reversal_detector
+                        reversal_data = await reversal_detector.analyze(
+                            trade["symbol"], 
+                            trade.get("timeframe", "1h")
+                        )
+                        
+                        if reversal_data.get("should_exit"):
+                            reversal_pattern = reversal_data.get("pattern")
+                            # Only exit on reversal if pattern goes against our position
+                            if direction == "LONG" and reversal_data.get("direction") == "BEARISH":
+                                reversal_exit = True
+                                logger.info(f"🔄 REVERSAL EXIT: {trade['symbol']} detected {reversal_pattern} (bearish reversal while LONG)")
+                            elif direction == "SHORT" and reversal_data.get("direction") == "BULLISH":
+                                reversal_exit = True
+                                logger.info(f"🔄 REVERSAL EXIT: {trade['symbol']} detected {reversal_pattern} (bullish reversal while SHORT)")
+                    except Exception as e:
+                        # Reversal detection is optional enhancement
+                        pass
+                
                 # Check for hits
                 if direction == "LONG":
                     if current_price <= stop:
