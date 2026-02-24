@@ -1229,7 +1229,6 @@ class AutonomousTraderV2:
             "target_price": signal["target"],
             "partial_target": signal["partial_target"],
             "position_size_pct": signal["position_size_pct"],
-            "position_size": self.calculate_position_size(signal["confidence"], signal.get("position_size_pct", 2)),
             "leverage": self.calculate_leverage(signal["confidence"], trade_style=trade_style, atr_pct=atr_pct),
             "confidence": signal["confidence"],
             "confirmations": signal["confirmations"],
@@ -1242,6 +1241,23 @@ class AutonomousTraderV2:
             "pnl_pct": 0,
             "trail_stop": signal["stop"]
         }
+        
+        # Calculate full position size
+        full_position_size = self.calculate_position_size(signal["confidence"], signal.get("position_size_pct", 2))
+        
+        # Apply position scaling if enabled
+        if self.position_scaling_enabled:
+            initial_size = self.calculate_scaled_position(full_position_size, is_initial=True)
+            trade["position_size"] = initial_size
+            trade["original_full_size"] = full_position_size
+            trade["pending_scale_in"] = True
+            trade["is_fully_scaled"] = False
+            logger.info(f"Scaled entry: ${initial_size:.0f} (50% of ${full_position_size:.0f}), awaiting confirmation for scale-in")
+        else:
+            trade["position_size"] = full_position_size
+            trade["original_full_size"] = full_position_size
+            trade["pending_scale_in"] = False
+            trade["is_fully_scaled"] = True
         
         self.open_trades.append(trade)
         self.total_trades += 1
