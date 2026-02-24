@@ -12,7 +12,54 @@ Build a sophisticated trading bot named "Aeon" with:
 
 ---
 
-## Latest Session (Feb 24, 2026) - Dashboard Upgrade & Route Consolidation
+## Latest Session (Feb 24, 2026) - Aggressive Scalper Integration
+
+### Aggressive Scalper (P1) - DONE
+Integrated comprehensive hybrid scalping strategy alongside V2.1:
+
+**Backend:**
+- Created `/app/backend/aggressive_scalper.py` - Full scalping engine
+- Created `/app/backend/routes/scalper.py` - API routes
+- Uses MEXC live data across 5m, 15m, 30m timeframes
+- Covers all 15 tracked cryptos
+
+**Strategy Components:**
+1. **Volume Breakout** (Strength 3) - Entry on breakouts with >1.5x avg volume
+2. **Order Flow/S-R** (Strength 2) - Quick bounces off previous high/low
+3. **Momentum** (Strength 1) - RSI extremes with ROC confirmation
+
+**Settings:**
+- Profit Target: 1.5%
+- Stop Loss: 0.5%
+- Volume Threshold: 1.5x
+- RSI Range: 30-70
+- Max Hold: 50 bars
+
+**API Endpoints:**
+- `GET /api/scalper/status` - Scalper status and settings
+- `GET /api/scalper/signals/{symbol}` - Get scalp signals for a symbol
+- `GET /api/scalper/scan?timeframe=5m` - Scan all symbols for signals
+- `GET /api/scalper/scan/all` - Scan all timeframes
+- `GET /api/scalper/opportunities` - Best opportunities (strength ≥ 2)
+- `GET /api/scalper/backtest/{symbol}` - Backtest single symbol
+- `GET /api/scalper/backtest/all/{timeframe}` - Backtest all symbols
+- `POST /api/scalper/settings` - Update scalper settings
+- `POST /api/scalper/toggle` - Enable/disable scalper
+
+**Frontend:**
+- New "Scalper" tab in navigation
+- `/app/frontend/src/components/ScalperDashboard.jsx`
+- Live signals view with signal cards
+- Best opportunities view
+- Backtest tab with results visualization
+
+**Backtest Results (5m, 7 days):**
+- 364 total trades across 15 cryptos
+- Top performers: SOL (+5.11%), ARB (+4.89%), UNI (+3.18%)
+
+---
+
+## Previous Session - Dashboard Upgrade & Route Consolidation (DONE)
 
 ### Route Consolidation (P1) - DONE
 - Cleaned up `/app/backend/routes/analysis.py` - removed duplicate endpoints
