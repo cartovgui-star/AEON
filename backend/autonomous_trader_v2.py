@@ -673,8 +673,6 @@ class AutonomousTraderV2:
             "passed_all_filters": self.filter_stats.get("total_passed", 0),
             "pass_rate": f"{(self.filter_stats.get('total_passed', 0) / max(1, self.total_signals)) * 100:.1f}%"
         }
-        except Exception as e:
-            logger.error(f"Failed to save settings: {e}")
     
     async def save_open_trade(self, trade: Dict):
         """Persist an open trade to database"""
