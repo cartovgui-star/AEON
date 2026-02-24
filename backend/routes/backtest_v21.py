@@ -253,3 +253,185 @@ async def api_backtest_v21_compare(days: int = 30, interval: str = "1h"):
             "status": "error",
             "message": str(e)
         }
+
+
+
+class MultiConfidenceRequest(BaseModel):
+    symbols: Optional[List[str]] = ["BTC/USDT", "ETH/USDT", "SOL/USDT"]
+    days: Optional[int] = 30
+    confidence_levels: Optional[List[int]] = [65, 70, 75, 80, 85, 90]
+
+
+class MultiTimeframeRequest(BaseModel):
+    symbols: Optional[List[str]] = ["BTC/USDT", "ETH/USDT", "SOL/USDT"]
+    days: Optional[int] = 30
+    timeframes: Optional[List[str]] = ["15m", "1h", "4h"]
+    min_confidence: Optional[int] = 75
+
+
+@router.post("/multi-confidence")
+async def api_multi_confidence_backtest(request: MultiConfidenceRequest):
+    """
+    Run backtest across multiple confidence levels (65-90%)
+    to find the optimal confidence threshold.
+    
+    This helps answer: "What confidence % gives the best balance 
+    of win rate and trade frequency?"
+    """
+    try:
+        from backtest_v21 import run_multi_confidence_backtest
+        
+        result = await run_multi_confidence_backtest(
+            symbols=request.symbols,
+            days=request.days,
+            confidence_levels=request.confidence_levels
+        )
+        
+        return {
+            "status": "success",
+            "result": result
+        }
+        
+    except Exception as e:
+        logger.error(f"Multi-confidence backtest error: {e}")
+        return {
+            "status": "error",
+            "message": str(e)
+        }
+
+
+@router.post("/multi-timeframe")
+async def api_multi_timeframe_backtest(request: MultiTimeframeRequest):
+    """
+    Run backtest across multiple timeframes (15m, 1h, 4h)
+    to find which timeframe works best with V2.1 strategy.
+    
+    This helps answer: "Which timeframe gives the best signals?"
+    """
+    try:
+        from backtest_v21 import run_multi_timeframe_backtest
+        
+        result = await run_multi_timeframe_backtest(
+            symbols=request.symbols,
+            days=request.days,
+            timeframes=request.timeframes,
+            min_confidence=request.min_confidence
+        )
+        
+        return {
+            "status": "success",
+            "result": result
+        }
+        
+    except Exception as e:
+        logger.error(f"Multi-timeframe backtest error: {e}")
+        return {
+            "status": "error",
+            "message": str(e)
+        }
+
+
+@router.post("/comprehensive")
+async def api_comprehensive_backtest(
+    symbols: Optional[List[str]] = None,
+    days: int = 30
+):
+    """
+    Run comprehensive backtest testing:
+    1. Multiple confidence levels (65-90%)
+    2. Multiple timeframes (15m, 1h, 4h)
+    3. Find optimal combination
+    
+    This is the full analysis to find the best strategy settings.
+    Takes longer but provides complete insights.
+    """
+    try:
+        from backtest_v21 import run_comprehensive_backtest
+        
+        if symbols is None:
+            symbols = ["BTC/USDT", "ETH/USDT", "SOL/USDT"]
+        
+        result = await run_comprehensive_backtest(
+            symbols=symbols,
+            days=days
+        )
+        
+        return {
+            "status": "success",
+            "result": result
+        }
+        
+    except Exception as e:
+        logger.error(f"Comprehensive backtest error: {e}")
+        return {
+            "status": "error",
+            "message": str(e)
+        }
+
+
+@router.get("/confidence-range")
+async def api_quick_confidence_range(days: int = 30):
+    """
+    Quick test of confidence levels 65%, 75%, 85%, 90%
+    Returns win rate at each level for comparison
+    """
+    try:
+        from backtest_v21 import run_multi_confidence_backtest
+        
+        result = await run_multi_confidence_backtest(
+            symbols=["BTC/USDT", "ETH/USDT", "SOL/USDT"],
+            days=days,
+            confidence_levels=[65, 75, 85, 90]
+        )
+        
+        return {
+            "status": "success",
+            "data_source": "MEXC",
+            "days": days,
+            "results": result.get("results_by_confidence", []),
+            "optimal": result.get("optimal_confidence"),
+            "recommendation": result.get("recommendation"),
+            "timestamp": result.get("timestamp")
+        }
+        
+    except Exception as e:
+        logger.error(f"Confidence range test error: {e}")
+        return {
+            "status": "error",
+            "message": str(e)
+        }
+
+
+@router.get("/timeframe-comparison")
+async def api_timeframe_comparison(days: int = 30, confidence: int = 75):
+    """
+    Compare strategy performance across timeframes
+    using specified confidence level
+    """
+    try:
+        from backtest_v21 import run_multi_timeframe_backtest
+        
+        result = await run_multi_timeframe_backtest(
+            symbols=["BTC/USDT", "ETH/USDT", "SOL/USDT"],
+            days=days,
+            timeframes=["15m", "1h", "4h"],
+            min_confidence=confidence
+        )
+        
+        return {
+            "status": "success",
+            "data_source": "MEXC",
+            "days": days,
+            "confidence_used": confidence,
+            "results": result.get("results_by_timeframe", []),
+            "best_timeframe": result.get("best_timeframe"),
+            "recommendation": result.get("recommendation"),
+            "timestamp": result.get("timestamp")
+        }
+        
+    except Exception as e:
+        logger.error(f"Timeframe comparison error: {e}")
+        return {
+            "status": "error",
+            "message": str(e)
+        }
