@@ -122,11 +122,12 @@ class AutonomousTraderV2:
         self.db = db
         self.active = True  # Always active
         
-        # QUALITY MODE - High win rate focus
-        self.min_confidence = 80  # Higher threshold = better quality
-        self.min_confirmations = 3  # Need 3+ data sources agreeing
+        # V2.1 HIGH WIN RATE SETTINGS
+        self.min_confidence = 90  # Raised from 80% to 90%
+        self.min_confirmations = 5  # Raised from 3 to 5 (ALL must agree)
+        self.min_rr_ratio = 3.0  # Raised from 2:1 to 3:1
         
-        # LEVERAGE SETTINGS (Bot has FREE WILL to choose)
+        # LEVERAGE SETTINGS (Bot has FREE WILL to choose - UNCHANGED)
         self.max_leverage = 200  # Up to 200x
         self.min_leverage = 10   # Minimum 10x
         self.dynamic_leverage = True  # Auto-adjust based on confidence
@@ -136,11 +137,28 @@ class AutonomousTraderV2:
         self.max_position_pct = 15   # Max 15% for highest confidence
         self.default_position_size = 1000  # $1000 per trade base
         
-        # Risk management (tighter stops)
-        self.max_open_trades = 15  # Can hold multiple positions
-        self.default_stop_atr = 1.0  # Tighter stop 1x ATR
-        self.default_target_atr = 2.5  # 2.5x ATR for target (2.5:1 R:R)
-        # NO daily trade limit - trade when DATA says to trade
+        # Risk management (tighter controls)
+        self.max_open_trades = 5  # Reduced from 15 to 5
+        self.default_stop_atr = 1.5  # 1.5x ATR (bounded 1-2x)
+        self.default_target_atr = 4.5  # 4.5x ATR for 3:1 R:R
+        
+        # NEW: 200 EMA Trend Filter
+        self.ema_200_filter_enabled = True
+        self.ema_no_trade_zone_pct = 0.5  # Skip if within 0.5% of 200 EMA
+        
+        # NEW: ADX Trending Filter
+        self.adx_filter_enabled = True
+        self.min_adx = 25  # Only trade when ADX > 25 (trending market)
+        
+        # NEW: Volume Confirmation
+        self.volume_filter_enabled = True
+        self.min_volume_multiplier = 1.5  # 1.5x 20-period average
+        
+        # NEW: Session Filter (for SCALP/DAY only)
+        self.session_filter_enabled = True
+        # London: 3:00 AM - 12:00 PM EST = 8:00 - 17:00 UTC
+        # NY: 8:00 AM - 5:00 PM EST = 13:00 - 22:00 UTC
+        # Avoid: 5:00 PM - 3:00 AM EST = 22:00 - 8:00 UTC
         
         # Trade tracking
         self.open_trades: List[Dict] = []
@@ -150,16 +168,30 @@ class AutonomousTraderV2:
         self.daily_trades = 0
         self.last_trade_date = None
         
+        # Filter statistics (for reporting)
+        self.filter_stats = {
+            "ema_200_filtered": 0,
+            "adx_filtered": 0,
+            "volume_filtered": 0,
+            "session_filtered": 0,
+            "confidence_filtered": 0,
+            "rr_filtered": 0,
+            "rsi_trend_filtered": 0,
+            "total_passed": 0
+        }
+        
         # Pair management
         self.pair_cooldowns: Dict[str, datetime] = {}  # Cooldown after loss
         self.pair_stats: Dict[str, Dict] = {}  # Win/loss per pair
         self.blacklisted_pairs: List[str] = []  # Auto-blacklist bad performers
         self.cooldown_hours = 4  # Wait 4h after loss on same pair
         
-        # Position Scaling Settings
+        # Position Scaling Settings (IMPROVED)
         self.position_scaling_enabled = True  # Enable scaled entries
         self.initial_entry_pct = 50  # 50% position on initial signal
         self.scale_in_pct = 50  # 50% on confirmation
+        self.scale_in_min_profit_pct = 0.5  # Must be 0.5% profitable (raised from 0.3%)
+        self.scale_in_max_hours = 2  # Cancel scale-in after 2 hours
         self.pending_scale_ins: Dict[str, Dict] = {}  # Tracks positions waiting for scale-in
         
         # Market state
