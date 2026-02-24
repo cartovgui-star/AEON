@@ -279,7 +279,18 @@ class AggressiveScalper:
         target = current_close * (1 + self.settings['profit_target_pct']/100) if signal == 1 else \
                  current_close * (1 - self.settings['profit_target_pct']/100) if signal == -1 else 0
         
-        return {
+        # Check for reversal patterns (for exit recommendations)
+        reversal_exit = None
+        if self.settings.get('use_reversal_exits', True) and len(ohlcv) >= 10:
+            candles = [{'open': o[1], 'high': o[2], 'low': o[3], 'close': o[4]} for o in ohlcv[-10:]]
+            rsi_values = [self.calculate_rsi(closes[:i+1], self.settings['momentum_period']) for i in range(len(closes)-10, len(closes))]
+            
+            # Check if we should exit based on reversal patterns
+            if signal != 0:
+                position_type = "LONG" if signal == 1 else "SHORT"
+                reversal_exit = reversal_detector.analyze_exit_signals(candles, rsi_values, position_type)
+        
+        result = {
             'symbol': symbol,
             'timeframe': timeframe,
             'signal': signal,  # 1=BUY, -1=SELL, 0=HOLD
@@ -291,8 +302,15 @@ class AggressiveScalper:
             'roc': round(roc, 2),
             'stop_loss': round(stop_loss, 4) if stop_loss else None,
             'target': round(target, 4) if target else None,
+            'reversal_warning': reversal_exit if reversal_exit and reversal_exit.get('should_exit') else None,
             'timestamp': datetime.now(timezone.utc).isoformat(),
         }
+        
+        # Send to V2.1 if enabled and signal is strong
+        if signal != 0 and self.settings.get('send_to_v2', True):
+            await v2_integration.queue_signal(result)
+        
+        return result
     
     async def scan_all_symbols(self, timeframe: str = '5m') -> List[Dict]:
         """Scan all symbols for scalp signals on a specific timeframe"""
