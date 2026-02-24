@@ -473,7 +473,20 @@ All alerts now include: WHY, WHAT TO EXPECT, IF WRONG, PREPARATION
 
 ## API Endpoints Summary
 
-### New Endpoints (This Session)
+### New Endpoints (This Session - Auto-Learning Scalper)
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| /api/scalper/learning/status | GET | Auto-learning status & performance |
+| /api/scalper/learning/optimize | POST | Force optimization |
+| /api/scalper/learning/performance | GET | Detailed performance analysis |
+| /api/scalper/learning/toggle | POST | Enable/disable auto-learning |
+| /api/scalper/v2/status | GET | V2.1 integration status |
+| /api/scalper/v2/toggle | POST | Enable/disable V2.1 integration |
+| /api/scalper/v2/queued | GET | Signals queued for V2.1 |
+| /api/scalper/reversals/analyze/{symbol} | GET | Reversal pattern detection |
+| /api/scalper/reversals/toggle | POST | Enable/disable reversal exits |
+
+### Previous Endpoints
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | /api/system/health | GET | Self-healer status (5 services) |
