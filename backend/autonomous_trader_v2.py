@@ -1436,19 +1436,88 @@ class AutonomousTraderV2:
     # SCANNING & TRADE EXECUTION
     # ═══════════════════════════════════════════════════════════════════════════
     
+    async def process_scalper_signals(self) -> List[Dict]:
+        """
+        Process signals from the Aggressive Scalper via V2 integration.
+        This allows the scalper to run independently while feeding high-confidence
+        signals to the main V2.1 trading engine.
+        
+        Returns: List of scalper signals converted to V2.1 format
+        """
+        try:
+            from scalper_learning import v2_integration
+            
+            # Get queued signals from scalper
+            scalper_signals = v2_integration.get_queued_signals()
+            
+            if not scalper_signals:
+                return []
+            
+            converted = []
+            for sig in scalper_signals:
+                # Convert scalper signal to V2.1 format
+                v2_signal = {
+                    "symbol": sig.get("symbol"),
+                    "timeframe": sig.get("timeframe", "5m"),
+                    "direction": sig.get("direction"),
+                    "confidence": sig.get("confidence", 75),
+                    "confirmations": [
+                        f"SCALPER_STR_{sig.get('scalper_strength', 0)}",
+                        f"VOL_{sig.get('volume_ratio', 1.0):.1f}x",
+                        f"RSI_{sig.get('rsi', 50):.0f}",
+                        sig.get("reason", "Scalper signal")
+                    ],
+                    "confirmation_count": 4,
+                    "price": sig.get("entry_price", 0),
+                    "entry": sig.get("entry_price", 0),
+                    "entry_type": "SCALPER",
+                    "stop": sig.get("stop_loss", 0),
+                    "target": sig.get("take_profit", 0),
+                    "partial_target": sig.get("entry_price", 0) * (1.01 if sig.get("direction") == "LONG" else 0.99),
+                    "risk_reward": 3.0,  # Scalper default R:R
+                    "atr": 0,  # Will be calculated
+                    "atr_pct": None,
+                    "trade_type": "SCALP",  # Scalper signals are always SCALP style
+                    "conf_level": "SCALPER",
+                    "position_size_pct": 5,
+                    "session": self.get_current_session(),
+                    "market_regime": self.market_regime,
+                    "btc_bias": self.btc_bias,
+                    "fear_greed": self.fear_greed,
+                    "source": "SCALPER",
+                    "timestamp": sig.get("timestamp", datetime.now(timezone.utc).isoformat())
+                }
+                converted.append(v2_signal)
+                logger.info(f"⚡ SCALPER→V2.1: {sig.get('symbol')} {sig.get('direction')} (str={sig.get('scalper_strength')})")
+            
+            return converted
+            
+        except ImportError:
+            logger.debug("Scalper integration not available")
+            return []
+        except Exception as e:
+            logger.error(f"Error processing scalper signals: {e}")
+            return []
+    
     async def scan_all_markets(self) -> List[Dict]:
-        """Scan all pairs for quality signals"""
+        """Scan all pairs for quality signals, including scalper signals"""
         signals = []
         
         # Update market regime first
         await self.detect_market_regime()
         
+        # First, process any queued scalper signals
+        scalper_signals = await self.process_scalper_signals()
+        for sig in scalper_signals:
+            signals.append(sig)
+        
+        # Then scan traditional markets
         for symbol in TRADING_PAIRS:
             for tf in TIMEFRAMES:
                 signal = await self.analyze_signal(symbol, tf)
                 
                 if signal:
-                    # Check if we already have a signal for this symbol
+                    # Check if we already have a signal for this symbol (including from scalper)
                     existing = [s for s in signals if s["symbol"] == symbol]
                     if existing:
                         # Keep higher confidence signal
