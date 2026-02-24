@@ -743,12 +743,17 @@ class BacktestV21Engine:
 
 
 async def main():
-    engine = BacktestEngine()
+    engine = BacktestV21Engine()
     results = await engine.run_full_backtest(
-        symbols=["BTCUSDT", "ETHUSDT", "SOLUSDT"],
+        symbols=["BTC/USDT", "ETH/USDT", "SOL/USDT"],
+        interval="1h",
         days=30
     )
     return results
+
+
+# Global instance for API access
+backtest_v21_engine = BacktestV21Engine()
 
 
 if __name__ == "__main__":
