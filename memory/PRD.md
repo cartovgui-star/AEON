@@ -12,72 +12,63 @@ Build a sophisticated trading bot named "Aeon" with:
 
 ---
 
-## Latest Session (Feb 24, 2026) - V2.1 Backtest System
+## Latest Session (Feb 24, 2026) - Multi-Confidence & Multi-Timeframe Backtesting
 
-### V2.1 Strategy Backtest (P0) - DONE
-Built comprehensive backtest system for the V2.1 HIGH WIN RATE strategy using MEXC historical data.
+### Multi-Confidence Backtesting (P0) - DONE
+Added ability to test confidence levels from 65% to 90% to find optimal threshold.
 
-**Backend:**
-- Created `/app/backend/backtest_v21.py` - BacktestV21Engine using MEXC data
-- Created `/app/backend/routes/backtest_v21.py` - API routes for backtest
-- API endpoints:
-  - `GET /api/backtest/v21/settings` - V2.1 filter settings
-  - `GET /api/backtest/v21/status` - Backtest status (is_running, progress)
-  - `GET /api/backtest/v21/result` - Last backtest result
-  - `POST /api/backtest/v21/run` - Start async backtest
-  - `GET /api/backtest/v21/quick/{symbol}` - Sync single-symbol backtest
-  - `GET /api/backtest/v21/compare` - Compare BTC/ETH/SOL
+**New Backend Endpoints:**
+- `GET /api/backtest/v21/confidence-range?days=30` - Test 65%, 75%, 85%, 90% confidence
+- `POST /api/backtest/v21/multi-confidence` - Custom confidence level array
+- `GET /api/backtest/v21/timeframe-comparison?days=30&confidence=75` - Compare 15m/1h/4h
+- `POST /api/backtest/v21/multi-timeframe` - Custom timeframe testing
+- `POST /api/backtest/v21/comprehensive` - Full analysis (all confidence + all timeframes)
 
-**Frontend:**
-- Created `/app/frontend/src/components/BacktestV21.jsx` - Dedicated page
-- Created `/app/frontend/src/components/BacktestV21Modal.jsx` - Quick access modal
-- Added "V2.1 Test" to main navigation
-- Added "V2.1 Backtest" button to Dashboard quick actions
+**New Backend Functions:**
+- `run_multi_confidence_backtest()` - Test multiple confidence thresholds
+- `run_multi_timeframe_backtest()` - Test multiple timeframes
+- `run_comprehensive_backtest()` - Combined analysis finding optimal combo
 
-**V2.1 Filters Tested:**
-- 200 EMA Trend Filter (LONG only above, SHORT only below)
-- ADX > 25 (trending market required)
-- Volume > 1.5x 20-period average
-- Session Filter (London/NY for SCALP/DAY)
-- 90% Minimum Confidence
-- 5/5 Confirmations Required
-- 3:1 Minimum R:R Ratio
+**Frontend Updates:**
+- Added Test Mode selector: Standard Test | Confidence Range | Multi-Timeframe
+- Added `ConfidenceRangeChart` component with bar chart visualization
+- Added `TimeframeComparisonChart` component with bar chart visualization
+- Dynamic run button text based on selected mode
+- Mode-specific help text explaining what each test does
 
-**Results Display:**
-- Win rate comparison (old 19% vs new V2.1)
-- Signal reduction percentage (97% fewer low-quality signals)
-- Filter effectiveness breakdown
-- Results by symbol (BTC, ETH, SOL)
-- Recent simulated trades table
-- Recommendations based on results
+**Key Results:**
+- 15m timeframe with 65% confidence: 25% WR with 16 trades (best combination)
+- 1h/4h timeframes show 0 trades (filters too strict)
+- Data confirms lower confidence + faster timeframe = more trades
 
 ---
 
-## Previous Session - V2.1 HIGH WIN RATE MODE Implementation
+## Previous Session - V2.1 Backtest System (DONE)
+Built comprehensive backtest system for the V2.1 HIGH WIN RATE strategy using MEXC historical data.
 
-### Trading Strategy Overhaul (P0) - DONE
-Implemented comprehensive new trading rules to fix 19% win rate:
+**API Endpoints:**
+- `GET /api/backtest/v21/settings` - V2.1 filter settings
+- `GET /api/backtest/v21/status` - Backtest status
+- `GET /api/backtest/v21/result` - Last backtest result
+- `POST /api/backtest/v21/run` - Start async backtest
+- `GET /api/backtest/v21/quick/{symbol}` - Sync single-symbol backtest
+- `GET /api/backtest/v21/compare` - Compare BTC/ETH/SOL
+
+**V2.1 Filters:**
+- 200 EMA Trend Filter, ADX > 25, Volume > 1.5x average
+- Session Filter (London/NY), 90% Confidence, 5/5 Confirmations, 3:1 R:R
+
+---
+
+## V2.1 HIGH WIN RATE MODE Implementation (DONE)
 - 200 EMA Trend Filter (trades must align with long-term trend)
 - ADX Market Condition Filter (trades only when ADX > 25)
-- Volume Confirmation (signal candle volume must be >1.5x the 20-period average)
-- Session Filter (restricts SCALP/DAY trades to London/NY sessions)
+- Volume Confirmation (1.5x 20-period average)
+- Session Filter (London/NY for SCALP/DAY)
 - Increased requirements: 90% confidence, 5/5 confirmations, 3:1 R:R
 - Reduced max open positions from 15 to 5
-- Improved RSI logic to be trend-aware
-- Fixed position scaling to require profit before scaling in
-- Added Smarter Stop Loss placement based on support/resistance levels
-
-### Dynamic Trade Styles (P0) - DONE
-- Fixed trade style assignment that was defaulting to SWING
-- `determine_trade_style()` now uses ATR volatility percentage:
-  - ATR > 2% (high vol): Prefers SCALP/DAY styles
-  - ATR 1-2% (medium): Standard timeframe-based logic
-  - ATR < 0.5% (low vol): Prefers longer holds (SWING)
-- Trade styles now dynamically assigned: SCALP, DAY, or SWING based on market conditions
-- Both `analyze_signal()` and `take_trade()` use the new logic
-
-### Position Scaling (P1) - NEW
-- Implemented 50/50 scaled entry system
+- Trend-aware RSI logic
+- Support/resistance-based stop losses
 - Initial entry: 50% of position size on signal
 - Scale-in: 50% when position moves 0.3-1.5% in favor (confirmation)
 - New methods: `calculate_scaled_position()`, `check_scale_in_opportunities()`
