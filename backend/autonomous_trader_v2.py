@@ -1099,6 +1099,21 @@ class AutonomousTraderV2:
             if trade["symbol"] == signal["symbol"]:
                 return {"error": f"Already in {signal['symbol']}"}
         
+        # Calculate ATR percentage for dynamic trade style
+        price = signal.get("price", signal.get("entry", 0))
+        atr = signal.get("atr", 0)
+        atr_pct = (atr / price * 100) if price > 0 else None
+        
+        # Determine trade style dynamically based on timeframe AND volatility
+        trade_style = self.determine_trade_style(
+            timeframe=signal["timeframe"],
+            confidence=signal["confidence"],
+            atr_pct=atr_pct
+        )
+        
+        # Get style config for leverage calculation
+        style_config = self.get_trade_style_config(trade_style)
+        
         trade = {
             "id": f"trade_{self.total_trades + 1}",
             "symbol": signal["symbol"],
@@ -1109,11 +1124,12 @@ class AutonomousTraderV2:
             "partial_target": signal["partial_target"],
             "position_size_pct": signal["position_size_pct"],
             "position_size": self.calculate_position_size(signal["confidence"], signal.get("position_size_pct", 2)),
-            "leverage": self.calculate_leverage(signal["confidence"]),
+            "leverage": self.calculate_leverage(signal["confidence"], trade_style=trade_style, atr_pct=atr_pct),
             "confidence": signal["confidence"],
             "confirmations": signal["confirmations"],
             "timeframe": signal["timeframe"],
-            "trade_type": "SCALP" if signal["timeframe"] in ["5m", "15m"] else "DAY" if signal["timeframe"] == "1h" else "SWING",
+            "trade_type": trade_style,
+            "atr_pct": round(atr_pct, 3) if atr_pct else None,
             "entry_time": datetime.now(timezone.utc),
             "status": "OPEN",
             "partial_closed": False,
