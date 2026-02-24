@@ -223,7 +223,7 @@ class AutoLearningSystem:
         
     async def load_from_db(self):
         """Load learning history from database"""
-        if not scalper_params_collection:
+        if scalper_params_collection is None:
             return
         
         try:
