@@ -139,6 +139,51 @@ last_freewill_message: Dict[int, datetime] = {}
 daily_reports_sent: Dict[str, List[int]] = {}
 stock_reports_sent: Dict[str, List[int]] = {}
 
+# Model configurations for multi-model switching
+MODEL_CONFIGS = {
+    "gpt": {
+        "provider": "openai",
+        "model": "gpt-4o",
+        "display_name": "GPT-4o",
+        "description": "Fast, direct responses - good for quick answers"
+    },
+    "claude": {
+        "provider": "anthropic",
+        "model": "claude-sonnet-4-5-20250929",
+        "display_name": "Claude Sonnet 4.5",
+        "description": "Detailed, nuanced responses - great for analysis"
+    }
+}
+DEFAULT_MODEL = "gpt"
+
+async def get_user_model(chat_id: int) -> str:
+    """Get user's preferred AI model from database"""
+    try:
+        settings = await db.user_settings.find_one({"chat_id": chat_id})
+        if settings and settings.get("ai_model"):
+            return settings.get("ai_model")
+    except:
+        pass
+    return DEFAULT_MODEL
+
+async def set_user_model(chat_id: int, model: str) -> bool:
+    """Set user's preferred AI model in database"""
+    if model not in MODEL_CONFIGS:
+        return False
+    try:
+        await db.user_settings.update_one(
+            {"chat_id": chat_id},
+            {"$set": {"ai_model": model, "model_updated_at": datetime.now(timezone.utc)}},
+            upsert=True
+        )
+        return True
+    except:
+        return False
+
+def get_model_config(model_key: str) -> Dict:
+    """Get model configuration"""
+    return MODEL_CONFIGS.get(model_key, MODEL_CONFIGS[DEFAULT_MODEL])
+
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # AEON PERSONA SYSTEM
