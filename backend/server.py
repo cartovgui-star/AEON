@@ -1670,29 +1670,27 @@ The engine learns 24/7 and sends daily summaries at 9 PM CT!"""
             from aggressive_scalper import scalper
             from scalper_learning import auto_learner, v2_integration
             
-            status = scalper.get_status()
-            learning = auto_learner.get_status()
-            v2_status = v2_integration.get_status()
+            settings = scalper.get_settings()
+            learning = await scalper.get_learning_status()
+            v2_status = await scalper.get_v2_integration_status()
             
             response = f"""⚡ AGGRESSIVE SCALPER
 
-Status: {'🟢 ACTIVE' if status['enabled'] else '🔴 PAUSED'}
-Active Signals: {status['active_signals']}
+Status: {'🟢 ACTIVE' if settings.get('enabled', True) else '🔴 PAUSED'}
 
 ⚙️ SETTINGS
-• Profit Target: {status['settings_summary']['profit_target']}
-• Stop Loss: {status['settings_summary']['stop_loss']}
-• Volume Threshold: {status['settings_summary']['volume_threshold']}
-• RSI Range: {status['settings_summary']['rsi_range']}
+• Profit Target: {settings.get('profit_target', 0.8)}%
+• Stop Loss: {settings.get('stop_loss', 0.4)}%
+• Volume Threshold: {settings.get('volume_threshold', 1.5)}x
+• RSI Range: {settings.get('rsi_oversold', 30)}-{settings.get('rsi_overbought', 70)}
 
 🧠 AUTO-LEARNING
 • Status: {'ON' if learning.get('auto_learn_enabled') else 'OFF'}
-• Last Optimized: {learning.get('last_optimization', 'Never')[:16] if learning.get('last_optimization') else 'Never'}
+• Optimizations: {learning.get('optimizations_run', 0)}
 
 🔗 V2.1 INTEGRATION
-• Status: {'CONNECTED' if v2_status.get('v2_integration_enabled') else 'DISABLED'}
-• Min Strength: {v2_status.get('min_strength_for_v2', 2)}
-• Queued Signals: {v2_status.get('queued_signals', 0)}
+• Status: {'CONNECTED' if v2_status.get('enabled') else 'DISABLED'}
+• Queued Signals: {v2_status.get('queued_count', 0)}
 
 Scalper runs alongside V2.1 with auto-learning!"""
             context = "scalper"
