@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   Settings, Save, RotateCcw, Bot, Bell, Volume2, Shield, Clock, TrendingUp, 
   User, Brain, Zap, Target, Mic, MicOff, Play, Loader2, Send, 
-  ChevronDown, ChevronUp, Info, AlertTriangle, CheckCircle2, Power
+  ChevronDown, ChevronUp, Info, AlertTriangle, CheckCircle2, Power,
+  Sun, Calendar, RefreshCw
 } from 'lucide-react';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
