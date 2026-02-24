@@ -576,9 +576,10 @@ All alerts now include: WHY, WHAT TO EXPECT, IF WRONG, PREPARATION
 | Long Term | ACTIVE | 88% conf, 4h/1d |
 | Free Will v2 | ACTIVE | 80% conf, scan bug fixed |
 | Aggressive Scalper | ACTIVE | Auto-learning enabled, V2.1 integrated |
+| Morning Briefing | ACTIVE | 6 AM CT daily, 38 users |
 | Paper Trading | ACTIVE | 9 closed, ~9 open trades |
 | Price Alerts v2 | ACTIVE | Batched RSI, vol-confirmed breakouts |
-| Self-Healer | ACTIVE | 5 services monitored |
+| Self-Healer | ACTIVE | 6 services monitored (incl. briefing) |
 | Sentiment | ACTIVE | News + Fear/Greed |
 | Arbitrage | ACTIVE | 5 exchanges |
 | Strategy Health | ACTIVE | Auto-bench enabled |
