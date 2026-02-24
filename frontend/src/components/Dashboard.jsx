@@ -298,6 +298,123 @@ export default function Dashboard({
         </Card>
       )}
 
+      {/* Performance & Risk Management Stats */}
+      {dashboardStats && (
+        <div className="grid md:grid-cols-3 gap-4" data-testid="dashboard-stats">
+          {/* Best Performing Pairs */}
+          <Card className="bg-zinc-800/30 border-zinc-700/50">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <ThumbsUp className="w-5 h-5 text-green-400" />
+                <span className="text-white font-medium">Best Pairs</span>
+              </div>
+              <div className="space-y-2">
+                {dashboardStats.best_pairs?.length > 0 ? (
+                  dashboardStats.best_pairs.map((pair, i) => (
+                    <div key={i} className="flex items-center justify-between py-1 border-b border-zinc-800 last:border-0">
+                      <span className="text-zinc-300">{pair.symbol?.replace('/USDT', '')}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-green-400 font-medium">{pair.win_rate?.toFixed(0)}%</span>
+                        <span className="text-zinc-500 text-xs">({pair.trades} trades)</span>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-zinc-500 text-sm">No data yet</p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Worst Performing Pairs */}
+          <Card className="bg-zinc-800/30 border-zinc-700/50">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <ThumbsDown className="w-5 h-5 text-red-400" />
+                <span className="text-white font-medium">Worst Pairs</span>
+              </div>
+              <div className="space-y-2">
+                {dashboardStats.worst_pairs?.length > 0 ? (
+                  dashboardStats.worst_pairs.map((pair, i) => (
+                    <div key={i} className="flex items-center justify-between py-1 border-b border-zinc-800 last:border-0">
+                      <span className="text-zinc-300">{pair.symbol?.replace('/USDT', '')}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-red-400 font-medium">{pair.win_rate?.toFixed(0)}%</span>
+                        <span className="text-zinc-500 text-xs">({pair.trades} trades)</span>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-zinc-500 text-sm">No data yet</p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Blacklist & Cooldowns */}
+          <Card className="bg-zinc-800/30 border-zinc-700/50">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Ban className="w-5 h-5 text-yellow-400" />
+                <span className="text-white font-medium">Risk Management</span>
+              </div>
+              <div className="space-y-3">
+                {/* Blacklisted */}
+                <div>
+                  <p className="text-zinc-500 text-xs mb-1">Auto-Blacklisted ({dashboardStats.blacklisted_pairs?.length || 0})</p>
+                  {dashboardStats.blacklisted_pairs?.length > 0 ? (
+                    <div className="flex flex-wrap gap-1">
+                      {dashboardStats.blacklisted_pairs.map((pair, i) => (
+                        <span key={i} className="px-2 py-0.5 bg-red-500/20 text-red-400 text-xs rounded">
+                          {pair.replace('/USDT', '')}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-green-400 text-xs">None</p>
+                  )}
+                </div>
+                
+                {/* Cooldowns */}
+                <div>
+                  <p className="text-zinc-500 text-xs mb-1">On Cooldown ({dashboardStats.pairs_on_cooldown?.length || 0})</p>
+                  {dashboardStats.pairs_on_cooldown?.length > 0 ? (
+                    <div className="flex flex-wrap gap-1">
+                      {dashboardStats.pairs_on_cooldown.map((pair, i) => (
+                        <span key={i} className="px-2 py-0.5 bg-yellow-500/20 text-yellow-400 text-xs rounded flex items-center gap-1">
+                          <Timer className="w-3 h-3" />
+                          {pair.symbol?.replace('/USDT', '')} ({pair.minutes_left}m)
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-green-400 text-xs">None</p>
+                  )}
+                </div>
+
+                {/* Position Scaling */}
+                <div className="pt-2 border-t border-zinc-700">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1">
+                      <Scale className="w-3 h-3 text-cyan-400" />
+                      <span className="text-zinc-400 text-xs">Position Scaling</span>
+                    </div>
+                    <span className={`text-xs font-medium ${dashboardStats.position_scaling?.enabled ? 'text-green-400' : 'text-zinc-500'}`}>
+                      {dashboardStats.position_scaling?.enabled ? 'ON' : 'OFF'}
+                    </span>
+                  </div>
+                  {dashboardStats.position_scaling?.pending_scale_ins > 0 && (
+                    <p className="text-cyan-400 text-xs mt-1">
+                      {dashboardStats.position_scaling.pending_scale_ins} positions awaiting scale-in
+                    </p>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       {/* Market Data */}
       <div className="space-y-4">
         <h2 className="text-lg font-semibold text-white flex items-center gap-2">
