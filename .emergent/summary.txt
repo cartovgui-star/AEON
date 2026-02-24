@@ -1,143 +1,79 @@
 <analysis>**original_problem_statement**: The user wants to build a sophisticated crypto trading bot named Aeon.
 
 **PRODUCT REQUIREMENTS**:
-1.  **Autonomous Paper Trading**: The bot should trade autonomously using simulated trades based on real market data. The logic has been refined multiple times to be a Technicals Only Mode.
-2.  **Advanced Conversational AI**: The bot needs a sophisticated personality (Aeon) and the ability to respond via text and voice, without repeating questions.
+1.  **Autonomous Paper Trading**: The bot should trade autonomously using simulated trades based on real market data. The strategy has been iteratively refined to improve a low win rate.
+2.  **Advanced Conversational AI**: The bot needs a sophisticated personality (Aeon) and the ability to respond via text and voice.
 3.  **Enhanced UI/UX**:
     *   A main dashboard for key stats and market data.
-    *   A detailed trading UI with a professional, exchange-style calling card modal for position management.
+    *   A detailed trading UI and a complete trade history page with modals for deep-diving into trade specifics and the bot's logic.
     *   A UI settings panel to control the bot's trading features.
-4.  **Alerts & Notifications**: An alert system that provides detailed, data-driven reasoning for every signal. The format for this has been specifically defined by the user.
-5.  **Telegram Bot**: The primary interface for interaction, with a comprehensive list of commands for analysis, trading, and performance tracking.
-6.  **Performance Tracking & Improvement**: Track alert accuracy, PnL, and win rate. Implement features to improve performance, such as blacklisting bad pairs and cooldowns after losses. A leaderboard feature has been added.
-7.  **Dynamic & Intelligent Trading Logic**:
-    *   Use a weighted confluence score based on Technicals, Market Structure, and Derivatives.
-    *   Dynamically calculate position size (Kelly Criterion) and leverage (ATR-based).
-    *   Implement Exit Intelligence to manage trades effectively.
-    *   Trade 24/7 based purely on data and price action, with no session or daily limits.
+4.  **Alerts & Notifications**: An alert system that provides detailed, data-driven reasoning for every signal.
+5.  **Telegram Bot**: The primary interface for interaction, with a comprehensive list of commands.
+6.  **Performance Tracking & Improvement**: Track alert accuracy, PnL, and win rate. The primary goal is to improve the bot's profitability from a 19% win rate.
+7.  **Dynamic & Intelligent Trading Logic (V2.1 - HIGH WIN RATE MODE)**: The user mandated a complete overhaul of the trading logic to fix the low win rate. This includes:
+    *   **Strict Filters**: 200 EMA trend, ADX market condition, session timing, and volume confirmation.
+    *   **Higher Standards**: 90% confidence, 5/5 confirmations, and 3:1 R:R.
+    *   **Smarter Logic**: Trend-aware RSI, support/resistance-based stop losses.
+    *   **Refined Mechanics**: Improved position scaling and reduced max open positions.
 
 **User's preferred language**: en
 
 **what currently exists?**
-The application is a functional full-stack crypto trading bot (React + FastAPI + MongoDB). The bot trades autonomously based on a Technicals Only engine defined by the user. Key features include a web dashboard, a detailed trading UI with a professional position modal, voice/text chat with the AI personality Aeon, and a comprehensive Telegram bot with over 50 commands.
+The application is a full-stack crypto trading bot with a React frontend, FastAPI backend, and MongoDB. The agent has just completed a major overhaul of the trading engine, implementing V2.1 - HIGH WIN RATE MODE with a comprehensive set of strict new rules as specified by the user to fix the bot's low (19%) win rate.
 
-In this session, the agent fixed major UI bugs, completed a large backend refactoring, and iteratively implemented a highly specific set of trading rules requested by the user. This included a new confluence scoring system, Kelly Criterion for position sizing, ATR-based leverage, and removing all sentiment-based logic (like Fear & Greed) in favor of pure price action. The agent also added performance-enhancing features like auto-blacklisting failing pairs, cooldown periods after losses, and momentum-based exit logic. A critical bug preventing trades was found and fixed.
+Additionally, the agent implemented several significant features in this session: a new dashboard stats section, a file download endpoint for documentation, and a complete trade history page with a detailed modal for viewing individual trades and a breakdown of the new trading logic. The agent also debugged a critical issue where new settings were not loading due to updates being applied to the wrong database instance.
 
 **Last working item**:
--   **Last item agent was working**: The user observed that trades might be defaulting to the SWING style. The agent was in the process of investigating  to ensure trade styles (SCALP, DAY, SWING) are being assigned dynamically based on the market setup and timeframe analysis, not just defaulting to one style.
--   **Status**: IN PROGRESS
+-   **Last item agent was working**: The user requested a backtest to validate the new V2.1 - HIGH WIN RATE MODE strategy. The agent was preparing to create a backtesting script to run the new logic against 30 days of historical data for BTC, ETH, and SOL to measure the expected win rate improvement and see which filters were most effective.
+-   **Status**: NOT STARTED
 -   **Agent Testing Done**: N
--   **Which testing method agent to use?**: manual testing by curl. After implementing the fix, the agent should monitor the backend logs for new trades or manually trigger analysis to verify that different trade styles () are being assigned in the  output.
+-   **Which testing method agent to use?**: backend testing agent. The agent should create a new backtesting service/script (e.g., ), which will fetch historical data, apply the  logic from  to each data point, and generate a report summarizing the performance (win rate, total trades, filtered trades per rule).
 -   **User Testing Done**: N
 
 **All Pending/In progress Issue list**:
--   Issue 1: Trade styles are not dynamic (P0)
-
-**Issues Detail**:
--   **Issue 1: Trade styles are not dynamic**
-    -   **Description**: The user noticed that most or all trades are being classified as SWING trades. The logic in  within  needs to be reviewed and potentially corrected to ensure it properly assigns SCALP, DAY, or SWING based on technical indicators and market volatility.
-    -   **Attempted fixes**: The agent was viewing the relevant files ( and ) but had not yet applied a fix.
-    -   **Next debug checklist**:
-        1.  Examine the  function in .
-        2.  Analyze its inputs (e.g., volatility, timeframe data) and the logic that determines the output style.
-        3.  Adjust the logic to create more distinct conditions for SCALP and DAY trades. For example, use ATR or Bollinger Band width to differentiate between low and high volatility environments suitable for different styles.
-        4.  Ensure the  function correctly calls this and uses its output.
-    -   **Why fix this issue and what will be achieved with the fix?**: This will ensure the bot uses the correct leverage and risk management parameters appropriate for the current market conditions, fulfilling a core design requirement.
-    -   **Status**: IN PROGRESS
-    -   **Is recurring issue?**: N
-    -   **Should Test frontend/backend/both after fix?**: Backend
-    -   **Blocked on other issue**: None
-
-**In progress Task List**:
 -   None.
 
+**In progress Task List**:
+-   Task 1: Backtest the new V2.1 HIGH WIN RATE MODE strategy (P0)
+
+**Task Detail**:
+-   **Task 1: Backtest the new V2.1 Trading Strategy**
+    -   **Where to resume**: Create a new backtesting script/service in the backend. This script needs to:
+        1.  Fetch at least 30 days of historical data (OHLCV) for BTC, ETH, and SOL.
+        2.  Iterate through the data, applying the full V2.1  logic from  to simulate trade decisions.
+        3.  Track the outcome of simulated trades.
+        4.  Aggregate statistics on win rate, total trades, and the number of trades filtered out by each new rule (EMA, ADX, Volume, etc.).
+        5.  Create a new API endpoint to expose these backtest results.
+        6.  Display the results on the frontend, potentially in a new Backtest tab or modal.
+    -   **What will be achieved with this?**: This will validate the effectiveness of the new, stricter trading rules and provide the user with data-driven evidence of the expected performance improvement, as requested.
+    -   **Status**: NOT STARTED
+    -   **Should Test frontend/backend/both after fix?**: Both
+    -   **Blocked on something**: None
+
 **Upcoming and Future Tasks**
--   **(P1) Implement Position Scaling**: The user approved adding position scaling (e.g., 50% entry on signal, 50% on confirmation) to improve entry quality. This needs to be implemented in .
--   **(P1) Add Full Dashboard Stats UI**: A  endpoint was created to show best/worst pairs and blacklist status. This data needs to be fetched and displayed on the frontend dashboard.
--   **(P2) Implement Backtest Before Live**: A user-approved feature where every new signal is backtested on recent data before a paper trade is opened. Only signals from patterns with a proven win rate (>60%) should be traded.
--   **(P2) Consolidate Backend Routes**: The agent previously identified overlapping route files ( + ,  + ). These should be consolidated to improve code maintainability.
--   **(P2) Enhance Exit Intelligence**: The current logic has a momentum fade check. This could be further improved by adding more sophisticated exit reasons, such as detecting reversal patterns on a lower timeframe.
--   **(P3) Improve Core Win Rate**: The overarching goal is to improve the bot's profitability from its last known 19% win rate. All new features should contribute to this.
+-   **(P1) Consolidate Backend Routes**: The agent previously identified overlapping route files ( + ,  + ). These should be consolidated to improve code maintainability.
+-   **(P2) Enhance Exit Intelligence**: The current exit logic could be improved beyond ATR-based stops by adding more sophisticated exit reasons, such as detecting reversal patterns on a lower timeframe.
+-   **(P3) Fine-tune V2.1 Filters**: Based on the backtest results, the user may request further adjustments to the filter thresholds (e.g., changing ADX from 25 to 27).
 
 **Completed work in this session**
--   **Position Modal Fix**: Resolved the corrupted  file and successfully integrated the new .
--   **Web Voice Feature Fix**: Fixed the Aeon not responding issue by adding a text input fallback and correctly diagnosing the microphone permission requirement.
--   **Backend Refactoring Completion**: Moved the remaining ~19 endpoints from  into new modular route files (, , etc.), completing the refactoring task.
--   **New Trading Engine (Technicals Only Mode)**: Reworked the entire trading logic to remove sentiment and use a weighted score from Technicals, Market Structure, and Derivatives, as per the user's detailed specification.
--   **Dynamic Sizing & Leverage**: Implemented Kelly Criterion for dynamic position sizing and ATR-based logic for dynamic leverage.
--   **New Performance Features**:
-    -   Added an auto-blacklist system for pairs with a win rate < 30%.
-    -   Added a 4-hour cooldown period for a pair after a losing trade.
-    -   Raised the minimum confidence for trades to 80%.
-    -   Removed session-based and daily trade limits, allowing the bot to trade 24/7 based on data.
--   **New Commands & Endpoints**: Added , , and  commands, along with corresponding API endpoints.
--   **Bug Fix (Trading Paused)**: Diagnosed and fixed a critical  bug that was preventing new trades from being opened.
--   **No-Repeat Conversation Logic**: Implemented a tracking system to prevent the bot from asking the same proactive questions repeatedly.
--   **Test Cases**: Created new ============================= test session starts ==============================
-platform linux -- Python 3.11.14, pytest-9.0.2, pluggy-1.6.0
-rootdir: /app
-plugins: anyio-4.12.1
-collected 663 items / 1 error
-
-==================================== ERRORS ====================================
-__________ ERROR collecting backend/tests/test_aeon_personality_v4.py __________
-backend/tests/test_aeon_personality_v4.py:18: in <module>
-    BASE_URL = os.environ.get('REACT_APP_BACKEND_URL').rstrip('/')
-               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-E   AttributeError: 'NoneType' object has no attribute 'rstrip'
-=============================== warnings summary ===============================
-backend/tests/test_routes.py:17
-  /app/backend/tests/test_routes.py:17: PytestUnknownMarkWarning: Unknown pytest.mark.asyncio - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
-    @pytest.mark.asyncio
-
-backend/tests/test_routes.py:26
-  /app/backend/tests/test_routes.py:26: PytestUnknownMarkWarning: Unknown pytest.mark.asyncio - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
-    @pytest.mark.asyncio
-
-backend/tests/test_routes.py:35
-  /app/backend/tests/test_routes.py:35: PytestUnknownMarkWarning: Unknown pytest.mark.asyncio - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
-    @pytest.mark.asyncio
-
-backend/tests/test_routes.py:49
-  /app/backend/tests/test_routes.py:49: PytestUnknownMarkWarning: Unknown pytest.mark.asyncio - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
-    @pytest.mark.asyncio
-
-backend/tests/test_routes.py:56
-  /app/backend/tests/test_routes.py:56: PytestUnknownMarkWarning: Unknown pytest.mark.asyncio - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
-    @pytest.mark.asyncio
-
-backend/tests/test_routes.py:67
-  /app/backend/tests/test_routes.py:67: PytestUnknownMarkWarning: Unknown pytest.mark.asyncio - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
-    @pytest.mark.asyncio
-
-backend/tests/test_routes.py:80
-  /app/backend/tests/test_routes.py:80: PytestUnknownMarkWarning: Unknown pytest.mark.asyncio - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
-    @pytest.mark.asyncio
-
-backend/tests/test_routes.py:93
-  /app/backend/tests/test_routes.py:93: PytestUnknownMarkWarning: Unknown pytest.mark.asyncio - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
-    @pytest.mark.asyncio
-
-backend/tests/test_routes.py:106
-  /app/backend/tests/test_routes.py:106: PytestUnknownMarkWarning: Unknown pytest.mark.asyncio - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
-    @pytest.mark.asyncio
-
-backend/tests/test_routes.py:115
-  /app/backend/tests/test_routes.py:115: PytestUnknownMarkWarning: Unknown pytest.mark.asyncio - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
-    @pytest.mark.asyncio
-
-backend/tests/test_routes.py:126
-  /app/backend/tests/test_routes.py:126: PytestUnknownMarkWarning: Unknown pytest.mark.asyncio - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
-    @pytest.mark.asyncio
-
--- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-=========================== short test summary info ============================
-ERROR backend/tests/test_aeon_personality_v4.py - AttributeError: 'NoneType' ...
-!!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
-======================== 11 warnings, 1 error in 1.00s ========================= files for the newly created backend routes.
+-   **Trading Strategy Overhaul (V2.1 HIGH WIN RATE MODE)**: Implemented a completely new, stricter set of trading rules in .
+    -   Added **200 EMA Trend Filter** (trades must align with the long-term trend).
+    -   Added **ADX Market Condition Filter** (trades only when ADX > 25).
+    -   Added **Volume Confirmation** (signal candle volume must be >1.5x the 20-period average).
+    -   Added **Session Filter** (restricts SCALP/DAY trades to London/NY sessions).
+    -   Increased requirements: **90% confidence**, **5/5 confirmations**, **3:1 R:R**.
+    -   Reduced **max open positions** from 15 to 5.
+    -   Improved **RSI logic** to be trend-aware.
+    -   Fixed **position scaling** to require profit before scaling in.
+    -   Added **Smarter Stop Loss** placement based on support/resistance levels.
+-   **Trade History & Logic UI**: Created a new feature-rich History page () with filterable/sortable trades, a detailed trade modal, and a How AEON Decides to Trade modal explaining the new V2.1 logic.
+-   **Dashboard UI Enhancement**: Added a new section to the dashboard to display best/worst pairs and risk management stats.
+-   **Dynamic Trade Style Fix**: Corrected the logic to dynamically assign SCALP, DAY, or SWING trade styles based on market volatility (ATR).
+-   **Documentation & Download Endpoint**: Created comprehensive documentation for the bot and a  endpoint to serve it as a PDF.
+-   **Critical Bug Fix (Settings Cache)**: Diagnosed and resolved an issue where new settings weren't loading because the agent was interacting with the wrong database instance ( is the correct one).
 
 **Earlier issues found/mentioned but not fixed**
--   None. All previously known issues were addressed in this session.
+-   None.
 
 **Known issue recurrence from previous fork**
 -   None.
@@ -146,209 +82,73 @@ ERROR backend/tests/test_aeon_personality_v4.py - AttributeError: 'NoneType' ...
 
 
 **Key Technical Concepts**
--   **Trading Logic**: Technicals-only mode, Weighted Confluence Score, Kelly Criterion position sizing, ATR-based leverage, Momentum-based exits, Auto-blacklisting, Per-pair cooldowns.
--   **Backend**: FastAPI, Modular Routing, Background Tasks (APScheduler).
--   **Frontend**: React, Component-based UI, State Management (), Screenshot-based testing.
--   **Database**: MongoDB for storing trades, settings, accuracy stats, and conversation history.
+-   **Trading Logic (V2.1)**: 200 EMA Trend Filter, ADX Market Condition, Volume Confirmation, Session Filtering, Trend-Aware RSI, Support/Resistance Stop Loss, Kelly Criterion, ATR-based leverage/style.
+-   **Backend**: FastAPI, Background Tasks (APScheduler), Modular Services. The agent correctly identified and fixed an issue where settings were being read from an incorrect DB instance.
+-   **Frontend**: React,  for data fetching, component-based UI, Modals for detailed views.
+-   **Database**: MongoDB. The  collection in the  was updated with new fields for the V2.1 strategy.
 
 **key DB schema**
--   **user_message_history**:  - Tracks sent messages to avoid repetition.
--   **trade_outcomes**: Tracks the result of alerts for the  and  features.
--   **live_positions**: Stores current open trades.
--   **trade_history**: Journal of all closed trades.
+-   **autonomous_trader_settings**:  - Stores the V2.1 strategy configuration.
+-   **trade_history**: Stores closed trades, now viewed on the  page.
 
 **changes in tech stack**
 -   None.
 
 **All files of reference**
--   : **(CRITICAL)** Contains the core signal analysis and trade style prediction logic that needs to be fixed.
--   : The main trading engine that implements all the new rules (blacklist, cooldown, confidence checks).
--   : Main application file, orchestrates services and handles Telegram webhooks.
--   : The file that was modified to add the text input fallback.
--   : The file that was fixed to correctly display the new position modal.
--   : Directory containing new ============================= test session starts ==============================
-platform linux -- Python 3.11.14, pytest-9.0.2, pluggy-1.6.0
-rootdir: /app
-plugins: anyio-4.12.1
-collected 663 items / 1 error
-
-==================================== ERRORS ====================================
-__________ ERROR collecting backend/tests/test_aeon_personality_v4.py __________
-backend/tests/test_aeon_personality_v4.py:18: in <module>
-    BASE_URL = os.environ.get('REACT_APP_BACKEND_URL').rstrip('/')
-               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-E   AttributeError: 'NoneType' object has no attribute 'rstrip'
-=============================== warnings summary ===============================
-backend/tests/test_routes.py:17
-  /app/backend/tests/test_routes.py:17: PytestUnknownMarkWarning: Unknown pytest.mark.asyncio - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
-    @pytest.mark.asyncio
-
-backend/tests/test_routes.py:26
-  /app/backend/tests/test_routes.py:26: PytestUnknownMarkWarning: Unknown pytest.mark.asyncio - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
-    @pytest.mark.asyncio
-
-backend/tests/test_routes.py:35
-  /app/backend/tests/test_routes.py:35: PytestUnknownMarkWarning: Unknown pytest.mark.asyncio - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
-    @pytest.mark.asyncio
-
-backend/tests/test_routes.py:49
-  /app/backend/tests/test_routes.py:49: PytestUnknownMarkWarning: Unknown pytest.mark.asyncio - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
-    @pytest.mark.asyncio
-
-backend/tests/test_routes.py:56
-  /app/backend/tests/test_routes.py:56: PytestUnknownMarkWarning: Unknown pytest.mark.asyncio - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
-    @pytest.mark.asyncio
-
-backend/tests/test_routes.py:67
-  /app/backend/tests/test_routes.py:67: PytestUnknownMarkWarning: Unknown pytest.mark.asyncio - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
-    @pytest.mark.asyncio
-
-backend/tests/test_routes.py:80
-  /app/backend/tests/test_routes.py:80: PytestUnknownMarkWarning: Unknown pytest.mark.asyncio - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
-    @pytest.mark.asyncio
-
-backend/tests/test_routes.py:93
-  /app/backend/tests/test_routes.py:93: PytestUnknownMarkWarning: Unknown pytest.mark.asyncio - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
-    @pytest.mark.asyncio
-
-backend/tests/test_routes.py:106
-  /app/backend/tests/test_routes.py:106: PytestUnknownMarkWarning: Unknown pytest.mark.asyncio - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
-    @pytest.mark.asyncio
-
-backend/tests/test_routes.py:115
-  /app/backend/tests/test_routes.py:115: PytestUnknownMarkWarning: Unknown pytest.mark.asyncio - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
-    @pytest.mark.asyncio
-
-backend/tests/test_routes.py:126
-  /app/backend/tests/test_routes.py:126: PytestUnknownMarkWarning: Unknown pytest.mark.asyncio - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
-    @pytest.mark.asyncio
-
--- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-=========================== short test summary info ============================
-ERROR backend/tests/test_aeon_personality_v4.py - AttributeError: 'NoneType' ...
-!!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
-======================== 11 warnings, 1 error in 0.29s ========================= test files.
--   , , : New route files created during refactoring.
+-   : **(CRITICAL)** Contains the new V2.1 HIGH WIN RATE MODE trading logic. This is the core file for the backtest.
+-   : Handles loading the new settings and managing trade execution/scaling.
+-   : The new page for displaying trade history.
+-   : The modal that explains the new V2.1 strategy to the user.
+-   : Modified to add the  endpoint.
+-   : New utility for checking trading sessions.
 
 **Areas that need refactoring**:
--   **Consolidate Backend Routes**: As identified by the agent, there are overlapping responsibilities between route files like / and /. These could be merged for clarity.
+-   **Consolidate Backend Routes**: Overlapping responsibilities between route files like / and / could still be merged for clarity.
 
 **key api endpoints**
--   : **(GET)** New endpoint to get dashboard stats like best/worst pairs.
--   : **(GET)** New endpoint to get the PnL leaderboard.
--   : **(GET)** New endpoint to fetch aggregated crypto news.
--   : **(POST)** New endpoint to set the autonomous trader's minimum confidence level.
+-   : **(GET)** Fetches all open and closed trades for the new history page.
+-   : **(GET)** Gets blacklist and pair performance stats for the dashboard.
+-   : **(GET/POST)** Reads and writes the V2.1 settings from/to the database.
+-   : **(GET)** New endpoint to download the bot's PDF specification.
 
 **Critical Info for New Agent**
--   **Priority 0**: Fix the dynamic trade style assignment. The user has noticed trades are defaulting to SWING. Investigate  in  and ensure it correctly assigns SCALP, DAY, or SWING based on market conditions.
--   **User Interaction Model**: The user is highly engaged and provides very detailed, specific instructions for changes. Expect to work iteratively, refining the bot's logic based on direct feedback. The user approved a list of agent recommendations; these should be treated as the upcoming backlog.
--   **Core Goal**: The bot's win rate is the ultimate measure of success. While many features have been added, the focus should always be on improving trading performance. The current filters (80% confidence, cooldowns, blacklisting) are designed to improve quality over quantity.
+-   **Immediate Priority (P0)**: The user's last request was to run a backtest on the new V2.1 strategy. You must build this functionality next. This involves creating a script to process historical data with the new rules and report the results.
+-   **User Goal**: The single most important goal is to improve the bot's win rate. The user is very technical and provides highly specific, rule-based instructions. All work should be framed around this goal.
+-   **Database Context**: Be aware that the application connects to . The previous agent spent time debugging an issue where settings were being read from a default DB instance instead of the correct one. Always verify you are interacting with  when working with MongoDB.
+-   **Frontend Build Issue**: The agent encountered a Maximum call stack size exceeded error with the React development server, related to a . The agent disabled it in  to resolve the issue. If frontend build issues arise, this is a good place to check.
 
 **documents and test reports created in this job**
 -   
 -   
 -   
 -   
+-    (Updated)
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  : User requested the bot stop repeating questions. (Status: COMPLETED)
-2.  : User requested more variety in leverage. (Status: COMPLETED, implemented ATR-based leverage).
-3.  : User asked why trading was paused. (Status: RESOLVED, it was a temporary state).
-4.  : User clarified where they saw the paused status. (Status: RESOLVED).
-5.  : User confirmed the issue was resolved. (Status: RESOLVED).
-6.  : User requested a complete overview of the bot. (Status: COMPLETED, created ).
-7.  **(User provided a new, detailed spec for Aeon)**: User provided a long, specific persona and logic update for the bot. (Status: COMPLETED).
-8.  : User wanted to ensure the bot can take both LONG and SHORT positions. (Status: VERIFIED, logic is unbiased).
-9.  : User requested removal of Fear & Greed from directional logic. (Status: COMPLETED).
-10. : User provided another detailed spec for a Technicals Only mode. (Status: COMPLETED).
-11. : User asked for recommendations. (Status: COMPLETED, agent provided a list).
-12. : User approved the agent's recommendations, except for deleting Alchemy Mode. (Status: MOSTLY COMPLETED, some parts are upcoming).
-13. : User requested removal of session-based trading restrictions. (Status: COMPLETED).
-14. : User approved of the changes. (Status: COMPLETED).
-15. : User asked why no trades were happening. (Status: RESOLVED, agent found and fixed a critical bug).
-16. : User noticed trades are defaulting to SWING style. (Status: **IN PROGRESS**, this is the current P0 task).
+1.  : User requested a full trade history page with clickable details. (Status: COMPLETED)
+2.  : User requested a detailed breakdown of the trading logic. (Status: COMPLETED)
+3.  : User provided a detailed list of 8 specific, strict rules to create a HIGH WIN RATE MODE and fix the low 19% win rate. (Status: COMPLETED)
+4.  User provides completion of the list of changes. (Status: COMPLETED)
+5.  : After implementation, the user requested a backtest to validate the new strategy and quantify the improvement. (Status: **PENDING**, this is the current P0 task).
 
 **Project Health Check:**
--   **Broken**: Nothing is critically broken. The core application is running, and trades are being executed. The main issue is a logic bug in trade style assignment.
+-   **Broken**: None. The application is running with the new V2.1 strategy implemented.
+-   **Mocked**: Backtest results are pending creation and are effectively mocked until the backtest is run.
 
 **3rd Party Integrations**
--   **MEXC, Binance, CoinGecko, CoinGlass**: For market data, technical analysis, and derivatives data.
--   **OpenAI GPT-4o**: For conversational AI (via Emergent LLM Key).
--   **Edge TTS**: For text-to-speech voice synthesis.
--   **Whisper**: For speech-to-text.
--   **Telegram**: For bot interaction.
--   **CryptoCompare/CryptoPanic**: For news aggregation.
+-   **Market Data**: MEXC, Binance, CoinGecko, CoinGlass.
+-   **AI/LLM**: OpenAI GPT-4o (via Emergent LLM Key), Edge TTS (text-to-speech), Whisper (speech-to-text).
+-   **Comms**: Telegram Bot API.
+-   **News**: CryptoCompare/CryptoPanic.
 
 **Testing status**
--   **Testing agent used after significant changes**: NO (in the last phase of work).
+-   **Testing agent used after significant changes**: NO (it timed out).
 -   **Troubleshoot agent used after agent stuck in loop**: NO.
--   **Test files created**: Yes, ============================= test session starts ==============================
-platform linux -- Python 3.11.14, pytest-9.0.2, pluggy-1.6.0
-rootdir: /app
-plugins: anyio-4.12.1
-collected 663 items / 1 error
-
-==================================== ERRORS ====================================
-__________ ERROR collecting backend/tests/test_aeon_personality_v4.py __________
-backend/tests/test_aeon_personality_v4.py:18: in <module>
-    BASE_URL = os.environ.get('REACT_APP_BACKEND_URL').rstrip('/')
-               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-E   AttributeError: 'NoneType' object has no attribute 'rstrip'
-=============================== warnings summary ===============================
-backend/tests/test_routes.py:17
-  /app/backend/tests/test_routes.py:17: PytestUnknownMarkWarning: Unknown pytest.mark.asyncio - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
-    @pytest.mark.asyncio
-
-backend/tests/test_routes.py:26
-  /app/backend/tests/test_routes.py:26: PytestUnknownMarkWarning: Unknown pytest.mark.asyncio - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
-    @pytest.mark.asyncio
-
-backend/tests/test_routes.py:35
-  /app/backend/tests/test_routes.py:35: PytestUnknownMarkWarning: Unknown pytest.mark.asyncio - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
-    @pytest.mark.asyncio
-
-backend/tests/test_routes.py:49
-  /app/backend/tests/test_routes.py:49: PytestUnknownMarkWarning: Unknown pytest.mark.asyncio - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
-    @pytest.mark.asyncio
-
-backend/tests/test_routes.py:56
-  /app/backend/tests/test_routes.py:56: PytestUnknownMarkWarning: Unknown pytest.mark.asyncio - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
-    @pytest.mark.asyncio
-
-backend/tests/test_routes.py:67
-  /app/backend/tests/test_routes.py:67: PytestUnknownMarkWarning: Unknown pytest.mark.asyncio - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
-    @pytest.mark.asyncio
-
-backend/tests/test_routes.py:80
-  /app/backend/tests/test_routes.py:80: PytestUnknownMarkWarning: Unknown pytest.mark.asyncio - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
-    @pytest.mark.asyncio
-
-backend/tests/test_routes.py:93
-  /app/backend/tests/test_routes.py:93: PytestUnknownMarkWarning: Unknown pytest.mark.asyncio - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
-    @pytest.mark.asyncio
-
-backend/tests/test_routes.py:106
-  /app/backend/tests/test_routes.py:106: PytestUnknownMarkWarning: Unknown pytest.mark.asyncio - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
-    @pytest.mark.asyncio
-
-backend/tests/test_routes.py:115
-  /app/backend/tests/test_routes.py:115: PytestUnknownMarkWarning: Unknown pytest.mark.asyncio - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
-    @pytest.mark.asyncio
-
-backend/tests/test_routes.py:126
-  /app/backend/tests/test_routes.py:126: PytestUnknownMarkWarning: Unknown pytest.mark.asyncio - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
-    @pytest.mark.asyncio
-
--- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-=========================== short test summary info ============================
-ERROR backend/tests/test_aeon_personality_v4.py - AttributeError: 'NoneType' ...
-!!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
-======================== 11 warnings, 1 error in 0.40s ========================= files for new routes were created at .
--   **Known regressions**: None.
+-   **Test files created**: No.
+-   **Known regressions**: None. Agent performed manual curl tests and visual verification with screenshots to ensure core functionality was not broken after the major refactor.
 
 **Credentials to test flow:**
 -   N/A
 
 **What agent forgot to execute**
--   The agent was in the middle of investigating the dynamic trade style assignment when the session ended. This is the primary handoff task.
--   From the user-approved list of tasks, Position Scaling and creating the full Dashboard Stats UI were not started.</analysis>
+-   The agent was about to begin the final user request of the session: to build and run a backtest for the new V2.1 trading strategy. This is the top-priority task for the next agent.</analysis>
