@@ -16,16 +16,29 @@ Build a sophisticated trading bot named "Aeon" with:
 
 ---
 
-## Latest Session (Feb 24, 2026) - Multi-Model AI Switching
+## Latest Session (Feb 24, 2026) - Multi-Model AI Bug Fix
 
-### Multi-Model AI Support (P0) - DONE
-Users can now switch between GPT-4o and Claude Sonnet 4.5:
+### Multi-Model AI Support (P0) - FIXED ✓
+The model switching feature was scaffolded but broken - the `get_user_model()` and `set_user_model()` functions were never implemented.
+
+**Bug Fixed:**
+- Added missing `get_user_model(chat_id)` - retrieves user's preferred model from DB/cache
+- Added missing `set_user_model(chat_id, model)` - stores user's model preference in DB
+- Model preferences now persist in `user_preferences` MongoDB collection
+- In-memory cache (`user_model_cache`) for performance
+
+**Verified Working:**
+- `/model gpt` → Switches to GPT-4o (confirmed via LLM logs)
+- `/model claude` → Switches to Claude Sonnet 4.5 (confirmed via LLM logs)
+- `/model status` → Shows current model
+- `/model list` → Lists all available models
+- Chat responses correctly use the user's selected model
 
 **Implementation:**
 - Added `MODEL_CONFIGS` with GPT and Claude configurations
 - User model preference stored in database (persists across sessions)
 - All LLM calls now use user's selected model
-- Added helper functions: `get_user_model()`, `set_user_model()`, `get_model_config()`
+- Helper functions: `get_user_model()`, `set_user_model()`, `get_model_config()`
 
 **New Telegram Commands:**
 - `/model` or `/model status` - Show current AI model
