@@ -164,6 +164,52 @@ def get_model_config(model_key: str) -> Dict:
     return MODEL_CONFIGS.get(model_key, MODEL_CONFIGS[DEFAULT_MODEL])
 
 
+async def get_user_model(chat_id: int) -> str:
+    """Get user's preferred AI model from cache or DB"""
+    # Check in-memory cache first
+    if chat_id in user_model_cache:
+        return user_model_cache[chat_id]
+    
+    # Query database
+    try:
+        pref = await db.user_preferences.find_one({"chat_id": chat_id})
+        if pref and "model" in pref:
+            model = pref["model"]
+            # Validate model exists in config
+            if model in MODEL_CONFIGS:
+                user_model_cache[chat_id] = model
+                return model
+        
+        # Default model for new users
+        user_model_cache[chat_id] = DEFAULT_MODEL
+        return DEFAULT_MODEL
+    except Exception as e:
+        logger.error(f"Error getting user model: {e}")
+        return DEFAULT_MODEL
+
+
+async def set_user_model(chat_id: int, model: str) -> bool:
+    """Set user's preferred AI model in DB and cache"""
+    # Validate model exists
+    if model not in MODEL_CONFIGS:
+        return False
+    
+    try:
+        # Update database
+        await db.user_preferences.update_one(
+            {"chat_id": chat_id},
+            {"$set": {"model": model, "updated_at": datetime.now(timezone.utc)}},
+            upsert=True
+        )
+        # Update cache
+        user_model_cache[chat_id] = model
+        logger.info(f"User {chat_id} switched to model: {model}")
+        return True
+    except Exception as e:
+        logger.error(f"Error setting user model: {e}")
+        return False
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # AEON PERSONA SYSTEM
 # ═══════════════════════════════════════════════════════════════════════════════
