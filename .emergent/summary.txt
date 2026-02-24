@@ -5,81 +5,72 @@
 2.  **Advanced Conversational AI**: The bot needs a sophisticated personality (Aeon) and the ability to respond via text and voice.
 3.  **Enhanced UI/UX**: A main dashboard for key stats, a detailed trading UI, trade history, and a settings panel.
 4.  **Alerts & Notifications**: An alert system that provides data-driven reasoning for every signal.
-5.  **Telegram Bot**: The primary interface for interaction.
-6.  **Performance Tracking & Improvement**: Track alert accuracy, PnL, and win rate to improve profitability.
+5.  **Telegram Bot**: The primary interface for interaction, with expanding command capabilities.
+6.  **Performance Tracking & Improvement**: Track alert accuracy, PnL, and win rate to improve profitability. This includes daily briefings and weekly reports.
 7.  **Dynamic & Intelligent Trading Logic (V2.1 - HIGH WIN RATE MODE)**: A complete overhaul of the trading logic with strict filters (200 EMA, ADX, Volume, etc.) to fix the low win rate.
 8.  **Backtesting Engine**: A system to validate trading strategies against historical data.
 9.  **Aggressive Scalping Strategy**: A secondary, high-frequency trading model to run alongside the main strategy.
-10. **Auto-Learning System**: A mechanism for strategies to self-optimize their parameters over time.
+10. **Auto-Learning System**: A mechanism for strategies to self-optimize their parameters over time, now evolved into a 24/7 continuous learning engine.
+11. **Multi-Model Support**: Ability to switch the core AI model (e.g., between OpenAI and Claude) via Telegram commands.
 
 **User's preferred language**: en
 
 **what currently exists?**
-The application is a full-stack crypto trading bot with a React frontend, FastAPI backend, and MongoDB. The agent has implemented a comprehensive backtesting system for the V2.1 HIGH WIN RATE MODE strategy, including a dedicated page and dashboard modal. This system was further enhanced to support testing across multiple confidence levels (65-90%) and timeframes (15m, 1h, 4h).
+The application is a comprehensive crypto trading bot with a React frontend, FastAPI backend, and MongoDB. It features two parallel trading strategies: the main V2.1 High Win Rate strategy and an Aggressive Scalper. The bot includes robust backtesting, a detailed dashboard, and extensive control via a Telegram interface.
 
-Based on backtest results, the live trading settings were updated to a more optimal 65% confidence level. The main dashboard has been significantly improved to display live data for 15 cryptocurrencies (up from 3) and a new card showing the active V2.1 strategy settings.
-
-Most recently, the agent integrated a new Aggressive Scalper strategy provided by the user. This scalper runs alongside the main V2.1 strategy and has its own dedicated page in the UI for monitoring signals and running backtests. The agent has just begun building an auto-learning system for this new scalper.
+In this session, several major features were added:
+1.  **24/7 Continuous Learning Engine**: A background service that constantly analyzes market data and trade history to find patterns and suggest optimizations. Its status is visible on a new dashboard widget.
+2.  **Automated Reporting**: A daily morning briefing (6 AM CT) and a weekly performance report (Sunday 8 PM CT) are scheduled to be sent via Telegram. These have corresponding management UIs in the Settings page.
+3.  **V2.1 Exit Intelligence**: The main autonomous trader was enhanced with reversal pattern detection for smarter trade exits.
+4.  **Multi-Model AI**: The Telegram bot was updated to allow the user to switch between OpenAI (GPT) and Anthropic (Claude) models using  commands. **However, this feature is currently broken.**
+5.  **UI Enhancements**: The main dashboard now includes widgets for the Scalper, Weekly Report, and the new Learning Engine.
+6.  **Bug Fix**: A bug causing an incorrect user count (38 instead of 1) in reports was fixed by cleaning test data from the database.
 
 **Last working item**:
--   **Last item agent was working**: The user requested a major enhancement to the newly added Aggressive Scalper strategy. This involves:
-    1.  Adding enhanced exit intelligence using reversal patterns.
-    2.  Creating an auto-learning system that continuously optimizes the scalper's parameters.
-    3.  Integrating the scalper to run alongside the main V2.1 autonomous trader.
-    The agent started by creating a new  service and began modifying  to include the hooks for auto-learning, reversal pattern exits, and V2.1 integration status.
+-   **Last item agent was working**: Fixing the newly implemented multi-model (OpenAI/Claude) switching feature in the Telegram bot. The user reported that the model was not actually changing when using the  commands. The agent diagnosed that the LLM helper functions in  were defined in the global scope and did not have access to the database connection () to fetch the user's selected model preference. The functions were defaulting to . The agent was about to refactor the code to use  to make the DB connection available to these functions.
 -   **Status**: IN PROGRESS
 -   **Agent Testing Done**: N
--   **Which testing method agent to use?**: both
+-   **Which testing method agent to use?**: backend testing agent
 -   **User Testing Done**: N
 
 **All Pending/In progress Issue list**:
--   Issue 1: Backend Route Consolidation (P1)
+-   Issue 1: Telegram bot does not switch AI models (P0)
 
   **Issues Detail**:
-  -   **Issue 1**:  contains many duplicate routes that already exist in more specific files like , , etc. This creates code duplication and potential for confusion.
-      -   **Attempted fixes**: None. The agent inspected the files but deferred the fix to prioritize feature development.
+  -   **Issue 1**:
+      -   **Attempted fixes**: The agent identified the root cause: LLM helper functions in  are in the global scope and lack access to the request-level state (like the database connection) needed to retrieve the user's current model preference. The plan was to refactor to pass the  instance via .
       -   **Next debug checklist**:
-          1.  Carefully diff  against other route files (, , , ).
-          2.  Remove the redundant router includes and endpoint definitions from .
-          3.  Ensure  correctly registers all individual route files.
-          4.  Restart the backend and test the affected endpoints to ensure no functionality is lost.
-      -   **Why fix this issue and what will be achieved with the fix?**: To improve code maintainability, reduce redundancy, and prevent bugs where changes are made to the wrong file.
-      -   **Status**: NOT STARTED
+          1.  View .
+          2.  Refactor the LLM call helper functions (e.g., , ) to accept the  or  as an argument.
+          3.  Modify the main  handler to pass the  instance when calling these helper functions.
+          4.  Ensure the functions correctly query the  collection for the  to get the selected .
+          5.  Restart the backend and test the , , and  commands to confirm the bot's responses are generated by the correct, selected model.
+      -   **Why fix this issue and what will be achieved with the fix?**: This is a user-requested feature that is currently non-functional. Fixing it will allow the user to choose their preferred AI model for interacting with Aeon.
+      -   **Status**: IN PROGRESS
       -   **Is recurring issue?**: N
       -   **Should Test frontend/backend/both after fix?**: backend
       -   **Blocked on other issue**: None
 
 **In progress Task List**:
--   Task 1: Complete the Auto-Learning Aggressive Scalper (P0)
-
-  **Task Detail**:
-  -   **Task 1**:
-      -   **Where to resume**: The agent has created  and modified . The next steps are:
-          1.  Flesh out the logic in  in  to perform parameter optimization (e.g., using grid search over backtest results).
-          2.  Complete the  logic in .
-          3.  Fully implement the integration logic in  to determine how scalper signals interact with the V2.1 trader.
-          4.  Update the  method to correctly trigger the .
-          5.  Update the Scalper API routes in  to expose the learning status and results.
-          6.  Update the frontend  to display the learning status, optimized parameters, and V2.1 integration status.
-      -   **What will be achieved with this?**: This will deliver the user's request for a self-optimizing trading strategy that runs in parallel with the existing V2.1 engine and uses more advanced exit logic.
-      -   **Status**: IN PROGRESS
-      -   **Should Test frontend/backend/both after fix?**: Both
-      -   **Blocked on something**: None
+-   None.
 
 **Upcoming and Future Tasks**
--   **(P1) Integrate Scalper Signals with V2.1 Trader**: The user wants the signals from the Aggressive Scalper to be considered by the main V2.1 autonomous trader, while also having the scalper run independently. This requires defining the interaction logic.
--   **(P2) Enhance V2.1 Exit Intelligence**: Implement reversal pattern detection for the main V2.1 strategy, not just the scalper, to enable smarter, earlier exits from trades.
--   **(P3) Fine-tune V2.1 Filters**: Based on ongoing backtest results, the user may request further adjustments to filter thresholds (e.g., ADX, Volume).
+-   **(P1) Kimi AI Integration**: The user expressed a strong desire to replace the current AI with a self-hosted Kimi K2.5 model running on their own NVIDIA GPU hardware. The agent provided detailed setup instructions, but the user deferred this task. This will be a major future integration project.
+-   **(P2) PnL Goal Customization UI**: Allow the user to set custom daily and weekly Profit and Loss (PnL) targets from the UI, with visual tracking and alerts.
+-   **(P3) Multi-Timeframe Scalper Correlation Analysis**: Build a tool to analyze how scalper signals perform when correlated across different timeframes (5m, 15m, 30m) to find higher-probability confluence setups.
 
 **Completed work in this session**
--   **V2.1 Backtesting System**: Created a backtesting engine (), API (), and a dedicated UI page () and dashboard modal.
--   **Enhanced Backtesting Features**: Implemented Confidence Range and Multi-Timeframe testing modes with corresponding UI updates.
--   **Live Strategy & Dashboard Update**: Updated live settings to 65% confidence, expanded the dashboard market data to 15 cryptos, added a live settings display card, and fixed a price formatting bug.
--   **Aggressive Scalper Integration**: Integrated a user-provided scalping strategy () with its own API () and UI page ().
--   **Auto-Learning Scaffolding**: Began implementation of an auto-learning layer for the scalper by creating .
+-   **Auto-Learning & V2.1 Scalper Integration**: Completed the backend logic and frontend UI for the self-optimizing scalper and its integration with the V2.1 trader.
+-   **24/7 Continuous Learning Engine**: Implemented a background service to continuously analyze data and find insights, with a new dashboard widget for status.
+-   **Daily Morning Briefing**: Created a scheduled daily market overview sent via Telegram, with a UI for management and preview.
+-   **Weekly Performance Report**: Created a scheduled weekly report summarizing trading performance, with a UI for management.
+-   **V2.1 Exit Intelligence**: Enhanced the main trader's logic with reversal pattern detection for better exits.
+-   **Telegram Command Expansion**: Added new commands (, , , ) and updated the  message.
+-   **User Count Bug Fix**: Corrected the logic for counting active users for reports by cleaning up test data.
+-   **Multi-Model AI Scaffolding**: Implemented the backend logic and Telegram commands for switching between OpenAI and Claude (currently non-functional).
 
 **Earlier issues found/mentioned but not fixed**
--   The backend route consolidation in  remains pending. (See All Pending/In progress Issue list).
+-   None. The model switching issue is the primary and most recent unresolved problem.
 
 **Known issue recurrence from previous fork**
 -   None.
@@ -88,78 +79,81 @@ Most recently, the agent integrated a new Aggressive Scalper strategy provided b
 
 
 **Key Technical Concepts**
--   **Backtesting**: A robust framework capable of processing historical data against complex trading rules and evaluating performance across variable parameters (confidence, timeframe).
--   **Aggressive Scalping Strategy**: A new trading model combining Volume Breakouts, Order Flow (S/R levels), and Momentum (RSI/ROC) for high-frequency trading.
--   **Auto-Learning (In-Progress)**: Scaffolding for a system that can programmatically run backtests with varying parameters to find the optimal configuration for the scalping strategy.
--   **API Development**: Created new, dedicated RESTful API endpoints for the backtesting and scalping features.
--   **React Frontend**: Developed new pages and components, managed state with /, and handled asynchronous data fetching.
+-   **Scheduled Background Tasks**: Use of  to run daily (morning briefing) and weekly (performance report) tasks, as well as the continuous learning cycle.
+-   **Multi-Model LLM Integration**: System designed to dynamically switch between different LLM providers (OpenAI, Claude) based on user preference stored in MongoDB, using the  library.
+-   **State Management in FastAPI**: The need to correctly manage and pass application-level state (like the DB connection) to functions within the request lifecycle, which is the root cause of the current bug.
+-   **Reversal Pattern Detection**: Use of  to identify candlestick patterns (e.g., Doji, Hammer) as part of the trade exit strategy.
 
 **key DB schema**
--   **autonomous_trader_settings**:  - This document in  is now successfully updated via the API to control live strategy parameters.
+-   **user_preferences**:  - Stores the user's selected AI model.
+-   **learning_insights**: Stores patterns and insights discovered by the continuous learning engine.
+-   **chat_messages**: Used to retrieve user chat IDs for sending scheduled reports. This was cleaned of test data.
 
 **changes in tech stack**
 -   None.
 
 **All files of reference**
--   : **(CRITICAL)** The new scalping strategy, currently being modified to support auto-learning.
--   : **(CRITICAL)** The new, in-progress service for the self-optimizing logic.
--   : The completed backtesting engine for the V2.1 strategy.
--   : Heavily modified to show more market data and live strategy settings.
--   : The new UI for the aggressive scalper.
--   : Identified as needing refactoring.
+-   : **(CRITICAL - BUGGY)** Contains the broken model-switching logic that needs to be fixed.
+-   : The core logic for the new 24/7 learning engine.
+-   : The logic for the new daily briefing.
+-   : The logic for the new weekly report.
+-   : Modified to include advanced exit intelligence.
+-   : Heavily modified with several new UI widgets.
+-   : Heavily modified with new tabs for managing reports.
 
 **Areas that need refactoring**:
--   **Backend Routes**: Consolidate routes from  into their respective files to eliminate code duplication.
+-   : The LLM helper functions must be refactored to correctly access the database state to fix the model-switching bug.
 
 **key api endpoints**
--   : **(POST)** Runs the backtest across multiple confidence levels.
--   : **(POST)** Runs the backtest across multiple timeframes.
--   : **(POST)** Updates the complete V2.1 live trading settings.
--   : **(GET)** Scans for live scalping signals.
--   : **(POST)** Runs a backtest for the scalping strategy.
--   : **(GET)** Now returns data for 15 cryptocurrencies.
+-   : **(GET)** Gets the status of the continuous learning engine.
+-   : **(POST)** Manually triggers a learning cycle.
+-   , : **(GET, POST)** Endpoints to manage the daily briefing.
+-   , : **(POST)** Endpoints to manage the weekly report.
 
 **Critical Info for New Agent**
--   **Top Priority (P0)**: Your immediate task is to complete the . The user wants this to be a self-optimizing system with smarter exits that runs alongside the current V2.1 strategy. Resume work in  and .
--   **User Persona**: The user is highly technical and provides detailed, code-level specifications. They expect features to be implemented exactly as requested and are focused on data-driven results.
--   **Two Active Strategies**: The bot now has two distinct trading engines: the long-term V2.1 strategy and the high-frequency Aggressive Scalper. The user's goal is to have them run in parallel and eventually inform each other.
--   **Refactoring Task**: Be aware of the pending route consolidation task. While not a blocker, it's a known code quality issue that should be addressed when possible.
+-   **Top Priority (P0)**: Your immediate and only task is to fix the broken multi-model switching in . The user has reported it doesn't work, and the previous agent has already diagnosed the cause. Implement the refactor using  to pass the database connection correctly.
+-   **User Context**: The user is highly engaged and technically proficient. They recently requested to integrate Kimi, a self-hosted AI model, but deferred it. This indicates a strong interest in advanced, customizable AI.
+-   **Test Thoroughly**: After fixing the model switching, use  to simulate Telegram commands (, , ) and verify that the bot's personality/responses change accordingly. Ask a simple question after each switch to confirm.
 
 **documents and test reports created in this job**
 -   
--    (Updated)
+-   
+-   
+-   
+-    (Updated multiple times)
 
 **Last 10 User Messages and any pending HUMAN messages**
-10. : User requested the next set of major features for the scalper, including self-optimization. (Status: **IN PROGRESS**)
-9.  : User re-emphasized the importance of the auto-learning/self-optimizing capability. (Status: **IN PROGRESS**)
-8.  : User provided the full Python script for a new aggressive scalping strategy. (Status: COMPLETED)
-7.  : User clarified the scalper should run *alongside* the V2.1 strategy on all 15 cryptos and on 5m, 15m, and 30m timeframes. (Status: COMPLETED)
-6.  : User agreed with the plan to consolidate routes, apply optimal settings, and update the dashboard. (Status: COMPLETED)
-5.  : User requested the backtester to test a range of confidence levels. (Status: COMPLETED)
-4.  : User approved the plan to add multi-timeframe backtesting and other enhancements. (Status: COMPLETED)
-3.  : User confirmed that MEXC data should be used for backtesting. (Status: COMPLETED)
-2.  The agent proposed a plan to build the backtest system. (Status: COMPLETED)
-1.  User requested a backtest to validate the new V2.1 strategy. (Status: COMPLETED)
+10. : User reported that the AI model switching feature is not working. (Status: **BUG ACKNOWLEDGED, IN PROGRESS**)
+9.  : User confirmed the request to implement switching between OpenAI and Claude, managed via Telegram commands. (Status: **IMPLEMENTED, BUT BUGGY**)
+8.  : User reported a bug where reports mentioned 38 users instead of one. (Status: **RESOLVED**)
+7.  : User requested that the Telegram bot's  command be updated with all the new features. (Status: **COMPLETED**)
+6.  : User requested the 24/7 continuous learning engine. (Status: **COMPLETED**)
+5.  : User decided to postpone the Kimi AI integration. (Status: ACKNOWLEDGED)
+4.  : User chose to set up Kimi on their own PC. (Status: SUPERSEDED)
+3.  : User asked for instructions on how to set up the Kimi AI model. (Status: SUPERSEDED)
+2.  : User provided technical details and expressed intent to integrate the Kimi AI model. (Status: SUPERSEDED)
+1.  : User asked for clarification on future feature suggestions. (Status: ADDRESSED)
 
 **Project Health Check:**
--   **Broken**: None.
--   **Mocked**: The auto-learning functionality for the scalper is scaffolded but not yet functional.
+-   **Broken**: The Telegram bot's multi-model (OpenAI/Claude) switching functionality is not working.
+-   **Mocked**: None.
 
 **3rd Party Integrations**
 -   **Market Data**: MEXC, Binance, CoinGecko, CoinGlass.
--   **AI/LLM**: OpenAI GPT-4o (via Emergent LLM Key), Edge TTS (text-to-speech), Whisper (speech-to-text).
+-   **AI/LLM**:
+    -   OpenAI GPT-4o-mini (via Emergent LLM Key)
+    -   Anthropic Claude Sonnet 4.5 (via Emergent LLM Key)
 -   **Comms**: Telegram Bot API.
 -   **News**: CryptoCompare/CryptoPanic.
 
 **Testing status**
--   **Testing agent used after significant changes**: YES, for the initial V2.1 backtest feature.
+-   **Testing agent used after significant changes**: YES, used after every major feature implementation in this session.
 -   **Troubleshoot agent used after agent stuck in loop**: NO.
 -   **Test files created**: No.
--   **Known regressions**: None.
+-   **Known regressions**: The model switching feature is a new but broken implementation, not a regression of existing functionality.
 
 **Credentials to test flow:**
 -   N/A
 
 **What agent forgot to execute**
--   The route consolidation task ( cleanup) was identified and planned but deferred to prioritize user-requested features.
--   The implementation of the auto-learning scalper is the main piece of unfinished work.</analysis>
+-   The agent correctly identified the cause of the model-switching bug and planned a refactor but did not execute the code changes to fix it before the session ended. The fix is pending.</analysis>
