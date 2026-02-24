@@ -2,7 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   Zap, TrendingUp, TrendingDown, Activity, Clock, Target,
   Play, RefreshCw, Settings, Filter, BarChart3, Loader2,
-  ArrowUpCircle, ArrowDownCircle, Minus, AlertTriangle
+  ArrowUpCircle, ArrowDownCircle, Minus, AlertTriangle,
+  Brain, Link2, GitBranch, Sparkles, CheckCircle2, XCircle
 } from 'lucide-react';
 import { Card, CardContent } from './ui/card';
 
