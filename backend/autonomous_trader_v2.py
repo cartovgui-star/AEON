@@ -613,10 +613,19 @@ class AutonomousTraderV2:
             settings = await self.db.trader_settings.find_one({"_id": "v2_settings"})
             if settings:
                 self.active = settings.get("active", True)
-                self.min_confidence = settings.get("min_confidence", 70)
-                self.min_confirmations = settings.get("min_confirmations", 3)
-                self.max_open_trades = settings.get("max_open_trades", 10)
-                logger.info(f"Loaded trader settings: conf={self.min_confidence}%, confirms={self.min_confirmations}")
+                self.min_confidence = settings.get("min_confidence", 90)  # V2.1 default
+                self.min_confirmations = settings.get("min_confirmations", 5)  # V2.1 default
+                self.min_rr_ratio = settings.get("min_rr_ratio", 3.0)  # V2.1 default
+                self.max_open_trades = settings.get("max_open_trades", 5)  # V2.1 default
+                self.ema_200_filter_enabled = settings.get("ema_200_filter_enabled", True)
+                self.adx_filter_enabled = settings.get("adx_filter_enabled", True)
+                self.volume_filter_enabled = settings.get("volume_filter_enabled", True)
+                self.session_filter_enabled = settings.get("session_filter_enabled", True)
+                logger.info(f"Loaded V2.1 settings: conf={self.min_confidence}%, confirms={self.min_confirmations}, R:R={self.min_rr_ratio}:1")
+            else:
+                # Save default V2.1 settings
+                await self.save_settings()
+                logger.info("Created default V2.1 settings")
             
             # Load open trades from last session
             open_trades = await self.db.v2_open_trades.find().to_list(100)
