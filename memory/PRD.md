@@ -364,6 +364,6 @@ All alerts now include: WHY, WHAT TO EXPECT, IF WRONG, PREPARATION
 ---
 
 ## Deployment
-- Preview: https://aeon-preview.preview.emergentagent.com
+- Preview: https://aeon-paper-trade.preview.emergentagent.com
 - Backend: Port 8001
 - Frontend: Port 3000
