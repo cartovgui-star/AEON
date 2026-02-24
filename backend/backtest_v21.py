@@ -277,8 +277,17 @@ class BacktestV21Engine:
         else:
             return "OFF_HOURS"
     
-    def apply_v21_filters(self, indicators: Dict, timestamp: int) -> Dict:
-        """Apply all V2.1 filters and return result"""
+    def apply_v21_filters(self, indicators: Dict, timestamp: int, min_confidence: int = None) -> Dict:
+        """Apply all V2.1 filters and return result
+        
+        Args:
+            indicators: Technical indicators dict
+            timestamp: Candle timestamp
+            min_confidence: Override minimum confidence (default: V21_SETTINGS value)
+        """
+        # Use provided min_confidence or default from settings
+        conf_threshold = min_confidence if min_confidence is not None else V21_SETTINGS["min_confidence"]
+        
         result = {
             "passed": False,
             "direction": None,
