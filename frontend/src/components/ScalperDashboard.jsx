@@ -340,6 +340,9 @@ export default function ScalperDashboard() {
   const [backtestResult, setBacktestResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [scanning, setScanning] = useState(false);
+  const [learningStatus, setLearningStatus] = useState(null);
+  const [v2Status, setV2Status] = useState(null);
+  const [isOptimizing, setIsOptimizing] = useState(false);
 
   const fetchStatus = useCallback(async () => {
     try {
@@ -350,6 +353,52 @@ export default function ScalperDashboard() {
       console.error('Scalper status error:', err);
     }
   }, []);
+
+  const fetchLearningStatus = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/scalper/learning/status`);
+      const data = await res.json();
+      setLearningStatus(data);
+    } catch (err) {
+      console.error('Learning status error:', err);
+    }
+  }, []);
+
+  const fetchV2Status = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/scalper/v2/status`);
+      const data = await res.json();
+      setV2Status(data);
+    } catch (err) {
+      console.error('V2 status error:', err);
+    }
+  }, []);
+
+  const forceOptimize = async () => {
+    setIsOptimizing(true);
+    try {
+      const res = await fetch(`${API_URL}/api/scalper/learning/optimize`, { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        await fetchLearningStatus();
+        await fetchStatus();
+      }
+    } catch (err) {
+      console.error('Optimize error:', err);
+    } finally {
+      setIsOptimizing(false);
+    }
+  };
+
+  const toggleV2Integration = async (enabled) => {
+    try {
+      const res = await fetch(`${API_URL}/api/scalper/v2/toggle?enabled=${enabled}`, { method: 'POST' });
+      await res.json();
+      await fetchV2Status();
+    } catch (err) {
+      console.error('V2 toggle error:', err);
+    }
+  };
 
   const scanSignals = useCallback(async () => {
     setScanning(true);
@@ -389,17 +438,27 @@ export default function ScalperDashboard() {
 
   useEffect(() => {
     fetchStatus();
-    const interval = setInterval(fetchStatus, 30000);
+    fetchLearningStatus();
+    fetchV2Status();
+    const interval = setInterval(() => {
+      fetchStatus();
+      if (activeTab === 'learning') fetchLearningStatus();
+      if (activeTab === 'v2') fetchV2Status();
+    }, 30000);
     return () => clearInterval(interval);
-  }, [fetchStatus]);
+  }, [fetchStatus, fetchLearningStatus, fetchV2Status, activeTab]);
 
   useEffect(() => {
     if (activeTab === 'signals') {
       scanSignals();
     } else if (activeTab === 'opportunities') {
       fetchOpportunities();
+    } else if (activeTab === 'learning') {
+      fetchLearningStatus();
+    } else if (activeTab === 'v2') {
+      fetchV2Status();
     }
-  }, [activeTab, timeframe, scanSignals, fetchOpportunities]);
+  }, [activeTab, timeframe, scanSignals, fetchOpportunities, fetchLearningStatus, fetchV2Status]);
 
   return (
     <div className="space-y-6" data-testid="scalper-dashboard">
