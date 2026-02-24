@@ -12,7 +12,60 @@ Build a sophisticated trading bot named "Aeon" with:
 
 ---
 
-## Latest Session (Feb 24, 2026) - Dynamic Trade Styles, Position Scaling & Dashboard Stats
+## Latest Session (Feb 24, 2026) - V2.1 Backtest System
+
+### V2.1 Strategy Backtest (P0) - DONE
+Built comprehensive backtest system for the V2.1 HIGH WIN RATE strategy using MEXC historical data.
+
+**Backend:**
+- Created `/app/backend/backtest_v21.py` - BacktestV21Engine using MEXC data
+- Created `/app/backend/routes/backtest_v21.py` - API routes for backtest
+- API endpoints:
+  - `GET /api/backtest/v21/settings` - V2.1 filter settings
+  - `GET /api/backtest/v21/status` - Backtest status (is_running, progress)
+  - `GET /api/backtest/v21/result` - Last backtest result
+  - `POST /api/backtest/v21/run` - Start async backtest
+  - `GET /api/backtest/v21/quick/{symbol}` - Sync single-symbol backtest
+  - `GET /api/backtest/v21/compare` - Compare BTC/ETH/SOL
+
+**Frontend:**
+- Created `/app/frontend/src/components/BacktestV21.jsx` - Dedicated page
+- Created `/app/frontend/src/components/BacktestV21Modal.jsx` - Quick access modal
+- Added "V2.1 Test" to main navigation
+- Added "V2.1 Backtest" button to Dashboard quick actions
+
+**V2.1 Filters Tested:**
+- 200 EMA Trend Filter (LONG only above, SHORT only below)
+- ADX > 25 (trending market required)
+- Volume > 1.5x 20-period average
+- Session Filter (London/NY for SCALP/DAY)
+- 90% Minimum Confidence
+- 5/5 Confirmations Required
+- 3:1 Minimum R:R Ratio
+
+**Results Display:**
+- Win rate comparison (old 19% vs new V2.1)
+- Signal reduction percentage (97% fewer low-quality signals)
+- Filter effectiveness breakdown
+- Results by symbol (BTC, ETH, SOL)
+- Recent simulated trades table
+- Recommendations based on results
+
+---
+
+## Previous Session - V2.1 HIGH WIN RATE MODE Implementation
+
+### Trading Strategy Overhaul (P0) - DONE
+Implemented comprehensive new trading rules to fix 19% win rate:
+- 200 EMA Trend Filter (trades must align with long-term trend)
+- ADX Market Condition Filter (trades only when ADX > 25)
+- Volume Confirmation (signal candle volume must be >1.5x the 20-period average)
+- Session Filter (restricts SCALP/DAY trades to London/NY sessions)
+- Increased requirements: 90% confidence, 5/5 confirmations, 3:1 R:R
+- Reduced max open positions from 15 to 5
+- Improved RSI logic to be trend-aware
+- Fixed position scaling to require profit before scaling in
+- Added Smarter Stop Loss placement based on support/resistance levels
 
 ### Dynamic Trade Styles (P0) - DONE
 - Fixed trade style assignment that was defaulting to SWING
