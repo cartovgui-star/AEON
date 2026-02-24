@@ -645,9 +645,10 @@ All alerts now include: WHY, WHAT TO EXPECT, IF WRONG, PREPARATION
 | Free Will v2 | ACTIVE | 80% conf, scan bug fixed |
 | Aggressive Scalper | ACTIVE | Auto-learning enabled, V2.1 integrated |
 | Morning Briefing | ACTIVE | 6 AM CT daily, 38 users |
+| Weekly Report | ACTIVE | Sunday 8 PM CT, 38 users |
 | Paper Trading | ACTIVE | 9 closed, ~9 open trades |
 | Price Alerts v2 | ACTIVE | Batched RSI, vol-confirmed breakouts |
-| Self-Healer | ACTIVE | 6 services monitored (incl. briefing) |
+| Self-Healer | ACTIVE | 7 services monitored (incl. weekly report) |
 | Sentiment | ACTIVE | News + Fear/Greed |
 | Arbitrage | ACTIVE | 5 exchanges |
 | Strategy Health | ACTIVE | Auto-bench enabled |
@@ -659,11 +660,9 @@ All alerts now include: WHY, WHAT TO EXPECT, IF WRONG, PREPARATION
 ## Backlog
 
 ### P1 (Next)
-- **Enhance V2.1 Exit Intelligence** - Apply reversal pattern detection (already in scalper) to main V2.1 strategy
-- **Dashboard scalper integration widget** - Show scalper status on main dashboard
+- **Trade notification sounds** - Different sounds for LONG vs SHORT alerts
 
 ### P2 (When Ready)
-- Trade notification sounds (different for LONG vs SHORT)
 - PnL Goal customization UI
 - Multi-timeframe scalper correlation analysis
 
@@ -671,6 +670,7 @@ All alerts now include: WHY, WHAT TO EXPECT, IF WRONG, PREPARATION
 - Real-money trading integration
 - More exchange integrations (Binance futures, Bybit)
 - Portfolio tracking
+- Discord/Slack notification channels
 - Discord/Slack alerts
 
 ---
