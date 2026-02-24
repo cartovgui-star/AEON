@@ -486,6 +486,12 @@ All alerts now include: WHY, WHAT TO EXPECT, IF WRONG, PREPARATION
 
 ## Key Files
 
+### Modified (Feb 24, 2026) - Morning Briefing
+- `/app/backend/morning_briefing.py` - NEW: Full morning briefing system with scheduler
+- `/app/backend/routes/briefing.py` - NEW: Briefing API endpoints
+- `/app/backend/server.py` - Added morning_briefing scheduler to lifespan
+- `/app/frontend/src/components/SettingsPanel.jsx` - Added Daily Briefing tab with MorningBriefingTab component
+
 ### Modified (Feb 24, 2026) - Auto-Learning Scalper
 - `/app/backend/scalper_learning.py` - NEW: Auto-learning, reversal patterns, V2 integration
 - `/app/backend/aggressive_scalper.py` - Enhanced with auto-learning hooks, reversal exits
