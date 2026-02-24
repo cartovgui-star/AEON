@@ -429,19 +429,17 @@ All alerts now include: WHY, WHAT TO EXPECT, IF WRONG, PREPARATION
 ## Backlog
 
 ### P1 (Next)
-- **Consolidate Backend Routes** - Merge overlapping route files (coinglass.py/derivatives.py, advanced.py/analysis.py)
+- **Consolidate Backend Routes** - Merge overlapping route files (analysis.py has duplicates of advanced.py, orderflow.py)
 - **Enhance Exit Intelligence** - Add reversal pattern detection for smarter exits
-- Trade notification sounds - different sounds for LONG vs SHORT
-- PnL Goal customization UI - let users set daily/weekly targets
 
 ### P2 (When Ready)
-- **Fine-tune V2.1 Filters** - Adjust thresholds based on backtest results (e.g., ADX 25→27)
-- Real-money trading (user deferred)
-- Moltbot deeper integration - sentiment-based trade signals
+- **Apply Optimal Settings** - Based on backtest results, apply 65% confidence + 15m timeframe for live trading
+- Trade notification sounds
+- PnL Goal customization UI
 
 ### P3 (Future)
+- Real-money trading
 - More exchange integrations
-- Advanced backtesting with multiple timeframes
 - Portfolio tracking
 - Discord/Slack integration
 
