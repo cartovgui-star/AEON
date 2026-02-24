@@ -898,22 +898,24 @@ function TradingLogicModal({ onClose }) {
 
           {/* Summary Flow */}
           <section>
-            <h3 className="text-xl font-bold text-white mb-4">Trade Decision Flow</h3>
-            <div className="bg-gradient-to-r from-orange-500/10 to-yellow-500/10 border border-orange-500/30 rounded-xl p-6">
+            <h3 className="text-xl font-bold text-white mb-4">V2.1 Trade Decision Flow</h3>
+            <div className="bg-gradient-to-r from-green-500/10 to-cyan-500/10 border border-green-500/30 rounded-xl p-6">
               <div className="flex flex-wrap items-center justify-center gap-2 text-sm">
-                <span className="px-3 py-1 bg-zinc-800 rounded-full text-zinc-300">Scan 25 Pairs</span>
+                <span className="px-3 py-1 bg-green-500/20 rounded-full text-green-400 font-medium">200 EMA Check</span>
+                <ChevronRight className="w-4 h-4 text-green-400" />
+                <span className="px-3 py-1 bg-zinc-800 rounded-full text-zinc-300">ADX &gt; 25</span>
                 <ChevronRight className="w-4 h-4 text-orange-400" />
-                <span className="px-3 py-1 bg-zinc-800 rounded-full text-zinc-300">Calculate Confluence</span>
+                <span className="px-3 py-1 bg-zinc-800 rounded-full text-zinc-300">Volume 1.5x</span>
                 <ChevronRight className="w-4 h-4 text-orange-400" />
-                <span className="px-3 py-1 bg-zinc-800 rounded-full text-zinc-300">Check 80% Confidence</span>
+                <span className="px-3 py-1 bg-zinc-800 rounded-full text-zinc-300">Session OK</span>
                 <ChevronRight className="w-4 h-4 text-orange-400" />
-                <span className="px-3 py-1 bg-zinc-800 rounded-full text-zinc-300">Verify R:R 2:1</span>
+                <span className="px-3 py-1 bg-zinc-800 rounded-full text-zinc-300">5/5 Confluence</span>
                 <ChevronRight className="w-4 h-4 text-orange-400" />
-                <span className="px-3 py-1 bg-zinc-800 rounded-full text-zinc-300">Check Blacklist/Cooldown</span>
+                <span className="px-3 py-1 bg-zinc-800 rounded-full text-zinc-300">90% Confidence</span>
                 <ChevronRight className="w-4 h-4 text-orange-400" />
-                <span className="px-3 py-1 bg-zinc-800 rounded-full text-zinc-300">Determine Style (ATR)</span>
+                <span className="px-3 py-1 bg-zinc-800 rounded-full text-zinc-300">R:R 3:1</span>
                 <ChevronRight className="w-4 h-4 text-orange-400" />
-                <span className="px-3 py-1 bg-zinc-800 rounded-full text-zinc-300">Calculate Size (Kelly)</span>
+                <span className="px-3 py-1 bg-zinc-800 rounded-full text-zinc-300">Smart SL</span>
                 <ChevronRight className="w-4 h-4 text-orange-400" />
                 <span className="px-3 py-1 bg-green-500/20 rounded-full text-green-400 font-medium">Execute Trade</span>
               </div>
