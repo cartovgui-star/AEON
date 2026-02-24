@@ -136,6 +136,7 @@ export default function SettingsPanel() {
   const tabs = [
     { id: 'trading', label: 'Trading Engines', icon: Bot },
     { id: 'alerts', label: 'Alert System', icon: Bell },
+    { id: 'briefing', label: 'Daily Briefing', icon: Sun },
     { id: 'profile', label: 'Profile', icon: User },
     { id: 'voice', label: 'Voice', icon: Volume2 }
   ];
