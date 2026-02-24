@@ -429,9 +429,11 @@ export default function Dashboard({
         <h2 className="text-lg font-semibold text-white flex items-center gap-2">
           <BarChart3 className="w-5 h-5 text-orange-400" />
           Live Market Data
-          <span className="text-xs text-zinc-500 font-normal ml-2">Click any coin for instant analysis</span>
+          <span className="text-xs text-zinc-500 font-normal ml-2">
+            {mexcData?.total || mexcData?.symbols?.length || 0} coins tracked • Click any for instant analysis
+          </span>
         </h2>
-        <div className="grid md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
           {mexcData?.symbols?.map((sym, i) => (
             <Card 
               key={i} 
@@ -439,20 +441,20 @@ export default function Dashboard({
               onClick={() => onQuickScan(sym.symbol?.replace('/USDT', '').replace('USDT', ''))}
               data-testid={`market-card-${sym.symbol?.replace('/USDT', '').replace('USDT', '')}`}
             >
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="font-semibold text-white group-hover:text-orange-400 transition-colors">{sym.symbol?.replace('/USDT', '')}</span>
-                  <span className={`text-sm font-medium ${
+              <CardContent className="p-3">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-semibold text-white group-hover:text-orange-400 transition-colors text-sm">{sym.symbol?.replace('/USDT', '')}</span>
+                  <span className={`text-xs font-medium ${
                     (sym.change_24h || 0) >= 0 ? 'text-green-400' : 'text-red-400'
                   }`}>
-                    {(sym.change_24h || 0) >= 0 ? '↗' : '↘'} {Math.abs(sym.change_24h || 0).toFixed(2)}%
+                    {(sym.change_24h || 0) >= 0 ? '↗' : '↘'} {Math.abs(sym.change_24h || 0).toFixed(1)}%
                   </span>
                 </div>
-                <p className="text-2xl font-bold text-white">
-                  ${(sym.price || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                <p className="text-lg font-bold text-white">
+                  ${(sym.price || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: sym.price > 100 ? 0 : 2 })}
                 </p>
-                <div className="mt-3 flex items-center gap-2">
-                  <div className="flex-1 h-2 bg-zinc-700 rounded-full overflow-hidden">
+                <div className="mt-2 flex items-center gap-1">
+                  <div className="flex-1 h-1.5 bg-zinc-700 rounded-full overflow-hidden">
                     <div 
                       className={`h-full ${sym.imbalance >= 0 ? 'bg-green-500' : 'bg-red-500'}`}
                       style={{ width: `${50 + (sym.imbalance || 0) / 2}%` }}
