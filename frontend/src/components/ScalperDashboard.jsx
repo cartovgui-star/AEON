@@ -495,10 +495,13 @@ export default function ScalperDashboard() {
           { id: 'signals', label: 'Live Signals', icon: Activity },
           { id: 'opportunities', label: 'Best Opportunities', icon: Target },
           { id: 'backtest', label: 'Backtest', icon: BarChart3 },
+          { id: 'learning', label: 'Auto-Learning', icon: Brain },
+          { id: 'v2', label: 'V2.1 Integration', icon: Link2 },
         ].map(tab => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
+            data-testid={`scalper-tab-${tab.id}`}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
               activeTab === tab.id
                 ? 'bg-purple-500/20 text-purple-400'
@@ -510,23 +513,26 @@ export default function ScalperDashboard() {
           </button>
         ))}
         
-        {/* Timeframe Selector */}
-        <div className="ml-auto flex items-center gap-2">
-          <span className="text-xs text-zinc-500">Timeframe:</span>
-          {TIMEFRAMES.map(tf => (
-            <button
-              key={tf}
-              onClick={() => setTimeframe(tf)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                timeframe === tf
-                  ? 'bg-purple-500/20 text-purple-400 border border-purple-500/50'
-                  : 'bg-zinc-800 text-zinc-400 border border-zinc-700'
-              }`}
-            >
-              {tf}
-            </button>
-          ))}
-        </div>
+        {/* Timeframe Selector - only show for relevant tabs */}
+        {['signals', 'backtest'].includes(activeTab) && (
+          <div className="ml-auto flex items-center gap-2">
+            <span className="text-xs text-zinc-500">Timeframe:</span>
+            {TIMEFRAMES.map(tf => (
+              <button
+                key={tf}
+                onClick={() => setTimeframe(tf)}
+                data-testid={`scalper-tf-${tf}`}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                  timeframe === tf
+                    ? 'bg-purple-500/20 text-purple-400 border border-purple-500/50'
+                    : 'bg-zinc-800 text-zinc-400 border border-zinc-700'
+                }`}
+              >
+                {tf}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Content */}
