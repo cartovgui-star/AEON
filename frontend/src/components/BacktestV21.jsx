@@ -564,7 +564,34 @@ export default function BacktestV21() {
 
       {/* Configuration Panel */}
       <div className="bg-zinc-800/30 border border-zinc-700/50 rounded-2xl p-6 space-y-5" data-testid="backtest-v21-config">
-        {/* Symbol Selection */}
+        {/* Test Mode Selector */}
+        <div>
+          <label className="block text-xs text-zinc-400 mb-3">Test Mode</label>
+          <div className="flex gap-2">
+            {TEST_MODES.map(({ id, label, icon: Icon }) => (
+              <button
+                key={id}
+                onClick={() => setTestMode(id)}
+                data-testid={`test-mode-${id}`}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                  testMode === id
+                    ? 'bg-amber-500/20 text-amber-400 border border-amber-500/50'
+                    : 'bg-zinc-800 text-zinc-400 border border-zinc-700 hover:border-zinc-600'
+                }`}
+              >
+                <Icon className="w-4 h-4" />
+                {label}
+              </button>
+            ))}
+          </div>
+          <p className="text-xs text-zinc-500 mt-2">
+            {testMode === 'standard' && 'Run standard backtest with current settings'}
+            {testMode === 'confidence' && 'Test confidence levels 65-90% to find optimal threshold'}
+            {testMode === 'timeframe' && 'Compare performance across 15m, 1h, 4h timeframes'}
+          </p>
+        </div>
+
+        {/* Symbol Selection (shown for all modes) */}
         <div>
           <label className="block text-xs text-zinc-400 mb-3">Select Symbols (MEXC)</label>
           <div className="flex flex-wrap gap-2">
@@ -585,22 +612,37 @@ export default function BacktestV21() {
           </div>
         </div>
 
-        {/* Timeframe & Days */}
+        {/* Timeframe & Days (conditional based on mode) */}
         <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-xs text-zinc-400 mb-2">Timeframe</label>
+          {testMode === 'standard' && (
+            <div>
+              <label className="block text-xs text-zinc-400 mb-2">Timeframe</label>
+              <select
+                value={timeframe}
+                onChange={(e) => setTimeframe(e.target.value)}
+                data-testid="backtest-v21-timeframe"
+                className="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-4 py-3 text-white text-sm focus:border-amber-500 focus:outline-none"
+              >
+                {TIMEFRAMES.map(tf => (
+                  <option key={tf.value} value={tf.value}>{tf.label}</option>
+                ))}
+              </select>
+            </div>
+          )}
+          <div className={testMode !== 'standard' ? 'col-span-2' : ''}>
+            <label className="block text-xs text-zinc-400 mb-2">Period</label>
             <select
-              value={timeframe}
-              onChange={(e) => setTimeframe(e.target.value)}
-              data-testid="backtest-v21-timeframe"
+              value={days}
+              onChange={(e) => setDays(parseInt(e.target.value))}
+              data-testid="backtest-v21-days"
               className="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-4 py-3 text-white text-sm focus:border-amber-500 focus:outline-none"
             >
-              {TIMEFRAMES.map(tf => (
-                <option key={tf.value} value={tf.value}>{tf.label}</option>
+              {DAYS_OPTIONS.map(d => (
+                <option key={d} value={d}>{d} days</option>
               ))}
             </select>
           </div>
-          <div>
+        </div>
             <label className="block text-xs text-zinc-400 mb-2">Period</label>
             <select
               value={days}
