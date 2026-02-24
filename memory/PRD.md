@@ -594,6 +594,16 @@ All alerts now include: WHY, WHAT TO EXPECT, IF WRONG, PREPARATION
 | /api/briefing/test | POST | Send test briefing immediately |
 | /api/briefing/toggle | POST | Enable/disable briefing |
 
+### Endpoints (Feb 24, 2026) - Weekly Performance Report
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| /api/report/status | GET | Report scheduler status |
+| /api/report/preview | GET | Preview current week's report |
+| /api/report/strategy-stats | GET | Strategy performance breakdown |
+| /api/report/coin-performance | GET | Coin performance data |
+| /api/report/test | POST | Send test report |
+| /api/report/toggle | POST | Enable/disable report |
+
 ### Endpoints (Feb 24, 2026) - Auto-Learning Scalper
 | Endpoint | Method | Description |
 |----------|--------|-------------|
