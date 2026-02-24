@@ -77,6 +77,9 @@ async def api_stats_dashboard():
         for t in trader.open_trades if t.get("pending_scale_in", False)
     ]
     
+    # Get filter statistics
+    filter_stats = trader.get_filter_stats()
+    
     return {
         "best_pairs": pair_data.get("best", []),
         "worst_pairs": pair_data.get("worst", []),
@@ -86,15 +89,30 @@ async def api_stats_dashboard():
             "enabled": trader.position_scaling_enabled,
             "initial_entry_pct": trader.initial_entry_pct,
             "pending_scale_ins": len(positions_pending_scale),
-            "positions": positions_pending_scale
+            "positions": positions_pending_scale,
+            "min_profit_for_scale": trader.scale_in_min_profit_pct,
+            "max_hours_for_scale": trader.scale_in_max_hours
         },
         "trading_config": {
             "min_confidence": trader.min_confidence,
             "min_confirmations": trader.min_confirmations,
+            "min_rr_ratio": trader.min_rr_ratio,
             "max_open_trades": trader.max_open_trades,
-            "cooldown_hours": trader.cooldown_hours
-        }
+            "cooldown_hours": trader.cooldown_hours,
+            "ema_200_filter": trader.ema_200_filter_enabled,
+            "adx_filter": trader.adx_filter_enabled,
+            "volume_filter": trader.volume_filter_enabled,
+            "session_filter": trader.session_filter_enabled
+        },
+        "filter_stats": filter_stats,
+        "current_session": trader.get_current_session()
     }
+
+
+@router.get("/trading/v2/filter-stats")
+async def api_filter_stats():
+    """Get detailed breakdown of how many signals were filtered by each rule"""
+    return state.autonomous_trader_v2.get_filter_stats()
 
 
 @router.post("/trading/v2/set-confidence")
