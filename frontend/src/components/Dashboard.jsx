@@ -2,7 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Bot, Activity, TrendingUp, TrendingDown, Target, Users, BarChart3, 
   MessageCircle, Brain, Zap, AlertTriangle, Shield, Radio, Power,
-  Volume2, DollarSign, Percent, Clock, Flame, ChevronRight
+  Volume2, DollarSign, Percent, Clock, Flame, ChevronRight, Ban, 
+  ThumbsUp, ThumbsDown, Timer, Scale
 } from 'lucide-react';
 import { Card, CardContent } from './ui/card';
 import { ScrollArea } from './ui/scroll-area';
@@ -19,6 +20,7 @@ export default function Dashboard({
   onNavigate
 }) {
   const [livePositions, setLivePositions] = useState([]);
+  const [dashboardStats, setDashboardStats] = useState(null);
   const [pnlGoal, setPnlGoal] = useState({ daily: 5, weekly: 25 });
   const [showKillSwitch, setShowKillSwitch] = useState(false);
 
