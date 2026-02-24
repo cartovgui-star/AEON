@@ -3192,7 +3192,7 @@ Use /auto on to resume.
             signals = await autonomous_trader_v2.scan_all_markets()
             
             if not signals:
-                response = """📊 NO ELITE SIGNALS
+                response = f"""📊 NO ELITE SIGNALS
 
 All markets below quality threshold.
 Waiting for 85%+ confidence with 4+ confirmations.
