@@ -1,17 +1,28 @@
 """
 AEON V2.1 Backtest Engine
-Tests the new HIGH WIN RATE filters against historical data
+Tests the new HIGH WIN RATE filters against historical MEXC data
 """
 
 import asyncio
-import aiohttp
 from datetime import datetime, timezone, timedelta
 from typing import Dict, List, Optional
 import statistics
 import logging
+from concurrent.futures import ThreadPoolExecutor
+import ccxt
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Thread executor for MEXC API calls
+executor = ThreadPoolExecutor(max_workers=3)
+
+# Initialize MEXC exchange
+try:
+    mexc = ccxt.mexc({'enableRateLimit': True})
+except Exception as e:
+    logger.error(f"Failed to init MEXC: {e}")
+    mexc = None
 
 # V2.1 Filter Settings
 V21_SETTINGS = {
@@ -24,7 +35,12 @@ V21_SETTINGS = {
     "session_filter": True,  # Only trade London/NY
 }
 
-class BacktestEngine:
+class BacktestV21Engine:
+    """
+    V2.1 Backtest Engine using MEXC historical data
+    Tests the HIGH WIN RATE filters against real market data
+    """
+    
     def __init__(self):
         self.results = {
             "total_candles": 0,
@@ -43,38 +59,54 @@ class BacktestEngine:
             "win_rate_old": 0,
             "win_rate_new": 0,
         }
+        self.is_running = False
+        self.progress = 0
+        self.current_symbol = ""
     
     async def fetch_klines(self, symbol: str, interval: str = "1h", days: int = 30) -> List[Dict]:
-        """Fetch historical klines from Binance"""
-        url = "https://api.binance.com/api/v3/klines"
-        end_time = int(datetime.now(timezone.utc).timestamp() * 1000)
-        start_time = int((datetime.now(timezone.utc) - timedelta(days=days)).timestamp() * 1000)
+        """Fetch historical klines from MEXC"""
+        if not mexc:
+            logger.error("MEXC not initialized")
+            return []
         
-        params = {
-            "symbol": symbol,
-            "interval": interval,
-            "startTime": start_time,
-            "endTime": end_time,
-            "limit": 1000
-        }
-        
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url, params=params) as resp:
-                if resp.status == 200:
-                    data = await resp.json()
-                    klines = []
-                    for k in data:
-                        klines.append({
-                            "timestamp": k[0],
-                            "open": float(k[1]),
-                            "high": float(k[2]),
-                            "low": float(k[3]),
-                            "close": float(k[4]),
-                            "volume": float(k[5]),
-                            "close_time": k[6],
-                        })
-                    return klines
+        try:
+            loop = asyncio.get_event_loop()
+            
+            # Calculate limit based on days and interval
+            interval_minutes = {
+                "1m": 1, "5m": 5, "15m": 15, "30m": 30,
+                "1h": 60, "4h": 240, "1d": 1440
+            }
+            mins_per_candle = interval_minutes.get(interval, 60)
+            candles_needed = min(1000, (days * 24 * 60) // mins_per_candle)
+            
+            # Fetch OHLCV data from MEXC
+            ohlcv = await loop.run_in_executor(
+                executor,
+                lambda: mexc.fetch_ohlcv(symbol, interval, limit=int(candles_needed))
+            )
+            
+            if not ohlcv:
                 return []
+            
+            klines = []
+            for k in ohlcv:
+                klines.append({
+                    "timestamp": k[0],
+                    "open": float(k[1]),
+                    "high": float(k[2]),
+                    "low": float(k[3]),
+                    "close": float(k[4]),
+                    "volume": float(k[5]),
+                    "close_time": k[0] + (mins_per_candle * 60 * 1000),
+                })
+            
+            logger.info(f"Fetched {len(klines)} candles for {symbol} from MEXC")
+            return klines
+            
+        except Exception as e:
+            logger.error(f"MEXC fetch error for {symbol}: {e}")
+            return []
     
     def calculate_indicators(self, klines: List[Dict], index: int) -> Dict:
         """Calculate technical indicators at a specific candle"""
