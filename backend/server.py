@@ -1456,17 +1456,21 @@ Total PnL: {stats['total_pnl_pct']:+.2f}%"""
 /open - Open positions
 /close [coin] - Close position
 /trail [coin] [%] - Set trailing stop
+/scalper - Scalper status
 
 *PERFORMANCE*
 /accuracy - Alert accuracy stats
 /leaderboard - Coin win rates
 /stats - Learning stats
 
-*ALERTS*
+*ALERTS & REPORTS*
 /alerts - View active alerts
 /alert add [coin] above|below [price]
 /fw - Free Will status
 /fwconf [80-95] - Set confidence
+/briefing - Today's market briefing
+/weekly - Weekly performance report
+/learn - 24/7 learning status
 
 *ADVANCED*
 /intel - Full market intelligence
