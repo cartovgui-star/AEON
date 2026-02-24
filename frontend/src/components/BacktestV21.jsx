@@ -440,20 +440,45 @@ export default function BacktestV21() {
     setError(null);
     
     try {
-      const response = await fetch(`${API_URL}/api/backtest/v21/run`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          symbols: selectedSymbols,
-          interval: timeframe,
-          days: days
-        })
-      });
-      
-      const data = await response.json();
-      
-      if (data.status === 'started' || data.status === 'already_running') {
-        setPolling(true);
+      if (testMode === 'standard') {
+        // Standard backtest
+        const response = await fetch(`${API_URL}/api/backtest/v21/run`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            symbols: selectedSymbols,
+            interval: timeframe,
+            days: days
+          })
+        });
+        
+        const data = await response.json();
+        
+        if (data.status === 'started' || data.status === 'already_running') {
+          setPolling(true);
+        }
+      } else if (testMode === 'confidence') {
+        // Multi-confidence backtest (65-90%)
+        const response = await fetch(`${API_URL}/api/backtest/v21/confidence-range?days=${days}`);
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+          setConfidenceResult(data);
+        } else {
+          setError(data.message || 'Confidence range test failed');
+        }
+        setLoading(false);
+      } else if (testMode === 'timeframe') {
+        // Multi-timeframe backtest
+        const response = await fetch(`${API_URL}/api/backtest/v21/timeframe-comparison?days=${days}&confidence=75`);
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+          setTimeframeResult(data);
+        } else {
+          setError(data.message || 'Timeframe comparison failed');
+        }
+        setLoading(false);
       }
     } catch (err) {
       setError('Failed to start backtest');
