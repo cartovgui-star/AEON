@@ -182,6 +182,7 @@ function App() {
     { id: 'trades', label: 'History', icon: History },
     { id: 'alerts', label: 'Alerts', icon: Bell },
     { id: 'backtest', label: 'Backtest', icon: FlaskConical },
+    { id: 'backtest-v21', label: 'V2.1 Test', icon: Target },
     { id: 'intel', label: 'Intel', icon: Brain },
     { id: 'charts', label: 'Analytics', icon: BarChart3 },
     { id: 'smc', label: 'SMC', icon: Layers },
