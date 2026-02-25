@@ -1,0 +1,153 @@
+{
+  "project_name": "Aeon Crypto Trading Bot",
+  "design_philosophy": {
+    "core_concept": "The Glass Cockpit",
+    "emotional_tone": "Precision, Omniscience, Autonomy",
+    "aesthetic": "Cyber-Professional (Bloomberg Terminal x Cyberpunk)",
+    "density": "High (Data-first, minimal whitespace)",
+    "mode": "dark_only"
+  },
+  "typography": {
+    "font_family": {
+      "headings": "Space Grotesk, sans-serif",
+      "body": "Inter, sans-serif",
+      "mono": "JetBrains Mono, monospace"
+    },
+    "scale": {
+      "h1": "text-4xl font-bold tracking-tight",
+      "h2": "text-2xl font-semibold tracking-tight",
+      "h3": "text-xl font-medium",
+      "data_large": "text-3xl font-mono font-bold",
+      "data_medium": "text-lg font-mono",
+      "label": "text-xs font-medium text-muted-foreground uppercase tracking-wider"
+    },
+    "rules": [
+      "Use 'Space Grotesk' for all page titles and widget headers.",
+      "Use 'JetBrains Mono' for ALL numbers, prices, PnL, and addresses.",
+      "Use 'Inter' for UI labels, buttons, and prose.",
+      "PnL numbers must always be colored (Green for positive, Red for negative).",
+      "Never center-align data tables; always right-align numbers."
+    ]
+  },
+  "colors": {
+    "palette": {
+      "background": {
+        "app": "#09090b",
+        "card": "#121214",
+        "card_hover": "#18181b",
+        "panel": "#0c0c0e"
+      },
+      "primary": {
+        "main": "#f97316",
+        "hover": "#ea580c",
+        "foreground": "#ffffff",
+        "glow": "0 0 20px rgba(249, 115, 22, 0.3)"
+      },
+      "semantic": {
+        "success": "#10b981",
+        "success_dim": "rgba(16, 185, 129, 0.1)",
+        "danger": "#ef4444",
+        "danger_dim": "rgba(239, 68, 68, 0.1)",
+        "info": "#3b82f6",
+        "warning": "#eab308"
+      },
+      "border": {
+        "subtle": "#27272a",
+        "active": "#3f3f46",
+        "primary": "#f97316"
+      },
+      "text": {
+        "primary": "#f4f4f5",
+        "secondary": "#a1a1aa",
+        "muted": "#52525b"
+      }
+    },
+    "instructions": "Override Tailwind config to match these exact hex codes. Map 'primary' to the orange shade. Ensure 'destructive' maps to the red shade."
+  },
+  "layout": {
+    "grid_system": {
+      "dashboard": "grid grid-cols-12 gap-3 p-4",
+      "trading_view": "grid grid-cols-12 grid-rows-[auto_1fr_auto] h-screen gap-1"
+    },
+    "spacing": {
+      "container_padding": "p-4 md:p-6",
+      "widget_gap": "gap-3",
+      "internal_padding": "p-3"
+    },
+    "strategies": [
+      "Bento Grid for Dashboard: Mix of 1x1, 2x1, and 2x2 widgets.",
+      "Holy Grail Layout for Trading: Left Sidebar (Markets), Center (Chart), Right (Order/Positions).",
+      "Dense Mode: Reduce default Shadcn padding by 30% for table cells and card bodies."
+    ]
+  },
+  "components": {
+    "Card": {
+      "style": "bg-[#121214] border border-white/5 shadow-none rounded-sm",
+      "hover": "hover:border-white/10 transition-colors duration-200"
+    },
+    "Button": {
+      "default": "rounded-sm font-medium tracking-wide",
+      "primary": "bg-primary text-primary-foreground hover:bg-primary/90 shadow-[0_0_15px_rgba(249,115,22,0.2)]",
+      "outline": "border-white/10 hover:bg-white/5 hover:text-white"
+    },
+    "Badge": {
+      "style": "rounded-full px-2 py-0.5 text-[10px] font-mono uppercase tracking-widest border-0",
+      "variants": {
+        "long": "bg-emerald-500/15 text-emerald-500",
+        "short": "bg-rose-500/15 text-rose-500",
+        "neutral": "bg-white/5 text-gray-400"
+      }
+    },
+    "Input": {
+      "style": "bg-[#0c0c0e] border-white/10 focus:border-primary/50 focus:ring-1 focus:ring-primary/20 rounded-sm font-mono h-9"
+    },
+    "Tabs": {
+      "list_style": "bg-transparent border-b border-white/5 rounded-none p-0 h-auto w-full justify-start gap-6",
+      "trigger_style": "rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary px-0 py-3 text-muted-foreground hover:text-foreground transition-colors"
+    }
+  },
+  "visual_enhancers": {
+    "glass_morphism": "backdrop-blur-md bg-black/40 border-b border-white/5 (Use for Sticky Header)",
+    "gradients": "No full-card gradients. Use subtle radial-gradient highlights on active states only.",
+    "borders": "1px solid #27272a (zinc-800). Active elements get #f97316 (orange-500).",
+    "shadows": "None by default. 'Glow' effects used for status indicators (green dot for online, orange for warning).",
+    "animations": {
+      "micro": "active:scale-[0.98] transition-transform",
+      "enter": "animate-in fade-in slide-in-from-bottom-2 duration-300"
+    }
+  },
+  "features_and_widgets": {
+    "position_card": {
+      "elements": [
+        "Symbol & Leverage (e.g., BTCUSDT 20x)",
+        "PnL (Big, colored, distinct)",
+        "Visual Progress Bar: [SL --- Entry --- Current --- TP]",
+        "Liquidation Price (Warning color if close)",
+        "Margin & Size details"
+      ],
+      "layout": "Compact vertical stack or horizontal strip depending on view."
+    },
+    "market_ticker": {
+      "style": "Marquee or static grid. Must show 'Change 24h' in color."
+    },
+    "order_book": {
+      "style": "Visual depth bars (background-size percentage) behind the numbers."
+    }
+  },
+  "icons": {
+    "library": "Lucide React",
+    "usage": "Stroke width 1.5px. Use small sizes (14px-16px) for UI controls, larger (20px) for navigation."
+  },
+  "accessibility": {
+    "contrast": "Ensure text-gray-500 is readable on black. Use text-gray-400 if needed.",
+    "focus": "Visible orange ring on keyboard focus."
+  },
+  "universal_guidelines": [
+    "Do NOT use gradients for backgrounds. Use solid dark colors.",
+    "Do NOT use rounded-xl or rounded-2xl. Keep it 'tech' with rounded-sm or rounded-md.",
+    "Interactive elements must have a :hover state.",
+    "Use 'sonner' for notifications.",
+    "All financial data must be formatted (e.g., $1,234.56).",
+    "Positive values = Green, Negative values = Red. Zero = Gray."
+  ]
+}
