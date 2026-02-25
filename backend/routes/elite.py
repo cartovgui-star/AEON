@@ -127,6 +127,42 @@ async def api_elite_relaxed(enabled: bool = True):
     }
 
 
+@router.get("/scan_unlimited")
+async def api_elite_scan_unlimited():
+    """Scan all pairs for elite signals WITHOUT daily limit (unlimited mode)"""
+    from elite_strategy_v3 import get_elite_strategy
+    
+    strategy = get_elite_strategy(
+        app_state.advanced_strategies,
+        None,
+        app_state.enhanced_intel
+    )
+    
+    # Temporarily enable relaxed mode for unlimited signals
+    original_mode = strategy.relaxed_mode
+    original_daily_limit = strategy.max_daily_trades
+    
+    # Set unlimited scanning
+    strategy.max_daily_trades = 999999
+    strategy.daily_trades = 0  # Reset counter
+    
+    # Also use relaxed settings for more signals
+    strategy.relaxed_mode = True
+    
+    signals = await strategy.scan_all_elite()
+    
+    # Restore original settings
+    strategy.relaxed_mode = original_mode
+    strategy.max_daily_trades = original_daily_limit
+    
+    return {
+        "mode": "UNLIMITED",
+        "signals_found": len(signals),
+        "signals": signals,
+        "message": f"Found {len(signals)} signals with unlimited scanning (no daily cap)"
+    }
+
+
 @router.get("/backtest")
 async def api_elite_backtest(days: int = 30):
     """Backtest Elite Strategy against historical data"""
