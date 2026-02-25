@@ -1994,6 +1994,94 @@ Commands:
                 response = f"❌ Error: {str(e)}"
             context = "elite"
         
+        elif text_lower == '/elite relaxed' or text_lower == '/relaxed':
+            try:
+                elite = get_elite_strategy(
+                    state.advanced_strategies,
+                    state.smc_analyzer,
+                    state.enhanced_intel
+                )
+                result = elite.set_relaxed_mode(True)
+                settings = result["active_settings"]
+                response = f"""😎 ELITE RELAXED MODE ENABLED
+
+More signals with slightly lower thresholds:
+• Min Confidence: {settings['min_confidence']}% (was 92%)
+• Min R:R: {settings['min_rr_ratio']}:1 (was 2.5:1)
+• Min Volume: {settings['min_volume_ratio']}x (was 2.0x)
+• Min ADX: {settings['min_adx']} (was 28)
+• Max Trades/Day: {settings['max_daily_trades']} (was 3)
+• BTC Alignment: {'Required' if settings['require_btc_alignment'] else 'Optional'}
+
+Switch back: /elite strict"""
+            except Exception as e:
+                response = f"❌ Error: {str(e)}"
+            context = "elite"
+        
+        elif text_lower == '/elite strict' or text_lower == '/strict':
+            try:
+                elite = get_elite_strategy(
+                    state.advanced_strategies,
+                    state.smc_analyzer,
+                    state.enhanced_intel
+                )
+                result = elite.set_relaxed_mode(False)
+                settings = result["active_settings"]
+                response = f"""🎯 ELITE STRICT MODE ENABLED
+
+Ultra-selective for 60%+ win rate:
+• Min Confidence: {settings['min_confidence']}%
+• Min R:R: {settings['min_rr_ratio']}:1
+• Min Volume: {settings['min_volume_ratio']}x
+• Min ADX: {settings['min_adx']}
+• Max Trades/Day: {settings['max_daily_trades']}
+• BTC Alignment: Required
+• MTF Confluence: Required
+
+Switch to more signals: /elite relaxed"""
+            except Exception as e:
+                response = f"❌ Error: {str(e)}"
+            context = "elite"
+        
+        elif text_lower == '/elite backtest' or text_lower == '/backtest elite':
+            try:
+                elite = get_elite_strategy(
+                    state.advanced_strategies,
+                    state.smc_analyzer,
+                    state.enhanced_intel
+                )
+                result = await elite.backtest(30)
+                
+                if "error" in result:
+                    response = f"❌ Backtest error: {result['error']}"
+                else:
+                    strict = result.get("strict_mode", {})
+                    relaxed = result.get("relaxed_mode", {})
+                    overall = result.get("overall", {})
+                    
+                    response = f"""📊 ELITE STRATEGY BACKTEST
+
+Analyzed: {result['total_signals']} signals ({result['days_analyzed']} days)
+
+🎯 STRICT MODE (92%+ conf)
+• Would take: {strict.get('signals_would_take', 0)} trades
+• Estimated wins: {strict.get('estimated_wins', 0)}
+• Est. Win Rate: {strict.get('estimated_win_rate', 0)}%
+• Target (60%+): {'✅ YES' if strict.get('target_achieved') else '❌ NO'}
+
+😎 RELAXED MODE (70%+ conf)
+• Would take: {relaxed.get('signals_would_take', 0)} trades
+• Estimated wins: {relaxed.get('estimated_wins', 0)}
+• Est. Win Rate: {relaxed.get('estimated_win_rate', 0)}%
+• Target (50%+): {'✅ YES' if relaxed.get('target_achieved') else '❌ NO'}
+
+📈 Overall: {overall.get('wins', 0)}W/{overall.get('losses', 0)}L ({overall.get('win_rate', 0)}%)
+
+💡 {result.get('recommendation', 'Analysis complete')}"""
+            except Exception as e:
+                response = f"❌ Error: {str(e)}"
+            context = "elite"
+        
         # ============= MODEL STATUS COMMAND =============
         elif text_lower.startswith('/model'):
             parts = text_lower.split()
