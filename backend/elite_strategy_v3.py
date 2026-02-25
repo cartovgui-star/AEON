@@ -494,7 +494,7 @@ class EliteStrategyV3:
         """
         try:
             import app_state
-            if not app_state.db:
+            if app_state.db is None:
                 return {"error": "Database not available"}
             
             # Get historical signals
