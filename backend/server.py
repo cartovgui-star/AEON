@@ -1725,6 +1725,97 @@ Status: {'🟢 ACTIVE' if settings.get('enabled', True) else '🔴 PAUSED'}
 Scalper runs alongside V2.1 with auto-learning!"""
             context = "scalper"
         
+        # ============= MTF CONFLUENCE COMMAND =============
+        elif text_lower == '/mtf' or text_lower == '/confluence':
+            # Multi-Timeframe Confluence Analysis
+            try:
+                result = await scalper.scan_mtf_confluence(min_confluence=2)
+                summary = result.get("summary", {})
+                best = result.get("best_setup")
+                
+                response = f"""📊 MTF CONFLUENCE ANALYSIS
+
+Scanned: {summary.get('scanned_symbols', 15)} symbols across 5m/15m/30m
+
+🎯 STRONG (3/3): {summary.get('strong_setups', 0)} setups
+📈 MODERATE (2/3): {summary.get('moderate_setups', 0)} setups
+📊 Actionable: {summary.get('total_actionable', 0)} total
+
+"""
+                if best:
+                    symbol = best.get('symbol', '').replace('/USDT', '')
+                    direction = best.get('consensus_direction', 'N/A')
+                    conf = best.get('weighted_confidence', 0)
+                    level = best.get('confluence_level', 'N/A')
+                    
+                    response += f"""🏆 BEST SETUP: {symbol}
+• Direction: {'🟢 LONG' if direction == 'LONG' else '🔴 SHORT' if direction == 'SHORT' else '⚪ ' + direction}
+• Confluence: {level} ({best.get('confluence_count', 'N/A')})
+• Confidence: {conf}%
+• {best.get('recommendation', '')}
+
+"""
+                # Show strong setups
+                strong = result.get("strong_confluence", [])[:3]
+                if strong:
+                    response += "🎯 STRONG SETUPS:\n"
+                    for s in strong:
+                        sym = s.get('symbol', '').replace('/USDT', '')
+                        dir_emoji = '🟢' if s.get('consensus_direction') == 'LONG' else '🔴'
+                        response += f"• {sym} {dir_emoji} {s.get('consensus_direction')} ({s.get('weighted_confidence', 0)}%)\n"
+                else:
+                    response += "No strong setups right now.\n"
+                
+                response += "\nTrade STRONG (3/3) with larger size, MODERATE (2/3) with standard size."
+                
+            except Exception as e:
+                logger.error(f"MTF confluence error: {e}")
+                response = "❌ Error scanning MTF confluence. Try again."
+            context = "scalper"
+        
+        elif text_lower.startswith('/mtf '):
+            # MTF analysis for specific symbol
+            parts = text_lower.split()
+            if len(parts) >= 2:
+                symbol = parts[1].upper()
+                try:
+                    result = await scalper.analyze_mtf_confluence(symbol)
+                    
+                    direction = result.get('consensus_direction', 'NEUTRAL')
+                    level = result.get('confluence_level', 'NONE')
+                    conf = result.get('weighted_confidence', 0)
+                    
+                    dir_emoji = '🟢' if direction == 'LONG' else '🔴' if direction == 'SHORT' else '⚪'
+                    level_emoji = '🎯' if level == 'STRONG' else '📈' if level == 'MODERATE' else '📊' if level == 'WEAK' else '⚫'
+                    
+                    response = f"""{level_emoji} MTF CONFLUENCE: {symbol}
+
+Direction: {dir_emoji} {direction}
+Confluence: {level} ({result.get('confluence_count', 'N/A')})
+Confidence: {conf}%
+
+📊 BY TIMEFRAME:"""
+                    
+                    for tf, data in result.get('timeframes', {}).items():
+                        signal = data.get('signal', 0)
+                        strength = data.get('strength', 0)
+                        reason = data.get('reason', 'No signal')
+                        
+                        if signal == 1:
+                            response += f"\n• {tf}: 🟢 BUY (str:{strength}) - {reason}"
+                        elif signal == -1:
+                            response += f"\n• {tf}: 🔴 SELL (str:{strength}) - {reason}"
+                        else:
+                            response += f"\n• {tf}: ⚪ HOLD"
+                    
+                    response += f"\n\n💡 {result.get('recommendation', 'Analyze further before trading.')}"
+                    
+                except Exception as e:
+                    response = f"❌ Error analyzing {symbol}: {str(e)}"
+            else:
+                response = "Usage: /mtf BTC"
+            context = "scalper"
+        
         # ============= QUICK MODEL SWITCH COMMANDS =============
         elif text_lower == '/openai' or text_lower == '/gpt':
             success = await set_user_model(chat_id, "openai")
