@@ -628,8 +628,6 @@ class AutonomousTraderV2:
                 # Save default V2.1 settings
                 await self.save_settings()
                 logger.info("Created default V2.1 settings")
-        except Exception as e:
-            logger.error(f"Failed to load settings: {e}")
             
             # Load open trades from last session
             open_trades = await self.db.v2_open_trades.find().to_list(100)
