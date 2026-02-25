@@ -58,9 +58,9 @@ async def handle_elite_scan(text: str, chat_id: int, context: dict) -> Tuple[str
         import app_state
         
         elite = get_elite_strategy(
-            app_state.state.advanced_strategies,
-            app_state.state.smc_analyzer,
-            app_state.state.enhanced_intel
+            app_state.advanced_strategies,
+            None,
+            app_state.enhanced_intel
         )
         signals = await elite.scan_all_elite()
         
