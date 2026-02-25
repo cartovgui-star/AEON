@@ -1561,6 +1561,13 @@ Total PnL: {stats['total_pnl_pct']:+.2f}%"""
 /close [coin] - Close position
 /trail [coin] [%] - Set trailing stop
 /scalper - Scalper status
+/strategy - View optimized strategy
+
+*ENGINES*
+/engines - All 6 engines status
+/engine [1-5] - View engine settings
+/engine [1-5] on|off - Toggle engine
+/engine [1-5] set [param] [value]
 
 *PERFORMANCE*
 /accuracy - Alert accuracy stats
