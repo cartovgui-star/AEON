@@ -2505,18 +2505,6 @@ Get key at: coinglass.com/api"""
                 else:
                     response += f"▶️ {title} - {channel}\n\n"
             
-            social = feed.get('social', [])
-            if social:
-                response += "💬 SOCIAL\n"
-                for s in social[:2]:
-                    emoji = "🐦" if s.get('source') == 'twitter' else "💬"
-                    title = s.get('title', '')
-                    url = s.get('url', '')
-                    if url:
-                        response += f"{emoji} [{title}]({url})\n\n"
-                    else:
-                        response += f"{emoji} {title}\n\n"
-            
             context = "news"
             
         elif text_lower == '/whales' or text_lower == '/whale':
