@@ -236,13 +236,14 @@ class EliteStrategyV3:
                 return None
             
             ta = await app_state.market_intel.get_technical_analysis(symbol.replace("/", ""), timeframe)
-            if not ta:
+            if not ta or "error" in ta:
                 logger.warning(f"Elite: No TA data for {symbol}")
                 self._record_filter("NO_TA_DATA")
                 return None
             
             indicators = ta.get("indicators", {})
-            current_price = indicators.get("current_price", indicators.get("close", 0))
+            # Price can be at top level or in indicators
+            current_price = ta.get("price", indicators.get("current_price", indicators.get("close", 0)))
             if current_price <= 0:
                 logger.warning(f"Elite: No price for {symbol}")
                 self._record_filter("NO_PRICE_DATA")
