@@ -104,3 +104,38 @@ async def api_elite_settings(settings: dict):
         "success": True,
         "new_settings": strategy.get_stats()["settings"]
     }
+
+
+@router.post("/relaxed")
+async def api_elite_relaxed(enabled: bool = True):
+    """Toggle relaxed mode (70% conf, more signals)"""
+    from elite_strategy_v3 import get_elite_strategy
+    
+    strategy = get_elite_strategy(
+        app_state.advanced_strategies,
+        None,
+        app_state.enhanced_intel
+    )
+    
+    result = strategy.set_relaxed_mode(enabled)
+    
+    return {
+        "success": True,
+        "relaxed_mode": result["relaxed_mode"],
+        "mode": "RELAXED" if enabled else "STRICT",
+        "settings": result["active_settings"]
+    }
+
+
+@router.get("/backtest")
+async def api_elite_backtest(days: int = 30):
+    """Backtest Elite Strategy against historical data"""
+    from elite_strategy_v3 import get_elite_strategy
+    
+    strategy = get_elite_strategy(
+        app_state.advanced_strategies,
+        None,
+        app_state.enhanced_intel
+    )
+    
+    return await strategy.backtest(days)
