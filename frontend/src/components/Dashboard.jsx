@@ -161,39 +161,39 @@ export default function Dashboard({
   const dailyProgress = Math.min(100, ((tradingStats?.total_pnl_pct || 0) / pnlGoal.daily) * 100);
 
   return (
-    <div className="space-y-6" data-testid="dashboard-page">
-      {/* Quick Actions Bar */}
-      <div className="flex items-center gap-3 flex-wrap">
+    <div className="space-y-4 sm:space-y-6" data-testid="dashboard-page">
+      {/* Quick Actions Bar - Mobile Scrollable */}
+      <div className="flex items-center gap-2 sm:gap-3 overflow-x-auto pb-2 -mx-3 px-3 sm:mx-0 sm:px-0 sm:overflow-visible sm:flex-wrap no-scrollbar">
         <button
           onClick={() => onNavigate('trading')}
           data-testid="quick-trading-btn"
-          className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-orange-500 to-amber-600 rounded-xl text-white font-medium hover:from-orange-600 hover:to-amber-700 transition-all shadow-lg shadow-orange-500/20"
+          className="flex items-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-gradient-to-r from-orange-500 to-amber-600 rounded-xl text-white font-medium hover:from-orange-600 hover:to-amber-700 transition-all shadow-lg shadow-orange-500/20 whitespace-nowrap touch-target"
         >
           <Zap className="w-4 h-4" />
-          Quick Trade
+          <span className="text-sm">Trade</span>
         </button>
         <button
           onClick={() => onNavigate('alerts')}
-          className="flex items-center gap-2 px-4 py-2.5 glass-card hover:bg-zinc-800/80 rounded-xl text-zinc-300 transition-all"
+          className="flex items-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 glass-card hover:bg-zinc-800/80 rounded-xl text-zinc-300 transition-all whitespace-nowrap touch-target"
         >
           <Bell className="w-4 h-4" />
-          View Alerts
+          <span className="text-sm">Alerts</span>
         </button>
         <button
           onClick={() => setShowBacktestModal(true)}
           data-testid="quick-backtest-btn"
-          className="flex items-center gap-2 px-4 py-2.5 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-400 hover:bg-amber-500/20 transition-all"
+          className="flex items-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-400 hover:bg-amber-500/20 transition-all whitespace-nowrap touch-target"
         >
           <FlaskConical className="w-4 h-4" />
-          V2.1 Backtest
+          <span className="text-sm">Backtest</span>
         </button>
         <button
           onClick={() => setShowKillSwitch(true)}
           data-testid="kill-switch-btn"
-          className="flex items-center gap-2 px-4 py-2.5 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-400 hover:bg-rose-500/20 transition-all ml-auto"
+          className="flex items-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-400 hover:bg-rose-500/20 transition-all whitespace-nowrap touch-target sm:ml-auto"
         >
           <Power className="w-4 h-4" />
-          Kill Switch
+          <span className="text-sm">Kill</span>
         </button>
       </div>
 
