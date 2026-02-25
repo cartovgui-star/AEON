@@ -119,12 +119,15 @@ def calculate_position_size(
     # Quantity in coins
     quantity = position_size_usd / entry_price
     
+    # Ensure minimum margin of $1 for trades
+    margin_required = max(margin_required, 1.0)
+    
     return {
-        "position_size_usd": round(position_size_usd, 2),
-        "margin_required": round(margin_required, 2),
-        "quantity": round(quantity, 6),
+        "position_size_usd": round(position_size_usd, 4),
+        "margin_required": round(margin_required, 4),
+        "quantity": round(quantity, 8),
         "leverage": leverage,
-        "risk_amount": round(risk_amount, 2)
+        "risk_amount": round(risk_amount, 4)
     }
 
 
