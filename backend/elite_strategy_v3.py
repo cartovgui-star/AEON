@@ -89,9 +89,9 @@ class EliteStrategyV3:
             "max_daily_trades": 8,
             "require_btc_alignment": False,  # Optional in relaxed mode
             "require_mtf_confluence": True,  # Still require MTF
-            "min_mtf_agreement": 2,
-            "rsi_long_range": (30, 55),  # Wider range
-            "rsi_short_range": (45, 70),
+            "min_mtf_agreement": 1,  # Only need 1/3 in relaxed mode (was 2)
+            "rsi_long_range": (25, 60),  # Even wider range
+            "rsi_short_range": (40, 75),
         }
         
         # Statistics
