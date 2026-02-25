@@ -1113,6 +1113,10 @@ async def lifespan(app: FastAPI):
     app_state.get_user_settings = get_user_settings
     app_state.update_user_settings = update_user_settings
     
+    # Initialize signal tracker for historical data collection
+    await init_signal_tracker(db)
+    app_state.signal_tracker = signal_tracker
+    
     # Initialize morning briefing
     morning_briefing.set_dependencies(
         market_intel=market_intel,
