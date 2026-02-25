@@ -2485,12 +2485,7 @@ Get key at: coinglass.com/api"""
         elif text_lower == '/news':
             feed = await news_intel.get_full_news_feed()
             
-            response = f"""📰 CRYPTO FEED
-
-Sentiment: {feed.get('overall_sentiment', 'NEUTRAL')}
-
-📰 NEWS:
-"""
+            response = "📰 NEWS\n"
             for n in feed.get('news', [])[:3]:
                 emoji = n.get('sentiment', {}).get('emoji', '⚪')
                 title = n.get('title', '')
@@ -2500,19 +2495,19 @@ Sentiment: {feed.get('overall_sentiment', 'NEUTRAL')}
                 else:
                     response += f"{emoji} {title}\n\n"
             
-            response += "🎬 VIDEOS:\n"
+            response += "🎬 VIDEOS\n"
             for v in feed.get('videos', [])[:2]:
                 channel = v.get('channel', '')
                 title = v.get('title', '')
                 url = v.get('url', '')
                 if url:
-                    response += f"▶️ [{title}]({url})\n   📺 {channel}\n\n"
+                    response += f"▶️ [{title}]({url})\n   {channel}\n\n"
                 else:
                     response += f"▶️ {title} - {channel}\n\n"
             
             social = feed.get('social', [])
             if social:
-                response += "💬 SOCIAL:\n"
+                response += "💬 SOCIAL\n"
                 for s in social[:2]:
                     emoji = "🐦" if s.get('source') == 'twitter' else "💬"
                     title = s.get('title', '')
