@@ -31,7 +31,7 @@ async def handle_news(text: str, chat_id: int, context: dict) -> Tuple[str, str]
                         if resp.status == 200:
                             data = await resp.json()
                             news_items = data.get('results', [])[:5]
-            except:
+            except Exception:
                 pass
         
         if news_items:
