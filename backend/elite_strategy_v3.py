@@ -79,6 +79,21 @@ class EliteStrategyV3:
         # Skip session start (first hour)
         self.skip_session_start_minutes = 60
         
+        # RELAXED MODE - more signals with slightly lower thresholds
+        self.relaxed_mode = False
+        self.relaxed_settings = {
+            "min_confidence": 70,
+            "min_rr_ratio": 2.0,
+            "min_volume_ratio": 1.5,
+            "min_adx": 22,
+            "max_daily_trades": 8,
+            "require_btc_alignment": False,  # Optional in relaxed mode
+            "require_mtf_confluence": True,  # Still require MTF
+            "min_mtf_agreement": 2,
+            "rsi_long_range": (30, 55),  # Wider range
+            "rsi_short_range": (45, 70),
+        }
+        
         # Statistics
         self.signals_generated = 0
         self.signals_filtered = 0
