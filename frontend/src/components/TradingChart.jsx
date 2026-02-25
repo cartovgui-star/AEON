@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { createChart, CrosshairMode, LineStyle } from 'lightweight-charts';
+import * as LightweightCharts from 'lightweight-charts';
 import { 
-  TrendingUp, TrendingDown, Activity, RefreshCw, Settings2,
-  ZoomIn, ZoomOut, Maximize2, ChevronDown, Crosshair
+  TrendingUp, TrendingDown, Activity, RefreshCw,
+  ZoomIn, ZoomOut, Maximize2, ChevronDown
 } from 'lucide-react';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
