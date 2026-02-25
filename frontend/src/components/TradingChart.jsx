@@ -243,15 +243,13 @@ const TradingChart = ({
     const series = candleSeriesRef.current;
     
     positions.forEach(pos => {
-      const isLong = pos.direction === 'LONG';
-      
       // Entry price line
       if (pos.entry_price) {
         series.createPriceLine({
           price: pos.entry_price,
           color: '#3b82f6',
           lineWidth: 2,
-          lineStyle: LineStyle.Solid,
+          lineStyle: LightweightCharts.LineStyle.Solid,
           axisLabelVisible: true,
           title: `Entry ${pos.symbol?.replace('/USDT', '')}`,
         });
@@ -263,7 +261,7 @@ const TradingChart = ({
           price: pos.stop_price,
           color: '#ef4444',
           lineWidth: 1,
-          lineStyle: LineStyle.Dashed,
+          lineStyle: LightweightCharts.LineStyle.Dashed,
           axisLabelVisible: true,
           title: 'SL',
         });
@@ -275,7 +273,7 @@ const TradingChart = ({
           price: pos.target_price,
           color: '#22c55e',
           lineWidth: 1,
-          lineStyle: LineStyle.Dashed,
+          lineStyle: LightweightCharts.LineStyle.Dashed,
           axisLabelVisible: true,
           title: 'TP',
         });
@@ -287,7 +285,7 @@ const TradingChart = ({
           price: pos.liquidation_price,
           color: '#f59e0b',
           lineWidth: 1,
-          lineStyle: LineStyle.Dotted,
+          lineStyle: LightweightCharts.LineStyle.Dotted,
           axisLabelVisible: true,
           title: 'LIQ',
         });
