@@ -167,14 +167,14 @@ export default function Dashboard({
         <button
           onClick={() => onNavigate('trading')}
           data-testid="quick-trading-btn"
-          className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-500 to-amber-600 rounded-lg text-white font-medium hover:from-orange-600 hover:to-amber-700 transition-all"
+          className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-orange-500 to-amber-600 rounded-xl text-white font-medium hover:from-orange-600 hover:to-amber-700 transition-all shadow-lg shadow-orange-500/20"
         >
           <Zap className="w-4 h-4" />
           Quick Trade
         </button>
         <button
           onClick={() => onNavigate('alerts')}
-          className="flex items-center gap-2 px-4 py-2 bg-zinc-800/50 rounded-lg text-zinc-300 hover:bg-zinc-700 transition-all"
+          className="flex items-center gap-2 px-4 py-2.5 glass-card hover:bg-zinc-800/80 rounded-xl text-zinc-300 transition-all"
         >
           <Bell className="w-4 h-4" />
           View Alerts
@@ -182,7 +182,7 @@ export default function Dashboard({
         <button
           onClick={() => setShowBacktestModal(true)}
           data-testid="quick-backtest-btn"
-          className="flex items-center gap-2 px-4 py-2 bg-amber-500/20 border border-amber-500/30 rounded-lg text-amber-400 hover:bg-amber-500/30 transition-all"
+          className="flex items-center gap-2 px-4 py-2.5 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-400 hover:bg-amber-500/20 transition-all"
         >
           <FlaskConical className="w-4 h-4" />
           V2.1 Backtest
@@ -190,7 +190,7 @@ export default function Dashboard({
         <button
           onClick={() => setShowKillSwitch(true)}
           data-testid="kill-switch-btn"
-          className="flex items-center gap-2 px-4 py-2 bg-red-500/20 border border-red-500/30 rounded-lg text-red-400 hover:bg-red-500/30 transition-all ml-auto"
+          className="flex items-center gap-2 px-4 py-2.5 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-400 hover:bg-rose-500/20 transition-all ml-auto"
         >
           <Power className="w-4 h-4" />
           Kill Switch
