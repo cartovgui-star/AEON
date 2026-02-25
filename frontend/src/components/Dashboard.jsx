@@ -231,71 +231,71 @@ export default function Dashboard({
         </div>
       )}
 
-      {/* Main Stats Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
-        <div className="glass-card-hover p-4">
+      {/* Main Stats Grid - Mobile Optimized */}
+      <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-6 gap-2 sm:gap-3">
+        <div className="glass-card-hover p-3 sm:p-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="data-label">Status</p>
-              <p className={`text-lg font-display font-bold ${tradingStats?.active ? 'text-emerald-400' : 'text-zinc-400'}`}>
+              <p className={`text-sm sm:text-lg font-display font-bold ${tradingStats?.active ? 'text-emerald-400' : 'text-zinc-400'}`}>
                 {tradingStats?.active ? 'ACTIVE' : 'PAUSED'}
               </p>
             </div>
-            <Bot className={`w-8 h-8 ${tradingStats?.active ? 'text-orange-400' : 'text-zinc-600'}`} />
+            <Bot className={`w-6 sm:w-8 h-6 sm:h-8 ${tradingStats?.active ? 'text-orange-400' : 'text-zinc-600'}`} />
           </div>
         </div>
         
-        <div className="glass-card-hover p-4">
+        <div className="glass-card-hover p-3 sm:p-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="data-label">Win Rate</p>
-              <p className="text-lg font-mono font-bold text-emerald-400">{tradingStats?.win_rate || 0}%</p>
+              <p className="text-sm sm:text-lg font-mono font-bold text-emerald-400">{tradingStats?.win_rate || 0}%</p>
             </div>
-            <Target className="w-8 h-8 text-emerald-400" />
+            <Target className="w-6 sm:w-8 h-6 sm:h-8 text-emerald-400 hidden sm:block" />
           </div>
         </div>
         
-        <div className="glass-card-hover p-4">
+        <div className="glass-card-hover p-3 sm:p-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="data-label">Total PnL</p>
-              <p className={`text-lg font-mono font-bold ${(tradingStats?.total_pnl_pct || 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                {(tradingStats?.total_pnl_pct || 0) >= 0 ? '+' : ''}{(tradingStats?.total_pnl_pct || 0).toFixed(2)}%
+              <p className={`text-sm sm:text-lg font-mono font-bold ${(tradingStats?.total_pnl_pct || 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                {(tradingStats?.total_pnl_pct || 0) >= 0 ? '+' : ''}{(tradingStats?.total_pnl_pct || 0).toFixed(1)}%
               </p>
             </div>
-            <TrendingUp className="w-8 h-8 text-orange-400" />
+            <TrendingUp className="w-6 sm:w-8 h-6 sm:h-8 text-orange-400 hidden sm:block" />
           </div>
         </div>
         
-        <div className="glass-card-hover p-4">
+        <div className="glass-card-hover p-3 sm:p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="data-label">Open Trades</p>
-              <p className="text-lg font-mono font-bold text-orange-400">{livePositions.length}</p>
+              <p className="data-label">Trades</p>
+              <p className="text-sm sm:text-lg font-mono font-bold text-orange-400">{livePositions.length}</p>
             </div>
-            <Activity className="w-8 h-8 text-orange-400" />
+            <Activity className="w-6 sm:w-8 h-6 sm:h-8 text-orange-400 hidden sm:block" />
           </div>
         </div>
 
-        <div className="glass-card-hover p-4">
+        <div className="glass-card-hover p-3 sm:p-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="data-label">Leverage</p>
-              <p className={`text-lg font-mono font-bold ${totalLeverageExposure > 50 ? 'text-rose-400' : totalLeverageExposure > 20 ? 'text-amber-400' : 'text-emerald-400'}`}>
+              <p className={`text-sm sm:text-lg font-mono font-bold ${totalLeverageExposure > 50 ? 'text-rose-400' : totalLeverageExposure > 20 ? 'text-amber-400' : 'text-emerald-400'}`}>
                 {totalLeverageExposure.toFixed(0)}x
               </p>
             </div>
-            <Flame className="w-8 h-8 text-amber-400" />
+            <Flame className="w-6 sm:w-8 h-6 sm:h-8 text-amber-400 hidden sm:block" />
           </div>
         </div>
         
-        <div className="glass-card-hover p-4">
+        <div className="glass-card-hover p-3 sm:p-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="data-label">Users</p>
-              <p className="text-lg font-mono font-bold text-white">{stats?.unique_users || 0}</p>
+              <p className="text-sm sm:text-lg font-mono font-bold text-white">{stats?.unique_users || 0}</p>
             </div>
-            <Users className="w-8 h-8 text-blue-400" />
+            <Users className="w-6 sm:w-8 h-6 sm:h-8 text-blue-400 hidden sm:block" />
           </div>
         </div>
       </div>
