@@ -79,6 +79,10 @@ const TradingChart = ({
         timeVisible: true,
         secondsVisible: false,
       },
+      localization: {
+        locale: 'en-US',
+        dateFormat: 'yyyy-MM-dd',
+      },
       handleScroll: { vertTouchDrag: true },
       handleScale: { axisPressedMouseMove: true },
     });
