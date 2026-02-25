@@ -1147,6 +1147,12 @@ async def lifespan(app: FastAPI):
     weekly_task = asyncio.create_task(weekly_report.run_scheduler())
     learning_task = asyncio.create_task(continuous_learner.run_scheduler())
     
+    # Initialize paper trading system
+    global paper_trading
+    paper_trading = await init_paper_trading(db)
+    app_state.paper_trading = paper_trading
+    logger.info("📊 PAPER TRADING SYSTEM INITIALIZED - PRO ($50K) + STARTER ($1.5K)")
+    
     # Register all services with self-healer for auto-recovery
     self_healer.register("rituals", ritual_task, eternal_rituals)
     self_healer.register("trading_v2", trading_task, autonomous_trading_loop)
