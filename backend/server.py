@@ -1935,16 +1935,16 @@ Status: {'🟢 ON' if autonomous_trader_v2.active else '🔴 OFF'}
 SET: /engine 1 set [conf|confirms|rr|maxpos] [value]"""
                         
                         elif name == 'free_will_v2':
-                            status = free_will_v2.get_status()
+                            stats = await free_will_v2.get_stats()
                             response = f"""🎯 FREE WILL V2 SETTINGS
 
 Status: {'🟢 ON' if free_will_v2.active else '🔴 OFF'}
 
 📊 CORE
-• Confidence: {status.get('min_confidence', 80)}%
-• Confirmations: {status.get('min_confirmations', 3)}
-• Max Alerts/Day: {status.get('max_daily_alerts', 15)}
-• Today: {status.get('alerts_today', 0)} alerts
+• Confidence: {stats.get('min_confidence', 80)}%
+• Confirmations: {stats.get('min_confirmations', 3)}
+• Max Alerts/Day: {stats.get('max_daily_alerts', 15)}
+• Today: {stats.get('alerts_today', 0)} alerts
 
 SET: /engine 2 set [conf|confirms|maxalerts] [value]"""
                         
