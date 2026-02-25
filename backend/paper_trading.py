@@ -565,6 +565,129 @@ class PaperTradingSystem:
             "reloads": account.get("reloads", 0),
             "positions": open_positions
         }
+    
+    async def route_signal_to_accounts(
+        self,
+        signal: Dict,
+        engine_name: str = "unknown"
+    ) -> List[Dict]:
+        """
+        Route a trading signal from any engine to BOTH paper accounts
+        
+        Signal format:
+        {
+            "symbol": "BTC/USDT",
+            "direction": "LONG" or "SHORT",
+            "entry_price": 50000.0,
+            "stop_loss": 49000.0,
+            "take_profit": 52000.0,
+            "confidence": 85,
+            "confirmations": [...],
+            "timeframe": "4h",
+            "risk_pct": 2.0  # optional
+        }
+        """
+        results = []
+        
+        symbol = signal.get("symbol")
+        direction = signal.get("direction")
+        entry_price = signal.get("entry_price")
+        stop_loss = signal.get("stop_loss")
+        take_profit = signal.get("take_profit")
+        confidence = signal.get("confidence", 80)
+        risk_pct = signal.get("risk_pct", 2.0)
+        
+        if not all([symbol, direction, entry_price, stop_loss, take_profit]):
+            logger.warning(f"Invalid signal from {engine_name}: missing required fields")
+            return results
+        
+        # Check if already have position in this symbol
+        for acc_id in ["PRO", "STARTER"]:
+            account = await self.get_account(acc_id)
+            if not account:
+                continue
+            
+            # Check for existing position
+            existing = [p for p in account.get("positions", []) 
+                       if p["symbol"] == symbol and p["status"] == "open"]
+            
+            if existing:
+                logger.info(f"Already have {symbol} position in {acc_id}, skipping")
+                continue
+            
+            # Adjust risk based on account size
+            # PRO can take more risk, Starter is conservative
+            if acc_id == "PRO":
+                adj_risk = min(risk_pct * 1.5, 5.0)  # Up to 5% risk on PRO
+            else:
+                adj_risk = min(risk_pct * 0.75, 2.0)  # Max 2% on Starter
+            
+            # Open position
+            result = await self.open_position(
+                account_id=acc_id,
+                symbol=symbol,
+                direction=direction,
+                entry_price=entry_price,
+                stop_loss=stop_loss,
+                take_profit=take_profit,
+                margin_type="cross",
+                risk_pct=adj_risk,
+                confidence=confidence,
+                signal_data={
+                    "engine": engine_name,
+                    "confidence": confidence,
+                    "confirmations": signal.get("confirmations", []),
+                    "timeframe": signal.get("timeframe", "4h"),
+                    "timestamp": datetime.now(timezone.utc).isoformat()
+                }
+            )
+            
+            if "error" not in result:
+                pos = result.get("position", {})
+                logger.info(f"📊 [{acc_id}] Opened {direction} {symbol} @ ${entry_price:,.2f} | "
+                           f"Leverage: {pos.get('leverage')}x | Margin: ${pos.get('margin', 0):,.2f} | "
+                           f"Liq: ${pos.get('liquidation_price', 0):,.2f} | Engine: {engine_name}")
+                results.append({
+                    "account": acc_id,
+                    "success": True,
+                    "position": pos
+                })
+            else:
+                logger.warning(f"[{acc_id}] Failed to open {symbol}: {result['error']}")
+                results.append({
+                    "account": acc_id,
+                    "success": False,
+                    "error": result["error"]
+                })
+        
+        return results
+    
+    async def update_all_positions(self, price_data: Dict[str, float]) -> List[Dict]:
+        """
+        Update all positions across all accounts with current prices
+        Returns list of any closed positions (liquidated, stopped, profit)
+        """
+        closed = []
+        
+        for acc_id in ["PRO", "STARTER"]:
+            account = await self.get_account(acc_id)
+            if not account:
+                continue
+            
+            for pos in account.get("positions", []):
+                if pos["status"] != "open":
+                    continue
+                
+                symbol = pos["symbol"]
+                if symbol in price_data:
+                    result = await self.update_position_price(acc_id, symbol, price_data[symbol])
+                    if result:  # Position was closed
+                        closed.append({
+                            "account": acc_id,
+                            "position": result
+                        })
+        
+        return closed
 
 
 # Global instance
@@ -575,3 +698,11 @@ async def init_paper_trading(db: AsyncIOMotorDatabase) -> PaperTradingSystem:
     paper_trading = PaperTradingSystem(db)
     await paper_trading.initialize()
     return paper_trading
+
+
+async def route_engine_signal(signal: Dict, engine: str) -> List[Dict]:
+    """Helper function to route signals from any engine"""
+    global paper_trading
+    if paper_trading:
+        return await paper_trading.route_signal_to_accounts(signal, engine)
+    return []
