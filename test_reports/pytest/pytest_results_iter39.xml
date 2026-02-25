@@ -1,9 +1,62 @@
-<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="3" skipped="0" tests="20" time="53.492" timestamp="2026-02-25T02:03:40.623359+00:00" hostname="agent-env-c5b5eaa2-6267-4d77-9ffa-d1c094a7486e"><testcase classname="tests.test_iteration39_elite_strategy.TestEliteStrategyStatus" name="test_elite_status_returns_correct_structure" time="0.311" /><testcase classname="tests.test_iteration39_elite_strategy.TestEliteStrategyStatus" name="test_elite_status_contains_settings" time="5.556" /><testcase classname="tests.test_iteration39_elite_strategy.TestEliteRelaxedMode" name="test_enable_relaxed_mode" time="4.218" /><testcase classname="tests.test_iteration39_elite_strategy.TestEliteRelaxedMode" name="test_disable_relaxed_mode" time="0.158" /><testcase classname="tests.test_iteration39_elite_strategy.TestEliteRelaxedMode" name="test_mode_persists_after_toggle" time="0.478" /><testcase classname="tests.test_iteration39_elite_strategy.TestEliteBacktest" name="test_backtest_returns_structure" time="0.116" /><testcase classname="tests.test_iteration39_elite_strategy.TestEliteBacktest" name="test_backtest_custom_days" time="0.131" /><testcase classname="tests.test_iteration39_elite_strategy.TestEliteScan" name="test_scan_strict_mode" time="5.174" /><testcase classname="tests.test_iteration39_elite_strategy.TestEliteScan" name="test_scan_relaxed_mode" time="7.972" /><testcase classname="tests.test_iteration39_elite_strategy.TestEliteAnalyze" name="test_analyze_btc" time="0.291" /><testcase classname="tests.test_iteration39_elite_strategy.TestEliteAnalyze" name="test_analyze_eth" time="0.363" /><testcase classname="tests.test_iteration39_elite_strategy.TestEliteAnalyze" name="test_analyze_returns_signal_structure" time="1.956" /><testcase classname="tests.test_iteration39_elite_strategy.TestMTFConfluence" name="test_mtf_confluence_btc" time="1.427" /><testcase classname="tests.test_iteration39_elite_strategy.TestMTFConfluence" name="test_mtf_scan" time="12.462"><failure message="AssertionError: assert ('results' in {'best_setup': None, 'moderate_confluence': [], 'scanned_at': '2026-02-25T02:04:21.308099+00:00', 'strong_confluence': [], ...} or 'symbols_scanned' in {'best_setup': None, 'moderate_confluence': [], 'scanned_at': '2026-02-25T02:04:21.308099+00:00', 'strong_confluence': [], ...} or False)&#10; +  where False = isinstance({'best_setup': None, 'moderate_confluence': [], 'scanned_at': '2026-02-25T02:04:21.308099+00:00', 'strong_confluence': [], ...}, list)">tests/test_iteration39_elite_strategy.py:310: in test_mtf_scan
-    assert "results" in data or "symbols_scanned" in data or isinstance(data, list)
-E   AssertionError: assert ('results' in {'best_setup': None, 'moderate_confluence': [], 'scanned_at': '2026-02-25T02:04:21.308099+00:00', 'strong_confluence': [], ...} or 'symbols_scanned' in {'best_setup': None, 'moderate_confluence': [], 'scanned_at': '2026-02-25T02:04:21.308099+00:00', 'strong_confluence': [], ...} or False)
-E    +  where False = isinstance({'best_setup': None, 'moderate_confluence': [], 'scanned_at': '2026-02-25T02:04:21.308099+00:00', 'strong_confluence': [], ...}, list)</failure></testcase><testcase classname="tests.test_iteration39_elite_strategy.TestMTFConfluence" name="test_mtf_best_setups" time="11.987" /><testcase classname="tests.test_iteration39_elite_strategy.TestOHLCVChart" name="test_ohlcv_btc" time="0.123"><failure message="AssertionError: assert 'symbol' in {'candles': [], 'error': 'No data available'}">tests/test_iteration39_elite_strategy.py:339: in test_ohlcv_btc
-    assert "symbol" in data
-E   AssertionError: assert 'symbol' in {'candles': [], 'error': 'No data available'}</failure></testcase><testcase classname="tests.test_iteration39_elite_strategy.TestOHLCVChart" name="test_ohlcv_different_timeframes" time="0.126"><failure message="assert 0 &gt; 0&#10; +  where 0 = len([])">tests/test_iteration39_elite_strategy.py:363: in test_ohlcv_different_timeframes
-    assert len(data["candles"]) &gt; 0
-E   assert 0 &gt; 0
-E    +  where 0 = len([])</failure></testcase><testcase classname="tests.test_iteration39_elite_strategy.TestEliteToggle" name="test_toggle_off" time="0.126" /><testcase classname="tests.test_iteration39_elite_strategy.TestEliteToggle" name="test_toggle_on" time="0.116" /><testcase classname="tests.test_iteration39_elite_strategy.TestEliteSettings" name="test_update_settings" time="0.277" /></testsuite></testsuites>
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="20" skipped="0" tests="20" time="888.400" timestamp="2026-02-25T02:10:34.119592+00:00" hostname="agent-env-c5b5eaa2-6267-4d77-9ffa-d1c094a7486e"><testcase classname="tests.test_iteration39_elite_strategy.TestEliteStrategyStatus" name="test_elite_status_returns_correct_structure" time="60.121"><failure message="AssertionError: Expected 200, got 502&#10;assert 502 == 200&#10; +  where 502 = &lt;Response [502]&gt;.status_code">tests/test_iteration39_elite_strategy.py:26: in test_elite_status_returns_correct_structure
+    assert response.status_code == 200, f"Expected 200, got {response.status_code}"
+E   AssertionError: Expected 200, got 502
+E   assert 502 == 200
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase><testcase classname="tests.test_iteration39_elite_strategy.TestEliteStrategyStatus" name="test_elite_status_contains_settings" time="60.160"><failure message="assert 502 == 200&#10; +  where 502 = &lt;Response [502]&gt;.status_code">tests/test_iteration39_elite_strategy.py:46: in test_elite_status_contains_settings
+    assert response.status_code == 200
+E   assert 502 == 200
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase><testcase classname="tests.test_iteration39_elite_strategy.TestEliteRelaxedMode" name="test_enable_relaxed_mode" time="60.150"><failure message="assert 502 == 200&#10; +  where 502 = &lt;Response [502]&gt;.status_code">tests/test_iteration39_elite_strategy.py:75: in test_enable_relaxed_mode
+    assert response.status_code == 200
+E   assert 502 == 200
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase><testcase classname="tests.test_iteration39_elite_strategy.TestEliteRelaxedMode" name="test_disable_relaxed_mode" time="60.136"><failure message="assert 502 == 200&#10; +  where 502 = &lt;Response [502]&gt;.status_code">tests/test_iteration39_elite_strategy.py:95: in test_disable_relaxed_mode
+    assert response.status_code == 200
+E   assert 502 == 200
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase><testcase classname="tests.test_iteration39_elite_strategy.TestEliteRelaxedMode" name="test_mode_persists_after_toggle" time="120.300"><failure message="assert 502 == 200&#10; +  where 502 = &lt;Response [502]&gt;.status_code">tests/test_iteration39_elite_strategy.py:118: in test_mode_persists_after_toggle
+    assert status_response.status_code == 200
+E   assert 502 == 200
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase><testcase classname="tests.test_iteration39_elite_strategy.TestEliteBacktest" name="test_backtest_returns_structure" time="60.145"><failure message="assert 502 == 200&#10; +  where 502 = &lt;Response [502]&gt;.status_code">tests/test_iteration39_elite_strategy.py:137: in test_backtest_returns_structure
+    assert response.status_code == 200
+E   assert 502 == 200
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase><testcase classname="tests.test_iteration39_elite_strategy.TestEliteBacktest" name="test_backtest_custom_days" time="60.132"><failure message="assert 502 == 200&#10; +  where 502 = &lt;Response [502]&gt;.status_code">tests/test_iteration39_elite_strategy.py:156: in test_backtest_custom_days
+    assert response.status_code == 200
+E   assert 502 == 200
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase><testcase classname="tests.test_iteration39_elite_strategy.TestEliteScan" name="test_scan_strict_mode" time="120.263"><failure message="assert 502 == 200&#10; +  where 502 = &lt;Response [502]&gt;.status_code">tests/test_iteration39_elite_strategy.py:177: in test_scan_strict_mode
+    assert response.status_code == 200
+E   assert 502 == 200
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase><testcase classname="tests.test_iteration39_elite_strategy.TestEliteScan" name="test_scan_relaxed_mode" time="120.277"><failure message="assert 502 == 200&#10; +  where 502 = &lt;Response [502]&gt;.status_code">tests/test_iteration39_elite_strategy.py:200: in test_scan_relaxed_mode
+    assert response.status_code == 200
+E   assert 502 == 200
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase><testcase classname="tests.test_iteration39_elite_strategy.TestEliteAnalyze" name="test_analyze_btc" time="60.120"><failure message="assert 502 == 200&#10; +  where 502 = &lt;Response [502]&gt;.status_code">tests/test_iteration39_elite_strategy.py:226: in test_analyze_btc
+    assert response.status_code == 200
+E   assert 502 == 200
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase><testcase classname="tests.test_iteration39_elite_strategy.TestEliteAnalyze" name="test_analyze_eth" time="60.133"><failure message="assert 502 == 200&#10; +  where 502 = &lt;Response [502]&gt;.status_code">tests/test_iteration39_elite_strategy.py:241: in test_analyze_eth
+    assert response.status_code == 200
+E   assert 502 == 200
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase><testcase classname="tests.test_iteration39_elite_strategy.TestEliteAnalyze" name="test_analyze_returns_signal_structure" time="45.198"><failure message="assert 502 == 200&#10; +  where 502 = &lt;Response [502]&gt;.status_code">tests/test_iteration39_elite_strategy.py:261: in test_analyze_returns_signal_structure
+    assert response.status_code == 200
+E   assert 502 == 200
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase><testcase classname="tests.test_iteration39_elite_strategy.TestMTFConfluence" name="test_mtf_confluence_btc" time="0.139"><failure message="assert 502 == 200&#10; +  where 502 = &lt;Response [502]&gt;.status_code">tests/test_iteration39_elite_strategy.py:287: in test_mtf_confluence_btc
+    assert response.status_code == 200
+E   assert 502 == 200
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase><testcase classname="tests.test_iteration39_elite_strategy.TestMTFConfluence" name="test_mtf_scan" time="0.118"><failure message="assert 502 == 200&#10; +  where 502 = &lt;Response [502]&gt;.status_code">tests/test_iteration39_elite_strategy.py:306: in test_mtf_scan
+    assert response.status_code == 200
+E   assert 502 == 200
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase><testcase classname="tests.test_iteration39_elite_strategy.TestMTFConfluence" name="test_mtf_best_setups" time="0.125"><failure message="assert 502 == 200&#10; +  where 502 = &lt;Response [502]&gt;.status_code">tests/test_iteration39_elite_strategy.py:324: in test_mtf_best_setups
+    assert response.status_code == 200
+E   assert 502 == 200
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase><testcase classname="tests.test_iteration39_elite_strategy.TestOHLCVChart" name="test_ohlcv_btc" time="0.119"><failure message="assert 502 == 200&#10; +  where 502 = &lt;Response [502]&gt;.status_code">tests/test_iteration39_elite_strategy.py:341: in test_ohlcv_btc
+    assert response.status_code == 200
+E   assert 502 == 200
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase><testcase classname="tests.test_iteration39_elite_strategy.TestOHLCVChart" name="test_ohlcv_different_timeframes" time="0.125"><failure message="assert 502 == 200&#10; +  where 502 = &lt;Response [502]&gt;.status_code">tests/test_iteration39_elite_strategy.py:365: in test_ohlcv_different_timeframes
+    assert response.status_code == 200
+E   assert 502 == 200
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase><testcase classname="tests.test_iteration39_elite_strategy.TestEliteToggle" name="test_toggle_off" time="0.206"><failure message="assert 502 == 200&#10; +  where 502 = &lt;Response [502]&gt;.status_code">tests/test_iteration39_elite_strategy.py:381: in test_toggle_off
+    assert response.status_code == 200
+E   assert 502 == 200
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase><testcase classname="tests.test_iteration39_elite_strategy.TestEliteToggle" name="test_toggle_on" time="0.129"><failure message="assert 502 == 200&#10; +  where 502 = &lt;Response [502]&gt;.status_code">tests/test_iteration39_elite_strategy.py:393: in test_toggle_on
+    assert response.status_code == 200
+E   assert 502 == 200
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase><testcase classname="tests.test_iteration39_elite_strategy.TestEliteSettings" name="test_update_settings" time="0.130"><failure message="assert 502 == 200&#10; +  where 502 = &lt;Response [502]&gt;.status_code">tests/test_iteration39_elite_strategy.py:417: in test_update_settings
+    assert response.status_code == 200
+E   assert 502 == 200
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase></testsuite></testsuites>
