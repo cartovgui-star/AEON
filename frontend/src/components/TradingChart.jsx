@@ -50,7 +50,7 @@ const TradingChart = ({
   useEffect(() => {
     if (!chartContainerRef.current) return;
 
-    const chart = LightweightCharts.createChart(chartContainerRef.current, {
+    const chart = createChart(chartContainerRef.current, {
       width: chartContainerRef.current.clientWidth,
       height: height,
       layout: {
@@ -62,7 +62,7 @@ const TradingChart = ({
         horzLines: { color: 'rgba(42, 46, 57, 0.5)' },
       },
       crosshair: {
-        mode: LightweightCharts.CrosshairMode.Normal,
+        mode: CrosshairMode.Normal,
         vertLine: {
           color: 'rgba(224, 227, 235, 0.3)',
           labelBackgroundColor: '#2962FF',
@@ -90,7 +90,7 @@ const TradingChart = ({
     });
 
     // Add candlestick series - v5 API
-    const candleSeries = chart.addSeries(LightweightCharts.CandlestickSeries, {
+    const candleSeries = chart.addSeries(CandlestickSeries, {
       upColor: '#22c55e',
       downColor: '#ef4444',
       borderUpColor: '#22c55e',
@@ -100,7 +100,7 @@ const TradingChart = ({
     });
 
     // Add volume series - v5 API
-    const volumeSeries = chart.addSeries(LightweightCharts.HistogramSeries, {
+    const volumeSeries = chart.addSeries(HistogramSeries, {
       color: '#26a69a',
       priceFormat: { type: 'volume' },
       priceScaleId: '',
