@@ -218,8 +218,8 @@ class EliteStrategyV3:
         # Get active settings (strict or relaxed)
         settings = self._get_active_settings()
         
-        # PRE-CHECK 1: Daily trade limit
-        if self.daily_trades >= settings["max_daily_trades"]:
+        # PRE-CHECK 1: Daily trade limit (skip in relaxed mode - unlimited)
+        if not self.relaxed_mode and self.daily_trades >= settings["max_daily_trades"]:
             self._record_filter("DAILY_LIMIT_REACHED")
             return None
         
