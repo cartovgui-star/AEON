@@ -1771,7 +1771,7 @@ SWITCH: /openai or /claude"""
         elif text_lower == '/engines' or text_lower == '/engine':
             # Show all engines status
             v2_stats = await autonomous_trader_v2.get_stats()
-            fw_status = free_will_v2.get_status()
+            fw_stats = await free_will_v2.get_stats()
             scalper_settings = scalper.get_settings()
             dual_status = dual_engine.get_status() if dual_engine else {}
             learning_status = learning_engine.get_status() if learning_engine else {}
@@ -1783,7 +1783,7 @@ SWITCH: /openai or /claude"""
    R:R: {autonomous_trader_v2.min_rr_ratio}:1 | Trades: {v2_stats.get('total_trades', 0)}
 
 2️⃣ FREE WILL V2 {'🟢 ON' if free_will_v2.active else '🔴 OFF'}
-   Conf: {fw_status.get('min_confidence', 80)}% | Alerts: {fw_status.get('alerts_today', 0)}/{fw_status.get('max_daily_alerts', 15)}
+   Conf: {fw_stats.get('min_confidence', 80)}% | Alerts: {fw_stats.get('alerts_today', 0)}/{fw_stats.get('max_daily_alerts', 15)}
 
 3️⃣ SCALPER {'🟢 ON' if scalper_settings.get('enabled', True) else '🔴 OFF'}
    Target: {scalper_settings.get('profit_target', 0.8)}% | Stop: {scalper_settings.get('stop_loss', 0.4)}%
