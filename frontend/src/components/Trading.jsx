@@ -6,6 +6,7 @@ import {
   ArrowUpRight, ArrowDownRight, Crosshair, LineChart, CandlestickChart
 } from 'lucide-react';
 import TradingChart from './TradingChart';
+import PositionCard from './PositionCard';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
