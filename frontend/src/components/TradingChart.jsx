@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import * as LightweightCharts from 'lightweight-charts';
+import { createChart, CandlestickSeries, HistogramSeries, LineStyle, CrosshairMode } from 'lightweight-charts';
+import { createSeriesMarkers } from 'lightweight-charts';
 import { 
   TrendingUp, TrendingDown, Activity, RefreshCw,
   ZoomIn, ZoomOut, Maximize2, ChevronDown
