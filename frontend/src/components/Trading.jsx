@@ -640,30 +640,30 @@ export default function Trading() {
           </div>
         </div>
 
-        <div className="glass-card-hover p-4">
-          <p className="data-label">Open Positions</p>
-          <p className="text-xl font-display font-bold text-white">{livePositions.length}</p>
+        <div className="glass-card-hover p-2.5 sm:p-4">
+          <p className="data-label">Positions</p>
+          <p className="text-sm sm:text-xl font-display font-bold text-white">{livePositions.length}</p>
         </div>
 
-        <div className="glass-card-hover p-4">
+        <div className="glass-card-hover p-2.5 sm:p-4">
           <p className="data-label">Live PnL</p>
-          <p className={`text-xl font-mono font-bold ${totalLivePnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-            {totalLivePnl >= 0 ? '+' : ''}{totalLivePnl.toFixed(2)}%
+          <p className={`text-sm sm:text-xl font-mono font-bold ${totalLivePnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+            {totalLivePnl >= 0 ? '+' : ''}{totalLivePnl.toFixed(1)}%
           </p>
-          <p className={`text-xs font-mono ${totalLivePnl >= 0 ? 'text-emerald-400/60' : 'text-rose-400/60'}`}>
-            {totalLivePnl >= 0 ? '+' : ''}${(totalLivePnl * 10).toFixed(2)} USD
+          <p className={`text-[10px] sm:text-xs font-mono ${totalLivePnl >= 0 ? 'text-emerald-400/60' : 'text-rose-400/60'} hidden sm:block`}>
+            {totalLivePnl >= 0 ? '+' : ''}${(totalLivePnl * 10).toFixed(2)}
           </p>
         </div>
 
-        <div className="glass-card-hover p-4">
+        <div className="glass-card-hover p-2.5 sm:p-4 hidden sm:block">
           <p className="data-label">Win Rate</p>
           <p className={`text-xl font-mono font-bold ${(stats?.win_rate || 0) >= 50 ? 'text-emerald-400' : 'text-orange-400'}`}>
             {stats?.win_rate || 0}%
           </p>
         </div>
 
-        <div className="glass-card-hover p-4 col-span-2 md:col-span-1">
-          <p className="data-label">Total Trades</p>
+        <div className="glass-card-hover p-2.5 sm:p-4 hidden sm:block col-span-1">
+          <p className="data-label">Trades</p>
           <p className="text-xl font-mono font-bold">
             <span className="text-emerald-400">{stats?.wins || 0}W</span>
             <span className="text-zinc-600 mx-1">/</span>
@@ -672,8 +672,8 @@ export default function Trading() {
         </div>
       </div>
 
-      {/* PnL Chart */}
-      <div className="glass-card p-4">
+      {/* PnL Chart - Hidden on Mobile */}
+      <div className="glass-card p-3 sm:p-4 hidden sm:block">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <BarChart3 className="w-4 h-4 text-orange-400" />
@@ -686,18 +686,18 @@ export default function Trading() {
         <PnLChart data={pnlHistory} />
       </div>
 
-      {/* Market Conditions */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <div className="glass-card p-3">
-          <p className="data-label">Market Regime</p>
-          <p className={`font-medium font-display ${
+      {/* Market Conditions - Compact on Mobile */}
+      <div className="grid grid-cols-4 gap-1.5 sm:gap-3">
+        <div className="glass-card p-2 sm:p-3">
+          <p className="data-label text-[8px] sm:text-xs">Regime</p>
+          <p className={`text-[10px] sm:text-sm font-medium font-display truncate ${
             stats?.market_regime === 'TRENDING_UP' || stats?.market_regime === 'TRENDING_DOWN' ? 'text-emerald-400' :
             stats?.market_regime === 'VOLATILE' ? 'text-orange-400' : 'text-zinc-400'
-          }`}>{stats?.market_regime || 'UNKNOWN'}</p>
+          }`}>{(stats?.market_regime || 'N/A').replace('TRENDING_', '')}</p>
         </div>
-        <div className="glass-card p-3">
-          <p className="data-label">BTC Bias</p>
-          <p className={`font-medium font-display ${
+        <div className="glass-card p-2 sm:p-3">
+          <p className="data-label text-[8px] sm:text-xs">BTC</p>
+          <p className={`text-[10px] sm:text-sm font-medium font-display ${
             stats?.btc_bias === 'BULLISH' ? 'text-emerald-400' :
             stats?.btc_bias === 'BEARISH' ? 'text-rose-400' : 'text-zinc-400'
           }`}>{stats?.btc_bias || 'NEUTRAL'}</p>
