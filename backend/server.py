@@ -4568,5 +4568,6 @@ app.include_router(scalper_router, prefix="/api")
 app.include_router(briefing_router, prefix="/api")
 app.include_router(weekly_report_router, prefix="/api")
 app.include_router(elite_router, prefix="/api")
+app.include_router(signals_router, prefix="/api")
 
 app.add_middleware(CORSMiddleware, allow_credentials=True, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
