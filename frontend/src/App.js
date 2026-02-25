@@ -27,6 +27,7 @@ import Intelligence from "./components/Intelligence";
 import SystemHealth from "./components/SystemHealth";
 import Dashboard from "./components/Dashboard";
 import ScalperDashboard from "./components/ScalperDashboard";
+import MobileNav from "./components/MobileNav";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
