@@ -15,9 +15,9 @@ async def api_elite_status():
     from elite_strategy_v3 import get_elite_strategy
     
     strategy = get_elite_strategy(
-        app_state.state.advanced_strategies,
-        app_state.state.smc_analyzer,
-        app_state.state.enhanced_intel
+        app_state.advanced_strategies,
+        None,  # smc_analyzer
+        app_state.enhanced_intel
     )
     
     return strategy.get_stats()
@@ -29,9 +29,9 @@ async def api_elite_scan():
     from elite_strategy_v3 import get_elite_strategy
     
     strategy = get_elite_strategy(
-        app_state.state.advanced_strategies,
-        app_state.state.smc_analyzer,
-        app_state.state.enhanced_intel
+        app_state.advanced_strategies,
+        None,
+        app_state.enhanced_intel
     )
     
     signals = await strategy.scan_all_elite()
@@ -49,9 +49,9 @@ async def api_elite_analyze(symbol: str, timeframe: str = "4h"):
     from elite_strategy_v3 import get_elite_strategy
     
     strategy = get_elite_strategy(
-        app_state.state.advanced_strategies,
-        app_state.state.smc_analyzer,
-        app_state.state.enhanced_intel
+        app_state.advanced_strategies,
+        None,
+        app_state.enhanced_intel
     )
     
     if "/" not in symbol:
@@ -73,9 +73,9 @@ async def api_elite_toggle(enabled: bool = True):
     from elite_strategy_v3 import get_elite_strategy
     
     strategy = get_elite_strategy(
-        app_state.state.advanced_strategies,
-        app_state.state.smc_analyzer,
-        app_state.state.enhanced_intel
+        app_state.advanced_strategies,
+        None,
+        app_state.enhanced_intel
     )
     
     strategy.enabled = enabled
@@ -93,9 +93,9 @@ async def api_elite_settings(settings: dict):
     from elite_strategy_v3 import get_elite_strategy
     
     strategy = get_elite_strategy(
-        app_state.state.advanced_strategies,
-        app_state.state.smc_analyzer,
-        app_state.state.enhanced_intel
+        app_state.advanced_strategies,
+        None,
+        app_state.enhanced_intel
     )
     
     strategy.update_settings(settings)
