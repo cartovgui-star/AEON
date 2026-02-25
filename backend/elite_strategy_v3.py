@@ -454,28 +454,24 @@ class EliteStrategyV3:
         """Get strategy statistics"""
         return {
             "enabled": self.enabled,
+            "relaxed_mode": self.relaxed_mode,
+            "mode": "RELAXED" if self.relaxed_mode else "STRICT",
             "signals_generated": self.signals_generated,
             "signals_filtered": self.signals_filtered,
             "daily_trades": self.daily_trades,
-            "max_daily_trades": self.max_daily_trades,
+            "max_daily_trades": self._get_active_settings()["max_daily_trades"],
             "filter_reasons": dict(sorted(
                 self.filter_reasons.items(), 
                 key=lambda x: x[1], 
                 reverse=True
             )[:10]),
-            "settings": {
-                "min_confidence": self.min_confidence,
-                "min_confirmations": self.min_confirmations,
-                "min_rr_ratio": self.min_rr_ratio,
-                "min_volume_ratio": self.min_volume_ratio,
-                "min_adx": self.min_adx,
-                "require_btc_alignment": self.require_btc_alignment,
-                "require_mtf_confluence": self.require_mtf_confluence
-            }
+            "settings": self._get_active_settings()
         }
     
     def update_settings(self, settings: Dict):
         """Update strategy settings"""
+        if "relaxed_mode" in settings:
+            self.relaxed_mode = bool(settings["relaxed_mode"])
         if "min_confidence" in settings:
             self.min_confidence = int(settings["min_confidence"])
         if "min_rr_ratio" in settings:
@@ -490,6 +486,109 @@ class EliteStrategyV3:
             self.require_btc_alignment = bool(settings["require_btc_alignment"])
         if "require_mtf_confluence" in settings:
             self.require_mtf_confluence = bool(settings["require_mtf_confluence"])
+
+    async def backtest(self, days: int = 30) -> Dict:
+        """
+        Backtest the Elite Strategy against historical signals.
+        Analyzes past trades to estimate win rate.
+        """
+        try:
+            import app_state
+            if not app_state.db:
+                return {"error": "Database not available"}
+            
+            # Get historical signals
+            from datetime import timedelta
+            cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+            
+            signals = await app_state.db.signal_history.find({
+                "timestamp": {"$gte": cutoff.isoformat()}
+            }).to_list(5000)
+            
+            if not signals:
+                # Try closed trades instead
+                closed = await app_state.db.closed_trades.find({}).to_list(1000)
+                if closed:
+                    signals = closed
+                else:
+                    return {"error": "No historical data found", "signals_analyzed": 0}
+            
+            # Analyze each signal with Elite criteria
+            would_take = 0
+            would_win = 0
+            would_lose = 0
+            total_pnl = 0
+            
+            strict_take = 0
+            strict_win = 0
+            relaxed_take = 0
+            relaxed_win = 0
+            
+            for sig in signals:
+                confidence = sig.get("confidence", 0)
+                pnl = sig.get("pnl_pct", sig.get("profit_pct", 0))
+                mtf_count = sig.get("mtf_confluence", sig.get("confirmations", 3))
+                if isinstance(mtf_count, str):
+                    mtf_count = int(mtf_count.split("/")[0]) if "/" in mtf_count else 3
+                elif isinstance(mtf_count, list):
+                    mtf_count = len(mtf_count)
+                
+                # Check if Elite would take this in STRICT mode
+                if confidence >= 92 and mtf_count >= 2:
+                    strict_take += 1
+                    if pnl and pnl > 0:
+                        strict_win += 1
+                
+                # Check if Elite would take this in RELAXED mode
+                if confidence >= 70 and mtf_count >= 2:
+                    relaxed_take += 1
+                    if pnl and pnl > 0:
+                        relaxed_win += 1
+                
+                # General stats
+                if confidence >= 70:
+                    would_take += 1
+                    if pnl:
+                        total_pnl += pnl
+                        if pnl > 0:
+                            would_win += 1
+                        else:
+                            would_lose += 1
+            
+            # Calculate win rates
+            strict_win_rate = (strict_win / strict_take * 100) if strict_take > 0 else 0
+            relaxed_win_rate = (relaxed_win / relaxed_take * 100) if relaxed_take > 0 else 0
+            overall_win_rate = (would_win / (would_win + would_lose) * 100) if (would_win + would_lose) > 0 else 0
+            
+            return {
+                "days_analyzed": days,
+                "total_signals": len(signals),
+                "strict_mode": {
+                    "signals_would_take": strict_take,
+                    "estimated_wins": strict_win,
+                    "estimated_win_rate": round(strict_win_rate, 1),
+                    "target_achieved": strict_win_rate >= 60
+                },
+                "relaxed_mode": {
+                    "signals_would_take": relaxed_take,
+                    "estimated_wins": relaxed_win,
+                    "estimated_win_rate": round(relaxed_win_rate, 1),
+                    "target_achieved": relaxed_win_rate >= 50
+                },
+                "overall": {
+                    "signals_analyzed": would_take,
+                    "wins": would_win,
+                    "losses": would_lose,
+                    "win_rate": round(overall_win_rate, 1),
+                    "total_pnl": round(total_pnl, 2)
+                },
+                "recommendation": "Use STRICT mode for 60%+ win rate" if strict_win_rate >= 60 else "Use RELAXED mode for more signals",
+                "backtested_at": datetime.now(timezone.utc).isoformat()
+            }
+            
+        except Exception as e:
+            logger.error(f"Backtest error: {e}")
+            return {"error": str(e)}
 
 
 # Global instance
