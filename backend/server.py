@@ -89,6 +89,7 @@ from self_healer import self_healer, SelfHealer
 from morning_briefing import morning_briefing, MorningBriefing
 from weekly_report import weekly_report, WeeklyPerformanceReport
 from continuous_learning import continuous_learner, ContinuousLearningEngine
+from paper_trading import paper_trading, init_paper_trading, PaperTradingSystem
 import app_state
 
 ROOT_DIR = Path(__file__).parent
