@@ -86,7 +86,7 @@ class EliteStrategyV3:
             "min_rr_ratio": 2.0,
             "min_volume_ratio": 1.2,  # Lower volume requirement
             "min_adx": 20,  # Lower ADX
-            "max_daily_trades": 10,
+            "max_daily_trades": 9999,  # UNLIMITED
             "require_btc_alignment": False,  # Optional in relaxed mode
             "require_mtf_confluence": False,  # Disabled in relaxed mode for more signals
             "min_mtf_agreement": 0,
