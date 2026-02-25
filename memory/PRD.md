@@ -16,48 +16,56 @@ Build a sophisticated trading bot named "Aeon" with:
 
 ---
 
-## Latest Session (Feb 24, 2026) - Multi-Model AI Bug Fix
+## Latest Session (Feb 25, 2026) - TradingView Chart + MTF Analysis
 
-### Multi-Model AI Support (P0) - FIXED ✓
-The model switching feature was scaffolded but broken - the `get_user_model()` and `set_user_model()` functions were never implemented.
+### TradingView-Style Chart (P2) - COMPLETED ✓
+Added a professional TradingView-style candlestick chart to the Trading page.
 
-**Bug Fixed:**
-- Added missing `get_user_model(chat_id)` - retrieves user's preferred model from DB/cache
-- Added missing `set_user_model(chat_id, model)` - stores user's model preference in DB
-- Model preferences now persist in `user_preferences` MongoDB collection
-- In-memory cache (`user_model_cache`) for performance
+**Features Implemented:**
+- Real-time candlestick charts using lightweight-charts v5 (official TradingView library)
+- Volume histogram overlay at the bottom
+- 15 symbol support (BTC, ETH, SOL, BNB, XRP, DOGE, ADA, AVAX, LINK, DOT, ATOM, UNI, LTC, ARB, OP)
+- 5 timeframe options (5m, 15m, 1H, 4H, 1D)
+- Price display with change percentage
+- Zoom/Pan controls (ZoomIn, ZoomOut, Fit to Screen, Refresh)
+- Position entry/exit markers and price lines (Entry, SL, TP, Liquidation)
+- Legend showing line types
 
-**Verified Working:**
-- `/model gpt` → Switches to GPT-4o (confirmed via LLM logs)
-- `/model claude` → Switches to Claude Sonnet 4.5 (confirmed via LLM logs)
-- `/model status` → Shows current model
-- `/model list` → Lists all available models
-- Chat responses correctly use the user's selected model
+**New Files:**
+- `/app/frontend/src/components/TradingChart.jsx` - TradingView-style chart component
+- `/app/backend/routes/market.py` - Added `/api/mexc/ohlcv/{symbol}` endpoint
 
-**Implementation:**
-- Added `MODEL_CONFIGS` with GPT and Claude configurations
-- User model preference stored in database (persists across sessions)
-- All LLM calls now use user's selected model
-- Helper functions: `get_user_model()`, `set_user_model()`, `get_model_config()`
+### Multi-Timeframe Confluence Analysis (P2) - COMPLETED ✓
+Added a powerful MTF Confluence Analysis system that finds high-probability setups when signals align across 5m, 15m, and 30m timeframes.
 
-**New Telegram Commands:**
-- `/openai` - Switch to OpenAI GPT-4o (fast)
-- `/claude` - Switch to Claude Sonnet 4.5 (detailed)
-- `/model` - Show current AI model
+**Confluence Levels:**
+- STRONG (3/3): All timeframes agree - highest probability (75-85%)
+- MODERATE (2/3): Two timeframes agree - good setup (60-70%)
+- WEAK (1/3): Only one timeframe has signal - low probability (45-55%)
+- NONE (0/3): No clear setup - stay out
 
-**Also works (aliases):**
-- `/gpt`, `/gpt4` → OpenAI
-- `/anthropic`, `/sonnet` → Claude
+**API Endpoints:**
+- `GET /api/scalper/mtf/confluence/{symbol}` - Analyze single symbol
+- `GET /api/scalper/mtf/scan` - Scan all 15 symbols for confluence
+- `GET /api/scalper/mtf/best` - Get best STRONG and MODERATE setups
+- `GET /api/scalper/mtf/report` - Comprehensive correlation analysis
 
-**Models Available:**
-| Model | Provider | Best For |
-|-------|----------|----------|
-| GPT-4o | OpenAI | Fast answers, quick tasks |
-| Claude Sonnet 4.5 | Anthropic | Complex analysis, reasoning |
+**Telegram Commands:**
+- `/mtf` - Scan all symbols for MTF confluence setups
+- `/mtf BTC` - Analyze specific symbol across all timeframes
+- `/confluence` - Alias for /mtf
 
-**What Uses Selected Model:**
-- Chat responses
-- Trade analysis (/scan)
+### Telegram Command Refactoring - COMPLETED ✓
+Started modularizing the 4300+ line `server.py` into organized command handlers.
+
+**New Modular Files:**
+- `/app/backend/telegram/commands/mtf_commands.py` - MTF and Scalper commands
+- `/app/backend/telegram/commands/engine_commands.py` - Engine management commands
+- `/app/backend/telegram/commands/paper_commands.py` - Paper trading commands
+
+---
+
+## Previous Session (Feb 24, 2026) - Multi-Model AI Bug Fix
 - Alchemy mode responses
 - All AI-generated content
 
