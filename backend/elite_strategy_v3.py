@@ -273,11 +273,19 @@ class EliteStrategyV3:
                 mtf_direction = "NEUTRAL"
             
             # FILTER 3: Volume spike required
-            volume = indicators.get("volume", 0)
-            volume_avg = indicators.get("volume_sma_20", volume)
-            volume_ratio = volume / volume_avg if volume_avg > 0 else 0
+            # Use pre-calculated volume_ratio if available, otherwise calculate
+            volume_ratio = indicators.get("volume_ratio", 0)
+            if volume_ratio == 0:
+                volume = indicators.get("volume", 0) or 0
+                volume_avg = indicators.get("volume_sma_20", indicators.get("volume_sma", volume)) or volume
+                volume_ratio = volume / volume_avg if volume_avg > 0 else 1.0  # Default to 1.0 if no data
             
-            if volume_ratio < settings["min_volume_ratio"]:
+            # In relaxed mode, be more lenient with volume
+            min_vol = settings["min_volume_ratio"]
+            if self.relaxed_mode and volume_ratio > 0:
+                min_vol = min(min_vol, 0.8)  # Much lower threshold in relaxed mode
+            
+            if volume_ratio < min_vol:
                 self._record_filter(f"LOW_VOLUME_{volume_ratio:.1f}x")
                 return None
             
