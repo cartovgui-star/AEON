@@ -33,10 +33,17 @@ Created a new ultra-selective trading strategy targeting 60%+ win rate with TWO 
 **RELAXED MODE (More signals - 50%+ win rate target):**
 - Min Confidence: 70%
 - R:R Ratio: 2.0:1
-- Max Trades/Day: 8
+- Max Trades/Day: 10
 - BTC Alignment: Optional
-- MTF Confluence: REQUIRED (2/3+)
-- RSI Range: Wider (30-55 LONG, 45-70 SHORT)
+- MTF Confluence: DISABLED (more signals)
+- ADX Filter: SKIPPED if not available
+- Volume: 0.8x minimum
+- RSI Range: Wide (20-65 LONG, 35-80 SHORT)
+
+**Signal Tracking System - NEW ✓**
+- Records all signals to database for backtest validation
+- Tracks win/loss outcomes per strategy
+- Performance analytics per symbol and direction
 
 **API Endpoints:**
 - `GET /api/elite/status` - Strategy status and mode
@@ -45,6 +52,9 @@ Created a new ultra-selective trading strategy targeting 60%+ win rate with TWO 
 - `POST /api/elite/relaxed?enabled=true/false` - Toggle relaxed mode
 - `POST /api/elite/toggle?enabled=true/false` - Enable/disable strategy
 - `GET /api/elite/backtest?days=N` - Backtest against historical data
+- `GET /api/signals/recent` - Recent recorded signals
+- `GET /api/signals/accuracy` - Signal accuracy stats
+- `GET /api/signals/performance` - Strategy performance breakdown
 
 **Telegram Commands:**
 - `/elite` - Show Elite Strategy status
