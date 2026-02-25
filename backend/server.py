@@ -1571,6 +1571,13 @@ Total PnL: {stats['total_pnl_pct']:+.2f}%"""
 /scalper - Scalper status
 /strategy - View optimized strategy
 
+*PAPER ACCOUNTS*
+/accounts - View both accounts
+/pro - PRO account ($50K)
+/starter - Starter account ($1.5K)
+/addmargin [coin] [amount]
+/reload [pro|starter]
+
 *ENGINES*
 /engines - All 6 engines status
 /engine [1-5] - View engine settings
