@@ -363,15 +363,15 @@ export default function Dashboard({
                       </span>
                       <span className="text-orange-400 text-xs">{pos.leverage || 10}x</span>
                     </div>
-                    <span className={`font-bold ${pnlWithLev >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                    <span className={`font-bold font-mono ${pnlWithLev >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
                       {pnlWithLev >= 0 ? '+' : ''}{pnlWithLev.toFixed(2)}%
                     </span>
                   </div>
                 );
               })}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
 
       {/* Performance & Risk Management Stats */}
