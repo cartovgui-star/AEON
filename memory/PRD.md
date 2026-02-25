@@ -19,34 +19,41 @@ Build a sophisticated trading bot named "Aeon" with:
 ## Latest Session (Feb 25, 2026) - Elite Strategy + Win Rate Improvement
 
 ### Elite Strategy v3 (WIN RATE IMPROVEMENT) - COMPLETED ✓
-Created a new ultra-selective trading strategy targeting 60%+ win rate.
+Created a new ultra-selective trading strategy targeting 60%+ win rate with TWO MODES.
 
-**Key Features:**
-- BTC trend alignment MANDATORY (no counter-BTC trades)
-- MTF confluence required (min 2/3 timeframes agree)
-- RSI optimal zones only (35-50 for LONG, 50-65 for SHORT)
-- Volume spike 2x average required (stricter than 1.5x)
-- ADX > 28 (stricter trending filter)
-- Max 3 trades per day (quality over quantity)
-- Skips first hour of trading sessions (false breakouts)
+**STRICT MODE (Default - 60%+ win rate target):**
+- Min Confidence: 92%
+- R:R Ratio: 2.5:1
+- Max Trades/Day: 3
+- BTC Alignment: MANDATORY
+- MTF Confluence: REQUIRED (2/3+)
+- 200 EMA Filter: ON
+- EMA Stack Filter: ON
 
-**New Files:**
-- `/app/backend/elite_strategy_v3.py` - Elite Strategy engine
-- `/app/backend/routes/elite.py` - API routes
-- `/app/backend/telegram/commands/elite_commands.py` - Telegram commands
+**RELAXED MODE (More signals - 50%+ win rate target):**
+- Min Confidence: 70%
+- R:R Ratio: 2.0:1
+- Max Trades/Day: 8
+- BTC Alignment: Optional
+- MTF Confluence: REQUIRED (2/3+)
+- RSI Range: Wider (30-55 LONG, 45-70 SHORT)
 
 **API Endpoints:**
-- `GET /api/elite/status` - Strategy status and settings
+- `GET /api/elite/status` - Strategy status and mode
 - `GET /api/elite/scan` - Scan all pairs for elite signals
 - `GET /api/elite/analyze/{symbol}` - Analyze specific symbol
-- `POST /api/elite/toggle` - Enable/disable strategy
-- `POST /api/elite/settings` - Update settings
+- `POST /api/elite/relaxed?enabled=true/false` - Toggle relaxed mode
+- `POST /api/elite/toggle?enabled=true/false` - Enable/disable strategy
+- `GET /api/elite/backtest?days=N` - Backtest against historical data
 
 **Telegram Commands:**
 - `/elite` - Show Elite Strategy status
 - `/elite scan` - Scan for elite signals
 - `/elite BTC` - Analyze specific symbol
 - `/elite on/off` - Toggle strategy
+- `/elite relaxed` - Enable relaxed mode (70% conf)
+- `/elite strict` - Enable strict mode (92% conf)
+- `/elite backtest` - Run backtest analysis
 
 ### TradingView-Style Chart - COMPLETED ✓
 Added professional candlestick chart to Trading page.
@@ -66,14 +73,16 @@ Finds high-probability setups when signals align across timeframes.
 - WEAK (1/3): 45-55% probability
 
 ### Telegram Command Refactoring - IN PROGRESS
-Modularizing server.py (4300+ lines) into organized handlers.
+Modularizing server.py (4400+ lines) into organized handlers.
 
 **New Modular Files Created:**
-- `/app/backend/telegram/commands/mtf_commands.py`
-- `/app/backend/telegram/commands/engine_commands.py`
-- `/app/backend/telegram/commands/paper_commands.py`
-- `/app/backend/telegram/commands/model_commands.py`
-- `/app/backend/telegram/commands/elite_commands.py`
+- `/app/backend/telegram/commands/mtf_commands.py` - MTF confluence commands
+- `/app/backend/telegram/commands/engine_commands.py` - Engine management
+- `/app/backend/telegram/commands/paper_commands.py` - Paper trading
+- `/app/backend/telegram/commands/model_commands.py` - AI model switching
+- `/app/backend/telegram/commands/elite_commands.py` - Elite Strategy
+- `/app/backend/telegram/commands/market_commands.py` - Market intel
+- `/app/backend/telegram/commands/trading_commands.py` - Trading stats
 
 ### Multi-Model AI Switching - VERIFIED ✓
 - `/openai` or `/gpt` - Switch to OpenAI GPT-4o
