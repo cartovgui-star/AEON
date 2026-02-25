@@ -610,6 +610,26 @@ class FreeWillEngineV2:
                 logger.error(f"Free Will price validation error: {e}")
         
         msg = self.format_alert(setup)
+        
+        # Route to paper trading accounts
+        if route_engine_signal and msg:
+            try:
+                paper_signal = {
+                    "symbol": setup.get("symbol"),
+                    "direction": setup.get("direction"),
+                    "entry_price": setup.get("entry"),
+                    "stop_loss": setup.get("stop"),
+                    "take_profit": setup.get("target"),
+                    "confidence": setup.get("confidence", 80),
+                    "confirmations": setup.get("confirmations", []),
+                    "timeframe": setup.get("timeframe", "4h"),
+                    "risk_pct": 1.5  # Free Will uses conservative risk
+                }
+                await route_engine_signal(paper_signal, "FREE_WILL_V2")
+                logger.info(f"📊 Free Will alert routed to paper accounts: {setup.get('symbol')} {setup.get('direction')}")
+            except Exception as e:
+                logger.warning(f"Failed to route Free Will to paper trading: {e}")
+        
         return msg, True
     
     def format_alert(self, setup: Dict) -> str:
