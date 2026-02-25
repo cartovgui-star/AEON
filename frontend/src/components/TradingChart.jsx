@@ -237,8 +237,23 @@ const TradingChart = ({
       // Sort markers by time
       markers.sort((a, b) => a.time - b.time);
       
-      if (markers.length > 0 && typeof candleSeriesRef.current.setMarkers === 'function') {
-        candleSeriesRef.current.setMarkers(markers);
+      if (markers.length > 0 && candleSeriesRef.current) {
+        // Use v5 createSeriesMarkers API
+        try {
+          // Clear existing markers plugin if it exists
+          if (markersPluginRef.current) {
+            markersPluginRef.current.setMarkers([]);
+          }
+          // Create new markers using v5 plugin API
+          markersPluginRef.current = createSeriesMarkers(candleSeriesRef.current, markers);
+        } catch (pluginErr) {
+          // Fallback: try setMarkers if available (older v5 versions)
+          if (typeof candleSeriesRef.current.setMarkers === 'function') {
+            candleSeriesRef.current.setMarkers(markers);
+          } else {
+            console.warn('Markers API not available:', pluginErr.message);
+          }
+        }
       }
     } catch (err) {
       console.warn('Could not add trade markers:', err.message);
