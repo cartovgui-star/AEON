@@ -232,6 +232,7 @@ ELITE_HANDLERS = {
     '/elite': handle_elite_status,
     '/elite status': handle_elite_status,
     '/elite scan': handle_elite_scan,
+    '/elite unlimited': handle_elite_unlimited,
     '/elite on': handle_elite_toggle,
     '/elite off': handle_elite_toggle,
 }
@@ -245,6 +246,8 @@ async def route_elite_command(text: str, chat_id: int, context: dict) -> Optiona
         return await handle_elite_status(text, chat_id, context)
     elif text_lower == '/elite scan':
         return await handle_elite_scan(text, chat_id, context)
+    elif text_lower == '/elite unlimited':
+        return await handle_elite_unlimited(text, chat_id, context)
     elif text_lower == '/elite on':
         return await handle_elite_toggle(text, chat_id, context)
     elif text_lower == '/elite off':
@@ -252,7 +255,7 @@ async def route_elite_command(text: str, chat_id: int, context: dict) -> Optiona
     elif text_lower.startswith('/elite '):
         # Check if it's a symbol analysis
         parts = text_lower.split()
-        if len(parts) >= 2 and parts[1] not in ['on', 'off', 'scan', 'status']:
+        if len(parts) >= 2 and parts[1] not in ['on', 'off', 'scan', 'status', 'unlimited']:
             return await handle_elite_analyze(text, chat_id, context)
     
     return None
