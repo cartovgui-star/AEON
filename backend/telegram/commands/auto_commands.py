@@ -60,7 +60,7 @@ async def handle_auto_on(text: str, chat_id: int, context: dict) -> Tuple[str, s
             import aiohttp
             async with aiohttp.ClientSession() as session:
                 await session.post("http://localhost:8001/api/trading/v2/toggle?enabled=true")
-        except:
+        except Exception:
             pass
         
         response = """🟢 AUTO TRADING ENABLED
