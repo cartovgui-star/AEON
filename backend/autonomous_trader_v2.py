@@ -1610,6 +1610,29 @@ class AutonomousTraderV2:
         # Persist trade to database
         await self.save_open_trade(trade)
         
+        # Route signal to paper trading accounts (both PRO and STARTER)
+        if route_engine_signal:
+            try:
+                paper_signal = {
+                    "symbol": signal["symbol"],
+                    "direction": signal["direction"],
+                    "entry_price": signal["entry"],
+                    "stop_loss": signal["stop"],
+                    "take_profit": signal["target"],
+                    "confidence": signal["confidence"],
+                    "confirmations": signal["confirmations"],
+                    "timeframe": signal["timeframe"],
+                    "risk_pct": signal.get("position_size_pct", 2)
+                }
+                paper_results = await route_engine_signal(paper_signal, "AUTONOMOUS_V2")
+                for r in paper_results:
+                    if r.get("success"):
+                        pos = r.get("position", {})
+                        logger.info(f"📊 Paper [{r['account']}]: {signal['direction']} {signal['symbol']} | "
+                                  f"{pos.get('leverage')}x | Margin: ${pos.get('margin', 0):,.2f}")
+            except Exception as e:
+                logger.warning(f"Failed to route to paper trading: {e}")
+        
         # Store in DB (use chat_id=0 for autonomous trader)
         if self.learning_system:
             try:
