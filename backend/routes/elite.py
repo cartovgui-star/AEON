@@ -4,6 +4,7 @@ Ultra-selective trading strategy with 60%+ target win rate
 """
 from fastapi import APIRouter
 from typing import Optional
+import app_state
 
 router = APIRouter(prefix="/elite", tags=["Elite Strategy v3"])
 
@@ -12,12 +13,11 @@ router = APIRouter(prefix="/elite", tags=["Elite Strategy v3"])
 async def api_elite_status():
     """Get Elite Strategy v3 status and statistics"""
     from elite_strategy_v3 import get_elite_strategy
-    from state import state
     
     strategy = get_elite_strategy(
-        state.advanced_strategies,
-        state.smc_analyzer,
-        state.enhanced_intel
+        app_state.state.advanced_strategies,
+        app_state.state.smc_analyzer,
+        app_state.state.enhanced_intel
     )
     
     return strategy.get_stats()
@@ -27,12 +27,11 @@ async def api_elite_status():
 async def api_elite_scan():
     """Scan all pairs for elite signals"""
     from elite_strategy_v3 import get_elite_strategy
-    from state import state
     
     strategy = get_elite_strategy(
-        state.advanced_strategies,
-        state.smc_analyzer,
-        state.enhanced_intel
+        app_state.state.advanced_strategies,
+        app_state.state.smc_analyzer,
+        app_state.state.enhanced_intel
     )
     
     signals = await strategy.scan_all_elite()
@@ -48,12 +47,11 @@ async def api_elite_scan():
 async def api_elite_analyze(symbol: str, timeframe: str = "4h"):
     """Analyze a single symbol with Elite Strategy"""
     from elite_strategy_v3 import get_elite_strategy
-    from state import state
     
     strategy = get_elite_strategy(
-        state.advanced_strategies,
-        state.smc_analyzer,
-        state.enhanced_intel
+        app_state.state.advanced_strategies,
+        app_state.state.smc_analyzer,
+        app_state.state.enhanced_intel
     )
     
     if "/" not in symbol:
@@ -73,12 +71,11 @@ async def api_elite_analyze(symbol: str, timeframe: str = "4h"):
 async def api_elite_toggle(enabled: bool = True):
     """Enable or disable Elite Strategy"""
     from elite_strategy_v3 import get_elite_strategy
-    from state import state
     
     strategy = get_elite_strategy(
-        state.advanced_strategies,
-        state.smc_analyzer,
-        state.enhanced_intel
+        app_state.state.advanced_strategies,
+        app_state.state.smc_analyzer,
+        app_state.state.enhanced_intel
     )
     
     strategy.enabled = enabled
@@ -94,12 +91,11 @@ async def api_elite_toggle(enabled: bool = True):
 async def api_elite_settings(settings: dict):
     """Update Elite Strategy settings"""
     from elite_strategy_v3 import get_elite_strategy
-    from state import state
     
     strategy = get_elite_strategy(
-        state.advanced_strategies,
-        state.smc_analyzer,
-        state.enhanced_intel
+        app_state.state.advanced_strategies,
+        app_state.state.smc_analyzer,
+        app_state.state.enhanced_intel
     )
     
     strategy.update_settings(settings)
