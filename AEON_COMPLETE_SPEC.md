@@ -1,7 +1,7 @@
 # AEON - Autonomous Crypto Trading Bot
 ## Complete Technical Specification
 
-**Live Preview**: https://aeon-trader-1.preview.emergentagent.com
+**Live Preview**: https://aeon-trading-2.preview.emergentagent.com
 
 ---
 
@@ -335,7 +335,7 @@ POL/USDT, SHIB/USDT, BCH/USDT, ETC/USDT, XLM/USDT
 ## 12. QUICK START
 
 ### Access the Bot
-1. **Web Dashboard**: https://aeon-trader-1.preview.emergentagent.com
+1. **Web Dashboard**: https://aeon-trading-2.preview.emergentagent.com
 2. **Telegram**: Search for the bot and send `/start`
 
 ### Key Actions
