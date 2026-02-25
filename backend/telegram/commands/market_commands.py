@@ -140,7 +140,7 @@ async def handle_whales(text: str, chat_id: int, context: dict) -> Tuple[str, st
         else:
             response += "No significant whale activity detected recently."
             
-        response += f"\n📊 24h Summary:\n"
+        response += "\n📊 24h Summary:\n"
         response += f"• Large Buys: {whales.get('large_buys', 0)}\n"
         response += f"• Large Sells: {whales.get('large_sells', 0)}\n"
         response += f"• Net Flow: {'🟢 Bullish' if whales.get('net_flow', 0) > 0 else '🔴 Bearish'}"
