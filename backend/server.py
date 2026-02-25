@@ -1963,10 +1963,10 @@ Status: {'🟢 ON' if s.get('enabled', True) else '🔴 OFF'}
 SET: /engine 3 set [target|stop|volume] [value]"""
                         
                         elif name == 'dual' and dual_engine:
-                            status = dual_engine.get_status()
+                            stats = dual_engine.get_stats()
                             response = f"""📅 DUAL ENGINE SETTINGS
 
-Status: {'🟢 ON' if status.get('active', False) else '🔴 OFF'}
+Status: {'🟢 ON' if stats.get('active', False) else '🔴 OFF'}
 
 📊 STYLES
 • Day Trader: Short-term swings
