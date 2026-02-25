@@ -335,6 +335,36 @@ class AggressiveScalper:
                 if result['signal'] != 0:
                     signals.append(result)
                     self.active_signals[f"{symbol}_{timeframe}"] = result
+                    
+                    # Route to paper trading
+                    if route_engine_signal and result['strength'] >= 3:
+                        try:
+                            direction = "LONG" if result['signal'] > 0 else "SHORT"
+                            entry_price = result.get('current_price', 0)
+                            
+                            # Calculate scalper-style SL/TP (tight)
+                            if direction == "LONG":
+                                stop_loss = entry_price * (1 - self.settings['stop_loss_pct'] / 100)
+                                take_profit = entry_price * (1 + self.settings['profit_target_pct'] / 100)
+                            else:
+                                stop_loss = entry_price * (1 + self.settings['stop_loss_pct'] / 100)
+                                take_profit = entry_price * (1 - self.settings['profit_target_pct'] / 100)
+                            
+                            paper_signal = {
+                                "symbol": symbol,
+                                "direction": direction,
+                                "entry_price": entry_price,
+                                "stop_loss": stop_loss,
+                                "take_profit": take_profit,
+                                "confidence": 75 + (result['strength'] * 5),  # 80-95 based on strength
+                                "confirmations": result.get('indicators', []),
+                                "timeframe": timeframe,
+                                "risk_pct": 1.0  # Scalper uses smaller risk
+                            }
+                            await route_engine_signal(paper_signal, "SCALPER")
+                        except Exception as e:
+                            logger.warning(f"Scalper paper trade routing error: {e}")
+                    
             except Exception as e:
                 logger.error(f"Scalper scan error {symbol}: {e}")
         
