@@ -246,68 +246,58 @@ export default function Dashboard({
         </div>
         
         <div className="glass-card-hover p-4">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-zinc-500 text-xs">Win Rate</p>
-                <p className="text-lg font-bold text-green-400">{tradingStats?.win_rate || 0}%</p>
-              </div>
-              <Target className="w-8 h-8 text-green-400" />
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="data-label">Win Rate</p>
+              <p className="text-lg font-mono font-bold text-emerald-400">{tradingStats?.win_rate || 0}%</p>
             </div>
-          </CardContent>
-        </Card>
+            <Target className="w-8 h-8 text-emerald-400" />
+          </div>
+        </div>
         
-        <Card className="bg-zinc-800/30 border-zinc-700/50">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-zinc-500 text-xs">Total PnL</p>
-                <p className={`text-lg font-bold ${(tradingStats?.total_pnl_pct || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                  {(tradingStats?.total_pnl_pct || 0) >= 0 ? '+' : ''}{(tradingStats?.total_pnl_pct || 0).toFixed(2)}%
-                </p>
-              </div>
-              <TrendingUp className="w-8 h-8 text-orange-400" />
+        <div className="glass-card-hover p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="data-label">Total PnL</p>
+              <p className={`text-lg font-mono font-bold ${(tradingStats?.total_pnl_pct || 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                {(tradingStats?.total_pnl_pct || 0) >= 0 ? '+' : ''}{(tradingStats?.total_pnl_pct || 0).toFixed(2)}%
+              </p>
             </div>
-          </CardContent>
-        </Card>
+            <TrendingUp className="w-8 h-8 text-orange-400" />
+          </div>
+        </div>
         
-        <Card className="bg-zinc-800/30 border-zinc-700/50">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-zinc-500 text-xs">Open Trades</p>
-                <p className="text-lg font-bold text-orange-400">{livePositions.length}</p>
-              </div>
-              <Activity className="w-8 h-8 text-orange-400" />
+        <div className="glass-card-hover p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="data-label">Open Trades</p>
+              <p className="text-lg font-mono font-bold text-orange-400">{livePositions.length}</p>
             </div>
-          </CardContent>
-        </Card>
+            <Activity className="w-8 h-8 text-orange-400" />
+          </div>
+        </div>
 
-        <Card className="bg-zinc-800/30 border-zinc-700/50">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-zinc-500 text-xs">Leverage</p>
-                <p className={`text-lg font-bold ${totalLeverageExposure > 50 ? 'text-red-400' : totalLeverageExposure > 20 ? 'text-yellow-400' : 'text-green-400'}`}>
-                  {totalLeverageExposure.toFixed(0)}x
-                </p>
-              </div>
-              <Flame className="w-8 h-8 text-yellow-400" />
+        <div className="glass-card-hover p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="data-label">Leverage</p>
+              <p className={`text-lg font-mono font-bold ${totalLeverageExposure > 50 ? 'text-rose-400' : totalLeverageExposure > 20 ? 'text-amber-400' : 'text-emerald-400'}`}>
+                {totalLeverageExposure.toFixed(0)}x
+              </p>
             </div>
-          </CardContent>
-        </Card>
+            <Flame className="w-8 h-8 text-amber-400" />
+          </div>
+        </div>
         
-        <Card className="bg-zinc-800/30 border-zinc-700/50">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-zinc-500 text-xs">Users</p>
-                <p className="text-lg font-bold text-white">{stats?.unique_users || 0}</p>
-              </div>
-              <Users className="w-8 h-8 text-blue-400" />
+        <div className="glass-card-hover p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="data-label">Users</p>
+              <p className="text-lg font-mono font-bold text-white">{stats?.unique_users || 0}</p>
             </div>
-          </CardContent>
-        </Card>
+            <Users className="w-8 h-8 text-blue-400" />
+          </div>
+        </div>
       </div>
 
       {/* PnL Goal Tracker */}
