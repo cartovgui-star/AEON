@@ -1684,7 +1684,6 @@ The engine learns 24/7 and sends daily summaries at 9 PM CT!"""
         
         elif text_lower == '/scalper' or text_lower == '/scalp':
             # Get scalper status
-            from aggressive_scalper import scalper
             from scalper_learning import auto_learner, v2_integration
             
             settings = scalper.get_settings()
