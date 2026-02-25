@@ -30,7 +30,7 @@ class NewsIntel:
         
         # Cache
         self._cache = {}
-        self._cache_ttl = 60  # 1 minute for fresh news
+        self._cache_ttl = 300  # 5 minutes - fresh but not excessive
     
     async def _fetch(self, url: str, cache_key: str = None, timeout: int = 10) -> str:
         """Fetch URL content"""
