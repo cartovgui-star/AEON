@@ -79,6 +79,8 @@ from routes.briefing import router as briefing_router
 from routes.weekly_report import router as weekly_report_router
 from routes.learning import router as learning_router
 from routes.elite import router as elite_router
+from routes.signals import router as signals_router
+from signal_tracker import signal_tracker, init_signal_tracker
 from voice_tts import generate_speech, VOICES
 from price_alerts import price_alert_system, PriceAlertSystem
 from strategy_engine import StrategyEngine
