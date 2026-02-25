@@ -307,9 +307,15 @@ class TestMTFConfluence:
         
         data = response.json()
         
-        assert "results" in data or "symbols_scanned" in data or isinstance(data, list)
+        # MTF scan returns summary with strong/moderate/weak confluence lists
+        assert "summary" in data or "strong_confluence" in data
         
-        print(f"✅ MTF Scan completed")
+        if "summary" in data:
+            summary = data["summary"]
+            assert "scanned_symbols" in summary
+            print(f"✅ MTF Scan: {summary.get('scanned_symbols', 0)} symbols scanned")
+        else:
+            print(f"✅ MTF Scan completed")
     
     def test_mtf_best_setups(self):
         """Test /api/scalper/mtf/best"""
