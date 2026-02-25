@@ -203,14 +203,14 @@ class NewsIntel:
                         soup = BeautifulSoup(content, 'xml')
                         entries = soup.find_all('entry')
                         
-                        for entry in entries[:2]:  # Top 2 from each sub
+                        for entry in entries[:4]:  # Check more to filter
                             title = entry.find('title')
                             link = entry.find('link')
                             
                             if title:
                                 title_text = title.text.strip()
                                 # Skip pinned/meta posts
-                                if any(skip in title_text.lower() for skip in ['daily discussion', 'weekly', 'monthly', 'megathread']):
+                                if any(skip in title_text.lower() for skip in ['daily discussion', 'daily crypto', 'weekly', 'monthly', 'megathread', 'skeptics', 'self-stories']):
                                     continue
                                 
                                 social.append({
