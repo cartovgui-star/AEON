@@ -611,72 +611,75 @@ export default function Trading() {
   return (
     <div className="space-y-4 md:space-y-6" data-testid="trading-page">
       {/* Live Data Banner */}
-      <div className="flex items-center gap-2 px-3 py-2 bg-green-500/10 border border-green-500/20 rounded-lg">
-        <Radio className="w-4 h-4 text-green-400 animate-pulse" />
-        <span className="text-green-400 text-sm font-medium">Live MEXC Data</span>
-        <span className="text-zinc-400 text-xs ml-auto">Paper Trading Mode</span>
+      <div className="flex items-center gap-2 px-4 py-2.5 glass-card border-emerald-500/20">
+        <div className="relative">
+          <Radio className="w-4 h-4 text-emerald-400" />
+          <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-emerald-400 rounded-full animate-ping" />
+        </div>
+        <span className="text-emerald-400 text-sm font-medium">Live MEXC Data</span>
+        <span className="text-zinc-500 text-xs ml-auto">Paper Trading Mode</span>
       </div>
 
-      {/* Header Stats */}
+      {/* Header Stats - Bento Grid */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        <div className="bg-zinc-800/30 rounded-xl p-3 sm:p-4 border border-zinc-700/50">
+        <div className="glass-card-hover p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-zinc-500 text-xs">Status</p>
-              <p className={`text-lg sm:text-xl font-bold ${stats?.active ? 'text-green-400' : 'text-red-400'}`}>
+              <p className="data-label">Status</p>
+              <p className={`text-xl font-display font-bold ${stats?.active ? 'text-emerald-400' : 'text-rose-400'}`}>
                 {stats?.active ? 'ACTIVE' : 'PAUSED'}
               </p>
             </div>
             <button 
               onClick={toggleTrading}
               data-testid="toggle-trading-btn"
-              className={`p-2 rounded-lg transition-all ${stats?.active ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30' : 'bg-red-500/20 text-red-400 hover:bg-red-500/30'}`}
+              className={`p-2.5 rounded-xl transition-all ${stats?.active ? 'bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 glow-green' : 'bg-rose-500/20 text-rose-400 hover:bg-rose-500/30 glow-red'}`}
             >
               {stats?.active ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
             </button>
           </div>
         </div>
 
-        <div className="bg-zinc-800/30 rounded-xl p-3 sm:p-4 border border-zinc-700/50">
-          <p className="text-zinc-500 text-xs">Open Positions</p>
-          <p className="text-lg sm:text-xl font-bold text-white">{livePositions.length}</p>
+        <div className="glass-card-hover p-4">
+          <p className="data-label">Open Positions</p>
+          <p className="text-xl font-display font-bold text-white">{livePositions.length}</p>
         </div>
 
-        <div className="bg-zinc-800/30 rounded-xl p-3 sm:p-4 border border-zinc-700/50">
-          <p className="text-zinc-500 text-xs">Live PnL</p>
-          <p className={`text-lg sm:text-xl font-bold ${totalLivePnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+        <div className="glass-card-hover p-4">
+          <p className="data-label">Live PnL</p>
+          <p className={`text-xl font-mono font-bold ${totalLivePnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
             {totalLivePnl >= 0 ? '+' : ''}{totalLivePnl.toFixed(2)}%
           </p>
-          <p className={`text-xs ${totalLivePnl >= 0 ? 'text-green-400/60' : 'text-red-400/60'}`}>
+          <p className={`text-xs font-mono ${totalLivePnl >= 0 ? 'text-emerald-400/60' : 'text-rose-400/60'}`}>
             {totalLivePnl >= 0 ? '+' : ''}${(totalLivePnl * 10).toFixed(2)} USD
           </p>
         </div>
 
-        <div className="bg-zinc-800/30 rounded-xl p-3 sm:p-4 border border-zinc-700/50">
-          <p className="text-zinc-500 text-xs">Win Rate</p>
-          <p className={`text-lg sm:text-xl font-bold ${(stats?.win_rate || 0) >= 50 ? 'text-green-400' : 'text-orange-400'}`}>
+        <div className="glass-card-hover p-4">
+          <p className="data-label">Win Rate</p>
+          <p className={`text-xl font-mono font-bold ${(stats?.win_rate || 0) >= 50 ? 'text-emerald-400' : 'text-orange-400'}`}>
             {stats?.win_rate || 0}%
           </p>
         </div>
 
-        <div className="bg-zinc-800/30 rounded-xl p-3 sm:p-4 border border-zinc-700/50 col-span-2 md:col-span-1">
-          <p className="text-zinc-500 text-xs">Total Trades</p>
-          <p className="text-lg sm:text-xl font-bold text-white">
-            <span className="text-green-400">{stats?.wins || 0}W</span>
-            <span className="text-zinc-500 mx-1">/</span>
-            <span className="text-red-400">{stats?.losses || 0}L</span>
+        <div className="glass-card-hover p-4 col-span-2 md:col-span-1">
+          <p className="data-label">Total Trades</p>
+          <p className="text-xl font-mono font-bold">
+            <span className="text-emerald-400">{stats?.wins || 0}W</span>
+            <span className="text-zinc-600 mx-1">/</span>
+            <span className="text-rose-400">{stats?.losses || 0}L</span>
           </p>
         </div>
       </div>
 
       {/* PnL Chart */}
-      <div className="bg-zinc-800/30 rounded-xl p-4 border border-zinc-700/50">
+      <div className="glass-card p-4">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <BarChart3 className="w-4 h-4 text-orange-400" />
-            <span className="text-white text-sm font-medium">Performance</span>
+            <span className="text-white text-sm font-medium font-display">Performance</span>
           </div>
-          <span className={`text-sm font-bold ${(stats?.total_pnl_pct || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+          <span className={`text-sm font-mono font-bold ${(stats?.total_pnl_pct || 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
             {(stats?.total_pnl_pct || 0) >= 0 ? '+' : ''}{(stats?.total_pnl_pct || 0).toFixed(2)}% Total
           </span>
         </div>
@@ -685,39 +688,39 @@ export default function Trading() {
 
       {/* Market Conditions */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <div className="bg-zinc-800/30 rounded-xl p-3 border border-zinc-700/50">
-          <p className="text-zinc-500 text-xs">Market Regime</p>
-          <p className={`font-medium ${
-            stats?.market_regime === 'TRENDING_UP' || stats?.market_regime === 'TRENDING_DOWN' ? 'text-green-400' :
+        <div className="glass-card p-3">
+          <p className="data-label">Market Regime</p>
+          <p className={`font-medium font-display ${
+            stats?.market_regime === 'TRENDING_UP' || stats?.market_regime === 'TRENDING_DOWN' ? 'text-emerald-400' :
             stats?.market_regime === 'VOLATILE' ? 'text-orange-400' : 'text-zinc-400'
           }`}>{stats?.market_regime || 'UNKNOWN'}</p>
         </div>
-        <div className="bg-zinc-800/30 rounded-xl p-3 border border-zinc-700/50">
-          <p className="text-zinc-500 text-xs">BTC Bias</p>
-          <p className={`font-medium ${
-            stats?.btc_bias === 'BULLISH' ? 'text-green-400' :
-            stats?.btc_bias === 'BEARISH' ? 'text-red-400' : 'text-zinc-400'
+        <div className="glass-card p-3">
+          <p className="data-label">BTC Bias</p>
+          <p className={`font-medium font-display ${
+            stats?.btc_bias === 'BULLISH' ? 'text-emerald-400' :
+            stats?.btc_bias === 'BEARISH' ? 'text-rose-400' : 'text-zinc-400'
           }`}>{stats?.btc_bias || 'NEUTRAL'}</p>
         </div>
-        <div className="bg-zinc-800/30 rounded-xl p-3 border border-zinc-700/50">
-          <p className="text-zinc-500 text-xs">Fear & Greed</p>
-          <p className={`font-medium ${
-            (stats?.fear_greed || 50) < 30 ? 'text-red-400' :
-            (stats?.fear_greed || 50) > 70 ? 'text-green-400' : 'text-orange-400'
+        <div className="glass-card p-3">
+          <p className="data-label">Fear & Greed</p>
+          <p className={`font-mono font-medium ${
+            (stats?.fear_greed || 50) < 30 ? 'text-rose-400' :
+            (stats?.fear_greed || 50) > 70 ? 'text-emerald-400' : 'text-orange-400'
           }`}>{stats?.fear_greed || 50}</p>
         </div>
-        <div className="bg-zinc-800/30 rounded-xl p-3 border border-zinc-700/50">
-          <p className="text-zinc-500 text-xs">Session</p>
-          <p className="font-medium text-white">{stats?.current_session || 'UNKNOWN'}</p>
+        <div className="glass-card p-3">
+          <p className="data-label">Session</p>
+          <p className="font-medium text-white font-display">{stats?.current_session || 'UNKNOWN'}</p>
         </div>
       </div>
 
       {/* Confidence Slider */}
-      <div className="bg-zinc-800/30 rounded-xl p-4 border border-zinc-700/50">
+      <div className="glass-card p-4">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
             <Settings2 className="w-4 h-4 text-orange-400" />
-            <span className="text-white text-sm font-medium">Min Confidence</span>
+            <span className="text-white text-sm font-medium font-display">Min Confidence</span>
           </div>
           <span className="text-orange-400 font-bold">{confidence}%</span>
         </div>
