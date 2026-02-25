@@ -2505,17 +2505,29 @@ Get key at: coinglass.com/api"""
                 else:
                     response += f"▶️ {title} - {channel}\n\n"
             
+            twitter = feed.get('twitter', [])
+            if twitter:
+                response += "𝕏 TWITTER\n"
+                for t in twitter[:2]:
+                    title = t.get('title', '')
+                    url = t.get('url', '')
+                    source = t.get('source', '')
+                    if url:
+                        response += f"🐦 [{title}]({url})\n\n"
+                    else:
+                        response += f"🐦 {title}\n\n"
+            
             social = feed.get('social', [])
             if social:
-                response += "🗣️ REDDIT\n"
+                response += "💬 REDDIT\n"
                 for s in social[:2]:
                     title = s.get('title', '')
                     url = s.get('url', '')
                     sub = s.get('sub', '')
                     if url:
-                        response += f"💬 [{title}]({url})\n   {sub}\n\n"
+                        response += f"🔥 [{title}]({url})\n   {sub}\n\n"
                     else:
-                        response += f"💬 {title}\n\n"
+                        response += f"🔥 {title}\n\n"
             
             context = "news"
             
