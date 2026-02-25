@@ -33,13 +33,40 @@ ACCOUNTS = {
     }
 }
 
-# Default leverage by asset
-DEFAULT_LEVERAGE = {
-    "BTC": 20,
-    "ETH": 20,
-    "SOL": 15,
-    "DEFAULT": 10
-}
+# Default leverage by asset - NO RESTRICTIONS, use what's best
+def get_dynamic_leverage(symbol: str, confidence: int, direction: str) -> int:
+    """
+    Calculate optimal leverage based on confidence and risk
+    Higher confidence = higher leverage
+    """
+    coin = symbol.split("/")[0] if "/" in symbol else symbol
+    
+    # Base leverage by coin volatility
+    base_leverage = {
+        "BTC": 25,
+        "ETH": 25,
+        "SOL": 30,
+        "DOGE": 20,
+        "XRP": 20,
+        "BNB": 25,
+        "ADA": 20,
+        "AVAX": 25,
+        "LINK": 25,
+        "DOT": 20,
+    }.get(coin, 20)
+    
+    # Adjust based on confidence
+    if confidence >= 90:
+        leverage = base_leverage + 25  # High confidence = aggressive
+    elif confidence >= 85:
+        leverage = base_leverage + 15
+    elif confidence >= 80:
+        leverage = base_leverage + 5
+    else:
+        leverage = base_leverage
+    
+    # Cap at 125x max (like exchanges)
+    return min(125, max(10, leverage))
 
 
 def calculate_liquidation_price(
