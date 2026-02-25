@@ -799,6 +799,6 @@ All alerts now include: WHY, WHAT TO EXPECT, IF WRONG, PREPARATION
 ---
 
 ## Deployment
-- Preview: https://aeon-algo-trade.preview.emergentagent.com
+- Preview: https://aeon-trader-1.preview.emergentagent.com
 - Backend: Port 8001
 - Frontend: Port 3000
