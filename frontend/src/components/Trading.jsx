@@ -702,27 +702,27 @@ export default function Trading() {
             stats?.btc_bias === 'BEARISH' ? 'text-rose-400' : 'text-zinc-400'
           }`}>{stats?.btc_bias || 'NEUTRAL'}</p>
         </div>
-        <div className="glass-card p-3">
-          <p className="data-label">Fear & Greed</p>
-          <p className={`font-mono font-medium ${
+        <div className="glass-card p-2 sm:p-3">
+          <p className="data-label text-[8px] sm:text-xs">F&G</p>
+          <p className={`text-[10px] sm:text-sm font-mono font-medium ${
             (stats?.fear_greed || 50) < 30 ? 'text-rose-400' :
             (stats?.fear_greed || 50) > 70 ? 'text-emerald-400' : 'text-orange-400'
           }`}>{stats?.fear_greed || 50}</p>
         </div>
-        <div className="glass-card p-3">
-          <p className="data-label">Session</p>
-          <p className="font-medium text-white font-display">{stats?.current_session || 'UNKNOWN'}</p>
+        <div className="glass-card p-2 sm:p-3">
+          <p className="data-label text-[8px] sm:text-xs">Session</p>
+          <p className="text-[10px] sm:text-sm font-medium text-white font-display truncate">{(stats?.current_session || 'N/A').replace('_SESSION', '')}</p>
         </div>
       </div>
 
-      {/* Confidence Slider */}
-      <div className="glass-card p-4">
+      {/* Confidence Slider - Compact on Mobile */}
+      <div className="glass-card p-3 sm:p-4">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
             <Settings2 className="w-4 h-4 text-orange-400" />
-            <span className="text-white text-sm font-medium font-display">Min Confidence</span>
+            <span className="text-white text-xs sm:text-sm font-medium font-display">Confidence</span>
           </div>
-          <span className="text-orange-400 font-bold">{confidence}%</span>
+          <span className="text-orange-400 font-bold text-sm">{confidence}%</span>
         </div>
         <input
           type="range"
@@ -735,26 +735,27 @@ export default function Trading() {
           className="w-full h-2 bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-orange-500"
           data-testid="confidence-slider"
         />
-        <div className="flex justify-between text-xs text-zinc-500 mt-1">
-          <span>More trades (60%)</span>
-          <span>Elite only (95%)</span>
+        <div className="flex justify-between text-[10px] sm:text-xs text-zinc-500 mt-1">
+          <span>More (60%)</span>
+          <span>Elite (95%)</span>
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex items-center gap-2">
-        <div className="flex bg-zinc-800/50 rounded-lg p-1">
+      {/* Tabs - Mobile Scrollable */}
+      <div className="flex items-center gap-2 overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0 no-scrollbar">
+        <div className="flex bg-zinc-800/50 rounded-lg p-1 min-w-max">
           {['chart', 'positions', 'opportunities', 'history'].map(t => (
             <button 
               key={t} 
               onClick={() => setActiveTab(t)}
               data-testid={`tab-${t}`}
-              className={`px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium transition-all flex items-center gap-1.5 ${
+              className={`px-2.5 sm:px-3 py-1.5 rounded-md text-xs font-medium transition-all flex items-center gap-1 touch-target ${
                 activeTab === t ? 'bg-orange-500 text-white' : 'text-zinc-400 hover:text-white'
               }`}
             >
-              {t === 'chart' && <CandlestickChart className="w-4 h-4" />}
-              {t.charAt(0).toUpperCase() + t.slice(1)}
+              {t === 'chart' && <CandlestickChart className="w-3.5 h-3.5" />}
+              <span className="hidden sm:inline">{t.charAt(0).toUpperCase() + t.slice(1)}</span>
+              <span className="sm:hidden">{t === 'opportunities' ? 'Opps' : t.charAt(0).toUpperCase() + t.slice(1)}</span>
             </button>
           ))}
         </div>
