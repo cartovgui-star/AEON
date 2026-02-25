@@ -289,10 +289,13 @@ class EliteStrategyV3:
                 self._record_filter(f"LOW_VOLUME_{volume_ratio:.1f}x")
                 return None
             
-            # FILTER 4: ADX trending filter
+            # FILTER 4: ADX trending filter (skip if ADX not available in relaxed mode)
             adx = indicators.get("adx", 0)
             
-            if adx < settings["min_adx"]:
+            # In relaxed mode, skip ADX filter if not available
+            if self.relaxed_mode and adx == 0:
+                logger.debug(f"Elite: Skipping ADX filter for {symbol} (relaxed mode)")
+            elif adx < settings["min_adx"]:
                 self._record_filter(f"ADX_TOO_LOW_{adx:.0f}")
                 return None
             
