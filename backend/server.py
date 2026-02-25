@@ -1774,7 +1774,7 @@ SWITCH: /openai or /claude"""
             fw_stats = await free_will_v2.get_stats()
             scalper_settings = scalper.get_settings()
             dual_stats = dual_engine.get_stats() if dual_engine else {}
-            learning_status = learning_engine.get_status() if learning_engine else {}
+            learning_status = continuous_learner.get_status() if continuous_learner else {}
             
             response = f"""🤖 ALL TRADING ENGINES
 
@@ -1817,7 +1817,7 @@ Example: /engine 1 set conf 85"""
                     '2': ('free_will_v2', free_will_v2),
                     '3': ('scalper', scalper),
                     '4': ('dual', dual_engine),
-                    '5': ('learning', learning_engine if learning_engine else None)
+                    '5': ('learning', continuous_learner)
                 }
                 
                 if engine_num not in engines:
