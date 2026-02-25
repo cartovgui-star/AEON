@@ -1547,7 +1547,7 @@ Total PnL: {stats['total_pnl_pct']:+.2f}%"""
 /top100 - Top 10 by market cap
 /movers - 24h gainers/losers
 /trending - Most searched
-/news - Latest crypto news
+/news - News + Videos + Social
 
 *DERIVATIVES*
 /funding [coin] - Funding rates
