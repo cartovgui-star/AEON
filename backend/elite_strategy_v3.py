@@ -105,11 +105,13 @@ class EliteStrategyV3:
     async def _get_btc_trend(self) -> str:
         """Get current BTC trend direction"""
         try:
-            if self.advanced_strategies:
-                indicators = await self.advanced_strategies.calculate_all_indicators("BTC/USDT", "4h")
-                if indicators:
+            import app_state
+            if app_state.market_intel:
+                ta = await app_state.market_intel.get_technical_analysis("BTCUSDT", "4h")
+                if ta:
+                    indicators = ta.get("indicators", {})
                     ema_9 = indicators.get("ema_9", 0)
-                    ema_21 = indicators.get("ema_21", 0)
+                    ema_21 = indicators.get("ema_21", indicators.get("ema_20", 0))
                     ema_50 = indicators.get("ema_50", 0)
                     
                     if ema_9 > ema_21 > ema_50:
