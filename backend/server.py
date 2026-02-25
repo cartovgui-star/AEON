@@ -1759,7 +1759,234 @@ SWITCH: /openai or /claude"""
                 else:
                     response = "❌ Unknown model. Use /openai or /claude"
                 context = "settings"
+        
+        # ============= ENGINE MANAGEMENT =============
+        elif text_lower == '/engines' or text_lower == '/engine':
+            # Show all engines status
+            v2_stats = await autonomous_trader_v2.get_stats()
+            fw_status = free_will_v2.get_status()
+            scalper_settings = scalper.get_settings()
+            dual_status = dual_engine.get_status() if dual_engine else {}
+            learning_status = learning_engine.get_status() if learning_engine else {}
             
+            response = f"""🤖 ALL TRADING ENGINES
+
+1️⃣ AUTONOMOUS V2 {'🟢 ON' if autonomous_trader_v2.active else '🔴 OFF'}
+   Conf: {autonomous_trader_v2.min_confidence}% | Confirms: {autonomous_trader_v2.min_confirmations}
+   R:R: {autonomous_trader_v2.min_rr_ratio}:1 | Trades: {v2_stats.get('total_trades', 0)}
+
+2️⃣ FREE WILL V2 {'🟢 ON' if free_will_v2.active else '🔴 OFF'}
+   Conf: {fw_status.get('min_confidence', 80)}% | Alerts: {fw_status.get('alerts_today', 0)}/{fw_status.get('max_daily_alerts', 15)}
+
+3️⃣ SCALPER {'🟢 ON' if scalper_settings.get('enabled', True) else '🔴 OFF'}
+   Target: {scalper_settings.get('profit_target', 0.8)}% | Stop: {scalper_settings.get('stop_loss', 0.4)}%
+
+4️⃣ DUAL ENGINE {'🟢 ON' if dual_status.get('active', False) else '🔴 OFF'}
+   Day + Long Term combined
+
+5️⃣ LEARNING {'🟢 ON' if learning_status.get('active', True) else '🔴 OFF'}
+   Patterns: {learning_status.get('knowledge_stats', {}).get('patterns_learned', 0)}
+
+━━━━━━━━━━━━━━━━━━━━
+COMMANDS:
+/engine [1-5] on|off - Toggle
+/engine [1-5] set [param] [value]
+/engine [1-5] - View settings
+
+Example: /engine 1 set conf 85"""
+            context = "settings"
+        
+        elif text_lower.startswith('/engine '):
+            parts = text_lower.split()
+            if len(parts) < 2:
+                response = "Usage: /engine [1-5] [on|off|set param value]"
+            else:
+                engine_num = parts[1]
+                action = parts[2] if len(parts) > 2 else "status"
+                
+                # Map engine numbers to engines
+                engines = {
+                    '1': ('autonomous_v2', autonomous_trader_v2),
+                    '2': ('free_will_v2', free_will_v2),
+                    '3': ('scalper', scalper),
+                    '4': ('dual', dual_engine),
+                    '5': ('learning', learning_engine if learning_engine else None)
+                }
+                
+                if engine_num not in engines:
+                    response = "❌ Invalid engine. Use 1-5"
+                else:
+                    name, engine = engines[engine_num]
+                    
+                    if action == 'on':
+                        if name == 'autonomous_v2':
+                            autonomous_trader_v2.active = True
+                            await autonomous_trader_v2.save_settings()
+                        elif name == 'free_will_v2':
+                            free_will_v2.active = True
+                        elif name == 'scalper':
+                            scalper.settings['enabled'] = True
+                        elif name == 'dual' and dual_engine:
+                            dual_engine.active = True
+                        response = f"✅ {name.upper()} turned ON"
+                    
+                    elif action == 'off':
+                        if name == 'autonomous_v2':
+                            autonomous_trader_v2.active = False
+                            await autonomous_trader_v2.save_settings()
+                        elif name == 'free_will_v2':
+                            free_will_v2.active = False
+                        elif name == 'scalper':
+                            scalper.settings['enabled'] = False
+                        elif name == 'dual' and dual_engine:
+                            dual_engine.active = False
+                        response = f"✅ {name.upper()} turned OFF"
+                    
+                    elif action == 'set' and len(parts) >= 5:
+                        param = parts[3].lower()
+                        value = parts[4]
+                        
+                        try:
+                            if name == 'autonomous_v2':
+                                if param == 'conf' or param == 'confidence':
+                                    autonomous_trader_v2.min_confidence = int(value)
+                                elif param == 'confirms' or param == 'confirmations':
+                                    autonomous_trader_v2.min_confirmations = int(value)
+                                elif param == 'rr':
+                                    autonomous_trader_v2.min_rr_ratio = float(value)
+                                elif param == 'maxpos' or param == 'positions':
+                                    autonomous_trader_v2.max_open_trades = int(value)
+                                else:
+                                    response = f"❌ Unknown param. Use: conf, confirms, rr, maxpos"
+                                    context = "settings"
+                                    # Skip the success message
+                                    raise ValueError("skip")
+                                await autonomous_trader_v2.save_settings()
+                                response = f"✅ V2 {param} = {value}"
+                            
+                            elif name == 'free_will_v2':
+                                if param == 'conf' or param == 'confidence':
+                                    free_will_v2.min_confidence = int(value)
+                                elif param == 'confirms':
+                                    free_will_v2.min_confirmations = int(value)
+                                elif param == 'maxalerts':
+                                    free_will_v2.max_daily_alerts = int(value)
+                                else:
+                                    response = f"❌ Unknown param. Use: conf, confirms, maxalerts"
+                                    context = "settings"
+                                    raise ValueError("skip")
+                                response = f"✅ FW {param} = {value}"
+                            
+                            elif name == 'scalper':
+                                if param == 'target' or param == 'profit':
+                                    scalper.settings['profit_target_pct'] = float(value)
+                                elif param == 'stop' or param == 'stoploss':
+                                    scalper.settings['stop_loss_pct'] = float(value)
+                                elif param == 'volume':
+                                    scalper.settings['volume_threshold'] = float(value)
+                                else:
+                                    response = f"❌ Unknown param. Use: target, stop, volume"
+                                    context = "settings"
+                                    raise ValueError("skip")
+                                response = f"✅ Scalper {param} = {value}"
+                            
+                            elif name == 'dual' and dual_engine:
+                                if param == 'conf':
+                                    dual_engine.min_confidence = int(value)
+                                else:
+                                    response = f"❌ Unknown param. Use: conf"
+                                    context = "settings"
+                                    raise ValueError("skip")
+                                response = f"✅ Dual {param} = {value}"
+                            
+                            else:
+                                response = "❌ This engine doesn't support settings"
+                        
+                        except ValueError as e:
+                            if str(e) != "skip":
+                                response = "❌ Invalid value"
+                    
+                    elif action == 'status' or len(parts) == 2:
+                        # Show detailed settings for this engine
+                        if name == 'autonomous_v2':
+                            response = f"""🤖 AUTONOMOUS V2 SETTINGS
+
+Status: {'🟢 ON' if autonomous_trader_v2.active else '🔴 OFF'}
+
+📊 CORE
+• Confidence: {autonomous_trader_v2.min_confidence}%
+• Confirmations: {autonomous_trader_v2.min_confirmations}
+• R:R Ratio: {autonomous_trader_v2.min_rr_ratio}:1
+• Max Positions: {autonomous_trader_v2.max_open_trades}
+
+🔧 FILTERS
+• 200 EMA: {'ON' if autonomous_trader_v2.ema_200_filter_enabled else 'OFF'}
+• ADX (>{autonomous_trader_v2.min_adx}): {'ON' if autonomous_trader_v2.adx_filter_enabled else 'OFF'}
+• Volume (>{autonomous_trader_v2.min_volume_multiplier}x): {'ON' if autonomous_trader_v2.volume_filter_enabled else 'OFF'}
+• Session: {'ON' if autonomous_trader_v2.session_filter_enabled else 'OFF'}
+
+SET: /engine 1 set [conf|confirms|rr|maxpos] [value]"""
+                        
+                        elif name == 'free_will_v2':
+                            status = free_will_v2.get_status()
+                            response = f"""🎯 FREE WILL V2 SETTINGS
+
+Status: {'🟢 ON' if free_will_v2.active else '🔴 OFF'}
+
+📊 CORE
+• Confidence: {status.get('min_confidence', 80)}%
+• Confirmations: {status.get('min_confirmations', 3)}
+• Max Alerts/Day: {status.get('max_daily_alerts', 15)}
+• Today: {status.get('alerts_today', 0)} alerts
+
+SET: /engine 2 set [conf|confirms|maxalerts] [value]"""
+                        
+                        elif name == 'scalper':
+                            s = scalper.get_settings()
+                            response = f"""⚡ SCALPER SETTINGS
+
+Status: {'🟢 ON' if s.get('enabled', True) else '🔴 OFF'}
+
+📊 CORE
+• Profit Target: {s.get('profit_target', 0.8)}%
+• Stop Loss: {s.get('stop_loss', 0.4)}%
+• Volume Threshold: {s.get('volume_threshold', 1.5)}x
+• RSI Range: {s.get('rsi_oversold', 30)}-{s.get('rsi_overbought', 70)}
+
+SET: /engine 3 set [target|stop|volume] [value]"""
+                        
+                        elif name == 'dual' and dual_engine:
+                            status = dual_engine.get_status()
+                            response = f"""📅 DUAL ENGINE SETTINGS
+
+Status: {'🟢 ON' if status.get('active', False) else '🔴 OFF'}
+
+📊 STYLES
+• Day Trader: Short-term swings
+• Long Term: Position trades
+
+SET: /engine 4 set conf [value]"""
+                        
+                        elif name == 'learning':
+                            status = learning_engine.get_status() if learning_engine else {}
+                            response = f"""🧠 LEARNING ENGINE
+
+Status: {'🟢 ON' if status.get('active', True) else '🔴 OFF'}
+
+📊 KNOWLEDGE
+• Patterns: {status.get('knowledge_stats', {}).get('patterns_learned', 0)}
+• Coins Analyzed: {status.get('knowledge_stats', {}).get('coins_analyzed', 0)}
+
+(Auto-optimizes other strategies)"""
+                        
+                        else:
+                            response = "Engine status unavailable"
+                    
+                    else:
+                        response = "Usage: /engine [1-5] [on|off|set param value]"
+                
+                context = "settings"
+        
         elif text_lower.startswith('/fwconf'):
             parts = text_lower.split()
             if len(parts) > 1:
