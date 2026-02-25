@@ -81,13 +81,11 @@ class NewsIntel:
         try:
             news = []
             
-            # Try CoinGecko news (via status updates)
-            # Alternative: scrape from public news feeds
-            
-            # Use Blockworks RSS as backup
+            # Use multiple RSS feeds for fresh content
             rss_urls = [
-                "https://blockworks.co/feed/",
                 "https://cointelegraph.com/rss",
+                "https://blockworks.co/feed/",
+                "https://decrypt.co/feed",
             ]
             
             for url in rss_urls:
@@ -97,13 +95,13 @@ class NewsIntel:
                         soup = BeautifulSoup(content, 'xml')
                         items = soup.find_all('item')
                         
-                        for item in items[:5]:
+                        for item in items[:3]:  # Only top 3 from each source
                             title = item.find('title')
                             link = item.find('link')
                             pub_date = item.find('pubDate')
                             
                             if title:
-                                title_text = title.text
+                                title_text = title.text.strip()
                                 sentiment = self._analyze_sentiment(title_text)
                                 
                                 # Filter by coin if specified
@@ -112,30 +110,143 @@ class NewsIntel:
                                         continue
                                 
                                 news.append({
-                                    "title": title_text,
+                                    "title": title_text[:80] + "..." if len(title_text) > 80 else title_text,
                                     "url": link.text if link else "",
                                     "published": pub_date.text if pub_date else "",
                                     "sentiment": sentiment,
+                                    "source": "news"
                                 })
                 except Exception as e:
                     logger.warning(f"RSS fetch error: {e}")
                     continue
             
-            # If no RSS worked, generate from Fear & Greed context
-            if not news:
-                # Create synthetic news based on market data
-                news = [
-                    {"title": "Market showing extreme fear - potential accumulation zone", 
-                     "sentiment": {"label": "BULLISH", "score": 60, "emoji": "🟢"}},
-                    {"title": "Bitcoin holding key support levels amid volatility",
-                     "sentiment": {"label": "NEUTRAL", "score": 50, "emoji": "⚪"}},
-                ]
+            # Deduplicate by title similarity
+            seen_titles = set()
+            unique_news = []
+            for n in news:
+                title_key = n["title"][:40].lower()
+                if title_key not in seen_titles:
+                    seen_titles.add(title_key)
+                    unique_news.append(n)
             
-            return news[:limit]
+            return unique_news[:limit]
             
         except Exception as e:
             logger.error(f"News fetch error: {e}")
             return []
+    
+    async def get_crypto_videos(self, limit: int = 3) -> List[Dict]:
+        """Get latest crypto YouTube videos from top channels"""
+        try:
+            videos = []
+            
+            # Top crypto YouTube channel RSS feeds
+            youtube_feeds = [
+                ("Coin Bureau", "https://www.youtube.com/feeds/videos.xml?channel_id=UCqK_GSMbpiV8spgD3ZGloSw"),
+                ("Benjamin Cowen", "https://www.youtube.com/feeds/videos.xml?channel_id=UCRvqjQPSeaWn-uEx-w0XOIg"),
+                ("DataDash", "https://www.youtube.com/feeds/videos.xml?channel_id=UCCatR7nWbYrkVXdxXb4cGXw"),
+            ]
+            
+            for channel_name, feed_url in youtube_feeds:
+                try:
+                    content = await self._fetch(feed_url, f"yt_{channel_name}", timeout=5)
+                    if content:
+                        soup = BeautifulSoup(content, 'xml')
+                        entries = soup.find_all('entry')
+                        
+                        for entry in entries[:1]:  # Latest video from each channel
+                            title = entry.find('title')
+                            link = entry.find('link')
+                            published = entry.find('published')
+                            
+                            if title:
+                                video_id = ""
+                                if link and link.get('href'):
+                                    video_id = link.get('href').split('v=')[-1] if 'v=' in link.get('href', '') else ""
+                                
+                                videos.append({
+                                    "title": title.text[:60] + "..." if len(title.text) > 60 else title.text,
+                                    "channel": channel_name,
+                                    "url": link.get('href') if link else "",
+                                    "published": published.text[:10] if published else "",
+                                    "source": "youtube"
+                                })
+                except Exception as e:
+                    logger.warning(f"YouTube feed error for {channel_name}: {e}")
+                    continue
+            
+            return videos[:limit]
+            
+        except Exception as e:
+            logger.error(f"Video fetch error: {e}")
+            return []
+    
+    async def get_crypto_social(self, limit: int = 3) -> List[Dict]:
+        """Get crypto social media highlights (aggregated from public feeds)"""
+        try:
+            social = []
+            
+            # Use CryptoPanic for social aggregation (free tier)
+            try:
+                content = await self._fetch(self.cryptopanic_rss, "cryptopanic", timeout=5)
+                if content:
+                    soup = BeautifulSoup(content, 'xml')
+                    items = soup.find_all('item')
+                    
+                    for item in items[:limit]:
+                        title = item.find('title')
+                        link = item.find('link')
+                        
+                        if title:
+                            # Detect if it's from social media
+                            title_text = title.text
+                            source = "social"
+                            
+                            if "twitter" in str(link).lower() or "x.com" in str(link).lower():
+                                source = "twitter"
+                            elif "reddit" in str(link).lower():
+                                source = "reddit"
+                            
+                            social.append({
+                                "title": title_text[:70] + "..." if len(title_text) > 70 else title_text,
+                                "url": link.text if link else "",
+                                "source": source,
+                                "sentiment": self._analyze_sentiment(title_text)
+                            })
+            except:
+                pass
+            
+            return social[:limit]
+            
+        except Exception as e:
+            logger.error(f"Social fetch error: {e}")
+            return []
+    
+    async def get_full_news_feed(self) -> Dict:
+        """Get comprehensive news feed with news, videos, and social"""
+        news = await self.get_latest_news(limit=3)
+        videos = await self.get_crypto_videos(limit=2)
+        social = await self.get_crypto_social(limit=2)
+        
+        # Calculate overall sentiment
+        all_items = news + social
+        bullish = sum(1 for n in all_items if n.get("sentiment", {}).get("label") == "BULLISH")
+        bearish = sum(1 for n in all_items if n.get("sentiment", {}).get("label") == "BEARISH")
+        
+        if bullish > bearish + 1:
+            overall = "BULLISH"
+        elif bearish > bullish + 1:
+            overall = "BEARISH"
+        else:
+            overall = "NEUTRAL"
+        
+        return {
+            "news": news,
+            "videos": videos,
+            "social": social,
+            "overall_sentiment": overall,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }
     
     def _analyze_sentiment(self, text: str) -> Dict:
         """Simple sentiment analysis based on keywords"""
