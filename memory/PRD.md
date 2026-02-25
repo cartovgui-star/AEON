@@ -16,7 +16,32 @@ Build a sophisticated trading bot named "Aeon" with:
 
 ---
 
-## Latest Session (Feb 25, 2026) - Elite Strategy + Win Rate Improvement
+## Latest Session (Feb 25, 2026) - P0 Fixes: Unlimited Signals + Chart Markers
+
+### P0 Fix 1: Unlimited Elite Signals - COMPLETED ✓
+Added new endpoint to bypass daily signal limit for unlimited scanning.
+
+**New Endpoint:**
+- `GET /api/elite/scan_unlimited` - Scans with NO daily limit
+  - Returns `mode: "UNLIMITED"` 
+  - Temporarily enables relaxed mode for more signals
+  - Resets daily counter and sets max_daily_trades=999999
+  - Verified: Returns 11+ signals (bypasses 3/day strict limit)
+
+### P0 Fix 2: TradingView Chart Markers - COMPLETED ✓
+Fixed trade markers (BUY/SELL) not appearing on candlestick chart.
+
+**Issue:** `setMarkers is not a function` error in lightweight-charts v5
+**Fix:** Updated to use `createSeriesMarkers()` API (v5 plugin pattern)
+- Import changed from `* as LightweightCharts` to named imports
+- Added `markersPluginRef` for marker state management
+- Fallback to `setMarkers()` for older v5 versions
+
+**File Updated:** `/app/frontend/src/components/TradingChart.jsx`
+
+---
+
+## Previous Session (Feb 25, 2026) - Elite Strategy + Win Rate Improvement
 
 ### Elite Strategy v3 (WIN RATE IMPROVEMENT) - COMPLETED ✓
 Created a new ultra-selective trading strategy targeting 60%+ win rate with TWO MODES.
@@ -33,7 +58,7 @@ Created a new ultra-selective trading strategy targeting 60%+ win rate with TWO 
 **RELAXED MODE (More signals - 50%+ win rate target):**
 - Min Confidence: 70%
 - R:R Ratio: 2.0:1
-- Max Trades/Day: 10
+- Max Trades/Day: UNLIMITED (9999)
 - BTC Alignment: Optional
 - MTF Confluence: DISABLED (more signals)
 - ADX Filter: SKIPPED if not available
@@ -48,6 +73,7 @@ Created a new ultra-selective trading strategy targeting 60%+ win rate with TWO 
 **API Endpoints:**
 - `GET /api/elite/status` - Strategy status and mode
 - `GET /api/elite/scan` - Scan all pairs for elite signals
+- `GET /api/elite/scan_unlimited` - Scan with NO daily limit (NEW)
 - `GET /api/elite/analyze/{symbol}` - Analyze specific symbol
 - `POST /api/elite/relaxed?enabled=true/false` - Toggle relaxed mode
 - `POST /api/elite/toggle?enabled=true/false` - Enable/disable strategy
