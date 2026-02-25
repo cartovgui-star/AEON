@@ -180,15 +180,18 @@ class EliteStrategyV3:
             return None
         
         try:
-            # Get indicators
-            if not self.advanced_strategies:
+            # Get indicators from market_intel
+            import app_state
+            if not app_state.market_intel:
+                logger.warning("Market intel not available")
                 return None
             
-            indicators = await self.advanced_strategies.calculate_all_indicators(symbol, timeframe)
-            if not indicators:
+            ta = await app_state.market_intel.get_technical_analysis(symbol.replace("/", ""), timeframe)
+            if not ta:
                 return None
             
-            current_price = indicators.get("current_price", 0)
+            indicators = ta.get("indicators", {})
+            current_price = indicators.get("current_price", indicators.get("close", 0))
             if current_price <= 0:
                 return None
             
@@ -207,7 +210,7 @@ class EliteStrategyV3:
                 
                 # MTF direction must match BTC trend
                 if mtf_direction != "NEUTRAL" and btc_trend != "NEUTRAL":
-                    if mtf_direction != btc_trend:
+                    if mtf_direction != btc_trend.replace("BULLISH", "LONG").replace("BEARISH", "SHORT"):
                         self._record_filter("MTF_BTC_MISMATCH")
                         return None
             else:
@@ -215,15 +218,16 @@ class EliteStrategyV3:
                 mtf_direction = "NEUTRAL"
             
             # FILTER 3: Volume spike required
-            volume_ratio = indicators.get("volume_ratio", 0)
+            volume = indicators.get("volume", 0)
+            volume_avg = indicators.get("volume_sma_20", volume)
+            volume_ratio = volume / volume_avg if volume_avg > 0 else 0
+            
             if volume_ratio < self.min_volume_ratio:
                 self._record_filter(f"LOW_VOLUME_{volume_ratio:.1f}x")
                 return None
             
             # FILTER 4: ADX trending filter (stricter)
             adx = indicators.get("adx", 0)
-            plus_di = indicators.get("plus_di", 0)
-            minus_di = indicators.get("minus_di", 0)
             
             if adx < self.min_adx:
                 self._record_filter(f"ADX_TOO_LOW_{adx:.0f}")
@@ -239,20 +243,12 @@ class EliteStrategyV3:
                 if not (self.rsi_long_range[0] <= rsi <= self.rsi_long_range[1]):
                     self._record_filter(f"RSI_NOT_IN_LONG_ZONE_{rsi:.0f}")
                     return None
-                # Plus DI should be dominant
-                if plus_di <= minus_di:
-                    self._record_filter("DI_NOT_CONFIRMING_LONG")
-                    return None
                     
             elif btc_trend == "BEARISH" or mtf_direction == "SHORT":
                 direction = "SHORT"
                 # For SHORT: RSI should be rallying (50-65)
                 if not (self.rsi_short_range[0] <= rsi <= self.rsi_short_range[1]):
                     self._record_filter(f"RSI_NOT_IN_SHORT_ZONE_{rsi:.0f}")
-                    return None
-                # Minus DI should be dominant
-                if minus_di <= plus_di:
-                    self._record_filter("DI_NOT_CONFIRMING_SHORT")
                     return None
             else:
                 self._record_filter("NO_CLEAR_DIRECTION")
@@ -269,7 +265,7 @@ class EliteStrategyV3:
             
             # FILTER 7: EMA stack alignment
             ema_9 = indicators.get("ema_9", current_price)
-            ema_21 = indicators.get("ema_21", current_price)
+            ema_21 = indicators.get("ema_21", indicators.get("ema_20", current_price))
             ema_50 = indicators.get("ema_50", current_price)
             
             if direction == "LONG":
