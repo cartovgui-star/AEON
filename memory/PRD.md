@@ -28,6 +28,9 @@ Added new endpoint to bypass daily signal limit for unlimited scanning.
   - Resets daily counter and sets max_daily_trades=999999
   - Verified: Returns 11+ signals (bypasses 3/day strict limit)
 
+**New Telegram Command:**
+- `/elite unlimited` - Unlimited signal scan from Telegram 🚀
+
 ### P0 Fix 2: TradingView Chart Markers - COMPLETED ✓
 Fixed trade markers (BUY/SELL) not appearing on candlestick chart.
 
@@ -36,6 +39,16 @@ Fixed trade markers (BUY/SELL) not appearing on candlestick chart.
 - Import changed from `* as LightweightCharts` to named imports
 - Added `markersPluginRef` for marker state management
 - Fallback to `setMarkers()` for older v5 versions
+
+### NEW: Chart Markers Toggle - COMPLETED ✓
+Added eye icon toggle button to show/hide BUY/SELL markers for clean chart view.
+
+**Feature:**
+- Eye icon in chart controls (next to zoom buttons)
+- Orange highlight when markers are ON
+- Click to toggle markers OFF for clean chart look
+- Click again to restore markers
+- `data-testid="toggle-markers"` for testing
 
 **File Updated:** `/app/frontend/src/components/TradingChart.jsx`
 
