@@ -96,6 +96,105 @@ h1, h2, h3, .font-display {
     }
 }
 
+/* Glass Cockpit Design System */
+@layer components {
+    /* Glassmorphism Cards */
+    .glass-card {
+        @apply bg-zinc-900/60 backdrop-blur-xl border border-zinc-800/60 rounded-xl;
+    }
+    
+    .glass-card-hover {
+        @apply glass-card hover:border-orange-500/30 hover:bg-zinc-900/80 transition-all duration-200;
+    }
+    
+    /* Data Display */
+    .data-value {
+        @apply font-mono text-lg font-semibold tracking-tight;
+    }
+    
+    .data-label {
+        @apply text-xs text-zinc-500 uppercase tracking-wider;
+    }
+    
+    /* Trading Status Indicators */
+    .status-profit {
+        @apply text-emerald-400;
+    }
+    
+    .status-loss {
+        @apply text-rose-400;
+    }
+    
+    .status-neutral {
+        @apply text-zinc-400;
+    }
+    
+    /* Glow Effects */
+    .glow-orange {
+        box-shadow: 0 0 20px rgba(249, 115, 22, 0.15);
+    }
+    
+    .glow-green {
+        box-shadow: 0 0 20px rgba(34, 197, 94, 0.15);
+    }
+    
+    .glow-red {
+        box-shadow: 0 0 20px rgba(239, 68, 68, 0.15);
+    }
+    
+    /* Progress Bars */
+    .progress-bar {
+        @apply h-1.5 bg-zinc-800 rounded-full overflow-hidden;
+    }
+    
+    .progress-fill {
+        @apply h-full rounded-full transition-all duration-500;
+    }
+    
+    /* Bento Grid */
+    .bento-grid {
+        @apply grid gap-3;
+        grid-template-columns: repeat(12, 1fr);
+    }
+    
+    /* Nav Styles */
+    .nav-item {
+        @apply px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200;
+    }
+    
+    .nav-item-active {
+        @apply bg-orange-500/20 text-orange-400 border border-orange-500/30;
+    }
+    
+    .nav-item-inactive {
+        @apply text-zinc-400 hover:text-white hover:bg-zinc-800/50;
+    }
+    
+    /* Pulse Animation for Live Data */
+    .pulse-live {
+        animation: pulse-live 2s ease-in-out infinite;
+    }
+    
+    @keyframes pulse-live {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+    }
+    
+    /* Scrollbar */
+    .custom-scrollbar::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+    }
+    
+    .custom-scrollbar::-webkit-scrollbar-track {
+        @apply bg-zinc-900;
+    }
+    
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+        @apply bg-zinc-700 rounded-full hover:bg-zinc-600;
+    }
+}
+
 @layer base {
     [data-debug-wrapper="true"] {
         display: contents !important;
