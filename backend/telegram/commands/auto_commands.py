@@ -59,7 +59,7 @@ async def handle_auto_on(text: str, chat_id: int, context: dict) -> Tuple[str, s
         try:
             import aiohttp
             async with aiohttp.ClientSession() as session:
-                await session.post(f"http://localhost:8001/api/trading/v2/toggle?enabled=true")
+                await session.post("http://localhost:8001/api/trading/v2/toggle?enabled=true")
         except:
             pass
         
@@ -92,7 +92,7 @@ async def handle_auto_off(text: str, chat_id: int, context: dict) -> Tuple[str, 
         try:
             import aiohttp
             async with aiohttp.ClientSession() as session:
-                await session.post(f"http://localhost:8001/api/trading/v2/toggle?enabled=false")
+                await session.post("http://localhost:8001/api/trading/v2/toggle?enabled=false")
         except:
             pass
         
