@@ -1975,7 +1975,7 @@ Status: {'🟢 ON' if stats.get('active', False) else '🔴 OFF'}
 SET: /engine 4 set conf [value]"""
                         
                         elif name == 'learning':
-                            status = continuous_learner.get_status() if continuous_learner else {}
+                            status = await continuous_learner.get_status() if continuous_learner else {}
                             response = f"""🧠 LEARNING ENGINE
 
 Status: {'🟢 ON' if status.get('active', True) else '🔴 OFF'}
