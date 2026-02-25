@@ -279,28 +279,17 @@ class NewsIntel:
             return []
     
     async def get_full_news_feed(self) -> Dict:
-        """Get comprehensive news feed with news, videos, and social"""
+        """Get comprehensive news feed with news, videos, reddit, and twitter"""
         news = await self.get_latest_news(limit=3)
         videos = await self.get_crypto_videos(limit=2)
         social = await self.get_crypto_social(limit=2)
-        
-        # Calculate overall sentiment
-        all_items = news + social
-        bullish = sum(1 for n in all_items if n.get("sentiment", {}).get("label") == "BULLISH")
-        bearish = sum(1 for n in all_items if n.get("sentiment", {}).get("label") == "BEARISH")
-        
-        if bullish > bearish + 1:
-            overall = "BULLISH"
-        elif bearish > bullish + 1:
-            overall = "BEARISH"
-        else:
-            overall = "NEUTRAL"
+        twitter = await self.get_crypto_twitter(limit=2)
         
         return {
             "news": news,
             "videos": videos,
             "social": social,
-            "overall_sentiment": overall,
+            "twitter": twitter,
             "updated_at": datetime.now(timezone.utc).isoformat()
         }
     
