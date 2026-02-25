@@ -105,6 +105,34 @@ class EliteStrategyV3:
         
         logger.info("🎯 ELITE STRATEGY v3 INITIALIZED - Ultra-selective mode")
     
+    def _get_active_settings(self) -> dict:
+        """Get the currently active settings based on mode"""
+        if self.relaxed_mode:
+            return self.relaxed_settings
+        return {
+            "min_confidence": self.min_confidence,
+            "min_rr_ratio": self.min_rr_ratio,
+            "min_volume_ratio": self.min_volume_ratio,
+            "min_adx": self.min_adx,
+            "max_daily_trades": self.max_daily_trades,
+            "require_btc_alignment": self.require_btc_alignment,
+            "require_mtf_confluence": self.require_mtf_confluence,
+            "min_mtf_agreement": self.min_mtf_agreement,
+            "rsi_long_range": self.rsi_long_range,
+            "rsi_short_range": self.rsi_short_range,
+        }
+    
+    def set_relaxed_mode(self, enabled: bool) -> dict:
+        """Toggle relaxed mode on/off"""
+        self.relaxed_mode = enabled
+        mode_name = "RELAXED" if enabled else "STRICT"
+        logger.info(f"🎯 Elite Strategy mode: {mode_name}")
+        return {
+            "success": True,
+            "relaxed_mode": enabled,
+            "active_settings": self._get_active_settings()
+        }
+    
     def _reset_daily_counter(self):
         """Reset daily trade counter if new day"""
         today = datetime.now(timezone.utc).date()
