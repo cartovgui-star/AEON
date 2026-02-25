@@ -182,41 +182,54 @@ class NewsIntel:
             return []
     
     async def get_crypto_social(self, limit: int = 3) -> List[Dict]:
-        """Get crypto social media highlights (aggregated from public feeds)"""
+        """Get crypto social media highlights from Reddit and aggregators"""
         try:
             social = []
             
-            # Use CryptoPanic for social aggregation (free tier)
-            try:
-                content = await self._fetch(self.cryptopanic_rss, "cryptopanic", timeout=5)
-                if content:
-                    soup = BeautifulSoup(content, 'xml')
-                    items = soup.find_all('item')
-                    
-                    for item in items[:limit]:
-                        title = item.find('title')
-                        link = item.find('link')
-                        
-                        if title:
-                            # Detect if it's from social media
-                            title_text = title.text
-                            source = "social"
-                            
-                            if "twitter" in str(link).lower() or "x.com" in str(link).lower():
-                                source = "twitter"
-                            elif "reddit" in str(link).lower():
-                                source = "reddit"
-                            
-                            social.append({
-                                "title": title_text[:70] + "..." if len(title_text) > 70 else title_text,
-                                "url": link.text if link else "",
-                                "source": source,
-                                "sentiment": self._analyze_sentiment(title_text)
-                            })
-            except:
-                pass
+            # Reddit crypto RSS feeds (public, no auth needed)
+            reddit_feeds = [
+                ("r/CryptoCurrency", "https://www.reddit.com/r/CryptoCurrency/hot.rss"),
+                ("r/Bitcoin", "https://www.reddit.com/r/Bitcoin/hot.rss"),
+            ]
             
-            return social[:limit]
+            for sub_name, feed_url in reddit_feeds:
+                try:
+                    content = await self._fetch(feed_url, f"reddit_{sub_name}", timeout=5)
+                    if content and "<feed" in content[:200]:
+                        soup = BeautifulSoup(content, 'xml')
+                        entries = soup.find_all('entry')
+                        
+                        for entry in entries[:2]:  # Top 2 from each sub
+                            title = entry.find('title')
+                            link = entry.find('link')
+                            
+                            if title:
+                                title_text = title.text.strip()
+                                # Skip pinned/meta posts
+                                if any(skip in title_text.lower() for skip in ['daily discussion', 'weekly', 'monthly', 'megathread']):
+                                    continue
+                                
+                                social.append({
+                                    "title": title_text[:70] + "..." if len(title_text) > 70 else title_text,
+                                    "url": link.get('href') if link else "",
+                                    "source": "reddit",
+                                    "sub": sub_name,
+                                    "sentiment": self._analyze_sentiment(title_text)
+                                })
+                except Exception as e:
+                    logger.warning(f"Reddit feed error for {sub_name}: {e}")
+                    continue
+            
+            # Deduplicate
+            seen = set()
+            unique = []
+            for s in social:
+                key = s["title"][:30].lower()
+                if key not in seen:
+                    seen.add(key)
+                    unique.append(s)
+            
+            return unique[:limit]
             
         except Exception as e:
             logger.error(f"Social fetch error: {e}")
