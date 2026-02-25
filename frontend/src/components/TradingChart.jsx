@@ -447,6 +447,18 @@ const TradingChart = ({
             {/* Chart controls */}
             <div className="flex items-center gap-1 bg-zinc-800/50 rounded-lg p-1">
               <button
+                onClick={() => setShowMarkers(!showMarkers)}
+                data-testid="toggle-markers"
+                className={`p-2 rounded-md transition-colors ${
+                  showMarkers 
+                    ? 'text-orange-400 bg-orange-500/20 hover:bg-orange-500/30' 
+                    : 'text-zinc-400 hover:text-white hover:bg-zinc-700/50'
+                }`}
+                title={showMarkers ? 'Hide Trade Markers' : 'Show Trade Markers'}
+              >
+                {showMarkers ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+              </button>
+              <button
                 onClick={handleZoomIn}
                 className="p-2 text-zinc-400 hover:text-white hover:bg-zinc-700/50 rounded-md transition-colors"
                 title="Zoom In"
