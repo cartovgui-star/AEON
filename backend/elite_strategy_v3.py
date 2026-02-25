@@ -323,13 +323,13 @@ class EliteStrategyV3:
             
             if not self.relaxed_mode:
                 if direction == "LONG":
-                if not (ema_9 > ema_21 > ema_50):
-                    self._record_filter("EMA_STACK_NOT_BULLISH")
-                    return None
-            else:
-                if not (ema_9 < ema_21 < ema_50):
-                    self._record_filter("EMA_STACK_NOT_BEARISH")
-                    return None
+                    if not (ema_9 > ema_21 > ema_50):
+                        self._record_filter("EMA_STACK_NOT_BULLISH")
+                        return None
+                else:
+                    if not (ema_9 < ema_21 < ema_50):
+                        self._record_filter("EMA_STACK_NOT_BEARISH")
+                        return None
             
             # Calculate confidence score
             confidence = 60  # Base
@@ -354,29 +354,31 @@ class EliteStrategyV3:
             if adx >= 35:
                 confidence += 5
             
-            # Check minimum confidence
-            if confidence < self.min_confidence:
+            # Check minimum confidence (using active settings)
+            min_conf = settings["min_confidence"]
+            if confidence < min_conf:
                 self._record_filter(f"CONFIDENCE_TOO_LOW_{confidence}")
                 return None
             
             # Calculate entry, stop, target
             atr = indicators.get("atr", current_price * 0.02)
+            min_rr = settings["min_rr_ratio"]
             
             if direction == "LONG":
                 entry = current_price
                 stop = current_price - (atr * 1.5)
-                target = current_price + (atr * 3.75)  # 2.5:1 R:R
+                target = current_price + (atr * 1.5 * min_rr)
             else:
                 entry = current_price
                 stop = current_price + (atr * 1.5)
-                target = current_price - (atr * 3.75)
+                target = current_price - (atr * 1.5 * min_rr)
             
             # Verify R:R ratio
             risk = abs(entry - stop)
             reward = abs(target - entry)
             rr_ratio = reward / risk if risk > 0 else 0
             
-            if rr_ratio < self.min_rr_ratio:
+            if rr_ratio < min_rr:
                 self._record_filter(f"RR_TOO_LOW_{rr_ratio:.1f}")
                 return None
             
@@ -387,10 +389,12 @@ class EliteStrategyV3:
             confirmations.append(f"✅ Volume {volume_ratio:.1f}x average")
             confirmations.append(f"✅ ADX {adx:.0f} (trending)")
             confirmations.append(f"✅ RSI {rsi:.0f} (optimal zone)")
-            confirmations.append(f"✅ EMA stack aligned")
-            confirmations.append(f"✅ Above 200 EMA" if direction == "LONG" else "✅ Below 200 EMA")
+            if not self.relaxed_mode:
+                confirmations.append(f"✅ EMA stack aligned")
+                confirmations.append(f"✅ Above 200 EMA" if direction == "LONG" else "✅ Below 200 EMA")
             
-            if len(confirmations) < self.min_confirmations:
+            # Skip confirmation count check in relaxed mode
+            if not self.relaxed_mode and len(confirmations) < self.min_confirmations:
                 self._record_filter("NOT_ENOUGH_CONFIRMATIONS")
                 return None
             
