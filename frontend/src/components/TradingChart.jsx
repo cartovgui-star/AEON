@@ -271,7 +271,14 @@ const TradingChart = ({
     } catch (err) {
       console.warn('Could not add trade markers:', err.message);
     }
-  }, [trades]);
+  }, [trades, showMarkers]);
+
+  // Update markers when toggle changes
+  useEffect(() => {
+    if (candleSeriesRef.current) {
+      addTradeMarkers([]);
+    }
+  }, [showMarkers, addTradeMarkers]);
 
   // Add position entry/SL/TP lines
   const addPositionLevels = useCallback(() => {
