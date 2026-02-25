@@ -23,6 +23,13 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 
 logger = logging.getLogger(__name__)
 
+# Import paper trading for signal routing
+try:
+    from paper_trading import route_engine_signal
+except ImportError:
+    route_engine_signal = None
+    logger.warning("Paper trading not available for Free Will signal routing")
+
 # Priority timeframes (higher = better signals, less noise)
 PRIORITY_TIMEFRAMES = ["4h", "1h", "1d"]  # Only alert on these
 SCAN_TIMEFRAMES = ["15m", "1h", "4h", "1d"]  # Scan these for confluence
