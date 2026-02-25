@@ -157,12 +157,12 @@ async def handle_elite_toggle(text: str, chat_id: int, context: dict) -> Tuple[s
     
     try:
         from elite_strategy_v3 import get_elite_strategy
-        from state import state
+        import app_state
         
         elite = get_elite_strategy(
-            state.advanced_strategies,
-            state.smc_analyzer,
-            state.enhanced_intel
+            app_state.state.advanced_strategies,
+            app_state.state.smc_analyzer,
+            app_state.state.enhanced_intel
         )
         elite.enabled = enabled
         
