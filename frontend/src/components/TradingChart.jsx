@@ -3,7 +3,7 @@ import { createChart, CandlestickSeries, HistogramSeries, LineStyle, CrosshairMo
 import { createSeriesMarkers } from 'lightweight-charts';
 import { 
   TrendingUp, TrendingDown, Activity, RefreshCw,
-  ZoomIn, ZoomOut, Maximize2, ChevronDown
+  ZoomIn, ZoomOut, Maximize2, ChevronDown, Eye, EyeOff
 } from 'lucide-react';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
@@ -45,6 +45,7 @@ const TradingChart = ({
   const [priceChange, setPriceChange] = useState(0);
   const [showSymbolDropdown, setShowSymbolDropdown] = useState(false);
   const [showTimeframeDropdown, setShowTimeframeDropdown] = useState(false);
+  const [showMarkers, setShowMarkers] = useState(true);
 
   // Initialize chart
   useEffect(() => {
