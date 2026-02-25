@@ -200,6 +200,18 @@ const TradingChart = ({
 
   // Add trade entry/exit markers
   const addTradeMarkers = useCallback((candleData) => {
+    // Clear markers if toggled off
+    if (!showMarkers) {
+      try {
+        if (markersPluginRef.current) {
+          markersPluginRef.current.setMarkers([]);
+        }
+      } catch (e) {
+        // Ignore errors when clearing markers
+      }
+      return;
+    }
+    
     if (!candleSeriesRef.current || !trades || trades.length === 0) return;
 
     try {
