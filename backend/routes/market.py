@@ -171,3 +171,52 @@ async def api_arbitrage_scan_symbol(symbol: str):
 @router.get("/arbitrage/recent")
 async def api_arbitrage_recent(limit: int = 20):
     return {"opportunities": state.arbitrage_detector.get_recent_opportunities(limit)}
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# MEXC OHLCV DATA FOR TRADING CHARTS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@router.get("/mexc/ohlcv/{symbol}")
+async def api_mexc_ohlcv(symbol: str, timeframe: str = "4h", limit: int = 200):
+    """
+    Get OHLCV candle data for TradingView-style charts.
+    Returns formatted candle data with timestamp, open, high, low, close, volume.
+    """
+    try:
+        ohlcv = await state.advanced_strategies.get_ohlcv(
+            symbol.upper() + "/USDT", 
+            timeframe, 
+            limit
+        )
+        
+        if not ohlcv:
+            return {"error": "No data available", "candles": []}
+        
+        # Format for frontend charts
+        candles = []
+        for candle in ohlcv:
+            candles.append({
+                "timestamp": candle[0],
+                "open": candle[1],
+                "high": candle[2],
+                "low": candle[3],
+                "close": candle[4],
+                "volume": candle[5]
+            })
+        
+        # Get current price info
+        current_price = candles[-1]["close"] if candles else 0
+        price_change = 0
+        if len(candles) > 1:
+            price_change = ((candles[-1]["close"] - candles[0]["open"]) / candles[0]["open"]) * 100
+        
+        return {
+            "symbol": symbol.upper() + "/USDT",
+            "timeframe": timeframe,
+            "current_price": current_price,
+            "price_change_pct": round(price_change, 2),
+            "candles": candles
+        }
+    except Exception as e:
+        return {"error": str(e), "candles": []}
