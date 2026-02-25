@@ -335,8 +335,8 @@ class TestOHLCVChart:
     """Test OHLCV data for TradingView chart"""
     
     def test_ohlcv_btc(self):
-        """Test /api/mexc/ohlcv/BTCUSDT"""
-        response = requests.get(f"{BASE_URL}/api/mexc/ohlcv/BTCUSDT?timeframe=1h&limit=100")
+        """Test /api/mexc/ohlcv/BTC (without USDT suffix)"""
+        response = requests.get(f"{BASE_URL}/api/mexc/ohlcv/BTC?timeframe=1h&limit=100")
         
         assert response.status_code == 200
         
@@ -361,12 +361,12 @@ class TestOHLCVChart:
         timeframes = ["5m", "15m", "1h", "4h"]
         
         for tf in timeframes:
-            response = requests.get(f"{BASE_URL}/api/mexc/ohlcv/ETHUSDT?timeframe={tf}&limit=50")
+            response = requests.get(f"{BASE_URL}/api/mexc/ohlcv/ETH?timeframe={tf}&limit=50")
             assert response.status_code == 200
             
             data = response.json()
             assert "candles" in data
-            assert len(data["candles"]) > 0
+            assert len(data["candles"]) > 0, f"No candles for ETH {tf}"
         
         print(f"✅ OHLCV timeframes tested: {timeframes}")
 
