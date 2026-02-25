@@ -373,3 +373,75 @@ async def api_scalper_reversal_toggle(enabled: bool = True):
         "reversal_exits_enabled": enabled,
         "message": f"Reversal pattern exits {'enabled' if enabled else 'disabled'}"
     }
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# MULTI-TIMEFRAME CONFLUENCE ANALYSIS ROUTES
+# Find high-probability setups when signals align across 5m, 15m, 30m timeframes
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@router.get("/mtf/confluence/{symbol}")
+async def api_mtf_confluence_symbol(symbol: str):
+    """
+    Analyze a symbol across all timeframes (5m, 15m, 30m) for confluence.
+    
+    Confluence Levels:
+    - STRONG (3/3): All timeframes agree - highest probability
+    - MODERATE (2/3): Two timeframes agree - good setup  
+    - WEAK (1/3): Only one timeframe has signal - low probability
+    """
+    from aggressive_scalper import scalper
+    
+    return await scalper.analyze_mtf_confluence(symbol)
+
+
+@router.get("/mtf/scan")
+async def api_mtf_scan(min_confluence: int = 2):
+    """
+    Scan all symbols for MTF confluence setups.
+    
+    Returns symbols grouped by confluence level:
+    - strong: 3/3 timeframes agree
+    - moderate: 2/3 timeframes agree
+    - weak: 1/3 timeframes agree (only if min_confluence=1)
+    """
+    from aggressive_scalper import scalper
+    
+    return await scalper.scan_mtf_confluence(min_confluence)
+
+
+@router.get("/mtf/report")
+async def api_mtf_correlation_report():
+    """
+    Generate comprehensive MTF correlation analysis report.
+    
+    Shows:
+    - Which timeframe combinations correlate best
+    - Direction breakdown (LONG vs SHORT setups)
+    - Trading recommendations based on confluence
+    """
+    from aggressive_scalper import scalper
+    
+    return await scalper.get_mtf_correlation_report()
+
+
+@router.get("/mtf/best")
+async def api_mtf_best_setups():
+    """
+    Get only the best MTF confluence setups (STRONG or MODERATE).
+    Quick endpoint for actionable trade ideas.
+    """
+    from aggressive_scalper import scalper
+    
+    result = await scalper.scan_mtf_confluence(min_confluence=2)
+    
+    best_setups = result.get("strong_confluence", []) + result.get("moderate_confluence", [])
+    
+    return {
+        "total_setups": len(best_setups),
+        "strong_count": len(result.get("strong_confluence", [])),
+        "moderate_count": len(result.get("moderate_confluence", [])),
+        "setups": best_setups[:10],  # Top 10
+        "best_setup": result.get("best_setup"),
+        "scanned_at": result.get("scanned_at")
+    }
