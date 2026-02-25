@@ -274,7 +274,7 @@ const TradingChart = ({
           price: pos.entry_price,
           color: '#3b82f6',
           lineWidth: 2,
-          lineStyle: LightweightCharts.LineStyle.Solid,
+          lineStyle: LineStyle.Solid,
           axisLabelVisible: true,
           title: `Entry ${pos.symbol?.replace('/USDT', '')}`,
         });
@@ -286,7 +286,7 @@ const TradingChart = ({
           price: pos.stop_price,
           color: '#ef4444',
           lineWidth: 1,
-          lineStyle: LightweightCharts.LineStyle.Dashed,
+          lineStyle: LineStyle.Dashed,
           axisLabelVisible: true,
           title: 'SL',
         });
@@ -298,7 +298,7 @@ const TradingChart = ({
           price: pos.target_price,
           color: '#22c55e',
           lineWidth: 1,
-          lineStyle: LightweightCharts.LineStyle.Dashed,
+          lineStyle: LineStyle.Dashed,
           axisLabelVisible: true,
           title: 'TP',
         });
@@ -310,7 +310,7 @@ const TradingChart = ({
           price: pos.liquidation_price,
           color: '#f59e0b',
           lineWidth: 1,
-          lineStyle: LightweightCharts.LineStyle.Dotted,
+          lineStyle: LineStyle.Dotted,
           axisLabelVisible: true,
           title: 'LIQ',
         });
