@@ -24,6 +24,12 @@ from scalper_learning import (
     auto_learner, v2_integration, reversal_detector
 )
 
+# Import paper trading for signal routing
+try:
+    from paper_trading import route_engine_signal
+except ImportError:
+    route_engine_signal = None
+
 logger = logging.getLogger(__name__)
 
 # Initialize MEXC
