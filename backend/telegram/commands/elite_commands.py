@@ -97,6 +97,57 @@ async def handle_elite_scan(text: str, chat_id: int, context: dict) -> Tuple[str
     return response, "elite"
 
 
+async def handle_elite_unlimited(text: str, chat_id: int, context: dict) -> Tuple[str, str]:
+    """Handle /elite unlimited command - Scan with NO daily limit"""
+    try:
+        from elite_strategy_v3 import get_elite_strategy
+        import app_state
+        
+        elite = get_elite_strategy(
+            app_state.advanced_strategies,
+            None,
+            app_state.enhanced_intel
+        )
+        
+        # Save original settings
+        original_mode = elite.relaxed_mode
+        original_daily_limit = elite.max_daily_trades
+        
+        # Enable unlimited mode
+        elite.max_daily_trades = 999999
+        elite.daily_trades = 0
+        elite.relaxed_mode = True
+        
+        # Scan
+        signals = await elite.scan_all_elite()
+        
+        # Restore settings
+        elite.relaxed_mode = original_mode
+        elite.max_daily_trades = original_daily_limit
+        
+        if signals:
+            response = f"🚀 UNLIMITED SCAN: {len(signals)} SIGNALS\n\n"
+            for sig in signals[:8]:  # Show more signals
+                symbol = sig.get('symbol', '').replace('/USDT', '')
+                direction = sig.get('direction', 'N/A')
+                conf = sig.get('confidence', 0)
+                rr = sig.get('rr_ratio', 0)
+                
+                dir_emoji = '🟢' if direction == 'LONG' else '🔴'
+                response += f"""{dir_emoji} {symbol} {direction} | {conf}% | {rr}:1
+   Entry: ${sig.get('entry_price', 0):,.2f} → Target: ${sig.get('target_price', 0):,.2f}
+"""
+            
+            if len(signals) > 8:
+                response += f"\n... and {len(signals) - 8} more signals"
+        else:
+            response = "🚀 UNLIMITED SCAN: No signals found\n\nMarket conditions may not be ideal."
+    except Exception as e:
+        response = f"❌ Error: {str(e)}"
+    
+    return response, "elite"
+
+
 async def handle_elite_analyze(text: str, chat_id: int, context: dict) -> Tuple[str, str]:
     """Handle /elite <symbol> command"""
     parts = text.lower().split()
