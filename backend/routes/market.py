@@ -182,10 +182,16 @@ async def api_mexc_ohlcv(symbol: str, timeframe: str = "4h", limit: int = 200):
     """
     Get OHLCV candle data for TradingView-style charts.
     Returns formatted candle data with timestamp, open, high, low, close, volume.
+    
+    Symbol can be: BTC, BTCUSDT, or BTC/USDT - all work.
     """
     try:
+        # Normalize symbol - remove USDT suffix if present
+        clean_symbol = symbol.upper().replace("/USDT", "").replace("USDT", "")
+        full_symbol = clean_symbol + "/USDT"
+        
         ohlcv = await state.advanced_strategies.get_ohlcv(
-            symbol.upper() + "/USDT", 
+            full_symbol, 
             timeframe, 
             limit
         )
@@ -212,7 +218,7 @@ async def api_mexc_ohlcv(symbol: str, timeframe: str = "4h", limit: int = 200):
             price_change = ((candles[-1]["close"] - candles[0]["open"]) / candles[0]["open"]) * 100
         
         return {
-            "symbol": symbol.upper() + "/USDT",
+            "symbol": full_symbol,
             "timeframe": timeframe,
             "current_price": current_price,
             "price_change_pct": round(price_change, 2),
