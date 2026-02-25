@@ -381,6 +381,9 @@ function App() {
         {currentPage === 'charts' && <TradeAnalytics />}
       </main>
 
+      {/* Mobile Bottom Navigation */}
+      <MobileNav currentPage={currentPage} onNavigate={setCurrentPage} />
+
       {/* Voice Modal */}
       {showVoice && <VoiceConversation onClose={() => setShowVoice(false)} />}
 
