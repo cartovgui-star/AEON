@@ -208,19 +208,23 @@ class EliteStrategyV3:
         """
         Generate ultra-selective elite trading signal.
         Returns signal only if ALL strict criteria are met.
+        Uses relaxed settings if relaxed_mode is enabled.
         """
         if not self.enabled:
             return None
         
         self._reset_daily_counter()
         
+        # Get active settings (strict or relaxed)
+        settings = self._get_active_settings()
+        
         # PRE-CHECK 1: Daily trade limit
-        if self.daily_trades >= self.max_daily_trades:
+        if self.daily_trades >= settings["max_daily_trades"]:
             self._record_filter("DAILY_LIMIT_REACHED")
             return None
         
-        # PRE-CHECK 2: Skip session start (false breakouts)
-        if await self._is_session_start():
+        # PRE-CHECK 2: Skip session start (false breakouts) - only in strict mode
+        if not self.relaxed_mode and await self._is_session_start():
             self._record_filter("SESSION_START_SKIP")
             return None
         
