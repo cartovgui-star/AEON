@@ -2690,7 +2690,7 @@ Use /bt [coin] [tf] to backtest different pairs/timeframes"""
         # NEW: MULTI-STRATEGY SCAN
         # ═══════════════════════════════════════════════════════════════════
         
-        elif text_lower.startswith('/strat') or text_lower.startswith('/strategies'):
+        elif text_lower.startswith('/strat ') or text_lower.startswith('/strategies'):
             parts = text_lower.split()
             symbol = parts[1].upper() if len(parts) > 1 else "BTC"
             timeframe = parts[2] if len(parts) > 2 else "4h"
