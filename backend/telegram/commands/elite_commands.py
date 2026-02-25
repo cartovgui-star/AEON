@@ -25,6 +25,7 @@ async def handle_elite_status(text: str, chat_id: int, context: dict) -> Tuple[s
         response = f"""🎯 ELITE STRATEGY v3
 
 Status: {'🟢 ACTIVE' if stats.get('enabled') else '🔴 PAUSED'}
+Mode: {'🔓 RELAXED' if stats.get('relaxed_mode') else '🔒 STRICT'}
 
 📊 STATISTICS
 • Signals Generated: {stats.get('signals_generated', 0)}
@@ -43,6 +44,7 @@ Status: {'🟢 ACTIVE' if stats.get('enabled') else '🔴 PAUSED'}
 
 Commands:
 • /elite scan - Scan for elite signals
+• /elite unlimited - Unlimited scan (no daily cap) 🚀
 • /elite BTC - Analyze specific symbol
 • /elite on/off - Toggle strategy"""
     except Exception as e:
