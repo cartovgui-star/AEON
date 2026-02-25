@@ -2483,26 +2483,45 @@ Get key at: coinglass.com/api"""
             context = "trading"
             
         elif text_lower == '/news':
-            news = await news_intel.get_latest_news(8)
-            sentiment = await news_intel.get_news_sentiment_summary()
+            feed = await news_intel.get_full_news_feed()
             
-            response = f"""📰 CRYPTO NEWS
+            response = f"""📰 CRYPTO FEED
 
-Sentiment: {sentiment.get('sentiment', 'UNKNOWN')}
-Bullish: {sentiment.get('bullish_pct', 0):.0f}% | Bearish: {sentiment.get('bearish_pct', 0):.0f}%
+Sentiment: {feed.get('overall_sentiment', 'NEUTRAL')}
 
-📰 Latest Headlines:
+📰 NEWS:
 """
-            for i, n in enumerate(news[:6], 1):
+            for n in feed.get('news', [])[:3]:
                 emoji = n.get('sentiment', {}).get('emoji', '⚪')
-                title = n.get('title', '')[:55]
+                title = n.get('title', '')
                 url = n.get('url', '')
                 if url:
-                    response += f"{emoji} [{title}...]({url})\n\n"
+                    response += f"{emoji} [{title}]({url})\n\n"
                 else:
-                    response += f"{emoji} {title}...\n"
+                    response += f"{emoji} {title}\n\n"
             
-            response += "\n💡 Click headlines to read full articles"
+            response += "🎬 VIDEOS:\n"
+            for v in feed.get('videos', [])[:2]:
+                channel = v.get('channel', '')
+                title = v.get('title', '')
+                url = v.get('url', '')
+                if url:
+                    response += f"▶️ [{title}]({url})\n   📺 {channel}\n\n"
+                else:
+                    response += f"▶️ {title} - {channel}\n\n"
+            
+            social = feed.get('social', [])
+            if social:
+                response += "💬 SOCIAL:\n"
+                for s in social[:2]:
+                    emoji = "🐦" if s.get('source') == 'twitter' else "💬"
+                    title = s.get('title', '')
+                    url = s.get('url', '')
+                    if url:
+                        response += f"{emoji} [{title}]({url})\n\n"
+                    else:
+                        response += f"{emoji} {title}\n\n"
+            
             context = "news"
             
         elif text_lower == '/whales' or text_lower == '/whale':
