@@ -301,34 +301,31 @@ export default function Dashboard({
       </div>
 
       {/* PnL Goal Tracker */}
-      <Card className="bg-gradient-to-r from-zinc-800/50 to-zinc-900/50 border-zinc-700/50">
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <Target className="w-5 h-5 text-orange-400" />
-              <span className="text-white font-medium">Daily Goal Progress</span>
-            </div>
-            <span className={`text-sm font-bold ${dailyProgress >= 100 ? 'text-green-400' : 'text-orange-400'}`}>
-              {dailyProgress >= 100 ? 'GOAL REACHED!' : `${dailyProgress.toFixed(0)}%`}
-            </span>
+      <div className="glass-card p-4 glow-orange">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <Target className="w-5 h-5 text-orange-400" />
+            <span className="text-white font-medium font-display">Daily Goal Progress</span>
           </div>
-          <div className="h-3 bg-zinc-700 rounded-full overflow-hidden">
-            <div 
-              className={`h-full transition-all duration-500 ${dailyProgress >= 100 ? 'bg-green-500' : 'bg-gradient-to-r from-orange-500 to-amber-500'}`}
-              style={{ width: `${Math.min(100, dailyProgress)}%` }}
-            />
-          </div>
-          <div className="flex justify-between mt-2 text-xs text-zinc-500">
-            <span>Current: {(tradingStats?.total_pnl_pct || 0).toFixed(2)}%</span>
-            <span>Target: +{pnlGoal.daily}%</span>
-          </div>
-        </CardContent>
-      </Card>
+          <span className={`text-sm font-bold font-mono ${dailyProgress >= 100 ? 'text-emerald-400' : 'text-orange-400'}`}>
+            {dailyProgress >= 100 ? 'GOAL REACHED!' : `${dailyProgress.toFixed(0)}%`}
+          </span>
+        </div>
+        <div className="h-2 bg-zinc-800 rounded-full overflow-hidden">
+          <div 
+            className={`h-full transition-all duration-500 ${dailyProgress >= 100 ? 'bg-emerald-500' : 'bg-gradient-to-r from-orange-500 to-amber-500'}`}
+            style={{ width: `${Math.min(100, dailyProgress)}%` }}
+          />
+        </div>
+        <div className="flex justify-between mt-2 text-xs text-zinc-500">
+          <span className="font-mono">Current: {(tradingStats?.total_pnl_pct || 0).toFixed(2)}%</span>
+          <span className="font-mono">Target: +{pnlGoal.daily}%</span>
+        </div>
+      </div>
 
       {/* Live Positions Preview */}
       {livePositions.length > 0 && (
-        <Card className="bg-zinc-800/30 border-zinc-700/50">
-          <CardContent className="p-4">
+        <div className="glass-card p-4">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <Radio className="w-5 h-5 text-green-400 animate-pulse" />
