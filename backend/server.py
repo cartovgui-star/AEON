@@ -78,6 +78,7 @@ from routes.scalper import router as scalper_router
 from routes.briefing import router as briefing_router
 from routes.weekly_report import router as weekly_report_router
 from routes.learning import router as learning_router
+from routes.elite import router as elite_router
 from voice_tts import generate_speech, VOICES
 from price_alerts import price_alert_system, PriceAlertSystem
 from strategy_engine import StrategyEngine
@@ -90,6 +91,7 @@ from morning_briefing import morning_briefing, MorningBriefing
 from weekly_report import weekly_report, WeeklyPerformanceReport
 from continuous_learning import continuous_learner, ContinuousLearningEngine
 from paper_trading import paper_trading, init_paper_trading, PaperTradingSystem
+from elite_strategy_v3 import get_elite_strategy, EliteStrategyV3
 import app_state
 
 ROOT_DIR = Path(__file__).parent
