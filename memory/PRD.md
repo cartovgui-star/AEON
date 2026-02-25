@@ -16,52 +16,69 @@ Build a sophisticated trading bot named "Aeon" with:
 
 ---
 
-## Latest Session (Feb 25, 2026) - TradingView Chart + MTF Analysis
+## Latest Session (Feb 25, 2026) - Elite Strategy + Win Rate Improvement
 
-### TradingView-Style Chart (P2) - COMPLETED ✓
-Added a professional TradingView-style candlestick chart to the Trading page.
+### Elite Strategy v3 (WIN RATE IMPROVEMENT) - COMPLETED ✓
+Created a new ultra-selective trading strategy targeting 60%+ win rate.
 
-**Features Implemented:**
-- Real-time candlestick charts using lightweight-charts v5 (official TradingView library)
-- Volume histogram overlay at the bottom
-- 15 symbol support (BTC, ETH, SOL, BNB, XRP, DOGE, ADA, AVAX, LINK, DOT, ATOM, UNI, LTC, ARB, OP)
-- 5 timeframe options (5m, 15m, 1H, 4H, 1D)
-- Price display with change percentage
-- Zoom/Pan controls (ZoomIn, ZoomOut, Fit to Screen, Refresh)
-- Position entry/exit markers and price lines (Entry, SL, TP, Liquidation)
-- Legend showing line types
+**Key Features:**
+- BTC trend alignment MANDATORY (no counter-BTC trades)
+- MTF confluence required (min 2/3 timeframes agree)
+- RSI optimal zones only (35-50 for LONG, 50-65 for SHORT)
+- Volume spike 2x average required (stricter than 1.5x)
+- ADX > 28 (stricter trending filter)
+- Max 3 trades per day (quality over quantity)
+- Skips first hour of trading sessions (false breakouts)
 
 **New Files:**
-- `/app/frontend/src/components/TradingChart.jsx` - TradingView-style chart component
-- `/app/backend/routes/market.py` - Added `/api/mexc/ohlcv/{symbol}` endpoint
-
-### Multi-Timeframe Confluence Analysis (P2) - COMPLETED ✓
-Added a powerful MTF Confluence Analysis system that finds high-probability setups when signals align across 5m, 15m, and 30m timeframes.
-
-**Confluence Levels:**
-- STRONG (3/3): All timeframes agree - highest probability (75-85%)
-- MODERATE (2/3): Two timeframes agree - good setup (60-70%)
-- WEAK (1/3): Only one timeframe has signal - low probability (45-55%)
-- NONE (0/3): No clear setup - stay out
+- `/app/backend/elite_strategy_v3.py` - Elite Strategy engine
+- `/app/backend/routes/elite.py` - API routes
+- `/app/backend/telegram/commands/elite_commands.py` - Telegram commands
 
 **API Endpoints:**
-- `GET /api/scalper/mtf/confluence/{symbol}` - Analyze single symbol
-- `GET /api/scalper/mtf/scan` - Scan all 15 symbols for confluence
-- `GET /api/scalper/mtf/best` - Get best STRONG and MODERATE setups
-- `GET /api/scalper/mtf/report` - Comprehensive correlation analysis
+- `GET /api/elite/status` - Strategy status and settings
+- `GET /api/elite/scan` - Scan all pairs for elite signals
+- `GET /api/elite/analyze/{symbol}` - Analyze specific symbol
+- `POST /api/elite/toggle` - Enable/disable strategy
+- `POST /api/elite/settings` - Update settings
 
 **Telegram Commands:**
-- `/mtf` - Scan all symbols for MTF confluence setups
-- `/mtf BTC` - Analyze specific symbol across all timeframes
-- `/confluence` - Alias for /mtf
+- `/elite` - Show Elite Strategy status
+- `/elite scan` - Scan for elite signals
+- `/elite BTC` - Analyze specific symbol
+- `/elite on/off` - Toggle strategy
 
-### Telegram Command Refactoring - COMPLETED ✓
-Started modularizing the 4300+ line `server.py` into organized command handlers.
+### TradingView-Style Chart - COMPLETED ✓
+Added professional candlestick chart to Trading page.
 
-**New Modular Files:**
-- `/app/backend/telegram/commands/mtf_commands.py` - MTF and Scalper commands
-- `/app/backend/telegram/commands/engine_commands.py` - Engine management commands
-- `/app/backend/telegram/commands/paper_commands.py` - Paper trading commands
+**Features:**
+- Real-time candlestick charts using lightweight-charts v5
+- 15 symbols, 5 timeframes (5m, 15m, 1H, 4H, 1D)
+- Volume histogram, zoom controls, price display
+- Position entry/exit markers
+
+### Multi-Timeframe Confluence Analysis - COMPLETED ✓
+Finds high-probability setups when signals align across timeframes.
+
+**Confluence Levels:**
+- STRONG (3/3): 75-85% probability
+- MODERATE (2/3): 60-70% probability
+- WEAK (1/3): 45-55% probability
+
+### Telegram Command Refactoring - IN PROGRESS
+Modularizing server.py (4300+ lines) into organized handlers.
+
+**New Modular Files Created:**
+- `/app/backend/telegram/commands/mtf_commands.py`
+- `/app/backend/telegram/commands/engine_commands.py`
+- `/app/backend/telegram/commands/paper_commands.py`
+- `/app/backend/telegram/commands/model_commands.py`
+- `/app/backend/telegram/commands/elite_commands.py`
+
+### Multi-Model AI Switching - VERIFIED ✓
+- `/openai` or `/gpt` - Switch to OpenAI GPT-4o
+- `/claude` or `/anthropic` - Switch to Claude Sonnet 4.5
+- `/model` - Show current AI model
 
 ---
 
