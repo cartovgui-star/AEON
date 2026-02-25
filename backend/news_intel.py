@@ -186,7 +186,7 @@ class NewsIntel:
             return []
     
     async def get_crypto_social(self, limit: int = 3) -> List[Dict]:
-        """Get crypto social media highlights from Reddit and aggregators"""
+        """Get crypto social media highlights from Reddit and crypto Twitter aggregators"""
         try:
             social = []
             
@@ -237,6 +237,45 @@ class NewsIntel:
             
         except Exception as e:
             logger.error(f"Social fetch error: {e}")
+            return []
+    
+    async def get_crypto_twitter(self, limit: int = 2) -> List[Dict]:
+        """Get crypto Twitter/X highlights via aggregator feeds"""
+        try:
+            tweets = []
+            
+            # Use Bitcoinist which often aggregates Twitter news
+            twitter_sources = [
+                ("Bitcoinist", "https://bitcoinist.com/feed/"),
+                ("NewsBTC", "https://www.newsbtc.com/feed/"),
+            ]
+            
+            for source_name, feed_url in twitter_sources:
+                try:
+                    content = await self._fetch(feed_url, f"twitter_{source_name}", timeout=5)
+                    if content and ("<?xml" in content[:200] or "<rss" in content[:200]):
+                        soup = BeautifulSoup(content, 'xml')
+                        items = soup.find_all('item')
+                        
+                        for item in items[:2]:
+                            title = item.find('title')
+                            link = item.find('link')
+                            
+                            if title:
+                                title_text = title.text.strip()
+                                tweets.append({
+                                    "title": title_text[:65] + "..." if len(title_text) > 65 else title_text,
+                                    "url": link.text if link else "",
+                                    "source": source_name
+                                })
+                except Exception as e:
+                    logger.warning(f"Twitter source error for {source_name}: {e}")
+                    continue
+            
+            return tweets[:limit]
+            
+        except Exception as e:
+            logger.error(f"Twitter fetch error: {e}")
             return []
     
     async def get_full_news_feed(self) -> Dict:
