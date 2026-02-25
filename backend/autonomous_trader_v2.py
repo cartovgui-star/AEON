@@ -41,6 +41,13 @@ import pytz
 
 logger = logging.getLogger(__name__)
 
+# Import paper trading for signal routing
+try:
+    from paper_trading import route_engine_signal
+except ImportError:
+    route_engine_signal = None
+    logger.warning("Paper trading not available for signal routing")
+
 # Trading pairs - prioritized by liquidity (MEXC supported)
 TRADING_PAIRS = [
     "BTC/USDT", "ETH/USDT", "SOL/USDT", "BNB/USDT", "XRP/USDT",
