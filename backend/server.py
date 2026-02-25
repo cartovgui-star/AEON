@@ -2022,6 +2022,159 @@ Status: {'🟢 ON' if status.get('active', True) else '🔴 OFF'}
             else:
                 response = f"Current: {free_will_v2.min_confidence}%\nUsage: /fwconf 80"
             context = "settings"
+        
+        # ============= PAPER TRADING ACCOUNTS =============
+        elif text_lower == '/accounts':
+            accounts = await paper_trading.get_all_accounts()
+            
+            response = "💰 PAPER TRADING ACCOUNTS\n\n"
+            
+            for acc in accounts:
+                acc_id = acc.get("_id")
+                summary = await paper_trading.get_account_summary(acc_id)
+                
+                emoji = summary.get("emoji", "💰")
+                name = summary.get("name", acc_id)
+                balance = summary.get("balance", 0)
+                total_pnl = summary.get("total_pnl", 0)
+                unrealized = summary.get("unrealized_pnl", 0)
+                positions = summary.get("open_positions", 0)
+                win_rate = summary.get("win_rate", 0)
+                
+                pnl_emoji = "🟢" if total_pnl >= 0 else "🔴"
+                
+                response += f"""{emoji} {name}
+Balance: ${balance:,.2f}
+{pnl_emoji} PnL: ${total_pnl:+,.2f} | Unrealized: ${unrealized:+,.2f}
+Positions: {positions} | Win Rate: {win_rate}%
+
+"""
+            
+            response += "Commands: /pro, /starter, /addmargin"
+            context = "trading"
+        
+        elif text_lower == '/pro':
+            summary = await paper_trading.get_account_summary("PRO")
+            
+            if "error" in summary:
+                response = "❌ PRO account not found"
+            else:
+                response = f"""👑 PRO ACCOUNT
+
+💵 Balance: ${summary['balance']:,.2f}
+📊 Available: ${summary['available_balance']:,.2f}
+💰 Total PnL: ${summary['total_pnl']:+,.2f}
+📈 Unrealized: ${summary['unrealized_pnl']:+,.2f}
+
+📉 STATS
+• Trades: {summary['total_trades']} ({summary['wins']}W / {summary['losses']}L)
+• Win Rate: {summary['win_rate']}%
+• Reloads: {summary['reloads']}
+
+"""
+                
+                if summary['positions']:
+                    response += "📊 OPEN POSITIONS\n"
+                    for pos in summary['positions'][:5]:
+                        direction_emoji = "🟢" if pos['direction'] == "LONG" else "🔴"
+                        pnl_emoji = "📈" if pos['unrealized_pnl'] >= 0 else "📉"
+                        
+                        response += f"""
+{direction_emoji} {pos['symbol']} {pos['direction']} {pos['leverage']}x
+Entry: ${pos['entry_price']:,.2f} | Now: ${pos['current_price']:,.2f}
+{pnl_emoji} PnL: {pos['unrealized_pnl_pct']:+.2f}% (${pos['unrealized_pnl']:+,.2f})
+Margin: ${pos['margin']:,.2f} | Size: ${pos['position_size_usd']:,.2f}
+⚠️ Liq: ${pos['liquidation_price']:,.2f}
+TP: ${pos['take_profit']:,.2f} | SL: ${pos['stop_loss']:,.2f}
+"""
+                else:
+                    response += "\n📭 No open positions"
+            
+            context = "trading"
+        
+        elif text_lower == '/starter':
+            summary = await paper_trading.get_account_summary("STARTER")
+            
+            if "error" in summary:
+                response = "❌ Starter account not found"
+            else:
+                response = f"""🌱 STARTER ACCOUNT
+
+💵 Balance: ${summary['balance']:,.2f}
+📊 Available: ${summary['available_balance']:,.2f}
+💰 Total PnL: ${summary['total_pnl']:+,.2f}
+📈 Unrealized: ${summary['unrealized_pnl']:+,.2f}
+
+📉 STATS
+• Trades: {summary['total_trades']} ({summary['wins']}W / {summary['losses']}L)
+• Win Rate: {summary['win_rate']}%
+• Reloads: {summary['reloads']}
+
+"""
+                
+                if summary['positions']:
+                    response += "📊 OPEN POSITIONS\n"
+                    for pos in summary['positions'][:5]:
+                        direction_emoji = "🟢" if pos['direction'] == "LONG" else "🔴"
+                        pnl_emoji = "📈" if pos['unrealized_pnl'] >= 0 else "📉"
+                        
+                        response += f"""
+{direction_emoji} {pos['symbol']} {pos['direction']} {pos['leverage']}x
+Entry: ${pos['entry_price']:,.2f} | Now: ${pos['current_price']:,.2f}
+{pnl_emoji} PnL: {pos['unrealized_pnl_pct']:+.2f}% (${pos['unrealized_pnl']:+,.2f})
+Margin: ${pos['margin']:,.2f} | Size: ${pos['position_size_usd']:,.2f}
+⚠️ Liq: ${pos['liquidation_price']:,.2f}
+TP: ${pos['take_profit']:,.2f} | SL: ${pos['stop_loss']:,.2f}
+"""
+                else:
+                    response += "\n📭 No open positions"
+            
+            context = "trading"
+        
+        elif text_lower.startswith('/addmargin'):
+            parts = text_lower.split()
+            if len(parts) < 3:
+                response = "Usage: /addmargin [coin] [amount]\nExample: /addmargin btc 100"
+            else:
+                coin = parts[1].upper()
+                symbol = f"{coin}/USDT" if "/" not in coin else coin.upper()
+                try:
+                    amount = float(parts[2])
+                    
+                    # Try PRO account first
+                    result = await paper_trading.add_margin("PRO", symbol, amount)
+                    if "error" in result:
+                        # Try starter
+                        result = await paper_trading.add_margin("STARTER", symbol, amount)
+                    
+                    if "error" in result:
+                        response = f"❌ {result['error']}"
+                    else:
+                        response = f"""✅ Added ${amount:.2f} margin to {symbol}
+
+New liquidation price: ${result['new_liq_price']:,.2f}
+Remaining balance: ${result['new_balance']:,.2f}"""
+                except:
+                    response = "❌ Invalid amount"
+            
+            context = "trading"
+        
+        elif text_lower.startswith('/reload'):
+            parts = text_lower.split()
+            if len(parts) < 2:
+                response = "Usage: /reload [pro|starter]"
+            else:
+                account = parts[1].upper()
+                if account == "PRO" or account == "STARTER":
+                    result = await paper_trading.reload_account(account)
+                    if "error" in result:
+                        response = f"❌ {result['error']}"
+                    else:
+                        response = f"✅ {account} account reloaded to ${result['new_balance']:,.2f}"
+                else:
+                    response = "❌ Use /reload pro or /reload starter"
+            
+            context = "trading"
             
         elif text_lower.startswith('/scan'):
             parts = text_lower.split()
