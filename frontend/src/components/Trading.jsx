@@ -3,8 +3,9 @@ import {
   Activity, TrendingUp, TrendingDown, DollarSign, Target, 
   Play, Pause, RefreshCw, X, Settings2, Zap, Radio, BarChart3,
   AlertTriangle, Shield, Flame, Clock, ChevronRight, Percent,
-  ArrowUpRight, ArrowDownRight, Crosshair, LineChart
+  ArrowUpRight, ArrowDownRight, Crosshair, LineChart, CandlestickChart
 } from 'lucide-react';
+import TradingChart from './TradingChart';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
