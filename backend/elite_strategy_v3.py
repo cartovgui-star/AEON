@@ -84,14 +84,14 @@ class EliteStrategyV3:
         self.relaxed_settings = {
             "min_confidence": 70,
             "min_rr_ratio": 2.0,
-            "min_volume_ratio": 1.5,
-            "min_adx": 22,
-            "max_daily_trades": 8,
+            "min_volume_ratio": 1.2,  # Lower volume requirement
+            "min_adx": 20,  # Lower ADX
+            "max_daily_trades": 10,
             "require_btc_alignment": False,  # Optional in relaxed mode
-            "require_mtf_confluence": True,  # Still require MTF
-            "min_mtf_agreement": 1,  # Only need 1/3 in relaxed mode (was 2)
-            "rsi_long_range": (25, 60),  # Even wider range
-            "rsi_short_range": (40, 75),
+            "require_mtf_confluence": False,  # Disabled in relaxed mode for more signals
+            "min_mtf_agreement": 0,
+            "rsi_long_range": (20, 65),  # Wide range
+            "rsi_short_range": (35, 80),
         }
         
         # Statistics
