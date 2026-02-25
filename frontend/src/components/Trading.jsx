@@ -609,33 +609,33 @@ export default function Trading() {
   const totalLivePnl = livePositions.reduce((sum, p) => sum + (p.pnl_pct || 0), 0);
 
   return (
-    <div className="space-y-4 md:space-y-6" data-testid="trading-page">
-      {/* Live Data Banner */}
-      <div className="flex items-center gap-2 px-4 py-2.5 glass-card border-emerald-500/20">
+    <div className="space-y-3 sm:space-y-4 md:space-y-6" data-testid="trading-page">
+      {/* Live Data Banner - Mobile Compact */}
+      <div className="flex items-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 glass-card border-emerald-500/20">
         <div className="relative">
-          <Radio className="w-4 h-4 text-emerald-400" />
-          <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-emerald-400 rounded-full animate-ping" />
+          <Radio className="w-3 sm:w-4 h-3 sm:h-4 text-emerald-400" />
+          <span className="absolute -top-0.5 -right-0.5 w-1.5 sm:w-2 h-1.5 sm:h-2 bg-emerald-400 rounded-full animate-ping" />
         </div>
-        <span className="text-emerald-400 text-sm font-medium">Live MEXC Data</span>
-        <span className="text-zinc-500 text-xs ml-auto">Paper Trading Mode</span>
+        <span className="text-emerald-400 text-xs sm:text-sm font-medium">Live MEXC</span>
+        <span className="text-zinc-500 text-[10px] sm:text-xs ml-auto">Paper Mode</span>
       </div>
 
-      {/* Header Stats - Bento Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        <div className="glass-card-hover p-4">
+      {/* Header Stats - Mobile Grid */}
+      <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-5 gap-2 sm:gap-3">
+        <div className="glass-card-hover p-2.5 sm:p-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="data-label">Status</p>
-              <p className={`text-xl font-display font-bold ${stats?.active ? 'text-emerald-400' : 'text-rose-400'}`}>
-                {stats?.active ? 'ACTIVE' : 'PAUSED'}
+              <p className={`text-sm sm:text-xl font-display font-bold ${stats?.active ? 'text-emerald-400' : 'text-rose-400'}`}>
+                {stats?.active ? 'ON' : 'OFF'}
               </p>
             </div>
             <button 
               onClick={toggleTrading}
               data-testid="toggle-trading-btn"
-              className={`p-2.5 rounded-xl transition-all ${stats?.active ? 'bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 glow-green' : 'bg-rose-500/20 text-rose-400 hover:bg-rose-500/30 glow-red'}`}
+              className={`p-1.5 sm:p-2.5 rounded-lg sm:rounded-xl transition-all touch-target ${stats?.active ? 'bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 glow-green' : 'bg-rose-500/20 text-rose-400 hover:bg-rose-500/30 glow-red'}`}
             >
-              {stats?.active ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
+              {stats?.active ? <Pause className="w-4 sm:w-5 h-4 sm:h-5" /> : <Play className="w-4 sm:w-5 h-4 sm:h-5" />}
             </button>
           </div>
         </div>
