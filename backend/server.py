@@ -3260,15 +3260,36 @@ Current trades use dynamic leverage based on confidence."""
             context = "trading"
             
         elif text_lower == '/strategy':
-            report = await autonomous_trader.get_strategy_report()
+            # Get optimized strategy from database
+            strategy = await db.trading_strategies.find_one({"_id": "optimized_strategy_v1"})
             
-            response = f"""{report}
-Commands:
-/auto - Trading status
-/opps - Current opportunities
-/stats - Full performance
+            if strategy:
+                settings = strategy.get("recommended_settings", {})
+                response = f"""📊 DATA-DRIVEN STRATEGY v1
+Based on {strategy.get('based_on_trades', 0):,} trades
 
-👁️ «Each signal teaches. The weights adjust.»"""
+🎯 OPTIMAL SETTINGS:
+• Confidence: {settings.get('min_confidence', 85)}%+
+• Confirmations: {settings.get('min_confirmations', 4)}+
+• Risk/Reward: {settings.get('min_rr_ratio', 2.5)}:1
+
+📈 FOCUS:
+• Timeframes: {', '.join(settings.get('focus_timeframes', ['4h']))}
+• Best Sessions: {', '.join(settings.get('best_sessions', ['ASIA']))}
+• Priority: {', '.join([s.replace('/USDT','') for s in settings.get('priority_symbols', [])])}
+
+⚠️ AVOID:
+• {', '.join([s.replace('/USDT','') for s in settings.get('avoid_symbols', [])])} (overtrades)
+
+📋 KEY RULES:
+• Wait for candle close
+• Divergence + Structure required
+• Fear < 30 for LONG, > 70 for SHORT
+• Take 50% at 1.5R, trail rest
+
+Commands: /auto, /opps, /stats"""
+            else:
+                response = "No optimized strategy found. Run /analyze first."
             context = "trading"
             
         elif text_lower.startswith('/openpos') or text_lower == '/open':
