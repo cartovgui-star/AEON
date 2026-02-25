@@ -35,6 +35,7 @@ const TradingChart = ({
   const chartRef = useRef(null);
   const candleSeriesRef = useRef(null);
   const volumeSeriesRef = useRef(null);
+  const markersPluginRef = useRef(null);
   
   const [symbol, setSymbol] = useState(initialSymbol);
   const [timeframe, setTimeframe] = useState('4h');
