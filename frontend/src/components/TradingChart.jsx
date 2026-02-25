@@ -199,43 +199,47 @@ const TradingChart = ({
   const addTradeMarkers = useCallback((candleData) => {
     if (!candleSeriesRef.current || !trades || trades.length === 0) return;
 
-    const markers = [];
-    
-    trades.forEach(trade => {
-      // Entry marker
-      if (trade.entry_time) {
-        const entryTime = Math.floor(new Date(trade.entry_time).getTime() / 1000);
-        const isLong = trade.direction === 'LONG';
-        
-        markers.push({
-          time: entryTime,
-          position: isLong ? 'belowBar' : 'aboveBar',
-          color: isLong ? '#22c55e' : '#ef4444',
-          shape: isLong ? 'arrowUp' : 'arrowDown',
-          text: `${isLong ? 'BUY' : 'SELL'} @ $${trade.entry_price?.toLocaleString()}`,
-        });
-      }
+    try {
+      const markers = [];
+      
+      trades.forEach(trade => {
+        // Entry marker
+        if (trade.entry_time) {
+          const entryTime = Math.floor(new Date(trade.entry_time).getTime() / 1000);
+          const isLong = trade.direction === 'LONG';
+          
+          markers.push({
+            time: entryTime,
+            position: isLong ? 'belowBar' : 'aboveBar',
+            color: isLong ? '#22c55e' : '#ef4444',
+            shape: isLong ? 'arrowUp' : 'arrowDown',
+            text: `${isLong ? 'BUY' : 'SELL'}`,
+          });
+        }
 
-      // Exit marker
-      if (trade.exit_time && trade.exit_price) {
-        const exitTime = Math.floor(new Date(trade.exit_time).getTime() / 1000);
-        const isWin = (trade.pnl_pct || 0) >= 0;
-        
-        markers.push({
-          time: exitTime,
-          position: 'inBar',
-          color: isWin ? '#22c55e' : '#ef4444',
-          shape: 'circle',
-          text: `EXIT ${isWin ? '+' : ''}${trade.pnl_pct?.toFixed(2)}%`,
-        });
-      }
-    });
+        // Exit marker
+        if (trade.exit_time && trade.exit_price) {
+          const exitTime = Math.floor(new Date(trade.exit_time).getTime() / 1000);
+          const isWin = (trade.pnl_pct || 0) >= 0;
+          
+          markers.push({
+            time: exitTime,
+            position: 'inBar',
+            color: isWin ? '#22c55e' : '#ef4444',
+            shape: 'circle',
+            text: `${isWin ? '+' : ''}${trade.pnl_pct?.toFixed(1)}%`,
+          });
+        }
+      });
 
-    // Sort markers by time
-    markers.sort((a, b) => a.time - b.time);
-    
-    if (markers.length > 0) {
-      candleSeriesRef.current.setMarkers(markers);
+      // Sort markers by time
+      markers.sort((a, b) => a.time - b.time);
+      
+      if (markers.length > 0 && typeof candleSeriesRef.current.setMarkers === 'function') {
+        candleSeriesRef.current.setMarkers(markers);
+      }
+    } catch (err) {
+      console.warn('Could not add trade markers:', err.message);
     }
   }, [trades]);
 
