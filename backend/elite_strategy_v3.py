@@ -244,21 +244,22 @@ class EliteStrategyV3:
             if current_price <= 0:
                 return None
             
-            # FILTER 1: BTC ALIGNMENT (MANDATORY)
+            # FILTER 1: BTC ALIGNMENT (based on settings)
             btc_trend = await self._get_btc_trend()
-            if self.require_btc_alignment and btc_trend == "NEUTRAL":
+            if settings["require_btc_alignment"] and btc_trend == "NEUTRAL":
                 self._record_filter("BTC_TREND_NEUTRAL")
                 return None
             
-            # FILTER 2: MTF CONFLUENCE (MANDATORY)
-            if self.require_mtf_confluence:
+            # FILTER 2: MTF CONFLUENCE (based on settings)
+            if settings["require_mtf_confluence"]:
                 has_confluence, mtf_count, mtf_direction = await self._check_mtf_confluence(symbol)
-                if not has_confluence:
+                min_mtf = settings.get("min_mtf_agreement", 2)
+                if mtf_count < min_mtf:
                     self._record_filter(f"MTF_NO_CONFLUENCE_{mtf_count}/3")
                     return None
                 
-                # MTF direction must match BTC trend
-                if mtf_direction != "NEUTRAL" and btc_trend != "NEUTRAL":
+                # MTF direction must match BTC trend (if BTC alignment required)
+                if settings["require_btc_alignment"] and mtf_direction != "NEUTRAL" and btc_trend != "NEUTRAL":
                     if mtf_direction != btc_trend.replace("BULLISH", "LONG").replace("BEARISH", "SHORT"):
                         self._record_filter("MTF_BTC_MISMATCH")
                         return None
@@ -271,53 +272,57 @@ class EliteStrategyV3:
             volume_avg = indicators.get("volume_sma_20", volume)
             volume_ratio = volume / volume_avg if volume_avg > 0 else 0
             
-            if volume_ratio < self.min_volume_ratio:
+            if volume_ratio < settings["min_volume_ratio"]:
                 self._record_filter(f"LOW_VOLUME_{volume_ratio:.1f}x")
                 return None
             
-            # FILTER 4: ADX trending filter (stricter)
+            # FILTER 4: ADX trending filter
             adx = indicators.get("adx", 0)
             
-            if adx < self.min_adx:
+            if adx < settings["min_adx"]:
                 self._record_filter(f"ADX_TOO_LOW_{adx:.0f}")
                 return None
             
-            # FILTER 5: RSI in optimal range (not extremes)
+            # FILTER 5: RSI in optimal range
             rsi = indicators.get("rsi", 50)
+            rsi_long_range = settings.get("rsi_long_range", self.rsi_long_range)
+            rsi_short_range = settings.get("rsi_short_range", self.rsi_short_range)
             
             # Determine direction based on BTC trend and MTF
             if btc_trend == "BULLISH" or mtf_direction == "LONG":
                 direction = "LONG"
-                # For LONG: RSI should be pulling back (35-50)
-                if not (self.rsi_long_range[0] <= rsi <= self.rsi_long_range[1]):
+                # For LONG: RSI should be in range
+                if not (rsi_long_range[0] <= rsi <= rsi_long_range[1]):
                     self._record_filter(f"RSI_NOT_IN_LONG_ZONE_{rsi:.0f}")
                     return None
                     
             elif btc_trend == "BEARISH" or mtf_direction == "SHORT":
                 direction = "SHORT"
-                # For SHORT: RSI should be rallying (50-65)
-                if not (self.rsi_short_range[0] <= rsi <= self.rsi_short_range[1]):
+                # For SHORT: RSI should be in range
+                if not (rsi_short_range[0] <= rsi <= rsi_short_range[1]):
                     self._record_filter(f"RSI_NOT_IN_SHORT_ZONE_{rsi:.0f}")
                     return None
             else:
                 self._record_filter("NO_CLEAR_DIRECTION")
                 return None
             
-            # FILTER 6: 200 EMA trend alignment
-            ema_200 = indicators.get("ema_200", current_price)
-            if direction == "LONG" and current_price < ema_200:
-                self._record_filter("PRICE_BELOW_200EMA_FOR_LONG")
-                return None
-            if direction == "SHORT" and current_price > ema_200:
-                self._record_filter("PRICE_ABOVE_200EMA_FOR_SHORT")
-                return None
+            # FILTER 6: 200 EMA trend alignment (skip in relaxed mode)
+            if not self.relaxed_mode:
+                ema_200 = indicators.get("ema_200", current_price)
+                if direction == "LONG" and current_price < ema_200:
+                    self._record_filter("PRICE_BELOW_200EMA_FOR_LONG")
+                    return None
+                if direction == "SHORT" and current_price > ema_200:
+                    self._record_filter("PRICE_ABOVE_200EMA_FOR_SHORT")
+                    return None
             
-            # FILTER 7: EMA stack alignment
+            # FILTER 7: EMA stack alignment (skip in relaxed mode)
             ema_9 = indicators.get("ema_9", current_price)
             ema_21 = indicators.get("ema_21", indicators.get("ema_20", current_price))
             ema_50 = indicators.get("ema_50", current_price)
             
-            if direction == "LONG":
+            if not self.relaxed_mode:
+                if direction == "LONG":
                 if not (ema_9 > ema_21 > ema_50):
                     self._record_filter("EMA_STACK_NOT_BULLISH")
                     return None
