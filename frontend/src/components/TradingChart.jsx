@@ -48,7 +48,7 @@ const TradingChart = ({
   useEffect(() => {
     if (!chartContainerRef.current) return;
 
-    const chart = createChart(chartContainerRef.current, {
+    const chart = LightweightCharts.createChart(chartContainerRef.current, {
       width: chartContainerRef.current.clientWidth,
       height: height,
       layout: {
@@ -60,7 +60,7 @@ const TradingChart = ({
         horzLines: { color: 'rgba(42, 46, 57, 0.5)' },
       },
       crosshair: {
-        mode: CrosshairMode.Normal,
+        mode: LightweightCharts.CrosshairMode.Normal,
         vertLine: {
           color: 'rgba(224, 227, 235, 0.3)',
           labelBackgroundColor: '#2962FF',
@@ -83,8 +83,8 @@ const TradingChart = ({
       handleScale: { axisPressedMouseMove: true },
     });
 
-    // Add candlestick series
-    const candleSeries = chart.addCandlestickSeries({
+    // Add candlestick series - v5 API
+    const candleSeries = chart.addSeries(LightweightCharts.CandlestickSeries, {
       upColor: '#22c55e',
       downColor: '#ef4444',
       borderUpColor: '#22c55e',
@@ -93,11 +93,15 @@ const TradingChart = ({
       wickDownColor: '#ef4444',
     });
 
-    // Add volume series
-    const volumeSeries = chart.addHistogramSeries({
+    // Add volume series - v5 API
+    const volumeSeries = chart.addSeries(LightweightCharts.HistogramSeries, {
       color: '#26a69a',
       priceFormat: { type: 'volume' },
       priceScaleId: '',
+    });
+    
+    // Set scale margins for volume
+    volumeSeries.priceScale().applyOptions({
       scaleMargins: { top: 0.85, bottom: 0 },
     });
 
