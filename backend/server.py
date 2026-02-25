@@ -1773,7 +1773,7 @@ SWITCH: /openai or /claude"""
             v2_stats = await autonomous_trader_v2.get_stats()
             fw_stats = await free_will_v2.get_stats()
             scalper_settings = scalper.get_settings()
-            dual_status = dual_engine.get_status() if dual_engine else {}
+            dual_stats = dual_engine.get_stats() if dual_engine else {}
             learning_status = learning_engine.get_status() if learning_engine else {}
             
             response = f"""🤖 ALL TRADING ENGINES
@@ -1788,7 +1788,7 @@ SWITCH: /openai or /claude"""
 3️⃣ SCALPER {'🟢 ON' if scalper_settings.get('enabled', True) else '🔴 OFF'}
    Target: {scalper_settings.get('profit_target', 0.8)}% | Stop: {scalper_settings.get('stop_loss', 0.4)}%
 
-4️⃣ DUAL ENGINE {'🟢 ON' if dual_status.get('active', False) else '🔴 OFF'}
+4️⃣ DUAL ENGINE {'🟢 ON' if dual_stats.get('active', False) else '🔴 OFF'}
    Day + Long Term combined
 
 5️⃣ LEARNING {'🟢 ON' if learning_status.get('active', True) else '🔴 OFF'}
