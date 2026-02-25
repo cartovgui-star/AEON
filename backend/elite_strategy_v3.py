@@ -424,6 +424,13 @@ class EliteStrategyV3:
             
             logger.info(f"🎯 ELITE SIGNAL: {symbol} {direction} | Conf: {confidence}% | MTF: {mtf_count}/3 | RR: {rr_ratio:.1f}")
             
+            # Record signal to history for backtest data collection
+            try:
+                from signal_tracker import signal_tracker
+                await signal_tracker.record_signal(signal, "ELITE_V3")
+            except Exception as e:
+                logger.debug(f"Could not record signal to history: {e}")
+            
             return signal
             
         except Exception as e:
