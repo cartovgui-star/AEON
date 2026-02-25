@@ -180,9 +180,10 @@ class PaperTradingSystem:
         stop_loss: float,
         take_profit: float,
         leverage: int = None,
-        margin_type: str = "isolated",
+        margin_type: str = "cross",
         risk_pct: float = 2.0,
-        signal_data: Dict = None
+        signal_data: Dict = None,
+        confidence: int = 80
     ) -> Dict:
         """Open a new position with full details"""
         
@@ -190,10 +191,9 @@ class PaperTradingSystem:
         if not account:
             return {"error": "Account not found"}
         
-        # Get default leverage if not specified
+        # Get dynamic leverage based on confidence if not specified
         if leverage is None:
-            coin = symbol.split("/")[0]
-            leverage = DEFAULT_LEVERAGE.get(coin, DEFAULT_LEVERAGE["DEFAULT"])
+            leverage = get_dynamic_leverage(symbol, confidence, direction)
         
         # Calculate position sizing
         sizing = calculate_position_size(
