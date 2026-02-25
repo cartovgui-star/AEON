@@ -233,21 +233,19 @@ export default function Dashboard({
 
       {/* Main Stats Grid */}
       <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
-        <Card className="bg-zinc-800/30 border-zinc-700/50">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-zinc-500 text-xs">Status</p>
-                <p className={`text-lg font-bold ${tradingStats?.active ? 'text-green-400' : 'text-zinc-400'}`}>
-                  {tradingStats?.active ? 'ACTIVE' : 'PAUSED'}
-                </p>
-              </div>
-              <Bot className={`w-8 h-8 ${tradingStats?.active ? 'text-orange-400' : 'text-zinc-600'}`} />
+        <div className="glass-card-hover p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="data-label">Status</p>
+              <p className={`text-lg font-display font-bold ${tradingStats?.active ? 'text-emerald-400' : 'text-zinc-400'}`}>
+                {tradingStats?.active ? 'ACTIVE' : 'PAUSED'}
+              </p>
             </div>
-          </CardContent>
-        </Card>
+            <Bot className={`w-8 h-8 ${tradingStats?.active ? 'text-orange-400' : 'text-zinc-600'}`} />
+          </div>
+        </div>
         
-        <Card className="bg-zinc-800/30 border-zinc-700/50">
+        <div className="glass-card-hover p-4">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
