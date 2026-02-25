@@ -83,6 +83,7 @@ from price_alerts import price_alert_system, PriceAlertSystem
 from strategy_engine import StrategyEngine
 from sentiment_analyzer import sentiment_analyzer, SentimentAnalyzer
 from arbitrage_detector import arbitrage_detector, ArbitrageDetector
+from aggressive_scalper import scalper
 from strategy_health import strategy_health, StrategyHealth
 from self_healer import self_healer, SelfHealer
 from morning_briefing import morning_briefing, MorningBriefing
