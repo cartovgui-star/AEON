@@ -740,15 +740,16 @@ export default function Trading() {
       {/* Tabs */}
       <div className="flex items-center gap-2">
         <div className="flex bg-zinc-800/50 rounded-lg p-1">
-          {['positions', 'opportunities', 'history'].map(t => (
+          {['chart', 'positions', 'opportunities', 'history'].map(t => (
             <button 
               key={t} 
               onClick={() => setActiveTab(t)}
               data-testid={`tab-${t}`}
-              className={`px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium transition-all ${
+              className={`px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium transition-all flex items-center gap-1.5 ${
                 activeTab === t ? 'bg-orange-500 text-white' : 'text-zinc-400 hover:text-white'
               }`}
             >
+              {t === 'chart' && <CandlestickChart className="w-4 h-4" />}
               {t.charAt(0).toUpperCase() + t.slice(1)}
             </button>
           ))}
@@ -761,6 +762,17 @@ export default function Trading() {
           <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
         </button>
       </div>
+
+      {/* Chart Tab - TradingView Style */}
+      {activeTab === 'chart' && (
+        <TradingChart 
+          symbol="BTC" 
+          trades={closedTrades}
+          positions={livePositions}
+          height={450}
+          showControls={true}
+        />
+      )}
 
       {/* Live Positions Tab */}
       {activeTab === 'positions' && (
