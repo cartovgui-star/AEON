@@ -74,10 +74,11 @@ Commands:
 
 async def handle_auto_toggle(text: str, chat_id: int, context: dict, enabled: bool) -> Tuple[str, str]:
     """Handle /auto on or /auto off command"""
-    from autonomous_trader_v2 import autonomous_trader_v2
+    import app_state
     
     try:
-        autonomous_trader_v2.is_active = enabled
+        app_state.autonomous_trader_v2.active = enabled
+        await app_state.autonomous_trader_v2.save_settings()
         
         if enabled:
             response = """🟢 AUTO TRADING ENABLED
@@ -237,6 +238,105 @@ async def handle_leaderboard(text: str, chat_id: int, context: dict) -> Tuple[st
     return response, "trading"
 
 
+async def handle_mode(text: str, chat_id: int, context: dict) -> Tuple[str, str]:
+    """Handle /mode command - show or set trading mode"""
+    import app_state
+    
+    parts = text.lower().split()
+    
+    # Trading mode presets
+    MODES = {
+        "yolo": {"conf": 50, "confirms": 1, "rr": 1.0, "emoji": "🚀", "desc": "MAX trading, no filters!"},
+        "easy": {"conf": 70, "confirms": 2, "rr": 1.5, "emoji": "🟢", "desc": "More trades, lower filters"},
+        "balanced": {"conf": 80, "confirms": 3, "rr": 2.0, "emoji": "🟡", "desc": "Moderate quality/quantity"},
+        "strict": {"conf": 85, "confirms": 4, "rr": 2.5, "emoji": "🟠", "desc": "Fewer, higher quality"},
+        "elite": {"conf": 90, "confirms": 5, "rr": 3.0, "emoji": "🔴", "desc": "Ultra-selective, best setups"}
+    }
+    
+    trader = app_state.autonomous_trader_v2
+    
+    # Detect current mode
+    current = "custom"
+    for mode_id, m in MODES.items():
+        if trader.min_confidence == m["conf"] and trader.min_confirmations == m["confirms"]:
+            current = mode_id
+            break
+    
+    # Just /mode - show current and available
+    if len(parts) == 1:
+        response = f"""⚙️ TRADING MODES
+
+Current: {MODES.get(current, {}).get('emoji', '⚪')} {current.upper()}
+• Confidence: {trader.min_confidence}%
+• Confirmations: {trader.min_confirmations}
+• R:R Ratio: {trader.min_rr_ratio}:1
+
+📋 AVAILABLE MODES:
+"""
+        for mode_id, m in MODES.items():
+            marker = "→ " if mode_id == current else "  "
+            response += f"{marker}{m['emoji']} {mode_id.upper()} - {m['desc']}\n"
+        
+        response += "\nSet mode: /mode yolo|easy|balanced|strict|elite"
+        return response, "trading"
+    
+    # /mode <mode_id> - set mode
+    mode_id = parts[1]
+    if mode_id not in MODES:
+        return "❌ Invalid mode. Use: yolo, easy, balanced, strict, elite", "trading"
+    
+    mode = MODES[mode_id]
+    
+    # Apply settings
+    trader.min_confidence = mode["conf"]
+    trader.min_confirmations = mode["confirms"]
+    trader.min_rr_ratio = mode["rr"]
+    
+    # Adjust filters based on mode
+    if mode_id == "yolo":
+        trader.ema_200_filter_enabled = False
+        trader.adx_filter_enabled = False
+        trader.session_filter_enabled = False
+        trader.volume_filter_enabled = False
+        trader.max_open_trades = 50
+    elif mode_id == "easy":
+        trader.ema_200_filter_enabled = False
+        trader.adx_filter_enabled = False
+        trader.session_filter_enabled = False
+        trader.max_open_trades = 10
+    elif mode_id == "balanced":
+        trader.ema_200_filter_enabled = True
+        trader.adx_filter_enabled = False
+        trader.session_filter_enabled = False
+        trader.max_open_trades = 7
+    elif mode_id == "strict":
+        trader.ema_200_filter_enabled = True
+        trader.adx_filter_enabled = True
+        trader.session_filter_enabled = True
+        trader.max_open_trades = 5
+    else:  # elite
+        trader.ema_200_filter_enabled = True
+        trader.adx_filter_enabled = True
+        trader.session_filter_enabled = True
+        trader.max_open_trades = 3
+    
+    await trader.save_settings()
+    
+    response = f"""{mode['emoji']} MODE SET: {mode_id.upper()}
+
+✅ Settings Applied:
+• Min Confidence: {mode['conf']}%
+• Confirmations: {mode['confirms']}
+• R:R Ratio: {mode['rr']}:1
+• Max Trades: {trader.max_open_trades}
+
+{mode['desc']}
+
+Use /stats to monitor performance."""
+    
+    return response, "trading"
+
+
 # Export handlers
 TRADING_HANDLERS = {
     '/stats': handle_stats,
@@ -249,6 +349,7 @@ TRADING_HANDLERS = {
     '/acc': handle_accuracy,
     '/leaderboard': handle_leaderboard,
     '/lb': handle_leaderboard,
+    '/mode': handle_mode,
 }
 
 
@@ -261,6 +362,10 @@ async def route_trading_command(text: str, chat_id: int, context: dict) -> Optio
         return await handle_auto_toggle(text, chat_id, context, enabled=True)
     elif text_lower == '/auto off':
         return await handle_auto_toggle(text, chat_id, context, enabled=False)
+    
+    # Handle mode commands
+    if text_lower.startswith('/mode'):
+        return await handle_mode(text, chat_id, context)
     
     handler = TRADING_HANDLERS.get(text_lower)
     if handler:

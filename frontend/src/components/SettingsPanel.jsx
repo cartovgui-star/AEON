@@ -34,19 +34,61 @@ export default function SettingsPanel() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [activeTab, setActiveTab] = useState('trading');
+  const [tradingMode, setTradingMode] = useState('custom');
   const [expandedSections, setExpandedSections] = useState({
     autoTrader: true,
     dayTrader: true,
     longTerm: true,
-    eliteAlerts: false
+    eliteAlerts: false,
+    vwapScalper: false
   });
+
+  // Trading mode presets
+  const TRADING_MODES = {
+    yolo: { name: 'YOLO', emoji: '🚀', conf: 50, confirms: 1, rr: 1.0, desc: 'MAX trading, no filters', color: 'purple' },
+    easy: { name: 'Easy', emoji: '🟢', conf: 70, confirms: 2, rr: 1.5, desc: 'More trades, relaxed', color: 'green' },
+    balanced: { name: 'Balanced', emoji: '🟡', conf: 80, confirms: 3, rr: 2.0, desc: 'Moderate filters', color: 'yellow' },
+    strict: { name: 'Strict', emoji: '🟠', conf: 85, confirms: 4, rr: 2.5, desc: 'Fewer, better', color: 'orange' },
+    elite: { name: 'Elite', emoji: '🔴', conf: 90, confirms: 5, rr: 3.0, desc: 'Ultra-selective', color: 'red' }
+  };
 
   useEffect(() => {
     fetchSettings();
     fetchFreeWillStats();
     fetchDualStats();
     fetchUserProfile();
+    fetchTradingMode();
   }, []);
+
+  const fetchTradingMode = async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/trading/modes`);
+      if (res.ok) {
+        const data = await res.json();
+        setTradingMode(data.current_mode || 'custom');
+      }
+    } catch (err) {
+      console.error('Failed to fetch trading mode:', err);
+    }
+  };
+
+  const setMode = async (modeId) => {
+    try {
+      const res = await fetch(`${API_URL}/api/trading/mode/${modeId}`, { method: 'POST' });
+      if (res.ok) {
+        const data = await res.json();
+        setTradingMode(modeId);
+        setSettings(s => ({
+          ...s,
+          minConfidence: data.settings_applied.min_confidence
+        }));
+        // Refresh settings
+        fetchSettings();
+      }
+    } catch (err) {
+      console.error('Failed to set mode:', err);
+    }
+  };
 
   const fetchSettings = async () => {
     try {
@@ -256,6 +298,39 @@ export default function SettingsPanel() {
             </p>
           </div>
 
+          {/* Trading Mode Selector */}
+          <div className="bg-zinc-800/30 rounded-xl border border-zinc-700/50 p-4">
+            <h3 className="text-white font-semibold mb-3 flex items-center gap-2">
+              <Settings className="w-4 h-4 text-orange-400" />
+              Trading Mode
+            </h3>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {Object.entries(TRADING_MODES).map(([modeId, mode]) => (
+                <button
+                  key={modeId}
+                  onClick={() => setMode(modeId)}
+                  data-testid={`mode-${modeId}-btn`}
+                  className={`p-3 rounded-lg border transition-all text-left ${
+                    tradingMode === modeId
+                      ? `bg-${mode.color}-500/20 border-${mode.color}-500/50 ring-1 ring-${mode.color}-500/50`
+                      : 'bg-zinc-800/50 border-zinc-700/50 hover:border-zinc-600'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-lg">{mode.emoji}</span>
+                    <span className={`font-medium ${tradingMode === modeId ? 'text-white' : 'text-zinc-300'}`}>
+                      {mode.name}
+                    </span>
+                  </div>
+                  <p className="text-xs text-zinc-500">{mode.desc}</p>
+                  <div className="mt-2 text-xs text-zinc-400">
+                    {mode.conf}% conf • {mode.confirms} confirms
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* Autonomous Trader v2 */}
           <div className="bg-zinc-800/30 rounded-xl border border-zinc-700/50 overflow-hidden">
             <button 
@@ -425,6 +500,60 @@ export default function SettingsPanel() {
                       </div>
                     </div>
                   )}
+                </div>
+              )}
+            </div>
+
+            {/* VWAP Scalper */}
+            <div className="bg-zinc-800/30 rounded-xl border border-cyan-500/30 overflow-hidden">
+              <button 
+                onClick={() => toggleSection('vwapScalper')}
+                className="w-full flex items-center justify-between px-5 py-4 hover:bg-zinc-800/30 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-cyan-500/20">
+                    <TrendingUp className="w-5 h-5 text-cyan-400" />
+                  </div>
+                  <div className="text-left">
+                    <h3 className="font-semibold text-white">VWAP Scalper</h3>
+                    <p className="text-xs text-zinc-500">VWAP + EMA Cross + RSI</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="px-2 py-0.5 rounded text-xs bg-cyan-500/20 text-cyan-400">NEW</span>
+                  {expandedSections.vwapScalper ? <ChevronUp className="w-4 h-4 text-zinc-400" /> : <ChevronDown className="w-4 h-4 text-zinc-400" />}
+                </div>
+              </button>
+              
+              {expandedSections.vwapScalper && (
+                <div className="px-5 pb-5 space-y-4 border-t border-cyan-500/20 pt-4">
+                  <div className="text-sm text-zinc-400 bg-zinc-900/50 p-3 rounded-lg">
+                    <p className="text-cyan-400 font-medium mb-2">Strategy Logic:</p>
+                    <ul className="space-y-1 text-xs">
+                      <li>• LONG: EMA9 crosses above EMA21 + Price &gt; VWAP + RSI 50-70</li>
+                      <li>• SHORT: EMA9 crosses below EMA21 + Price &lt; VWAP + RSI 30-50</li>
+                      <li>• Risk: 0.3% SL / 0.6% TP (2:1 R:R)</li>
+                      <li>• Timeframe: 5-minute candles</li>
+                      <li>• Data: yfinance (real market data)</li>
+                    </ul>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 pt-2">
+                    <div className="text-center p-2 bg-zinc-900/50 rounded-lg">
+                      <p className="text-lg font-bold text-cyan-400">EMA 9/21</p>
+                      <p className="text-xs text-zinc-500">Cross</p>
+                    </div>
+                    <div className="text-center p-2 bg-zinc-900/50 rounded-lg">
+                      <p className="text-lg font-bold text-cyan-400">VWAP</p>
+                      <p className="text-xs text-zinc-500">Filter</p>
+                    </div>
+                    <div className="text-center p-2 bg-zinc-900/50 rounded-lg">
+                      <p className="text-lg font-bold text-cyan-400">RSI 14</p>
+                      <p className="text-xs text-zinc-500">Confirm</p>
+                    </div>
+                  </div>
+                  <p className="text-xs text-zinc-500 text-center">
+                    Scans every 5 minutes • Uses Telegram: /vwap
+                  </p>
                 </div>
               )}
             </div>

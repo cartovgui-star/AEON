@@ -1,0 +1,502 @@
+{
+  "meta": {
+    "timestamp": "2026-03-21T06:02:40.257187+00:00",
+    "seed": 42,
+    "trades_per_engine": 10000,
+    "total_trades": 70000,
+    "starting_capital": 10000,
+    "risk_pct_per_trade": 0.01,
+    "regime_split": {
+      "TRENDING": 0.4,
+      "RANGING": 0.4,
+      "HIGH_VOLATILITY": 0.2
+    }
+  },
+  "engines": {
+    "elite_strategy": {
+      "engine": "elite_strategy",
+      "description": "Ultra-selective, 5-confluence, 90%+ conf",
+      "config": {
+        "min_confidence": 90.0,
+        "rr": 2.0,
+        "max_leverage": 25,
+        "risk_profile": "conservative"
+      },
+      "trades": 10000,
+      "wins": 6366,
+      "losses": 3634,
+      "liquidations": 2,
+      "win_rate_pct": 63.66,
+      "total_pnl_r": 9099.47,
+      "max_drawdown_r": 9.17,
+      "profit_factor": 3.512,
+      "expectancy_r": 0.9105,
+      "avg_win_r": 1.9997,
+      "avg_loss_r": 0.9974,
+      "final_capital_usd": 919947.26,
+      "net_pnl_usd": 909947.26,
+      "regime_breakdown": {
+        "TRENDING": {
+          "trades": 4000,
+          "wins": 2783,
+          "win_rate": 69.6,
+          "pnl_r": 4356.07
+        },
+        "RANGING": {
+          "trades": 4000,
+          "wins": 2462,
+          "win_rate": 61.6,
+          "pnl_r": 3380.88
+        },
+        "HIGH_VOLATILITY": {
+          "trades": 2000,
+          "wins": 1121,
+          "win_rate": 56.0,
+          "pnl_r": 1362.52
+        }
+      },
+      "worst_10_trades": [
+        -3.0,
+        -3.0,
+        -1.2613,
+        -1.2607,
+        -1.2561,
+        -1.2497,
+        -1.2496,
+        -1.2414,
+        -1.2354,
+        -1.2342
+      ],
+      "best_10_trades": [
+        2.5047,
+        2.5028,
+        2.4966,
+        2.4945,
+        2.4747,
+        2.4719,
+        2.467,
+        2.4588,
+        2.4506,
+        2.4472
+      ],
+      "composite_score": 89.54
+    },
+    "autonomous_trader_v2": {
+      "engine": "autonomous_trader_v2",
+      "description": "Main SMC engine, 3-confluence, 80% conf",
+      "config": {
+        "min_confidence": 80.0,
+        "rr": 2.0,
+        "max_leverage": 50,
+        "risk_profile": "balanced"
+      },
+      "trades": 10000,
+      "wins": 6079,
+      "losses": 3921,
+      "liquidations": 6,
+      "win_rate_pct": 60.79,
+      "total_pnl_r": 8230.5,
+      "max_drawdown_r": 9.17,
+      "profit_factor": 3.109,
+      "expectancy_r": 0.8248,
+      "avg_win_r": 2.0002,
+      "avg_loss_r": 0.9974,
+      "final_capital_usd": 833049.66,
+      "net_pnl_usd": 823049.66,
+      "regime_breakdown": {
+        "TRENDING": {
+          "trades": 4000,
+          "wins": 2637,
+          "win_rate": 65.9,
+          "pnl_r": 3926.35
+        },
+        "RANGING": {
+          "trades": 4000,
+          "wins": 2379,
+          "win_rate": 59.5,
+          "pnl_r": 3136.45
+        },
+        "HIGH_VOLATILITY": {
+          "trades": 2000,
+          "wins": 1063,
+          "win_rate": 53.1,
+          "pnl_r": 1167.7
+        }
+      },
+      "worst_10_trades": [
+        -3.0,
+        -3.0,
+        -3.0,
+        -3.0,
+        -3.0,
+        -3.0,
+        -1.2747,
+        -1.2623,
+        -1.2602,
+        -1.2593
+      ],
+      "best_10_trades": [
+        2.5573,
+        2.5341,
+        2.49,
+        2.4854,
+        2.4628,
+        2.46,
+        2.4496,
+        2.4483,
+        2.4452,
+        2.4441
+      ],
+      "composite_score": 81.83
+    },
+    "dual_engine": {
+      "engine": "dual_engine",
+      "description": "Day Trader + Long Term, 4-confluence, 82% conf",
+      "config": {
+        "min_confidence": 82.0,
+        "rr": 2.0,
+        "max_leverage": 35,
+        "risk_profile": "conservative"
+      },
+      "trades": 10000,
+      "wins": 6129,
+      "losses": 3871,
+      "liquidations": 4,
+      "win_rate_pct": 61.29,
+      "total_pnl_r": 8386.07,
+      "max_drawdown_r": 14.8,
+      "profit_factor": 3.165,
+      "expectancy_r": 0.8398,
+      "avg_win_r": 2.0033,
+      "avg_loss_r": 1.0023,
+      "final_capital_usd": 848607.04,
+      "net_pnl_usd": 838607.04,
+      "regime_breakdown": {
+        "TRENDING": {
+          "trades": 4000,
+          "wins": 2672,
+          "win_rate": 66.8,
+          "pnl_r": 4016.71
+        },
+        "RANGING": {
+          "trades": 4000,
+          "wins": 2378,
+          "win_rate": 59.5,
+          "pnl_r": 3135.49
+        },
+        "HIGH_VOLATILITY": {
+          "trades": 2000,
+          "wins": 1079,
+          "win_rate": 53.9,
+          "pnl_r": 1233.87
+        }
+      },
+      "worst_10_trades": [
+        -3.0,
+        -3.0,
+        -3.0,
+        -3.0,
+        -1.2842,
+        -1.2635,
+        -1.2562,
+        -1.2514,
+        -1.2423,
+        -1.2306
+      ],
+      "best_10_trades": [
+        2.4935,
+        2.4876,
+        2.4814,
+        2.4758,
+        2.4743,
+        2.4685,
+        2.4672,
+        2.4668,
+        2.4655,
+        2.4621
+      ],
+      "composite_score": 76.65
+    },
+    "free_will_v2": {
+      "engine": "free_will_v2",
+      "description": "Proactive alerts, 24/7, 75% conf",
+      "config": {
+        "min_confidence": 75.0,
+        "rr": 1.5,
+        "max_leverage": 75,
+        "risk_profile": "balanced"
+      },
+      "trades": 10000,
+      "wins": 5866,
+      "losses": 4134,
+      "liquidations": 15,
+      "win_rate_pct": 58.66,
+      "total_pnl_r": 4641.37,
+      "max_drawdown_r": 14.74,
+      "profit_factor": 2.138,
+      "expectancy_r": 0.4686,
+      "avg_win_r": 1.5007,
+      "avg_loss_r": 0.9959,
+      "final_capital_usd": 474136.51,
+      "net_pnl_usd": 464136.51,
+      "regime_breakdown": {
+        "TRENDING": {
+          "trades": 4000,
+          "wins": 2504,
+          "win_rate": 62.6,
+          "pnl_r": 2248.3
+        },
+        "RANGING": {
+          "trades": 4000,
+          "wins": 2354,
+          "win_rate": 58.9,
+          "pnl_r": 1882.74
+        },
+        "HIGH_VOLATILITY": {
+          "trades": 2000,
+          "wins": 1008,
+          "win_rate": 50.4,
+          "pnl_r": 510.33
+        }
+      },
+      "worst_10_trades": [
+        -3.0,
+        -3.0,
+        -3.0,
+        -3.0,
+        -3.0,
+        -3.0,
+        -3.0,
+        -3.0,
+        -3.0,
+        -3.0
+      ],
+      "best_10_trades": [
+        2.0822,
+        2.0118,
+        1.9652,
+        1.9638,
+        1.9568,
+        1.9434,
+        1.9402,
+        1.9352,
+        1.9345,
+        1.9265
+      ],
+      "composite_score": 51.07
+    },
+    "yolo_engine": {
+      "engine": "yolo_engine",
+      "description": "Max aggression, R:R fixed to 1.5, lev capped 50x",
+      "config": {
+        "min_confidence": 75.0,
+        "rr": 1.5,
+        "max_leverage": 50,
+        "risk_profile": "aggressive"
+      },
+      "trades": 10000,
+      "wins": 5747,
+      "losses": 4253,
+      "liquidations": 11,
+      "win_rate_pct": 57.47,
+      "total_pnl_r": 4329.9,
+      "max_drawdown_r": 13.37,
+      "profit_factor": 2.026,
+      "expectancy_r": 0.4363,
+      "avg_win_r": 1.4992,
+      "avg_loss_r": 1.0,
+      "final_capital_usd": 442990.15,
+      "net_pnl_usd": 432990.15,
+      "regime_breakdown": {
+        "TRENDING": {
+          "trades": 4000,
+          "wins": 2475,
+          "win_rate": 61.9,
+          "pnl_r": 2182.29
+        },
+        "RANGING": {
+          "trades": 4000,
+          "wins": 2282,
+          "win_rate": 57.0,
+          "pnl_r": 1702.13
+        },
+        "HIGH_VOLATILITY": {
+          "trades": 2000,
+          "wins": 990,
+          "win_rate": 49.5,
+          "pnl_r": 445.48
+        }
+      },
+      "worst_10_trades": [
+        -3.0,
+        -3.0,
+        -3.0,
+        -3.0,
+        -3.0,
+        -3.0,
+        -3.0,
+        -3.0,
+        -3.0,
+        -3.0
+      ],
+      "best_10_trades": [
+        2.0,
+        1.995,
+        1.9582,
+        1.9561,
+        1.9506,
+        1.9429,
+        1.9428,
+        1.9353,
+        1.9319,
+        1.9318
+      ],
+      "composite_score": 50.12
+    },
+    "day_trader": {
+      "engine": "day_trader",
+      "description": "Day mode, 77% conf, 1.5 R:R",
+      "config": {
+        "min_confidence": 77.0,
+        "rr": 1.5,
+        "max_leverage": 60,
+        "risk_profile": "balanced"
+      },
+      "trades": 10000,
+      "wins": 5731,
+      "losses": 4269,
+      "liquidations": 4,
+      "win_rate_pct": 57.31,
+      "total_pnl_r": 4307.71,
+      "max_drawdown_r": 17.54,
+      "profit_factor": 2.013,
+      "expectancy_r": 0.432,
+      "avg_win_r": 1.4979,
+      "avg_loss_r": 0.999,
+      "final_capital_usd": 440771.06,
+      "net_pnl_usd": 430771.06,
+      "regime_breakdown": {
+        "TRENDING": {
+          "trades": 4000,
+          "wins": 2517,
+          "win_rate": 62.9,
+          "pnl_r": 2281.97
+        },
+        "RANGING": {
+          "trades": 4000,
+          "wins": 2211,
+          "win_rate": 55.3,
+          "pnl_r": 1532.6
+        },
+        "HIGH_VOLATILITY": {
+          "trades": 2000,
+          "wins": 1003,
+          "win_rate": 50.1,
+          "pnl_r": 493.14
+        }
+      },
+      "worst_10_trades": [
+        -3.0,
+        -3.0,
+        -3.0,
+        -3.0,
+        -1.3063,
+        -1.2758,
+        -1.2653,
+        -1.2635,
+        -1.2572,
+        -1.2404
+      ],
+      "best_10_trades": [
+        2.0136,
+        1.973,
+        1.9521,
+        1.9452,
+        1.9443,
+        1.9423,
+        1.9314,
+        1.928,
+        1.9198,
+        1.9176
+      ],
+      "composite_score": 45.13
+    },
+    "vwap_scalper": {
+      "engine": "vwap_scalper",
+      "description": "VWAP + EMA Cross + RSI, 70% conf",
+      "config": {
+        "min_confidence": 70.0,
+        "rr": 1.5,
+        "max_leverage": 100,
+        "risk_profile": "aggressive"
+      },
+      "trades": 10000,
+      "wins": 5537,
+      "losses": 4463,
+      "liquidations": 13,
+      "win_rate_pct": 55.37,
+      "total_pnl_r": 3817.97,
+      "max_drawdown_r": 15.63,
+      "profit_factor": 1.867,
+      "expectancy_r": 0.3857,
+      "avg_win_r": 1.5,
+      "avg_loss_r": 0.9967,
+      "final_capital_usd": 391797.04,
+      "net_pnl_usd": 381797.04,
+      "regime_breakdown": {
+        "TRENDING": {
+          "trades": 4000,
+          "wins": 2356,
+          "win_rate": 58.9,
+          "pnl_r": 1885.85
+        },
+        "RANGING": {
+          "trades": 4000,
+          "wins": 2222,
+          "win_rate": 55.5,
+          "pnl_r": 1552.62
+        },
+        "HIGH_VOLATILITY": {
+          "trades": 2000,
+          "wins": 959,
+          "win_rate": 47.9,
+          "pnl_r": 379.49
+        }
+      },
+      "worst_10_trades": [
+        -3.0,
+        -3.0,
+        -3.0,
+        -3.0,
+        -3.0,
+        -3.0,
+        -3.0,
+        -3.0,
+        -3.0,
+        -3.0
+      ],
+      "best_10_trades": [
+        2.0094,
+        2.0054,
+        1.9816,
+        1.9796,
+        1.9759,
+        1.9744,
+        1.9654,
+        1.959,
+        1.9585,
+        1.9581
+      ],
+      "composite_score": 43.61
+    }
+  },
+  "ranking": [
+    "elite_strategy",
+    "autonomous_trader_v2",
+    "dual_engine",
+    "free_will_v2",
+    "yolo_engine",
+    "day_trader",
+    "vwap_scalper"
+  ]
+}

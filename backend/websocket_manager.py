@@ -52,19 +52,21 @@ class WebSocketManager:
         """Broadcast message to all connected clients"""
         if not self.active_connections:
             return
-        
+
         data["timestamp"] = datetime.now(timezone.utc).isoformat()
-        
+
         disconnected = set()
-        for connection in self.active_connections:
+        # Snapshot the set before iterating — prevents RuntimeError if a
+        # concurrent coroutine adds/removes connections mid-broadcast.
+        for connection in list(self.active_connections):
             try:
                 await connection.send_json(data)
                 self.messages_sent += 1
             except Exception as e:
                 logger.error(f"Broadcast error: {e}")
                 disconnected.add(connection)
-        
-        # Clean up disconnected clients
+
+        # Clean up disconnected clients after iteration is complete
         for conn in disconnected:
             self.disconnect(conn)
     

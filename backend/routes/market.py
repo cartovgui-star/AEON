@@ -5,26 +5,32 @@ import app_state as state
 router = APIRouter()  # No prefix - added when mounting
 
 
+def _normalize_symbol(symbol: str) -> str:
+    """Ensure symbol ends with USDT exactly once, in CCXT slash format."""
+    s = symbol.upper().replace("/", "").replace("USDT", "")
+    return f"{s}/USDT"
+
+
 @router.get("/market/scan/{symbol}")
 async def api_market_scan(symbol: str):
-    return await state.market_intel.get_full_market_scan(symbol.upper() + "USDT")
+    return await state.market_intel.get_full_market_scan(_normalize_symbol(symbol))
 
 
 @router.get("/market/ta/{symbol}")
 async def api_technical_analysis(symbol: str, interval: str = "1h"):
-    return await state.market_intel.get_technical_analysis(symbol.upper() + "USDT", interval)
+    return await state.market_intel.get_technical_analysis(_normalize_symbol(symbol), interval)
 
 
 @router.get("/market/funding/{symbol}")
 async def api_funding(symbol: str):
-    return await state.enhanced_intel.get_funding_rate(symbol.upper() + "USDT")
+    return await state.enhanced_intel.get_funding_rate(_normalize_symbol(symbol))
 
 
 @router.get("/market/positions/{symbol}")
 async def api_positions(symbol: str):
-    ls = await state.market_intel.get_long_short_ratio(symbol.upper() + "USDT", "1h", 5)
-    whale = await state.market_intel.get_top_trader_long_short_ratio(symbol.upper() + "USDT", "1h", 5)
-    taker = await state.market_intel.get_taker_long_short_ratio(symbol.upper() + "USDT", "1h", 5)
+    ls = await state.market_intel.get_long_short_ratio(_normalize_symbol(symbol), "1h", 5)
+    whale = await state.market_intel.get_top_trader_long_short_ratio(_normalize_symbol(symbol), "1h", 5)
+    taker = await state.market_intel.get_taker_long_short_ratio(_normalize_symbol(symbol), "1h", 5)
     return {"long_short": ls, "whale": whale, "taker_flow": taker}
 
 

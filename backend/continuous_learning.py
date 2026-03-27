@@ -44,16 +44,35 @@ class TradingPatternLearner:
     async def analyze_trades(self, trades: List[Dict]) -> Dict:
         """Analyze closed trades to learn patterns"""
         insights = []
-        
+
+        # Reset stats each cycle — we re-analyze the full window fresh
+        self.pattern_stats = defaultdict(lambda: {"wins": 0, "losses": 0, "total_pnl": 0, "samples": []})
+        self.coin_stats = defaultdict(lambda: {"wins": 0, "losses": 0, "total_pnl": 0, "best_timeframe": None})
+        self.timeframe_stats = defaultdict(lambda: {"wins": 0, "losses": 0})
+        self.entry_type_stats = defaultdict(lambda: {"wins": 0, "losses": 0})
+
         for trade in trades:
             symbol = trade.get("symbol", "").replace("/USDT", "")
-            pnl = trade.get("pnl_pct") or trade.get("pnl", 0)
+            # Normalize pnl_pct — paper trades use unrealized_pnl_pct or realized_pnl/margin
+            pnl = trade.get("pnl_pct")
+            if pnl is None:
+                pnl = trade.get("unrealized_pnl_pct")
+            if pnl is None:
+                pnl = trade.get("pnl")
+            if pnl is None and trade.get("realized_pnl") is not None and trade.get("margin"):
+                try:
+                    pnl = round((float(trade["realized_pnl"]) / float(trade["margin"])) * 100, 2)
+                except Exception:
+                    pnl = 0
+            pnl = float(pnl) if pnl is not None else 0.0
             is_win = pnl > 0
-            timeframe = trade.get("timeframe", "1h")
+            # Extract nested signal_data fields
+            signal_data = trade.get("signal_data") or {}
+            timeframe = trade.get("timeframe") or signal_data.get("timeframe", "1h")
             direction = trade.get("direction", "LONG")
-            confirmations = trade.get("confirmations", [])
-            entry_type = trade.get("entry_type", "UNKNOWN")
-            confidence = trade.get("confidence", 0)
+            confirmations = trade.get("confirmations") or signal_data.get("confirmations", [])
+            entry_type = trade.get("entry_type") or signal_data.get("entry_type", "UNKNOWN")
+            confidence = trade.get("confidence") or signal_data.get("confidence", 0)
             
             # Track by pattern (confirmations combination)
             pattern_key = "_".join(sorted([c.split("_")[0] for c in confirmations[:3]]))
@@ -63,9 +82,10 @@ class TradingPatternLearner:
                 else:
                     self.pattern_stats[pattern_key]["losses"] += 1
                 self.pattern_stats[pattern_key]["total_pnl"] += pnl
-                self.pattern_stats[pattern_key]["samples"].append({
-                    "symbol": symbol, "pnl": pnl, "confidence": confidence
-                })
+                samples = self.pattern_stats[pattern_key]["samples"]
+                samples.append({"symbol": symbol, "pnl": pnl, "confidence": confidence})
+                if len(samples) > 100:
+                    self.pattern_stats[pattern_key]["samples"] = samples[-100:]
             
             # Track by coin
             if is_win:
@@ -506,12 +526,89 @@ class ContinuousLearningEngine:
                 "status": "closed"
             })
             async for trade in cursor2:
-                trades.append({k: v for k, v in trade.items() if k != '_id'})
-                
+                t = {k: v for k, v in trade.items() if k != '_id'}
+                # Normalize pnl_pct — paper trades store unrealized_pnl_pct (final value at close)
+                if not t.get("pnl_pct"):
+                    if t.get("unrealized_pnl_pct") is not None:
+                        t["pnl_pct"] = float(t["unrealized_pnl_pct"])
+                    elif t.get("realized_pnl") is not None and t.get("margin"):
+                        try:
+                            t["pnl_pct"] = round((float(t["realized_pnl"]) / float(t["margin"])) * 100, 2)
+                        except Exception:
+                            pass
+                trades.append(t)
+
+            # Get from engine_outcomes (unified engine system feedback)
+            outcomes_cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+            cursor3 = self.db.engine_outcomes.find({
+                "recorded_at": {"$gte": outcomes_cutoff}
+            })
+            async for outcome in cursor3:
+                trades.append({k: v for k, v in outcome.items() if k != '_id'})
+
         except Exception as e:
             logger.error(f"Error fetching trades for learning: {e}")
-        
+
         return trades
+
+    async def run_engine_outcomes_analysis(self):
+        """
+        Analyze engine_outcomes collection to surface per-engine win rates
+        and adjust knowledge base recommendations accordingly.
+        """
+        if self.db is None:
+            return
+        try:
+            cutoff = datetime.utcnow() - timedelta(days=7)
+            outcomes = []
+            async for doc in self.db.engine_outcomes.find({"recorded_at": {"$gte": cutoff}}):
+                outcomes.append(doc)
+
+            if not outcomes:
+                return
+
+            # Aggregate per-engine stats
+            engine_stats: Dict[str, Dict] = {}
+            for o in outcomes:
+                eng = o.get("engine", "unknown")
+                if eng not in engine_stats:
+                    engine_stats[eng] = {"wins": 0, "losses": 0, "total_pnl": 0.0}
+                pnl = o.get("pnl_usd", 0) or 0
+                if pnl > 0:
+                    engine_stats[eng]["wins"] += 1
+                else:
+                    engine_stats[eng]["losses"] += 1
+                engine_stats[eng]["total_pnl"] += pnl
+
+            # Build insights
+            insights = []
+            for eng, stats in engine_stats.items():
+                total = stats["wins"] + stats["losses"]
+                if total < 3:
+                    continue
+                win_rate = stats["wins"] / total * 100
+                avg_pnl = stats["total_pnl"] / total
+                insights.append(
+                    f"Engine '{eng}': {win_rate:.0f}% win rate over {total} trades (avg ${avg_pnl:+.2f})"
+                )
+                if win_rate < 40 and total >= 5:
+                    insights.append(f"⚠️ Engine '{eng}' underperforming — consider raising confidence threshold")
+                elif win_rate >= 65 and total >= 5:
+                    insights.append(f"✅ Engine '{eng}' is strong — may scale position size slightly")
+
+            # Merge into daily insights
+            for ins in insights:
+                if ins not in self.daily_insights:
+                    self.daily_insights.append(ins)
+
+            # Save engine outcome stats to knowledge base
+            self.knowledge_base["engine_outcomes"] = engine_stats
+            await self._save_knowledge()
+
+            logger.info(f"🧠 Engine outcomes analysis: {len(outcomes)} outcomes, {len(engine_stats)} engines tracked")
+
+        except Exception as e:
+            logger.error(f"Engine outcomes analysis error: {e}")
     
     async def run_pattern_learning(self):
         """Run pattern learning cycle"""
@@ -775,13 +872,19 @@ class ContinuousLearningEngine:
         market_timer = 0
         sentiment_timer = 0
         optimization_timer = 0
-        
+        engine_outcomes_timer = 0
+
         while self.is_active:
             try:
                 # Pattern learning (every hour)
                 if pattern_timer >= PATTERN_LEARNING_INTERVAL:
                     await self.run_pattern_learning()
                     pattern_timer = 0
+
+                # Engine outcomes analysis (every hour alongside pattern learning)
+                if engine_outcomes_timer >= PATTERN_LEARNING_INTERVAL:
+                    await self.run_engine_outcomes_analysis()
+                    engine_outcomes_timer = 0
                 
                 # Market analysis (every 30 mins)
                 if market_timer >= MARKET_ANALYSIS_INTERVAL:
@@ -802,13 +905,17 @@ class ContinuousLearningEngine:
                 if self._should_send_daily_summary():
                     await self.send_daily_summary()
                 
+                from self_healer import self_healer
+                self_healer.heartbeat("continuous_learning")
+
                 # Sleep and increment timers
                 await asyncio.sleep(60)
                 pattern_timer += 60
                 market_timer += 60
                 sentiment_timer += 60
                 optimization_timer += 60
-                
+                engine_outcomes_timer += 60
+
             except Exception as e:
                 logger.error(f"Learning engine error: {e}")
                 await asyncio.sleep(60)
@@ -855,6 +962,7 @@ class ContinuousLearningEngine:
         await self.run_market_analysis()
         await self.run_sentiment_tracking()
         await self.run_optimization()
+        await self.run_engine_outcomes_analysis()
         
         return {
             "success": True,

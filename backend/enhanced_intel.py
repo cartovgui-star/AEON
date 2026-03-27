@@ -18,8 +18,7 @@ class EnhancedMarketIntel:
     Aggregates data from multiple FREE APIs:
     - CoinGecko: Top 100 coins, prices, market data
     - Alternative.me: Fear & Greed Index
-    - Bybit: Real funding rates, open interest, liquidations
-    - MEXC: Orderbook, prices (via ccxt)
+    - MEXC: Orderbook, prices, funding rates, open interest (via ccxt + contract API)
     """
     
     def __init__(self):
@@ -273,35 +272,43 @@ class EnhancedMarketIntel:
         except Exception as e:
             return {"symbol": symbol, "error": str(e)}
     
-    async def get_bybit_recent_trades(self, symbol: str = "BTCUSDT", limit: int = 50) -> List[Dict]:
-        """Get recent trades (can filter for liquidations)"""
-        url = f"{self.bybit_base}/v5/market/recent-trade?category=linear&symbol={symbol}&limit={limit}"
-        data = await self._fetch_json(url, f"bybit_trades_{symbol}")
-        
-        if data.get("retCode") == 0 and data.get("result", {}).get("list"):
-            return data["result"]["list"]
+    async def get_mexc_recent_trades(self, symbol: str = "BTC_USDT", limit: int = 50) -> List[Dict]:
+        """Get recent trades from MEXC contract ticker."""
+        mexc_sym = symbol.replace("/", "_").replace("-", "_").upper()
+        if not mexc_sym.endswith("_USDT"):
+            mexc_sym = mexc_sym.replace("USDT", "_USDT") if "USDT" in mexc_sym else mexc_sym + "_USDT"
+        url = f"https://contract.mexc.com/api/v1/contract/ticker?symbol={mexc_sym}"
+        data = await self._fetch_json(url, f"mexc_ticker_{mexc_sym}")
+        if data.get("code") == 0 and data.get("data"):
+            d = data["data"]
+            return [{
+                "symbol": mexc_sym,
+                "price": float(d.get("lastPrice", 0)),
+                "volume": float(d.get("volume24", 0)),
+                "timestamp": str(d.get("timestamp", "")),
+            }]
         return []
-    
-    async def get_bybit_tickers(self, symbols: List[str] = None) -> Dict[str, Dict]:
-        """Get tickers for multiple symbols"""
+
+    async def get_mexc_tickers(self, symbols: List[str] = None) -> Dict[str, Dict]:
+        """Get tickers for multiple symbols from MEXC contract API."""
         if not symbols:
             symbols = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "DOGEUSDT", "XRPUSDT", "AVAXUSDT"]
-        
+
         results = {}
         for symbol in symbols:
-            url = f"{self.bybit_base}/v5/market/tickers?category=linear&symbol={symbol}"
-            data = await self._fetch_json(url, f"bybit_ticker_{symbol}")
-            
-            if data.get("retCode") == 0 and data.get("result", {}).get("list"):
-                item = data["result"]["list"][0]
+            mexc_sym = symbol.replace("USDT", "_USDT")
+            url = f"https://contract.mexc.com/api/v1/contract/ticker?symbol={mexc_sym}"
+            data = await self._fetch_json(url, f"mexc_cticker_{mexc_sym}")
+            if data.get("code") == 0 and data.get("data"):
+                item = data["data"]
                 results[symbol] = {
                     "price": float(item.get("lastPrice", 0)),
-                    "change_24h": float(item.get("price24hPcnt", 0)) * 100,
-                    "volume_24h": float(item.get("volume24h", 0)),
-                    "high_24h": float(item.get("highPrice24h", 0)),
-                    "low_24h": float(item.get("lowPrice24h", 0)),
+                    "change_24h": float(item.get("priceChangeRate", 0)) * 100,
+                    "volume_24h": float(item.get("volume24", 0)),
+                    "high_24h": float(item.get("higher24Price", 0)),
+                    "low_24h": float(item.get("lower24Price", 0)),
                     "funding_rate": float(item.get("fundingRate", 0)),
-                    "open_interest": float(item.get("openInterest", 0)),
+                    "open_interest": float(item.get("holdVol", 0)),
                 }
         return results
     
@@ -395,24 +402,24 @@ class EnhancedMarketIntel:
                     ticker = self.mexc.fetch_ticker("BTC/USDT")
                     btc_price = ticker.get("last", 0)
                     btc_chg = ticker.get("percentage", 0) or 0
-                except:
-                    pass
-            
+                except Exception as e:
+                    logger.debug(f"BTC ticker fetch failed: {e}")
+
             if eth_price == 0:
                 try:
                     ticker = self.mexc.fetch_ticker("ETH/USDT")
                     eth_price = ticker.get("last", 0)
                     eth_chg = ticker.get("percentage", 0) or 0
-                except:
-                    pass
-            
+                except Exception as e:
+                    logger.debug(f"ETH ticker fetch failed: {e}")
+
             if sol_price == 0:
                 try:
                     ticker = self.mexc.fetch_ticker("SOL/USDT")
                     sol_price = ticker.get("last", 0)
                     sol_chg = ticker.get("percentage", 0) or 0
-                except:
-                    pass
+                except Exception as e:
+                    logger.debug(f"SOL ticker fetch failed: {e}")
             
             summary = f"""📊 MARKET INTELLIGENCE REPORT
 

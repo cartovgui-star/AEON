@@ -18,6 +18,11 @@ NEW FILTERS (stricter than v2.1):
 5. ADX TRENDING + DIRECTIONAL (ADX>25 AND +DI/-DI confirms)
 6. SKIP FIRST HOUR OF SESSION (false breakouts)
 7. MAX 3 TRADES PER DAY (quality over quantity)
+
+UNIFIED ENGINE INTEGRATION:
+- All signals validated through EngineManager
+- Risk controls: position limits, daily loss limits, R:R enforcement
+- Blacklist/cooldown per engine after losses
 """
 
 import asyncio
@@ -27,6 +32,14 @@ from typing import Dict, List, Optional, Tuple
 import pytz
 
 logger = logging.getLogger(__name__)
+
+# Import unified engine system
+try:
+    from aeon_engine_system import get_engine_manager, EngineType
+except ImportError:
+    get_engine_manager = None
+    EngineType = None
+    logger.warning("Unified engine system not available for Elite Strategy")
 
 # Trading pairs - top 10 most liquid only
 ELITE_PAIRS = [
@@ -49,49 +62,49 @@ class EliteStrategyV3:
         self.smc_analyzer = smc_analyzer
         self.enhanced_intel = enhanced_intel
         
-        # Ultra-strict filters
-        self.min_confidence = 92  # Was 85-90
-        self.min_confirmations = 5  # Was 4
-        self.min_rr_ratio = 2.5  # Was 2.0
+        # Elite Strategy - HIGH QUALITY signals only
+        self.min_confidence = 90  # Matches ENGINE_CONFIGS spec
+        self.min_confirmations = 5  # Need 5 confluences — matches ENGINE_CONFIGS spec
+        self.min_rr_ratio = 2.0  # Good risk/reward
         
-        # Volume filter (stricter)
-        self.min_volume_ratio = 2.0  # Was 1.5
+        # Volume filter
+        self.min_volume_ratio = 1.5  # Above average volume
         
-        # RSI range (avoid extremes)
-        self.rsi_long_range = (35, 50)  # Buy on pullbacks, not extremes
-        self.rsi_short_range = (50, 65)  # Sell on rallies, not extremes
+        # RSI range (optimal zones) — widened to catch valid entries at extremes
+        self.rsi_long_range = (25, 60)  # Buy on pullbacks + dips
+        self.rsi_short_range = (40, 75)  # Sell on rallies + extended moves
         
-        # ADX trending filter (stricter)
-        self.min_adx = 28  # Was 25
+        # ADX trending filter
+        self.min_adx = 22  # Moderate trend strength
         
-        # MTF confluence required
+        # MTF confluence
         self.require_mtf_confluence = True
-        self.min_mtf_agreement = 2  # Minimum 2/3 timeframes must agree
+        self.min_mtf_agreement = 2  # 2/3 timeframes agree
         
-        # BTC alignment mandatory
+        # BTC alignment mandatory — matches header spec and ENGINE_CONFIGS intent
         self.require_btc_alignment = True
         
         # Daily trade limit
-        self.max_daily_trades = 3  # Was unlimited
+        self.max_daily_trades = 15
         self.daily_trades = 0
         self.last_trade_date = None
         
-        # Skip session start (first hour)
-        self.skip_session_start_minutes = 60
+        # Skip session start
+        self.skip_session_start_minutes = 30
         
-        # RELAXED MODE - more signals with slightly lower thresholds
+        # RELAXED MODE available but not default
         self.relaxed_mode = False
         self.relaxed_settings = {
             "min_confidence": 70,
-            "min_rr_ratio": 2.0,
-            "min_volume_ratio": 1.2,  # Lower volume requirement
-            "min_adx": 20,  # Lower ADX
-            "max_daily_trades": 9999,  # UNLIMITED
-            "require_btc_alignment": False,  # Optional in relaxed mode
+            "min_rr_ratio": 1.5,
+            "min_volume_ratio": 1.2,
+            "min_adx": 18,
+            "max_daily_trades": 50,
+            "require_btc_alignment": False,
             "require_mtf_confluence": False,  # Disabled in relaxed mode for more signals
             "min_mtf_agreement": 0,
-            "rsi_long_range": (20, 65),  # Wide range
-            "rsi_short_range": (35, 80),
+            "rsi_long_range": (20, 68),  # Wide range
+            "rsi_short_range": (32, 80),
         }
         
         # Statistics
@@ -150,7 +163,7 @@ class EliteStrategyV3:
         try:
             import app_state
             if app_state.market_intel:
-                ta = await app_state.market_intel.get_technical_analysis("BTCUSDT", "4h")
+                ta = await app_state.market_intel.get_technical_analysis("BTC/USDT", "4h")
                 if ta and "error" not in ta:
                     indicators = ta.get("indicators", {})
                     ema_9 = indicators.get("ema_9", 0)
@@ -201,15 +214,18 @@ class EliteStrategyV3:
                 return True
             
             return False
-        except:
+        except Exception:
             return False
-    
+
     async def analyze_elite_signal(self, symbol: str, timeframe: str = "4h") -> Optional[Dict]:
         """
         Generate ultra-selective elite trading signal.
         Returns signal only if ALL strict criteria are met.
         Uses relaxed settings if relaxed_mode is enabled.
         """
+        from post_mortem_engine import get_post_mortem
+        if get_post_mortem().is_engine_paused("elite_strategy"):
+            return None  # blindspot pause active
         if not self.enabled:
             return None
         
@@ -235,7 +251,7 @@ class EliteStrategyV3:
                 logger.warning("Market intel not available")
                 return None
             
-            ta = await app_state.market_intel.get_technical_analysis(symbol.replace("/", ""), timeframe)
+            ta = await app_state.market_intel.get_technical_analysis(symbol, timeframe)
             if not ta or "error" in ta:
                 logger.warning(f"Elite: No TA data for {symbol}")
                 self._record_filter("NO_TA_DATA")
@@ -283,44 +299,57 @@ class EliteStrategyV3:
             # In relaxed mode, be more lenient with volume
             min_vol = settings["min_volume_ratio"]
             if self.relaxed_mode and volume_ratio > 0:
-                min_vol = min(min_vol, 0.8)  # Much lower threshold in relaxed mode
+                min_vol = max(0.8, min_vol * 0.7)  # Reduce threshold by 30% in relaxed mode
             
             if volume_ratio < min_vol:
                 self._record_filter(f"LOW_VOLUME_{volume_ratio:.1f}x")
                 return None
             
-            # FILTER 4: ADX trending filter (skip if ADX not available in relaxed mode)
+            # FILTER 4: ADX trending filter
+            # Sideways mode (ADX < 22): raise confidence bar to 94% instead of blocking entirely.
+            # Full block only in relaxed mode when ADX data is unavailable.
             adx = indicators.get("adx", 0)
-            
-            # In relaxed mode, skip ADX filter if not available
             if self.relaxed_mode and adx == 0:
                 logger.debug(f"Elite: Skipping ADX filter for {symbol} (relaxed mode)")
-            elif adx < settings["min_adx"]:
-                self._record_filter(f"ADX_TOO_LOW_{adx:.0f}")
-                return None
+            # adx value stored; gradated gate applied after confidence is calculated below
             
             # FILTER 5: RSI in optimal range
             rsi = indicators.get("rsi", 50)
             rsi_long_range = settings.get("rsi_long_range", self.rsi_long_range)
             rsi_short_range = settings.get("rsi_short_range", self.rsi_short_range)
             
-            # Determine direction based on BTC trend and MTF
-            if btc_trend == "BULLISH" or mtf_direction == "LONG":
+            # Determine direction from BTC macro trend and MTF confluence.
+            # Priority: BTC macro > MTF. Contradiction between the two = block.
+            if btc_trend == "BULLISH":
+                if mtf_direction == "SHORT":
+                    # BTC macro bullish but MTF says short — conflict, skip
+                    self._record_filter("BLOCKED_BTC_MTF_CONFLICT_BULLISH_VS_SHORT")
+                    return None
                 direction = "LONG"
-                # For LONG: RSI should be in range
+            elif btc_trend == "BEARISH":
+                if mtf_direction == "LONG":
+                    # BTC macro bearish but MTF says long — conflict, skip
+                    self._record_filter("BLOCKED_BTC_MTF_CONFLICT_BEARISH_VS_LONG")
+                    return None
+                direction = "SHORT"
+            elif mtf_direction == "LONG":
+                direction = "LONG"
+            elif mtf_direction == "SHORT":
+                direction = "SHORT"
+            else:
+                # Neither BTC nor MTF gives a clear direction
+                self._record_filter("NO_CLEAR_DIRECTION")
+                return None
+
+            # RSI zone check for chosen direction
+            if direction == "LONG":
                 if not (rsi_long_range[0] <= rsi <= rsi_long_range[1]):
                     self._record_filter(f"RSI_NOT_IN_LONG_ZONE_{rsi:.0f}")
                     return None
-                    
-            elif btc_trend == "BEARISH" or mtf_direction == "SHORT":
-                direction = "SHORT"
-                # For SHORT: RSI should be in range
+            else:
                 if not (rsi_short_range[0] <= rsi <= rsi_short_range[1]):
                     self._record_filter(f"RSI_NOT_IN_SHORT_ZONE_{rsi:.0f}")
                     return None
-            else:
-                self._record_filter("NO_CLEAR_DIRECTION")
-                return None
             
             # FILTER 6: 200 EMA trend alignment (skip in relaxed mode)
             if not self.relaxed_mode:
@@ -351,7 +380,8 @@ class EliteStrategyV3:
             confidence = 60  # Base
             
             # BTC alignment bonus
-            if btc_trend == direction.replace("LONG", "BULLISH").replace("SHORT", "BEARISH"):
+            _dir_to_btc = {"LONG": "BULLISH", "SHORT": "BEARISH"}
+            if btc_trend == _dir_to_btc.get(direction, ""):
                 confidence += 15
             
             # MTF confluence bonus
@@ -370,6 +400,11 @@ class EliteStrategyV3:
             if adx >= 35:
                 confidence += 5
             
+            # ADX gradated sideways gate: ADX < 22 raises bar to 94% instead of blocking
+            if adx > 0 and adx < 22 and confidence < 94:
+                self._record_filter(f"ADX_SIDEWAYS_CONF_TOO_LOW_{adx:.0f}_conf{confidence}")
+                return None
+
             # Check minimum confidence (using active settings)
             min_conf = settings["min_confidence"]
             if confidence < min_conf:
@@ -440,6 +475,64 @@ class EliteStrategyV3:
             
             logger.info(f"🎯 ELITE SIGNAL: {symbol} {direction} | Conf: {confidence}% | MTF: {mtf_count}/3 | RR: {rr_ratio:.1f}")
             
+            # ═══════════════════════════════════════════════════════════════
+            # UNIFIED ENGINE VALIDATION
+            # ═══════════════════════════════════════════════════════════════
+            if get_engine_manager and EngineType:
+                try:
+                    engine_manager = get_engine_manager()
+                    _direction = direction.lower()
+
+                    # Compute quant-driven leverage before building signal
+                    final_leverage, _lev_bd = await engine_manager.get_dynamic_leverage(
+                        symbol, _direction, EngineType.ELITE_STRATEGY
+                    )
+
+                    # Build signal for unified validation
+                    engine_signal = {
+                        "symbol":        symbol,
+                        "direction":     _direction,
+                        "entry_price":   entry,
+                        "position_size": 2000,
+                        "leverage":      final_leverage,
+                        "stop_loss":     stop,
+                        "take_profit":   target,
+                        "confidence":    confidence,
+                        "confluences":   len(confirmations),
+                        "reason":        "; ".join([c.replace("✅ ", "") for c in confirmations[:3]])
+                    }
+
+                    # Submit to unified validator
+                    result = await engine_manager.submit_signal_gated(engine_signal, EngineType.ELITE_STRATEGY)
+
+                    if result["action"] == "REJECT":
+                        qr = result.get("quant_report", {})
+                        if qr and not result.get("adapted"):
+                            adapted_signal = dict(engine_signal)
+                            if qr.get("suggested_sl"):    adapted_signal["stop_loss"]    = qr["suggested_sl"]
+                            if qr.get("suggested_entry"): adapted_signal["entry_price"]  = qr["suggested_entry"]
+                            if qr.get("suggested_tp1"):   adapted_signal["take_profit"]  = qr["suggested_tp1"]
+                            adapted_signal["position_size"] = round(adapted_signal["position_size"] * 0.70, 2)
+                            adapted_lev, _ = await engine_manager.get_dynamic_leverage(
+                                symbol, _direction, EngineType.ELITE_STRATEGY, quant_report=qr
+                            )
+                            adapted_signal["leverage"] = adapted_lev
+                            logger.info(f"🔄 ELITE [{symbol}] adapting signal — resubmitting to Quant")
+                            result = await engine_manager.submit_signal_gated(adapted_signal, EngineType.ELITE_STRATEGY, adapted=True)
+                            if result["action"] == "REJECT":
+                                logger.warning(f"❌ ELITE [{symbol}] adapted attempt BLOCKED: {result.get('reason')}")
+                                return None
+                        else:
+                            logger.warning(f"❌ ELITE [{symbol}] BLOCKED: {result.get('reason')}")
+                            return None
+
+                    # Store unified trade ID for tracking
+                    signal["unified_trade_id"] = result.get("trade", {}).get("trade_id")
+                    logger.info(f"✅ ELITE [{symbol}] VALIDATED by unified engine")
+                    
+                except Exception as e:
+                    logger.warning(f"Elite unified validation failed: {e}")
+            
             # Record signal to history for backtest data collection
             try:
                 from signal_tracker import signal_tracker
@@ -472,7 +565,21 @@ class EliteStrategyV3:
                         logger.debug(f"Could not route signal to paper trading: {e}")
         
         return signals
-    
+
+    async def run_loop(self, interval: int = 1800):
+        """Autonomous scan loop — runs every 30 minutes (Fix #15)"""
+        logger.info("🎯 ELITE STRATEGY v3 AUTONOMOUS LOOP STARTED — scanning every 30 min")
+        while self.enabled:
+            try:
+                signals = await self.scan_all_elite()
+                if signals:
+                    logger.info(f"[ELITE AUTO] {len(signals)} signal(s) this scan")
+                from self_healer import self_healer as _sh
+                _sh.heartbeat("elite_strategy")
+            except Exception as e:
+                logger.error(f"[ELITE AUTO] Loop error: {e}")
+            await asyncio.sleep(interval)
+
     def get_stats(self) -> Dict:
         """Get strategy statistics"""
         return {

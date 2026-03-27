@@ -80,8 +80,12 @@ export default function Intelligence() {
   };
 
   const unbench = async (sid) => {
-    await fetch(API_URL + '/api/strategy-health/unbench/' + sid, { method: 'POST' });
-    fetchData();
+    try {
+      await fetch(API_URL + '/api/strategy-health/unbench/' + sid, { method: 'POST' });
+      fetchData();
+    } catch (err) {
+      console.error('Unbench failed:', err);
+    }
   };
 
   useEffect(() => { fetchData(); const i = setInterval(fetchData, 30000); return () => clearInterval(i); }, [fetchData]);

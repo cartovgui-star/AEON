@@ -1,7 +1,11 @@
-from fastapi import FastAPI, APIRouter, Request, HTTPException
-from fastapi.responses import FileResponse
 from dotenv import load_dotenv
+from pathlib import Path
+load_dotenv(Path(__file__).parent / '.env')
+
+from fastapi import FastAPI, APIRouter, Request, HTTPException
+from fastapi.responses import FileResponse, JSONResponse
 from starlette.middleware.cors import CORSMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
@@ -17,11 +21,11 @@ import random
 import asyncio
 import pytz
 import json
-from emergentintegrations.llm.chat import LlmChat, UserMessage
 from contextlib import asynccontextmanager
 
 # Import new modules
 from market_intelligence import market_intel, MarketIntelligence
+from feed_health import feed_health, OFFLINE_MESSAGE
 from learning_system import AeonLearningSystem, TradingSignalGenerator
 from autonomous_trader import AutonomousTrader, init_autonomous_trader
 from autonomous_trader_v2 import AutonomousTraderV2, init_autonomous_trader_v2
@@ -80,6 +84,9 @@ from routes.weekly_report import router as weekly_report_router
 from routes.learning import router as learning_router
 from routes.elite import router as elite_router
 from routes.signals import router as signals_router
+from routes.engines import router as engines_router
+from routes.engine_compare import router as engine_compare_router
+from engine_data_collector import run_engine_data_collector
 from signal_tracker import signal_tracker, init_signal_tracker
 from voice_tts import generate_speech, VOICES
 from price_alerts import price_alert_system, PriceAlertSystem
@@ -92,20 +99,35 @@ from self_healer import self_healer, SelfHealer
 from morning_briefing import morning_briefing, MorningBriefing
 from weekly_report import weekly_report, WeeklyPerformanceReport
 from continuous_learning import continuous_learner, ContinuousLearningEngine
-from paper_trading import paper_trading, init_paper_trading, PaperTradingSystem
+from paper_trading import paper_trading, init_paper_trading, PaperTradingSystem, paper_account_health_loop, paper_price_update_loop
 from elite_strategy_v3 import get_elite_strategy, EliteStrategyV3
+from vwap_scalper import init_vwap_scalper, VWAPScalper
+from aeon_quantum_state import init_quantum_state, get_quantum_state_engine
+from memory_engine import init_memory_engine, get_memory_engine
+from omega_cycle import init_omega_cycle, get_omega_cycle
+from atr_stop_module import init_atr_stop, get_atr_stop
+from web_intelligence import init_web_intelligence, get_web_intelligence
+from yolo_engine import init_yolo_engine, YoloEngine
+from volume_profile_engine import init_vp_engine, HyperAccuracyEngine
+from aeon_engine_system import init_engine_manager, get_engine_manager, EngineManager
+from quant_analyzer_v2 import get_quant_gatekeeper_v2
 import app_state
 
 ROOT_DIR = Path(__file__).parent
-load_dotenv(ROOT_DIR / '.env')
 
 # MongoDB
 mongo_url = os.environ['MONGO_URL']
-client = AsyncIOMotorClient(mongo_url)
+client = AsyncIOMotorClient(
+    mongo_url,
+    serverSelectionTimeoutMS=10000,
+    connectTimeoutMS=10000,
+    socketTimeoutMS=30000,
+    maxIdleTimeMS=600000,  # 10 min - prevents connection from being closed by server
+    heartbeatFrequencyMS=10000,  # ping every 10s to keep connection alive
+)
 db = client[os.environ['DB_NAME']]
 
 # API Keys
-emergent_key = os.environ.get('EMERGENT_LLM_KEY', '')
 telegram_token = os.environ.get('TELEGRAM_TOKEN', '')
 mexc_api_key = os.environ.get('MEXC_API_KEY', '')
 mexc_secret_key = os.environ.get('MEXC_SECRET_KEY', '')
@@ -126,6 +148,16 @@ user_profiler = init_user_profiler(db)  # User profiling system
 from dual_trading_engine import init_dual_engine, DualTradingEngine
 dual_engine = init_dual_engine(db)
 
+# VWAP Scalper (VWAP + EMA Cross + RSI)
+vwap_scalper = init_vwap_scalper(db)
+
+# YOLO Engine (Independent aggressive trading)
+yolo_engine = init_yolo_engine(db)
+
+# ORACLE CORE — Pure market intelligence engine (no trading, no positions)
+from oracle_engine import init_oracle, get_oracle, get_oracle_bias
+oracle = init_oracle(db)
+
 # Set derivatives_intel reference for autonomous trader
 from autonomous_trader import set_derivatives_intel
 set_derivatives_intel(derivatives_intel)
@@ -145,92 +177,12 @@ last_freewill_message: Dict[int, datetime] = {}
 daily_reports_sent: Dict[str, List[int]] = {}
 stock_reports_sent: Dict[str, List[int]] = {}
 
-# Model configurations for multi-model switching
-MODEL_CONFIGS = {
-    "openai": {
-        "provider": "openai",
-        "model": "gpt-4o",
-        "display_name": "OpenAI GPT-4o",
-        "description": "Fast, direct responses - good for quick answers"
-    },
-    "claude": {
-        "provider": "anthropic",
-        "model": "claude-sonnet-4-5-20250929",
-        "display_name": "Claude Sonnet 4.5",
-        "description": "Detailed, nuanced responses - great for analysis"
-    }
-}
-# Aliases for easier commands
-MODEL_ALIASES = {
-    "gpt": "openai",
-    "gpt4": "openai", 
-    "gpt-4o": "openai",
-    "anthropic": "claude",
-    "sonnet": "claude"
-}
-DEFAULT_MODEL = "openai"
-
-# In-memory cache for user model preferences (backed by DB)
-user_model_cache: Dict[int, str] = {}
-
-def resolve_model_key(key: str) -> str:
-    """Resolve model alias to actual key"""
-    return MODEL_ALIASES.get(key, key)
-
-def get_model_config(model_key: str) -> Dict:
-    """Get model configuration"""
-    resolved = resolve_model_key(model_key)
-    return MODEL_CONFIGS.get(resolved, MODEL_CONFIGS[DEFAULT_MODEL])
-
-
-async def get_user_model(chat_id: int) -> str:
-    """Get user's preferred AI model from cache or DB"""
-    # Check in-memory cache first
-    if chat_id in user_model_cache:
-        return user_model_cache[chat_id]
-    
-    # Query database
-    try:
-        pref = await db.user_preferences.find_one({"chat_id": chat_id})
-        if pref and "model" in pref:
-            model = pref["model"]
-            # Resolve any old aliases stored in DB
-            resolved = resolve_model_key(model)
-            if resolved in MODEL_CONFIGS:
-                user_model_cache[chat_id] = resolved
-                return resolved
-        
-        # Default model for new users
-        user_model_cache[chat_id] = DEFAULT_MODEL
-        return DEFAULT_MODEL
-    except Exception as e:
-        logger.error(f"Error getting user model: {e}")
-        return DEFAULT_MODEL
-
-
-async def set_user_model(chat_id: int, model: str) -> bool:
-    """Set user's preferred AI model in DB and cache"""
-    # Resolve alias to actual key
-    resolved = resolve_model_key(model)
-    
-    # Validate model exists
-    if resolved not in MODEL_CONFIGS:
-        return False
-    
-    try:
-        # Update database with resolved key
-        await db.user_preferences.update_one(
-            {"chat_id": chat_id},
-            {"$set": {"model": resolved, "updated_at": datetime.now(timezone.utc)}},
-            upsert=True
-        )
-        # Update cache
-        user_model_cache[chat_id] = resolved
-        logger.info(f"User {chat_id} switched to model: {resolved}")
-        return True
-    except Exception as e:
-        logger.error(f"Error setting user model: {e}")
-        return False
+# LLM client — model configs, call_llm, user model preference
+from llm_client import (
+    MODEL_CONFIGS, MODEL_ALIASES, DEFAULT_MODEL, user_model_cache,
+    resolve_model_key, get_model_config, call_llm,
+    get_user_model, set_user_model,
+)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -323,82 +275,20 @@ OUTPUT:
 TONE: Sharp, data-driven, actionable."""
 
 
-async def get_user_settings(chat_id: int) -> Dict[str, Any]:
-    settings = await db.user_settings.find_one({"chat_id": chat_id})
-    if not settings:
-        settings = {
-            "chat_id": chat_id,
-            "free_will": True,
-            "created_at": datetime.now(timezone.utc),
-            "alert_threshold": 25,
-            "mode": "default",  # default or alchemy
-        }
-        await db.user_settings.insert_one(settings)
-    # Ensure mode exists for existing users
-    if "mode" not in settings:
-        settings["mode"] = "default"
-    return settings
+# User settings DB helpers
+from user_settings_db import (
+    get_user_settings, update_user_settings,
+    get_user_probe_state, update_probe_state,
+    store_user_insight, get_user_insights,
+)
 
-
-async def update_user_settings(chat_id: int, updates: Dict[str, Any]):
-    await db.user_settings.update_one({"chat_id": chat_id}, {"$set": updates}, upsert=True)
-
-
-async def get_user_probe_state(chat_id: int) -> Dict[str, Any]:
-    state = await db.probe_states.find_one({"chat_id": chat_id})
-    if not state:
-        state = {"chat_id": chat_id, "intensity_level": "INITIATE", "probes_completed": 0, "last_topics": []}
-        await db.probe_states.insert_one(state)
-    return state
-
-
-async def update_probe_state(chat_id: int, updates: Dict[str, Any]):
-    await db.probe_states.update_one({"chat_id": chat_id}, {"$set": updates}, upsert=True)
-
-
-async def store_user_insight(chat_id: int, insight: str, category: str = "general"):
-    await db.user_insights.insert_one({
-        "chat_id": chat_id, "insight": insight, "category": category,
-        "timestamp": datetime.now(timezone.utc)
-    })
-
-
-async def get_user_insights(chat_id: int, limit: int = 10) -> List[Dict]:
-    return await db.user_insights.find({"chat_id": chat_id}).sort("timestamp", -1).limit(limit).to_list(limit)
-
-
-async def send_telegram_message(chat_id: int, text: str, retry: int = 2, parse_mode: str = None):
-    """Send telegram message with retry and rate limit handling
-    
-    Args:
-        chat_id: Telegram chat ID
-        text: Message text
-        retry: Number of retries
-        parse_mode: 'Markdown' or 'HTML' for rich text formatting
-    """
-    for attempt in range(retry + 1):
-        try:
-            async with httpx.AsyncClient(timeout=10) as c:
-                payload = {'chat_id': chat_id, 'text': text}
-                if parse_mode:
-                    payload['parse_mode'] = parse_mode
-                    payload['disable_web_page_preview'] = True  # Don't preview links
-                
-                resp = await c.post(
-                    f"https://api.telegram.org/bot{telegram_token}/sendMessage",
-                    json=payload
-                )
-                if resp.status_code == 429:  # Rate limited
-                    retry_after = resp.json().get('parameters', {}).get('retry_after', 5)
-                    logger.warning(f"Telegram rate limited, waiting {retry_after}s")
-                    await asyncio.sleep(retry_after)
-                    continue
-                return
-        except Exception as e:
-            if attempt < retry:
-                await asyncio.sleep(1)
-            else:
-                logger.error(f"Telegram error: {e}")
+# Telegram sender + alert helpers
+from telegram_sender import (
+    send_telegram_message,
+    can_send_signal_alert,
+    can_send_coin_alert,
+    record_signal_alert,
+)
 
 
 def get_mexc_orderbook() -> Dict[str, Any]:
@@ -431,7 +321,8 @@ def get_mexc_orderbook() -> Dict[str, Any]:
                         'ask_depth': ask_depth,
                         'imbalance': imbalance,
                     })
-            except:
+            except Exception as e:
+                logger.debug(f"Symbol scan error: {e}")
                 continue
         return {"symbols": symbols, "total": len(symbols)}
     except Exception as e:
@@ -456,9 +347,7 @@ async def generate_quantum_probe(chat_id: int, context: str = None, mode: str = 
         user_model = await get_user_model(chat_id)
         model_config = get_model_config(user_model)
         
-        chat = LlmChat(api_key=emergent_key, session_id=f"qm-{chat_id}",
-                      system_message=ALCHEMY_MODE_SYSTEM).with_model(model_config["provider"], model_config["model"])
-        response = await chat.send_message(UserMessage(text=prompt))
+        response = await call_llm(ALCHEMY_MODE_SYSTEM, prompt, user_model)
         
         probes = state.get("probes_completed", 0) + 1
         new_level = "MASTER" if probes >= 50 else "FELLOWCRAFT" if probes >= 20 else "APPRENTICE" if probes >= 5 else "INITIATE"
@@ -512,12 +401,7 @@ Give me your take:
 
         # Get user's preferred model
         user_model = await get_user_model(chat_id)
-        model_config = get_model_config(user_model)
-        
-        chat = LlmChat(api_key=emergent_key, session_id=f"trade-{chat_id}",
-                      system_message=TRADING_ANALYSIS_SYSTEM).with_model(model_config["provider"], model_config["model"])
-        
-        response = await chat.send_message(UserMessage(text=prompt))
+        response = await call_llm(TRADING_ANALYSIS_SYSTEM, prompt, user_model)
         return response
         
     except Exception as e:
@@ -535,7 +419,7 @@ async def freewill_market_scan(chat_id: int, settings: Dict[str, Any]):
         return
     
     # Check for high-probability setups
-    for symbol in ["BTCUSDT", "ETHUSDT", "SOLUSDT"]:
+    for symbol in ["BTC/USDT", "ETH/USDT", "SOL/USDT"]:
         try:
             analysis = await signal_generator.analyze_setup(symbol)
             
@@ -559,7 +443,8 @@ Stop: ${analysis.get('stop_loss', 0):,.2f}
                 
                 await send_telegram_message(chat_id, alert)
                 break
-        except:
+        except Exception as e:
+            logger.debug(f"Free will scan iteration error: {e}")
             continue
 
 
@@ -581,7 +466,7 @@ async def freewill_proactive(chat_id: int):
     else:
         # Market observation with conversation starter
         try:
-            btc = await market_intel.get_full_market_scan("BTCUSDT")
+            btc = await market_intel.get_full_market_scan("BTC/USDT")
             price = btc.get('price', 0)
             change = btc.get('price_change_24h', 0)
             rsi = btc.get('technical', {}).get('rsi', 'N/A')
@@ -593,7 +478,8 @@ async def freewill_proactive(chat_id: int):
                 market_summary = f"BTC at ${price:,.0f}, RSI {rsi}. Looking {bias.lower()}."
             
             msg = get_proactive_market_message(market_summary)
-        except:
+        except Exception as e:
+            logger.debug(f"Market summary fetch failed, using generic: {e}")
             msg = get_proactive_message(chat_id=chat_id)
     
     await send_telegram_message(chat_id, msg)
@@ -606,7 +492,7 @@ async def send_daily_report(chat_id: int):
     
     if now.hour == 6 and now.minute < 5 and chat_id not in daily_reports_sent.get(today, []):
         try:
-            btc = await market_intel.get_full_market_scan("BTCUSDT")
+            btc = await market_intel.get_full_market_scan("BTC/USDT")
             btc_price = btc.get('price', 0)
             btc_bias = btc.get('overall_bias', 'neutral')
             
@@ -672,7 +558,7 @@ async def autonomous_trading_loop():
     """
     AEON AUTONOMOUS TRADING ENGINE v2
     Elite trading with ALL data sources and smart execution
-    
+
     Features:
     - Multi-source confirmation (8 data sources)
     - Smart entry timing (pullbacks to key levels)
@@ -681,6 +567,7 @@ async def autonomous_trading_loop():
     - Trail stops and partial profits
     - Unlimited signals (quality filtered)
     """
+    global client, db
     # Set dependencies for v2 engine
     autonomous_trader_v2.set_dependencies(
         market_intel=market_intel,
@@ -715,9 +602,19 @@ async def autonomous_trading_loop():
                     trade = await autonomous_trader_v2.take_trade(signal)
                     
                     if trade and "error" not in trade:
+                        sym = signal.get("symbol", "")
+                        dirn = signal.get("direction", "")
+                        if not can_send_signal_alert(sym, dirn):
+                            logger.debug(f"[dedup] Skipping duplicate alert {sym} {dirn}")
+                            continue
+                        if not can_send_coin_alert(sym):
+                            logger.debug(f"[dedup] Skipping {sym} — coin recently alerted")
+                            continue
+                        record_signal_alert(sym, dirn)
+
                         # Send elite alert to users
                         alert_msg = autonomous_trader_v2.format_signal_alert(signal)
-                        
+
                         for chat_id in list(chat_ids):
                             settings = await get_user_settings(chat_id)
                             if settings.get("free_will", True):
@@ -741,6 +638,11 @@ async def autonomous_trading_loop():
                     pnl = result.get("pnl_pct", 0)
                     emoji = "✅" if pnl > 0 else "❌"
                     reason = result.get("exit_reason", "N/A")
+                    if pnl < 0 or reason in ("STOP", "LIQUIDATION"):
+                        from post_mortem_engine import get_post_mortem
+                        asyncio.ensure_future(
+                            get_post_mortem().analyze_closed_trade(str(result.get("id", "")))
+                        )
                     
                     # Get updated stats
                     stats = await autonomous_trader_v2.get_stats()
@@ -772,24 +674,61 @@ Record: {stats.get('wins', 0)}W / {stats.get('losses', 0)}L
             
         except Exception as e:
             logger.error(f"Autonomous trading v2 error: {e}")
+            if "after close" in str(e).lower():
+                try:
+                    try:
+                        client.close()
+                    except Exception:
+                        pass
+                    client = AsyncIOMotorClient(mongo_url)
+                    db = client[os.environ['DB_NAME']]
+                    app_state.db = db
+                    autonomous_trader_v2.db = db
+                    learning_system.db = db
+                    paper_trading.db = db
+                    morning_briefing.db = db
+                    weekly_report.db = db
+                    continuous_learner.db = db
+                    logger.info("MongoDB reconnected in autonomous_trading_loop (all systems updated)")
+                except Exception as re:
+                    logger.error(f"MongoDB reconnect failed: {re}")
             await asyncio.sleep(60)
 
 
 async def eternal_rituals():
+    global client, db
     while True:
         try:
             self_healer.heartbeat("rituals")
             for chat_id in list(chat_ids):
                 settings = await get_user_settings(chat_id)
                 await send_daily_report(chat_id)
-                
+
                 if settings.get("free_will", True):
                     await freewill_market_scan(chat_id, settings)
                     await freewill_proactive(chat_id)
-            
+
             await asyncio.sleep(60)
         except Exception as e:
             logger.error(f"Ritual error: {e}")
+            if "after close" in str(e).lower():
+                try:
+                    try:
+                        client.close()
+                    except Exception:
+                        pass
+                    client = AsyncIOMotorClient(mongo_url)
+                    db = client[os.environ['DB_NAME']]
+                    app_state.db = db
+                    autonomous_trader_v2.db = db
+                    learning_system.db = db
+                    paper_trading.db = db
+                    morning_briefing.db = db
+                    weekly_report.db = db
+                    continuous_learner.db = db
+                    logger.info("MongoDB reconnected in eternal_rituals (all systems updated)")
+                except Exception as re:
+                    logger.error(f"MongoDB reconnect failed: {re}")
             await asyncio.sleep(60)
 
 
@@ -823,17 +762,29 @@ async def free_will_scanner():
                 # Send alerts (max 3 per scan, already filtered)
                 for setup in setups:
                     direction = setup.get("direction")
-                    
-                    if not free_will_v2._can_alert(setup["symbol"], direction):
+                    sym = setup["symbol"]
+
+                    if not free_will_v2._can_alert(sym, direction):
                         continue
-                    
+
+                    # Cross-engine dedup: skip if same coin+direction sent recently
+                    if not can_send_signal_alert(sym, direction):
+                        logger.debug(f"[dedup] free_will skipping {sym} {direction} — recently alerted")
+                        continue
+                    # Cross-engine coin dedup: skip if ANY alert sent for this coin recently
+                    if not can_send_coin_alert(sym):
+                        logger.debug(f"[dedup] free_will skipping {sym} — coin recently alerted")
+                        continue
+
                     # Validate price and format alert with fresh data
                     alert_msg, is_valid = await free_will_v2.validate_and_format_alert(setup)
-                    
+
                     if not is_valid:
-                        logger.info(f"🎯 ELITE ALERT SKIPPED (price moved): {setup['symbol']}")
+                        logger.info(f"🎯 ELITE ALERT SKIPPED (price moved too far): {sym}")
                         continue
-                    
+
+                    record_signal_alert(sym, direction)
+
                     # Send to users with free_will enabled
                     for chat_id in list(chat_ids):
                         settings = await get_user_settings(chat_id)
@@ -931,13 +882,25 @@ async def dual_trading_scanner():
                 
                 # Process Day Trader setups
                 for setup in all_setups.get("day_trader", []):
+                    _sym  = setup["symbol"]
+                    _dirn = setup.get("direction", "")
+
+                    if not can_send_signal_alert(_sym, _dirn):
+                        logger.debug(f"[dedup] day_trader skipping {_sym} {_dirn} — recently alerted")
+                        continue
+                    if not can_send_coin_alert(_sym):
+                        logger.debug(f"[dedup] day_trader skipping {_sym} — coin recently alerted")
+                        continue
+
                     # Validate price and format alert with fresh data
                     alert_msg, is_valid = await dual_engine.validate_and_format_alert(setup)
-                    
+
                     if not is_valid:
-                        logger.info(f"⚡ DAY TRADE SKIPPED (price moved): {setup['symbol']}")
+                        logger.info(f"⚡ DAY TRADE SKIPPED (price moved): {_sym}")
                         continue
-                    
+
+                    record_signal_alert(_sym, _dirn)
+
                     for chat_id in list(chat_ids):
                         settings = await get_user_settings(chat_id)
                         if settings.get("free_will", True):
@@ -990,13 +953,25 @@ async def dual_trading_scanner():
                 
                 # Process Long Term setups
                 for setup in all_setups.get("long_term", []):
+                    _sym  = setup["symbol"]
+                    _dirn = setup.get("direction", "")
+
+                    if not can_send_signal_alert(_sym, _dirn):
+                        logger.debug(f"[dedup] long_term skipping {_sym} {_dirn} — recently alerted")
+                        continue
+                    if not can_send_coin_alert(_sym):
+                        logger.debug(f"[dedup] long_term skipping {_sym} — coin recently alerted")
+                        continue
+
                     # Validate price and format alert with fresh data
                     alert_msg, is_valid = await dual_engine.validate_and_format_alert(setup)
-                    
+
                     if not is_valid:
-                        logger.info(f"🎯 LONG TERM SKIPPED (price moved): {setup['symbol']}")
+                        logger.info(f"🎯 LONG TERM SKIPPED (price moved): {_sym}")
                         continue
-                    
+
+                    record_signal_alert(_sym, _dirn)
+
                     for chat_id in list(chat_ids):
                         settings = await get_user_settings(chat_id)
                         if settings.get("free_will", True):
@@ -1055,6 +1030,14 @@ async def dual_trading_scanner():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Verify MongoDB is reachable before starting any background tasks
+    try:
+        await db.command("ping")
+        logger.info("MongoDB connection verified")
+    except Exception as e:
+        logger.error(f"MongoDB connection failed on startup: {e}")
+        raise
+
     existing = await db.chat_messages.distinct("chat_id")
     chat_ids.update(existing)
     logger.info(f"Loaded {len(chat_ids)} users")
@@ -1084,7 +1067,6 @@ async def lifespan(app: FastAPI):
     # Initialize app_state for route modules
     app_state.db = db
     app_state.chat_ids = chat_ids
-    app_state.emergent_key = emergent_key
     app_state.autonomous_trader = autonomous_trader
     app_state.autonomous_trader_v2 = autonomous_trader_v2
     app_state.free_will_v2 = free_will_v2
@@ -1109,9 +1091,49 @@ async def lifespan(app: FastAPI):
     app_state.user_profiler = user_profiler
     app_state.ws_manager = ws_manager
     app_state.self_healer = self_healer
+    app_state.vwap_scalper = vwap_scalper
+    app_state.yolo_engine = yolo_engine
+    app_state.continuous_learner = continuous_learner
+    app_state.paper_trading = paper_trading
     app_state.send_telegram_message = send_telegram_message
     app_state.get_user_settings = get_user_settings
     app_state.update_user_settings = update_user_settings
+    
+    # Initialize unified engine manager
+    engine_manager = init_engine_manager(db)
+    app_state.engine_manager = engine_manager
+    logger.info("🎯 UNIFIED ENGINE MANAGER INITIALIZED - 7 engines with validation & risk controls")
+
+    # Inject Quant Gatekeeper V2 — every engine signal passes through this before firing
+    async def _quant_telegram(msg: str):
+        try:
+            from telegram_sender import send_telegram_message
+            settings = await db.user_settings.find_one({"_id": "global"}) or {}
+            chat_id  = settings.get("telegram_chat_id")
+            if chat_id:
+                await send_telegram_message(chat_id, msg)
+        except Exception as _e:
+            logger.debug(f"quant anomaly telegram: {_e}")
+
+    engine_manager.quant_gatekeeper = get_quant_gatekeeper_v2(db=db, telegram_fn=_quant_telegram)
+    engine_manager.quant_gatekeeper.start_background_tasks()
+    engine_manager.market_intel = market_intel   # needed for macro direction gate
+    logger.info("🔬 QUANT GATEKEEPER V2 ACTIVE — 100pt scoring, regime-aware thresholds, 5-vector anomaly detection")
+
+    # Reload open trades from MongoDB (survives server restarts)
+    await engine_manager.load_trades_from_db()
+
+    # Wire learning callback so closed trades feed back into continuous learner
+    async def _engine_learning_callback(outcome: dict):
+        try:
+            if continuous_learner and continuous_learner.db:
+                await continuous_learner.db.engine_outcomes.insert_one({
+                    **outcome,
+                    "recorded_at": datetime.now(timezone.utc)
+                })
+        except Exception:
+            pass
+    engine_manager.learning_callback = _engine_learning_callback
     
     # Initialize signal tracker for historical data collection
     await init_signal_tracker(db)
@@ -1156,10 +1178,174 @@ async def lifespan(app: FastAPI):
     learning_task = asyncio.create_task(continuous_learner.run_scheduler())
     
     # Initialize paper trading system
-    global paper_trading
-    paper_trading = await init_paper_trading(db)
-    app_state.paper_trading = paper_trading
-    logger.info("📊 PAPER TRADING SYSTEM INITIALIZED - PRO ($50K) + STARTER ($1.5K)")
+    pt = await init_paper_trading(db)
+    app_state.paper_trading = pt
+    from paper_trading import set_telegram_notifier
+    set_telegram_notifier(send_telegram_message, chat_ids)
+    logger.info("📊 PAPER TRADING SYSTEM INITIALIZED - PRO ($50K) + STARTER ($1.5K) + REAL_LIFE ($700) + THE_PROOF ($40) + BENCHMARK ($50K)")
+    
+    # Initialize VWAP Scalper
+    vwap_scalper.set_dependencies(
+        market_intel=market_intel,
+        send_alert=send_telegram_message,
+        chat_ids=chat_ids,
+        paper_trading=paper_trading
+    )
+    vwap_task = asyncio.create_task(vwap_scalper.run_scan_loop(300))  # Scan every 5 mins
+    
+    # Initialize Volume Profile Engine
+    vp_eng = init_vp_engine(db)
+    vp_eng.set_dependencies(
+        order_flow=order_flow,
+        market_intel=market_intel,
+        send_telegram=send_telegram_message,
+        chat_ids=chat_ids,
+    )
+    app_state.vp_engine = vp_eng
+    vp_task = asyncio.create_task(vp_eng.run_scan_loop(300))  # Scan every 5 mins
+    logger.info("HYPER ACCURACY ENGINE ACTIVATED - VP + Liq Heatmap + Orderbook + BTC Bias Gate")
+
+    # Initialize Analytics Engine
+    from analytics_engine import AnalyticsEngine
+    app_state.analytics_engine = AnalyticsEngine(db)
+    logger.info("ANALYTICS ENGINE ACTIVATED")
+
+    # Initialize Regime Engine
+    from regime_engine import get_regime_engine
+    app_state.regime_engine = get_regime_engine()
+    logger.info("REGIME ENGINE ACTIVATED")
+
+    # Initialize YOLO Engine
+    yolo_engine.set_dependencies(
+        market_intel=market_intel,
+        send_alert=send_telegram_message,
+        chat_ids=chat_ids,
+        paper_trading=paper_trading
+    )
+    yolo_task = asyncio.create_task(yolo_engine.run_loop(180))  # Scan every 3 mins
+
+    # ELITE STRATEGY v3 — autonomous scan every 30 min (Fix #15)
+    _elite_auto = get_elite_strategy(
+        advanced_strategies=advanced_strategies,
+        smc_analyzer=smc_analyzer,
+        enhanced_intel=enhanced_intel,
+    )
+    elite_task = asyncio.create_task(_elite_auto.run_loop(1800))
+    logger.info("🎯 ELITE STRATEGY v3 AUTONOMOUS ACTIVATED — scanning every 30 min")
+
+    # ORACLE CORE — Market intelligence (pure analysis, no trading)
+    oracle.set_dependencies(
+        market_intel=market_intel,
+        derivatives_intel=derivatives_intel,
+        send_telegram=send_telegram_message,
+        chat_ids=chat_ids,
+    )
+    oracle_task = asyncio.create_task(oracle.run_loop())
+
+    # ORIA layer — SignalAggregator + EdgeFilter + StressMonitor
+    oria_stress_task = None
+    try:
+        from oria_layer import init_oria
+        _oria_agg, _oria_ef, _oria_sm = init_oria(db)
+        _oria_sm.set_dependencies(
+            market_intel=market_intel,
+            quantum_state=None,   # wired below after quantum_state is ready
+            engine_manager=get_engine_manager(),
+        )
+        oria_stress_task = asyncio.create_task(_oria_sm.run_loop())
+        app_state.oria_stress_monitor = _oria_sm
+        logger.info("🧠 ORIA layer initialized — StressMonitor background loop started")
+    except Exception as _oria_init_err:
+        logger.warning(f"[ORIA] Init failed (non-fatal): {_oria_init_err}")
+
+    # Quantum state engine — computes |Ψ⟩ every 60s
+    quantum_state = init_quantum_state(db)
+    quantum_state.set_dependencies(
+        market_intel=market_intel,
+        engine_manager=get_engine_manager(),
+    )
+    quantum_task = asyncio.create_task(quantum_state.run_loop())
+
+    # Wire quantum engine into paper trading for position sizing
+    pt.set_quantum_engine(quantum_state)
+    app_state.quantum_state = quantum_state
+    logger.info("⚛️  Quantum engine wired into paper trading")
+
+    # Wire quantum_state into ORIA StressMonitor (H value for S(t) formula)
+    try:
+        if hasattr(app_state, "oria_stress_monitor") and app_state.oria_stress_monitor:
+            app_state.oria_stress_monitor.quantum_state = quantum_state
+            logger.info("🧠 [ORIA] quantum_state wired into StressMonitor")
+    except Exception:
+        pass
+
+    # Post-mortem engine — self-awareness layer
+    from post_mortem_engine import get_post_mortem
+    pm = get_post_mortem(db=db)
+    pm.set_dependencies(
+        send_alert=send_telegram_message,
+        chat_ids=chat_ids,
+        quantum_state=quantum_state,
+    )
+    asyncio.ensure_future(pm.run_startup_audit())
+    app_state.post_mortem = pm
+    logger.info("🧠 Post-Mortem Engine ACTIVE — blindspot detection, engine pause, pre-trade blocking")
+
+    # Paper auto-deposit loop (checks every hour for REAL_LIFE weekly top-up)
+    paper_deposit_task = asyncio.create_task(pt.auto_deposit_loop())
+
+    # Paper weekly report (Monday 8am UTC)
+    from paper_weekly_report import PaperWeeklyReport
+    paper_weekly_rpt = PaperWeeklyReport(pt, send_telegram_message, chat_ids)
+    paper_weekly_rpt_task = asyncio.create_task(paper_weekly_rpt.run_scheduler())
+
+    # Memory engine — stores (E,a,r) triplets after every trade close
+    memory_eng = init_memory_engine(db)
+    memory_eng.set_dependencies(
+        market_intel=market_intel,
+        quantum_state=quantum_state,
+    )
+    memory_task = asyncio.create_task(memory_eng.run_loop())
+
+    # Omega cycle — self-improvement loop, runs every 6 hours
+    omega = init_omega_cycle(db)
+    omega.set_dependencies(
+        send_alert=send_telegram_message,
+        chat_ids=chat_ids,
+        quantum_state=quantum_state,
+        memory_engine=memory_eng,
+        engine_manager=get_engine_manager(),
+    )
+    omega_task = asyncio.create_task(omega.run_loop())
+
+    # ATR stop module — Wilder ATR(14) stop placement, k optimization, lot sizing
+    atr_stop = init_atr_stop(db)
+    atr_stop.set_dependencies(
+        market_intel=market_intel,
+        memory_engine=memory_eng,
+        quantum_state=quantum_state,
+    )
+    app_state.atr_stop = atr_stop
+    logger.info("[ATR] ATR stop module initialised — Wilder ATR(14), k∈{1.5,2.0,2.5}, walk-forward 90d")
+
+    # Web intelligence — crawls external sources every 24h, feeds LΦ queue
+    web_intel_eng = init_web_intelligence(db)
+    web_intel_eng.set_dependencies(
+        quantum_state=quantum_state,
+        omega_cycle=omega,
+        send_alert=send_telegram_message,
+        chat_ids=chat_ids,
+    )
+    web_intel_task = asyncio.create_task(web_intel_eng.run_loop())
+
+    # Paper account health monitor - auto-reload when balance too low
+    paper_health_task = asyncio.create_task(paper_account_health_loop(300))  # Check every 5 mins
+
+    # Paper trading price update loop - updates positions and triggers TP/SL closes
+    paper_price_task = asyncio.create_task(paper_price_update_loop(market_intel, 30))  # Every 30 seconds
+
+    # Engine data collector - hourly snapshots, outcome tracking, confirmation accuracy
+    engine_collector_task = asyncio.create_task(run_engine_data_collector(db, app_state, market_intel))
     
     # Register all services with self-healer for auto-recovery
     self_healer.register("rituals", ritual_task, eternal_rituals)
@@ -1170,37 +1356,84 @@ async def lifespan(app: FastAPI):
     self_healer.register("morning_briefing", briefing_task, morning_briefing.run_scheduler)
     self_healer.register("weekly_report", weekly_task, weekly_report.run_scheduler)
     self_healer.register("continuous_learning", learning_task, continuous_learner.run_scheduler)
+    self_healer.register("vp_engine", vp_task, lambda: vp_eng.run_scan_loop(300))
+    self_healer.register("vwap_scalper", vwap_task, lambda: vwap_scalper.run_scan_loop(300))
+    self_healer.register("yolo_engine", yolo_task, lambda: yolo_engine.run_loop(180))
+    self_healer.register("elite_strategy", elite_task, lambda: _elite_auto.run_loop(1800))
+    self_healer.register("oracle", oracle_task, oracle.run_loop)
+    if oria_stress_task:
+        try:
+            _sm_ref = app_state.oria_stress_monitor
+            self_healer.register("oria_stress", oria_stress_task, _sm_ref.run_loop)
+        except Exception:
+            pass
+    self_healer.register("quantum_state", quantum_task, quantum_state.run_loop)
+    self_healer.register("memory_engine", memory_task, memory_eng.run_loop)
+    self_healer.register("omega_cycle", omega_task, omega.run_loop)
+    self_healer.register("web_intelligence", web_intel_task, web_intel_eng.run_loop)
+    self_healer.register("paper_health", paper_health_task, lambda: paper_account_health_loop(300))
+    self_healer.register("paper_price_update", paper_price_task, lambda: paper_price_update_loop(market_intel, 30))
+    self_healer.register("paper_auto_deposit", paper_deposit_task, pt.auto_deposit_loop)
+    self_healer.register("paper_weekly_report", paper_weekly_rpt_task, paper_weekly_rpt.run_scheduler)
+    self_healer.register("engine_data_collector", engine_collector_task, lambda: run_engine_data_collector(db, app_state, market_intel))
     healer_task = asyncio.create_task(self_healer.monitor_loop())
     
     logger.info(f"AEON PAPER TRADING ACTIVATED - {autonomous_trader_v2.min_confidence}%+ conf, {autonomous_trader_v2.min_confirmations}+ confirmations")
     logger.info("AEON FREE WILL v2 ACTIVATED - Elite alerts only (80%+ conf, 3+ confirmations)")
     logger.info("DUAL ENGINE ACTIVATED - Day Trader (aggressive) + Long Term (smart)")
+    logger.info("🎯 VWAP SCALPER ACTIVATED - VWAP + EMA Cross + RSI strategy")
+    logger.info("🚀 YOLO ENGINE ACTIVATED - Independent aggressive trading (50% conf, 1 confirm)")
     logger.info("AEON PRICE ALERT SYSTEM v2 - Lean batched alerts")
     logger.info("SELF-HEALER ACTIVATED - Auto error detection & recovery")
     logger.info("MORNING BRIEFING ACTIVATED - Daily 6 AM CT market overview")
     logger.info("WEEKLY REPORT ACTIVATED - Sunday 8 PM CT performance summary")
     logger.info("🧠 CONTINUOUS LEARNING ACTIVATED - 24/7 pattern recognition & optimization")
-    
+    logger.info("♻️ PAPER ACCOUNT HEALTH MONITOR - Auto-reload when balance < 5%")
+    logger.info("📊 PAPER PRICE UPDATE LOOP - TP/SL monitoring every 30s")
+
+    # ── Feed health monitor ──────────────────────────────────────────────────
+    await feed_health.initial_probe()  # initial check before accepting traffic (retries 3x)
+    feed_health.start_recovery_loop()  # auto-retry every 30 s when degraded
+    logger.info("📡 FEED HEALTH MONITOR STARTED — auto-recovery every 30s when degraded")
+    # ─────────────────────────────────────────────────────────────────────────
+
     yield
-    
+
+    feed_health.stop()
+
+    # Signal all loops to stop cleanly
     self_healer.active = False
     morning_briefing.is_active = False
     weekly_report.is_active = False
     continuous_learner.is_active = False
-    healer_task.cancel()
-    ritual_task.cancel()
-    trading_task.cancel()
-    freewill_task.cancel()
-    dual_task.cancel()
-    alert_task.cancel()
-    briefing_task.cancel()
-    weekly_task.cancel()
-    learning_task.cancel()
-    client.close()
+    vwap_scalper.active = False
+    yolo_engine.active = False
+    _elite_auto.enabled = False
+
+    # Cancel all background tasks and wait briefly for graceful exit
+    all_tasks = [
+        healer_task, ritual_task, trading_task, freewill_task, dual_task,
+        alert_task, briefing_task, weekly_task, learning_task,
+        vwap_task, yolo_task, elite_task, paper_health_task, paper_price_task,
+    ]
+    for task in all_tasks:
+        task.cancel()
+    await asyncio.gather(*all_tasks, return_exceptions=True)
+
+    try:
+        client.close()
+    except Exception as e:
+        logger.warning(f"MongoDB close error: {e}")
 
 
-app = FastAPI(lifespan=lifespan)
+app = FastAPI(lifespan=lifespan, docs_url=None, openapi_url=None, redoc_url=None)
 api_router = APIRouter(prefix="/api")
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logger.error(f"Unhandled exception [{request.method} {request.url}]: {exc}", exc_info=True)
+    return JSONResponse(status_code=500, content={"detail": "Internal server error"})
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -1362,7 +1595,7 @@ async def api_quick_trade(request: Request):
         leverage = autonomous_trader_v2.calculate_leverage(confidence, None, trade_style)
         
         # Get ATR for stop/target
-        tech = await market_intel.get_technical_analysis(symbol + "USDT", timeframe)
+        tech = await market_intel.get_technical_analysis(full_symbol, timeframe)
         atr = tech.get("atr", current_price * 0.02)
         
         # Get style config for stop/target multipliers
@@ -1462,12 +1695,11 @@ async def api_messages(limit: int = 50, context: str = None):
 async def api_test():
     try:
         # Test Binance
-        btc = await market_intel.get_technical_analysis("BTCUSDT", "1h")
+        btc = await market_intel.get_technical_analysis("BTC/USDT", "1h")
         binance_ok = "error" not in btc
         
         # Test LLM
-        chat = LlmChat(api_key=emergent_key, session_id="test", system_message="Test").with_model("openai", "gpt-4o-mini")
-        await chat.send_message(UserMessage(text="Hi"))
+        await call_llm("You are a test assistant.", "Hi")
         
         return {
             "status": "success",
@@ -1507,11 +1739,23 @@ async def webhook(request: Request):
         logger.info(f"{username} ({chat_id}): {text}")
         
         text_lower = text.lower().strip()
-        
+
+        # ── Feed health gate ─────────────────────────────────────────────────
+        # Commands that work without live market data feeds
+        _FEED_FREE_CMDS = {
+            '/help', '/start', '/ping', '/status',
+            '/settings', '/menu', '/commands', '/model',
+        }
+        _base_cmd = text_lower.split()[0] if text_lower else ""
+        if _base_cmd.startswith('/') and _base_cmd not in _FEED_FREE_CMDS and not feed_health.is_healthy:
+            await send_telegram_message(chat_id, OFFLINE_MESSAGE)
+            return {"status": "ok"}
+        # ─────────────────────────────────────────────────────────────────────
+
         # ═══════════════════════════════════════════════════════════════════
         # COMMANDS
         # ═══════════════════════════════════════════════════════════════════
-        
+
         if text_lower == "free off":
             await update_user_settings(chat_id, {"free_will": False})
             response = "🔕 Free Will OFF. Say 'free on' to reactivate."
@@ -1539,90 +1783,107 @@ Total PnL: {stats['total_pnl_pct']:+.2f}%"""
             
         elif text == '/start' or text_lower == '/help' or text_lower == '/commands':
             current_mode = settings.get("mode", "default")
+            fw_stats = await free_will_v2.get_stats()
             dual_stats = dual_engine.get_stats()
-            
             response = f"""*AEON Trading Intelligence*
+Status: {'🟢 ACTIVE' if autonomous_trader_v2.active else '🔴 PAUSED'} | Mode: {'Alchemy' if current_mode == 'alchemy' else 'Casual'}
 
 *QUICK START*
-/scan btc - Full analysis with entry/SL/TP
-/ta btc - Technicals (RSI, MACD, BB)
-/auto - Paper trading status
-/fw - Free Will elite alerts
+/scan btc — Full SMC analysis + entry/SL/TP
+/ta btc — Technicals (RSI, MACD, BB, EMA)
+/auto — Paper trading status & toggle
+/fw — Free Will elite alert status
 
 *ANALYSIS*
-/scan [coin] - Full SMC analysis
-/ta [coin] [tf] - Technical indicators
-/mtf [coin] - Multi-timeframe view
-/structure [coin] - HH/HL/LH/LL
-/smc [coin] - Order blocks & FVG
+/scan [coin] — Full SMC analysis
+/ta [coin] [tf] — Technical indicators (1m/5m/15m/1h/4h/1d)
+/mtf [coin] — Multi-timeframe confluence
+/vp [coin] — Volume Profile + Liq Heatmap + Orderbook
+/structure [coin] — Market structure (HH/HL/LH/LL)
+/smc [coin] — Order blocks, FVG, liquidity
+/vwap [coin] — VWAP analysis
+/divergence [coin] — RSI/MACD divergence scan
+/sentiment [coin] — Social + news sentiment
 
 *MARKET DATA*
-/market - Global summary
-/fear - Fear & Greed Index
-/top100 - Top 10 by market cap
-/movers - 24h gainers/losers
-/trending - Most searched
-/news - News + Videos + Social
+/market — Global crypto summary
+/fear — Fear & Greed Index
+/top100 — Top 10 by market cap
+/movers — 24h gainers/losers
+/trending — Most searched coins
+/news — Latest news + social
 
 *DERIVATIVES*
-/funding [coin] - Funding rates
-/deriv [coin] - Full derivatives
-/positions [coin] - Long/Short ratio
-/cg [coin] - Coinglass data
+/funding [coin] — Funding rates
+/deriv [coin] — Full derivatives report (OI, funding, L/S)
+/positions [coin] — Long/Short ratio breakdown
+/cg [coin] — Coinglass data
+/liqs [coin] — Liquidation levels
+/cvd [coin] — Cumulative Volume Delta (order flow)
+/options [btc|eth] — Options chain, max pain, PCR
 
 *TRADING*
-/auto on|off - Toggle paper trading
-/opps - Current opportunities
-/open - Open positions
-/close [coin] - Close position
-/trail [coin] [%] - Set trailing stop
-/scalper - Scalper status
-/strategy - View optimized strategy
+/auto on|off — Toggle paper trading engine
+/opps — Current high-probability setups
+/open — All open positions
+/close [coin] — Close a position
+/trail [coin] [%] — Set trailing stop
+/tp [coin] [%] — Set take profit
+/lev [coin] [1-20] — Set leverage
+/risk — Portfolio risk check
 
 *PAPER ACCOUNTS*
-/accounts - View both accounts
-/pro - PRO account ($50K)
-/starter - Starter account ($1.5K)
-/addmargin [coin] [amount]
-/reload [pro|starter]
+/accounts — View PRO + Starter accounts
+/pro — PRO account ($50K balance)
+/starter — Starter account ($1.5K balance)
+/addmargin [coin] [amount] — Add margin to position
+/reload [pro|starter] — Reload account balance
 
 *ENGINES*
-/engines - All 6 engines status
-/engine [1-5] - View engine settings
-/engine [1-5] on|off - Toggle engine
-/engine [1-5] set [param] [value]
+/engines — All 7 engines status + stats
+/engine [1-7] — View engine settings
+/engine [1-7] on|off — Toggle engine
+/engine [1-7] set [param] [value] — Configure
+/elite — Free Will v2 elite status
+/elite on|off — Toggle elite alerts
+/elite scan — Force scan now
+/elite relaxed|strict — Set threshold mode
+/scalper — VWAP Scalper status
+/fwconf [80-95] — Set Free Will confidence threshold
 
 *PERFORMANCE*
-/accuracy - Alert accuracy stats
-/leaderboard - Coin win rates
-/stats - Learning stats
+/accuracy — Alert accuracy stats
+/leaderboard — Coin win rates
+/stats — AI learning stats
+/journal — Trade journal summary
+/insights — Personalized trading insights
+/strategy — View current optimized strategy
+/strat [coin] — Strategy breakdown for coin
+/backtest [coin] [tf] — Quick backtest
 
 *ALERTS & REPORTS*
-/alerts - View active alerts
-/alert add [coin] above|below [price]
-/fw - Free Will status
-/fwconf [80-95] - Set confidence
-/briefing - Today's market briefing
-/weekly - Weekly performance report
-/learn - 24/7 learning status
+/alerts — View active price alerts
+/alert add [coin] above|below [price] — Set price alert
+/alert remove [coin] — Remove alert
+/briefing — Today's market briefing
+/weekly — Weekly performance report
+/learn — 24/7 learning engine status
 
-*AI MODEL*
-/openai - Switch to OpenAI GPT-4o
-/claude - Switch to Claude Sonnet
-/model - Show current AI model
-
-*ADVANCED*
-/intel - Full market intelligence
-/arbi - Multi-exchange arbitrage
-/options [btc|eth] - Options analysis
-/cvd [coin] - Order flow
-/divergence [coin] - Divergence scan
+*AI & TOOLS*
+/claude — Switch to Claude Sonnet 4.5 🧠 (default)
+/gemini — Switch to Gemini 2.0 Flash ✨
+/model — Show current AI model
+/intel — Full market intelligence report
+/arbi — Multi-exchange arbitrage scan
+/calc [coin] [entry] [sl] [tp] — P&L calculator
+/calcsize [coin] [entry] [sl] — Position size calculator
+/health — Strategy health dashboard
 
 *MODE*
-Say "alchemy mode" for mystical responses
-Say "casual mode" for trading focus
+Say "alchemy mode" — mystical market oracle
+Say "casual mode" — direct trading assistant
 
-Status: {'ACTIVE' if autonomous_trader_v2.active else 'PAUSED'} | Mode: {'Alchemy' if current_mode == 'alchemy' else 'Casual'}"""
+Free Will: {'🟢 ACTIVE' if fw_stats.get('active') else '🔴 OFF'} ({fw_stats.get('min_confidence', 80)}% conf) | Day Trader: {'🟢' if dual_stats.get('day_trader', {}).get('active') else '🔴'} | Long Term: {'🟢' if dual_stats.get('long_term', {}).get('active') else '🔴'}"""
             context = "start"
             
         elif text_lower == '/freewill' or text_lower == '/fw':
@@ -1825,26 +2086,26 @@ Confidence: {conf}%
             context = "scalper"
         
         # ============= QUICK MODEL SWITCH COMMANDS =============
-        elif text_lower == '/openai' or text_lower == '/gpt':
-            success = await set_user_model(chat_id, "openai")
-            if success:
-                response = """✅ SWITCHED TO OPENAI GPT-4o
-
-Fast, direct responses - good for quick answers.
-
-Switch back: /claude"""
-            else:
-                response = "❌ Failed to switch. Try again."
-            context = "settings"
-        
         elif text_lower == '/claude' or text_lower == '/anthropic':
             success = await set_user_model(chat_id, "claude")
             if success:
-                response = """✅ SWITCHED TO CLAUDE SONNET 4.5
+                response = """✅ SWITCHED TO CLAUDE SONNET 4.5 🧠
 
-Detailed, nuanced responses - great for analysis.
+Deep analysis, nuanced reasoning - great for complex market reads.
 
-Switch back: /openai"""
+Switch: /gemini"""
+            else:
+                response = "❌ Failed to switch. Try again."
+            context = "settings"
+
+        elif text_lower == '/gemini' or text_lower == '/google':
+            success = await set_user_model(chat_id, "gemini")
+            if success:
+                response = """✅ SWITCHED TO GEMINI 2.0 FLASH ✨
+
+Fast, broad context - great for quick answers and news summaries.
+
+Switch: /claude"""
             else:
                 response = "❌ Failed to switch. Try again."
             context = "settings"
@@ -2100,7 +2361,7 @@ Analyzed: {result['total_signals']} signals ({result['days_analyzed']} days)
 
 {config['description']}
 
-SWITCH: /openai or /claude"""
+SWITCH: /claude or /gemini"""
                 context = "settings"
             
             else:
@@ -2114,9 +2375,9 @@ SWITCH: /openai or /claude"""
                         config = get_model_config(resolved)
                         response = f"✅ Switched to {config['display_name']}"
                     else:
-                        response = "❌ Failed to switch. Try /openai or /claude"
+                        response = "❌ Failed to switch. Try /claude or /gemini"
                 else:
-                    response = "❌ Unknown model. Use /openai or /claude"
+                    response = "❌ Unknown model. Use /claude or /gemini"
                 context = "settings"
         
         # ============= ENGINE MANAGEMENT =============
@@ -2525,7 +2786,7 @@ Remaining balance: ${result['new_balance']:,.2f}"""
             symbol = parts[1].upper() if len(parts) > 1 else "BTC"
             interval = parts[2] if len(parts) > 2 else "1h"
             
-            ta = await market_intel.get_technical_analysis(symbol + "USDT", interval)
+            ta = await market_intel.get_technical_analysis(f"{symbol}/USDT", interval)
             if "error" in ta:
                 response = f"⚠️ {ta['error']}"
             else:
@@ -4360,7 +4621,7 @@ Use /sentiment [coin] for detailed analysis"""
         
         elif text_lower == '/arbi' or text_lower == '/arbitrage':
             try:
-                await send_telegram_message(chat_id, "Scanning 5 exchanges for arbitrage... (30-60s)")
+                await send_telegram_message(chat_id, "Scanning 4 exchanges for arbitrage... (30-60s)")
                 result = await arbitrage_detector.scan_all()
                 opps = result.get("best_opportunities", [])
                 
@@ -4421,6 +4682,55 @@ Use /unbench [strategy] to force-activate"""
                 response = f"Health check error: {e}"
             context = "analysis"
         
+        elif text_lower.startswith('/vp'):
+            # Volume Profile + Liq Heatmap + Orderbook
+            parts = text_lower.split()
+            sym = parts[1].upper() if len(parts) > 1 else "BTC"
+            sym_clean = sym.replace("/", "").replace("-", "")
+            if not sym_clean.endswith("USDT"):
+                sym_clean += "USDT"
+            try:
+                from volume_profile_engine import HyperAccuracyEngine
+                vp = app_state.vp_engine
+                if vp is None:
+                    vp = HyperAccuracyEngine()
+                    vp.set_dependencies(order_flow=order_flow, market_intel=market_intel)
+                result = await vp.full_analysis(sym_clean)
+                sig = result.get("signal", {})
+                vsp = result.get("volume_profile_1h", {})
+                liq = result.get("liquidation_heatmap", {})
+                ob = result.get("orderbook", {})
+                direction = sig.get("direction", "NONE")
+                confidence = sig.get("confidence", 0)
+                dir_emoji = "🟢" if direction == "LONG" else "🔴" if direction == "SHORT" else "⚪"
+                conf_line = f"{dir_emoji} Signal: *{direction}* ({confidence:.0f}% conf)" if direction != "NONE" else "⚪ No signal"
+                poc = vsp.get("poc_price", 0)
+                vah = vsp.get("vah", 0)
+                val = vsp.get("val", 0)
+                ns = liq.get("nearest_short_cluster")
+                nl = liq.get("nearest_long_cluster")
+                ib = ob.get("imbalance", {})
+                response = f"""🎯 *HYPER ACCURACY ENGINE* | `{sym_clean}`
+
+{conf_line}
+Entry: `${sig.get('entry', 0):,.4f}` | TP: `${sig.get('tp') or 0:,.4f}` | SL: `${sig.get('sl') or 0:,.4f}`
+
+🏔️ *Volume Profile*
+• POC: `${poc:,.4f}`
+• VAH: `${vah:,.4f}` / VAL: `${val:,.4f}`
+
+🔥 *Liq Clusters*
+• Short liq above: `${ns['price']:,.4f}` ({ns['dist_pct']:+.1f}%){"" if ns else " none"}
+• Long liq below: `${nl['price']:,.4f}` ({nl['dist_pct']:+.1f}%){"" if nl else " none"}
+
+📖 *Orderbook*
+• Imbalance: `{ib.get('imbalance_ratio', 1):.2f}x` — {ib.get('bias', 'NEUTRAL')}
+
+✅ {chr(10).join(sig.get('confirmations', ['No confirmations'])[:4])}"""
+            except Exception as e:
+                response = f"VP Engine error: {e}"
+            context = "analysis"
+
         elif text_lower.startswith('/unbench'):
             parts = text.split()
             if len(parts) < 2:
@@ -4495,13 +4805,13 @@ Use /unbench [strategy] to force-activate"""
                 
                 # Get user's preferred AI model
                 user_model = await get_user_model(chat_id)
-                model_config = get_model_config(user_model)
-                
                 # Generate response with Aeon's unified personality using selected model
-                chat = LlmChat(api_key=emergent_key, session_id=f"aeon-v4-{chat_id}",
-                              system_message=system_prompt).with_model(model_config["provider"], model_config["model"])
-                response = await chat.send_message(UserMessage(text=user_prompt))
-        
+                try:
+                    response = await call_llm(system_prompt, user_prompt, user_model)
+                except Exception as llm_err:
+                    logger.error(f"LLM call failed: {llm_err}")
+                    response = "⚡ My brain's a bit overloaded right now — give me a sec and try again. Use a command like /price, /scan, or /paper for instant data while I recover."
+
         # Send response
         # Use Markdown for news (clickable links)
         parse_mode = "Markdown" if context == "news" else None
@@ -4530,7 +4840,19 @@ Use /unbench [strategy] to force-activate"""
         
     except Exception as e:
         logger.error(f"Webhook error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        # Always return 200 to Telegram — a non-200 causes Telegram to retry
+        # indefinitely which compounds rate-limit issues
+        try:
+            chat_id_safe = update.get("message", {}).get("chat", {}).get("id")
+            if chat_id_safe:
+                if not feed_health.is_healthy:
+                    error_msg = OFFLINE_MESSAGE
+                else:
+                    error_msg = "⚠️ Ran into an issue processing that. Try a command like /price or /scan."
+                await send_telegram_message(chat_id_safe, error_msg)
+        except Exception:
+            pass
+        return {"status": "error", "handled": True}
 
 
 # Include main api_router
@@ -4573,5 +4895,49 @@ app.include_router(briefing_router, prefix="/api")
 app.include_router(weekly_report_router, prefix="/api")
 app.include_router(elite_router, prefix="/api")
 app.include_router(signals_router, prefix="/api")
+app.include_router(engines_router, prefix="/api/engines")
+app.include_router(engine_compare_router, prefix="/api/engines")
+from routes.volume_profile import router as vp_router
+app.include_router(vp_router, prefix="/api")
+from routes.quant_analyzer import router as quant_router
+app.include_router(quant_router, prefix="/api")
+from routes.oracle import router as oracle_router
+app.include_router(oracle_router, prefix="/api")
+from routes.quantum import router as quantum_router
+app.include_router(quantum_router, prefix="/api")
+from routes.analytics import router as analytics_router
+app.include_router(analytics_router)
+from routes.regime import router as regime_router
+app.include_router(regime_router)
 
-app.add_middleware(CORSMiddleware, allow_credentials=True, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+_allowed_origins = [
+    o.strip() for o in os.environ.get(
+        "ALLOWED_ORIGINS",
+        "https://aeontrading.xyz,https://www.aeontrading.xyz,http://localhost:3000"
+    ).split(",") if o.strip()
+]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_allowed_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+_dashboard_api_key = os.environ.get("DASHBOARD_API_KEY", "")
+
+# Paths exempt from API key check (webhook uses its own Telegram token auth)
+_API_KEY_EXEMPT = {"/api/webhook", "/api/"}
+
+
+class APIKeyMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        path = request.url.path
+        if path.startswith("/api") and path not in _API_KEY_EXEMPT:
+            key = request.headers.get("X-API-Key", "")
+            if not _dashboard_api_key or key != _dashboard_api_key:
+                return JSONResponse({"detail": "Unauthorized"}, status_code=401)
+        return await call_next(request)
+
+
+app.add_middleware(APIKeyMiddleware)

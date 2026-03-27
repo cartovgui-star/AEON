@@ -238,8 +238,8 @@ class WeeklyPerformanceReport:
                 if isinstance(closed_at, str):
                     try:
                         closed_at = datetime.fromisoformat(closed_at.replace('Z', '+00:00'))
-                    except:
-                        pass
+                    except Exception as e:
+                        logger.debug(f"Date parse error: {e}")
                 if isinstance(closed_at, datetime):
                     trading_days.add(closed_at.date())
         
@@ -416,8 +416,8 @@ Trading Days: {highlights.get('total_trading_days', 0)}/7""")
                         "sent_at": datetime.now(timezone.utc),
                         "recipients": len(self.chat_ids)
                     })
-                except:
-                    pass
+                except Exception as e:
+                    logger.warning(f"Failed to log weekly report to DB: {e}")
             
             # Update last report date
             self.last_report_date = self._get_austin_time().date()
@@ -434,10 +434,13 @@ Trading Days: {highlights.get('total_trading_days', 0)}/7""")
             try:
                 if self._should_send_report():
                     await self.send_report()
-                
+
+                from self_healer import self_healer
+                self_healer.heartbeat("weekly_report")
+
                 # Check every minute
                 await asyncio.sleep(60)
-                
+
             except Exception as e:
                 logger.error(f"Weekly report scheduler error: {e}")
                 await asyncio.sleep(60)

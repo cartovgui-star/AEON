@@ -147,7 +147,7 @@ class MorningBriefing:
         try:
             if self.market_intel:
                 # BTC analysis
-                btc_ta = await self.market_intel.get_technical_analysis("BTCUSDT", "4h")
+                btc_ta = await self.market_intel.get_technical_analysis("BTC/USDT", "4h")
                 btc_indicators = btc_ta.get("indicators", {})
                 
                 btc_rsi = btc_indicators.get("rsi", 50)
@@ -169,7 +169,7 @@ class MorningBriefing:
                 }
                 
                 # ETH analysis
-                eth_ta = await self.market_intel.get_technical_analysis("ETHUSDT", "4h")
+                eth_ta = await self.market_intel.get_technical_analysis("ETH/USDT", "4h")
                 eth_indicators = eth_ta.get("indicators", {})
                 
                 eth_rsi = eth_indicators.get("rsi", 50)
@@ -248,7 +248,8 @@ class MorningBriefing:
                             "rate": round(rate * 100, 4),  # Convert to percentage
                             "direction": "LONGS PAY" if rate > 0 else "SHORTS PAY"
                         })
-                    except:
+                    except Exception as e:
+                        logger.debug(f"Funding rate unavailable for {symbol}: {e}")
                         continue
                 
                 funding["data"] = rates
@@ -276,7 +277,7 @@ class MorningBriefing:
                 for symbol in TRACKED_CRYPTOS[:10]:  # Top 10 for brevity
                     try:
                         ta = await self.market_intel.get_technical_analysis(
-                            symbol.replace("/", ""), "4h"
+                            symbol, "4h"
                         )
                         indicators = ta.get("indicators", {})
                         price = ta.get("price", 0)
@@ -298,9 +299,10 @@ class MorningBriefing:
                                 "near_support": to_support < 2,
                                 "near_resistance": to_resistance < 2
                             })
-                            
+
                         await asyncio.sleep(0.1)  # Rate limiting
-                    except:
+                    except Exception as e:
+                        logger.debug(f"Key levels unavailable for {symbol}: {e}")
                         continue
                         
         except Exception as e:
@@ -317,7 +319,7 @@ class MorningBriefing:
                 for symbol in TRACKED_CRYPTOS:
                     try:
                         ta = await self.market_intel.get_technical_analysis(
-                            symbol.replace("/", ""), "4h"
+                            symbol, "4h"
                         )
                         indicators = ta.get("indicators", {})
                         price = ta.get("price", 0)
@@ -359,11 +361,12 @@ class MorningBriefing:
                                 "price": price,
                                 "rsi": round(rsi, 1)
                             })
-                        
+
                         await asyncio.sleep(0.1)
-                    except:
+                    except Exception as e:
+                        logger.debug(f"Setup scan failed for {symbol}: {e}")
                         continue
-                        
+
         except Exception as e:
             logger.error(f"Error getting setups: {e}")
         
@@ -397,9 +400,8 @@ class MorningBriefing:
         msg_parts = []
         
         # Header
-        msg_parts.append(f"""☀️ AEON MORNING BRIEFING
-{date_str} | 6:00 AM CT
-━━━━━━━━━━━━━━━━━━━━━━""")
+        msg_parts.append(f"""AEON Morning Briefing
+{date_str} | 6:00 AM CT""")
         
         # Market Structure
         btc = structure.get("btc", {})
@@ -409,29 +411,27 @@ class MorningBriefing:
         bias_emoji = "🟢" if bias == "BULLISH" else "🔴" if bias == "BEARISH" else "🟡"
         
         msg_parts.append(f"""
-📊 MARKET STRUCTURE
-{bias_emoji} Overall Bias: {bias}
+Market Structure
+Bias: {bias_emoji} {bias}
 
-BTC: {self.format_price(btc.get('price', 0))}
-  Trend: {btc.get('trend', 'N/A')} | RSI: {btc.get('rsi', 'N/A')}
-  Support: {self.format_price(btc.get('support', 0))}
-  Resistance: {self.format_price(btc.get('resistance', 0))}
+BTC   {self.format_price(btc.get('price', 0))}
+  Trend       {btc.get('trend', 'N/A')}   RSI  {btc.get('rsi', 'N/A')}
+  Support     {self.format_price(btc.get('support', 0))}
+  Resistance  {self.format_price(btc.get('resistance', 0))}
 
-ETH: {self.format_price(eth.get('price', 0))}
-  Trend: {eth.get('trend', 'N/A')} | RSI: {eth.get('rsi', 'N/A')}
-  Support: {self.format_price(eth.get('support', 0))}
-  Resistance: {self.format_price(eth.get('resistance', 0))}""")
+ETH   {self.format_price(eth.get('price', 0))}
+  Trend       {eth.get('trend', 'N/A')}   RSI  {eth.get('rsi', 'N/A')}
+  Support     {self.format_price(eth.get('support', 0))}
+  Resistance  {self.format_price(eth.get('resistance', 0))}""")
         
         # Fear & Greed
         fg_value = fear_greed.get("value", 50)
         fg_label = fear_greed.get("label", "Neutral")
         fg_analysis = fear_greed.get("analysis", "")
         
-        fg_bar = "█" * (fg_value // 10) + "░" * (10 - fg_value // 10)
-        
         msg_parts.append(f"""
-🎭 FEAR & GREED INDEX
-[{fg_bar}] {fg_value}/100 - {fg_label}
+Fear & Greed Index
+{fg_value}/100 — {fg_label}
 {fg_analysis}""")
         
         # Overnight Movers
@@ -439,42 +439,41 @@ ETH: {self.format_price(eth.get('price', 0))}
         losers = movers.get("losers", [])
         
         if gainers or losers:
-            msg_parts.append("\n📈 OVERNIGHT MOVERS")
-            
+            msg_parts.append("\nOvernight Movers")
+
             if gainers:
-                gainer_str = " | ".join([f"{g['symbol']} +{g['change_24h']}%" for g in gainers[:3]])
-                msg_parts.append(f"🟢 Gainers: {gainer_str}")
-            
+                gainer_str = "  ".join([f"{g['symbol']} +{g['change_24h']}%" for g in gainers[:3]])
+                msg_parts.append(f"Gainers   {gainer_str}")
+
             if losers:
-                loser_str = " | ".join([f"{l['symbol']} {l['change_24h']}%" for l in losers[:3]])
-                msg_parts.append(f"🔴 Losers: {loser_str}")
+                loser_str = "  ".join([f"{l['symbol']} {l['change_24h']}%" for l in losers[:3]])
+                msg_parts.append(f"Losers    {loser_str}")
         
         # Funding Rates
         funding_data = funding.get("data", [])
         if funding_data:
-            funding_str = " | ".join([f"{f['symbol']}: {f['rate']}%" for f in funding_data])
+            funding_str = "  ".join([f"{f['symbol']} {f['rate']}%" for f in funding_data])
             msg_parts.append(f"""
-💰 FUNDING RATES
+Funding Rates
 {funding_str}
 {funding.get('summary', '')}""")
         
         # Setups to Watch
         if setups:
-            msg_parts.append("\n🎯 SETUPS TO WATCH TODAY")
+            msg_parts.append("\nSetups To Watch")
             for i, s in enumerate(setups[:5], 1):
-                emoji = "🟢" if s['direction'] == "LONG" else "🔴" if s['direction'] == "SHORT" else "🟡"
-                msg_parts.append(f"{emoji} {s['symbol']}: {s['setup']}")
-                msg_parts.append(f"   {s['reason']}")
+                direction_label = s['direction'] if s['direction'] else "WATCH"
+                msg_parts.append(f"{s['symbol']}  {direction_label}  {s['setup']}")
+                msg_parts.append(f"  {s['reason']}")
         
         # What to Watch
         msg_parts.append(f"""
-━━━━━━━━━━━━━━━━━━━━━━
-📌 KEY THINGS TO WATCH:
-• BTC holding {self.format_price(btc.get('support', 0))} support is crucial
-• Watch {fg_label.lower()} sentiment for reversal signs
-• Funding rates suggest {funding.get('summary', 'neutral positioning').split('.')[0].lower()}
+Key Things To Watch
+· BTC holding {self.format_price(btc.get('support', 0))} support is crucial
+· Watch {fg_label.lower()} sentiment for reversal signs
+· Funding rates suggest {funding.get('summary', 'neutral positioning').split('.')[0].lower()}
 
-👁️ «The market whispers its secrets at dawn. Those who listen, prosper.»""")
+The market whispers its secrets at dawn. Those who listen, prosper.""")
         
         return "\n".join(msg_parts)
     
@@ -506,8 +505,8 @@ ETH: {self.format_price(eth.get('price', 0))}
                         "sent_at": datetime.now(timezone.utc),
                         "recipients": len(self.chat_ids)
                     })
-                except:
-                    pass
+                except Exception as e:
+                    logger.warning(f"Failed to log morning briefing to DB: {e}")
             
             # Update last briefing date
             self.last_briefing_date = self._get_austin_time().date()
@@ -519,15 +518,18 @@ ETH: {self.format_price(eth.get('price', 0))}
     async def run_scheduler(self):
         """Main scheduler loop - checks every minute for briefing time"""
         logger.info("☀️ Morning Briefing Scheduler started (6 AM Central Time)")
-        
+
         while self.is_active:
             try:
                 if self._should_send_briefing():
                     await self.send_briefing()
-                
+
+                from self_healer import self_healer
+                self_healer.heartbeat("morning_briefing")
+
                 # Check every minute
                 await asyncio.sleep(60)
-                
+
             except Exception as e:
                 logger.error(f"Morning briefing scheduler error: {e}")
                 await asyncio.sleep(60)

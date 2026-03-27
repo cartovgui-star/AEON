@@ -13,13 +13,19 @@ Ultra-selective alerting using ALL data sources:
 
 ONLY alerts on setups with 80%+ confidence AND multiple confirmations
 NO CONTRADICTING SIGNALS - tracks recent direction per symbol
+
+UNIFIED ENGINE INTEGRATION:
+- All signals validated through EngineManager
+- Risk controls: position limits, daily loss limits, R:R enforcement
 """
 
 import asyncio
 import logging
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from typing import Dict, Any, List, Optional, Set
 from motor.motor_asyncio import AsyncIOMotorDatabase
+
+from alert_throttler import AlertThrottler
 
 logger = logging.getLogger(__name__)
 
@@ -30,16 +36,34 @@ except ImportError:
     route_engine_signal = None
     logger.warning("Paper trading not available for Free Will signal routing")
 
+# Import unified engine system
+try:
+    from aeon_engine_system import get_engine_manager, EngineType
+except ImportError:
+    get_engine_manager = None
+    EngineType = None
+    logger.warning("Unified engine system not available for Free Will")
+
+# Telegram message formatters
+try:
+    from telegram_sender import format_quant_block, format_leverage_block, format_atr_block
+    _tg_formatters_ok = True
+except ImportError:
+    _tg_formatters_ok = False
+
 # Priority timeframes (higher = better signals, less noise)
-PRIORITY_TIMEFRAMES = ["4h", "1h", "1d"]  # Only alert on these
+# NOTE: 1d removed - data shows 0/12 win rate on daily signals (exhausted moves)
+PRIORITY_TIMEFRAMES = ["4h", "1h"]  # Only alert on these
 SCAN_TIMEFRAMES = ["15m", "1h", "4h", "1d"]  # Scan these for confluence
 
 # Top pairs for scanning
 TOP_PAIRS = [
     "BTC/USDT", "ETH/USDT", "SOL/USDT", "BNB/USDT", "XRP/USDT",
     "DOGE/USDT", "ADA/USDT", "AVAX/USDT", "LINK/USDT", "DOT/USDT",
-    "ATOM/USDT", "UNI/USDT", "LTC/USDT", "ARB/USDT", "OP/USDT",
-    "INJ/USDT", "NEAR/USDT", "APT/USDT", "FIL/USDT", "TRX/USDT"
+    "ATOM/USDT", "UNI/USDT", "LTC/USDT", "OP/USDT",
+    "INJ/USDT", "APT/USDT", "FIL/USDT", "TRX/USDT"
+    # ARB removed: 76 trades, 8% WR, -$10,255 (2026-03-22)
+    # NEAR removed: 39 trades, 0% WR, -$8,515 (2026-03-22)
 ]
 
 
@@ -60,21 +84,16 @@ class FreeWillEngineV2:
     def __init__(self, db: AsyncIOMotorDatabase):
         self.db = db
         self.active = True
-        self.min_confidence = 80  # High bar - only the best
-        self.min_confirmations = 3  # Need 3+ data sources agreeing
+        self.min_confidence = 75  # Free Will - moderate threshold
+        self.min_confirmations = 2  # Need 2+ data sources agreeing
         
-        # Alert tracking - 20 min cooldown per symbol
-        self.recent_alerts: Dict[str, datetime] = {}
-        self.alert_cooldown = 1200  # 20 minutes between alerts per symbol
-        
-        # ANTI-CONTRADICTION: Track last direction per symbol (2hr memory)
-        self.last_direction: Dict[str, tuple] = {}  # symbol -> (direction, timestamp)
-        self.direction_lock_time = 7200  # 2 hours - don't flip direction
-        
-        # Daily alert limit (increased for better coverage)
-        self.daily_alerts = 0
-        self.max_daily_alerts = 15  # Max 15 alerts per day
-        self.last_reset = datetime.now(timezone.utc).date()
+        # Alert throttling (cooldown, direction lock, daily limit)
+        self._throttler = AlertThrottler(
+            cooldown_seconds=600,
+            direction_lock_seconds=3600,
+            max_daily_alerts=30,
+            name="FreeWillV2",
+        )
         
         # External dependencies
         self.market_intel = None
@@ -104,80 +123,24 @@ class FreeWillEngineV2:
         self.get_user_settings = kwargs.get('get_user_settings')
         self.chat_ids = kwargs.get('chat_ids', set())
     
-    def _reset_daily_counter(self):
-        """Reset daily alert counter"""
-        today = datetime.now(timezone.utc).date()
-        if today > self.last_reset:
-            self.daily_alerts = 0
-            self.last_reset = today
-            # Clean up old tracking data to prevent memory growth
-            self._cleanup_old_tracking()
-    
-    def _cleanup_old_tracking(self):
-        """Remove stale entries from tracking dictionaries"""
-        now = datetime.now(timezone.utc)
-        cutoff = now - timedelta(hours=24)  # Remove entries older than 24h
-        
-        # Clean recent_alerts
-        self.recent_alerts = {
-            k: v for k, v in self.recent_alerts.items()
-            if v > cutoff
-        }
-        
-        # Clean last_direction
-        self.last_direction = {
-            k: v for k, v in self.last_direction.items()
-            if v[1] > cutoff
-        }
-    
     def _can_alert(self, symbol: str, direction: str = None) -> bool:
-        """Check if we can send alert for this symbol"""
-        self._reset_daily_counter()
-        
-        # Check daily limit
-        if self.daily_alerts >= self.max_daily_alerts:
-            return False
-        
-        now = datetime.now(timezone.utc)
-        
-        # Check cooldown
-        if symbol in self.recent_alerts:
-            elapsed = (now - self.recent_alerts[symbol]).total_seconds()
-            if elapsed < self.alert_cooldown:
-                return False
-        
-        # ANTI-CONTRADICTION CHECK
-        if direction and symbol in self.last_direction:
-            last_dir, last_time = self.last_direction[symbol]
-            elapsed = (now - last_time).total_seconds()
-            
-            # If same symbol had opposite direction within lock time, block it
-            if elapsed < self.direction_lock_time and last_dir != direction:
-                logger.info(f"⚠️ Blocked contradicting signal: {symbol} was {last_dir}, now {direction}")
-                self.contradictions_blocked += 1
-                return False
-        
-        return True
-    
+        return self._throttler.can_alert(symbol, direction)
+
     def _mark_alerted(self, symbol: str, direction: str = None):
-        """Mark symbol as alerted"""
-        now = datetime.now(timezone.utc)
-        self.recent_alerts[symbol] = now
-        self.daily_alerts += 1
+        self._throttler.mark_alerted(symbol, direction)
         self.total_alerts_sent += 1
-        
-        # Track direction for anti-contradiction
-        if direction:
-            self.last_direction[symbol] = (direction, now)
     
     async def analyze_setup_full(self, symbol: str, timeframe: str) -> Optional[Dict]:
         """
         Full multi-source analysis for a setup
         Returns setup only if confidence >= 80% AND 3+ confirmations
-        
+
         IMPROVED: Collects bullish/bearish signals separately, then only shows
         confirmations that support the final direction. No contradictions.
         """
+        from post_mortem_engine import get_post_mortem
+        if get_post_mortem().is_engine_paused("free_will_v2"):
+            return None  # blindspot pause active
         self.setups_analyzed += 1
         
         try:
@@ -191,7 +154,7 @@ class FreeWillEngineV2:
             # 1. TECHNICAL ANALYSIS
             # ═══════════════════════════════════════════════════════════════════
             if self.market_intel:
-                ta = await self.market_intel.get_technical_analysis(symbol.replace("/", ""), timeframe)
+                ta = await self.market_intel.get_technical_analysis(symbol, timeframe)
                 indicators = ta.get("indicators", {})
                 price = ta.get("price", 0)
                 
@@ -202,6 +165,16 @@ class FreeWillEngineV2:
                 macd_signal = indicators.get("macd_signal", "")
                 bb_signal = indicators.get("bb_position", "")
                 ema_stack = indicators.get("ema_stack", "")
+                macd_histogram = indicators.get("macd_histogram", 0)
+                bb_upper_val = indicators.get("bb_upper", 0)
+                bb_lower_val = indicators.get("bb_lower", 0)
+                ema_trend = indicators.get("trend", "neutral")
+
+                # ADX regime filter: skip ranging markets (ADX < 20 = no trend to trade)
+                adx = indicators.get("adx", 0)
+                if adx > 0 and adx < 20:
+                    logger.debug(f"Free Will: Skipping {symbol} {timeframe} — ADX {adx:.1f} < 20 (ranging)")
+                    return None
                 
                 # RSI signals
                 if rsi < 25:
@@ -217,29 +190,29 @@ class FreeWillEngineV2:
                     signals_sell += 1
                     bearish_reasons.append(f"RSI approaching overbought ({rsi:.0f})")
                 
-                # MACD - only count clear signals
-                if "BULLISH" in str(macd_signal).upper():
+                # MACD - use histogram for reliable signal (macd_signal field is a float, not string)
+                if macd_histogram > 0:
                     signals_buy += 1
-                    bullish_reasons.append("MACD bullish crossover")
-                elif "BEARISH" in str(macd_signal).upper():
+                    bullish_reasons.append("MACD bullish momentum")
+                elif macd_histogram < 0:
                     signals_sell += 1
-                    bearish_reasons.append("MACD bearish crossover")
-                
-                # Bollinger Bands
-                if "LOWER" in str(bb_signal).upper() or "OVERSOLD" in str(bb_signal).upper():
+                    bearish_reasons.append("MACD bearish momentum")
+
+                # Bollinger Bands - compare price vs actual band values
+                if bb_lower_val and price <= bb_lower_val:
                     signals_buy += 1
                     bullish_reasons.append("Price at BB lower band (support)")
-                elif "UPPER" in str(bb_signal).upper() or "OVERBOUGHT" in str(bb_signal).upper():
+                elif bb_upper_val and price >= bb_upper_val:
                     signals_sell += 1
                     bearish_reasons.append("Price at BB upper band (resistance)")
-                
-                # EMA Stack
-                if "BULLISH" in str(ema_stack).upper():
+
+                # EMA Stack - use trend field (9>21>50 alignment)
+                if ema_trend == "bullish":
                     signals_buy += 1
-                    bullish_reasons.append("EMA stack bullish (20>50>200)")
-                elif "BEARISH" in str(ema_stack).upper():
+                    bullish_reasons.append("EMA stack bullish (9>21>50)")
+                elif ema_trend == "bearish":
                     signals_sell += 1
-                    bearish_reasons.append("EMA stack bearish (20<50<200)")
+                    bearish_reasons.append("EMA stack bearish (9<21<50)")
             else:
                 return None
             
@@ -258,8 +231,8 @@ class FreeWillEngineV2:
                             elif d.get("signal") == "SELL":
                                 signals_sell += 2
                                 bearish_reasons.append(f"{div_type} divergence (reversal signal)")
-                except:
-                    pass
+                except Exception as e:
+                    logger.debug(f"Divergence data unavailable for {symbol}: {e}")
             
             # ═══════════════════════════════════════════════════════════════════
             # 3. MARKET STRUCTURE
@@ -284,8 +257,8 @@ class FreeWillEngineV2:
                         elif "BEARISH" in bos.get("type", ""):
                             signals_sell += 2
                             bearish_reasons.append("Bearish Break of Structure")
-                except:
-                    pass
+                except Exception as e:
+                    logger.debug(f"Market structure unavailable for {symbol}: {e}")
             
             # ═══════════════════════════════════════════════════════════════════
             # 4. VWAP
@@ -299,11 +272,11 @@ class FreeWillEngineV2:
                     if vwap_bias == "STRONG_BULLISH" and distance > 3:
                         signals_buy += 1
                         bullish_reasons.append(f"Above VWAP (+{distance:.1f}%)")
-                    elif vwap_bias == "STRONG_BEARISH" and distance < -3:
+                    elif vwap_bias == "STRONG_BEARISH" and distance < -4:
                         signals_sell += 1
                         bearish_reasons.append(f"Below VWAP ({distance:.1f}%)")
-                except:
-                    pass
+                except Exception as e:
+                    logger.debug(f"VWAP data unavailable for {symbol}: {e}")
             
             # ═══════════════════════════════════════════════════════════════════
             # 5. ORDER FLOW / CVD
@@ -320,8 +293,8 @@ class FreeWillEngineV2:
                     elif cvd_bias == "BEARISH" and buy_pct < 42:
                         signals_sell += 2
                         bearish_reasons.append(f"Strong selling pressure ({100-buy_pct:.0f}%)")
-                except:
-                    pass
+                except Exception as e:
+                    logger.debug(f"CVD data unavailable for {symbol}: {e}")
             
             # ═══════════════════════════════════════════════════════════════════
             # 6. OPTIONS DATA (BTC/ETH only)
@@ -350,8 +323,8 @@ class FreeWillEngineV2:
                     elif pcr_sentiment == "EXTREME_BULLISH":
                         signals_sell += 1
                         bearish_reasons.append("Extreme call buying (contrarian sell)")
-                except:
-                    pass
+                except Exception as e:
+                    logger.debug(f"Options data unavailable for {symbol}: {e}")
             
             # ═══════════════════════════════════════════════════════════════════
             # 7. DERIVATIVES (Funding, L/S)
@@ -369,18 +342,41 @@ class FreeWillEngineV2:
                     elif avg_funding < -0.0003:
                         signals_buy += 1
                         bullish_reasons.append("Negative funding (short squeeze setup)")
-                    
+
+                    # Funding MOMENTUM (velocity > level)
+                    try:
+                        if self.market_intel:
+                            fm = await self.market_intel.get_funding_momentum(symbol)
+                            fm_signal = fm.get("signal", "NEUTRAL")
+                            fm_squeeze = fm.get("squeeze_risk", "LOW")
+                            fm_trend = fm.get("trend", "flat")
+                            if fm_signal == "BEARISH" and fm_squeeze in ("HIGH", "MEDIUM"):
+                                signals_sell += 1
+                                bearish_reasons.append(f"Funding momentum rising ({fm_trend}, squeeze {fm_squeeze})")
+                            elif fm_signal == "BULLISH" and fm_squeeze in ("HIGH", "MEDIUM"):
+                                signals_buy += 1
+                                bullish_reasons.append(f"Funding momentum bullish ({fm_trend}, squeeze {fm_squeeze})")
+                            elif fm_signal == "REVERSAL":
+                                if avg_funding > 0:
+                                    signals_buy += 1
+                                    bullish_reasons.append("Long squeeze complete — reversal likely")
+                                else:
+                                    signals_sell += 1
+                                    bearish_reasons.append("Short squeeze complete — reversal likely")
+                    except Exception as e:
+                        logger.debug(f"Funding momentum unavailable for {symbol}: {e}")
+
                     ls = deriv.get("long_short", {}).get("global", {})
                     long_pct = ls.get("long_pct", 50)
                     
-                    if long_pct > 65:
+                    if long_pct > 67:
                         signals_sell += 1
                         bearish_reasons.append(f"Longs crowded ({long_pct:.0f}%)")
                     elif long_pct < 35:
                         signals_buy += 1
                         bullish_reasons.append(f"Shorts crowded ({100-long_pct:.0f}%)")
-                except:
-                    pass
+                except Exception as e:
+                    logger.debug(f"Derivatives data unavailable for {symbol}: {e}")
             
             # ═══════════════════════════════════════════════════════════════════
             # 8. FEAR & GREED
@@ -389,15 +385,15 @@ class FreeWillEngineV2:
                 try:
                     fg = await self.enhanced_intel.get_fear_greed_index()
                     fg_value = fg.get("value", 50)
-                    
-                    if fg_value < 20:
-                        signals_buy += 1
-                        bullish_reasons.append(f"Extreme Fear ({fg_value}) - contrarian buy")
-                    elif fg_value > 80:
+
+                    # NOTE: Extreme Fear contrarian buy removed - data shows 0/6 win rate.
+                    # In crypto bear markets fear keeps rising so "contrarian buy" is a trap.
+                    # Only Extreme Greed (sell signal) kept as it fires at market tops.
+                    if fg_value > 80:
                         signals_sell += 1
                         bearish_reasons.append(f"Extreme Greed ({fg_value}) - contrarian sell")
-                except:
-                    pass
+                except Exception as e:
+                    logger.debug(f"Fear & Greed data unavailable: {e}")
             
             # ═══════════════════════════════════════════════════════════════════
             # CALCULATE FINAL SCORE - Use only matching direction reasons
@@ -422,12 +418,31 @@ class FreeWillEngineV2:
             if len(confirmations) < 3:
                 logger.info(f"BLOCKED {symbol} {direction} - only {len(confirmations)} confirmations")
                 return None
-            
+
+            # ═══════════════════════════════════════════════════════════════════
+            # SHORT-SPECIFIC FILTERS (data-driven, based on 100% WR confirmations)
+            # ═══════════════════════════════════════════════════════════════════
+            if direction == "SHORT":
+                # MOMENTUM FILTER: Block SHORTs when MACD histogram is positive
+                # Positive histogram = bullish momentum building = bad time to short
+                if macd_histogram > 0:
+                    logger.info(f"BLOCKED {symbol} SHORT - MACD histogram positive ({macd_histogram:.4f}), fighting bullish momentum")
+                    return None
+
+                # QUALITY GATE: Require at least 1 high-conviction microstructure signal
+                # Based on trade data: 100% WR only when selling pressure + longs crowded + below VWAP present
+                key_signals = [c for c in bearish_reasons if any(
+                    x in c.lower() for x in ["selling pressure", "longs crowded", "below vwap"]
+                )]
+                if not key_signals:
+                    logger.info(f"BLOCKED {symbol} SHORT - missing key confirmation (need selling pressure, longs crowded 67%+, or below VWAP -4%+)")
+                    return None
+
             # HARD FILTER: Market structure must not contradict direction
             structure = {}
             if self.market_intel:
                 try:
-                    ms = await self.market_intel.get_full_market_scan(symbol.replace("/", ""))
+                    ms = await self.market_intel.get_full_market_scan(symbol)
                     structure = ms.get("market_structure", {}) if ms else {}
                 except Exception:
                     pass
@@ -446,12 +461,19 @@ class FreeWillEngineV2:
             elif direction == "SHORT" and structure_bias == "bearish":
                 confidence = min(95, confidence + 5)
             
-            # Check minimum confidence
-            if confidence < self.min_confidence:
+            # Check minimum confidence (+ macro direction gate)
+            try:
+                from regime_engine import get_regime_engine
+                eff_threshold, macro_reason = get_regime_engine().apply_macro_confidence_gate(direction, self.min_confidence)
+                if macro_reason:
+                    logger.debug(f"[MACRO GATE] {symbol}: {macro_reason}")
+            except Exception:
+                eff_threshold = self.min_confidence
+            if confidence < eff_threshold:
                 return None
-            
+
             # Calculate entry, stop, target
-            atr = indicators.get("atr", price * 0.02)
+            atr = indicators.get("atr") or price * 0.02  # fallback if ATR is 0 or None
             
             if direction == "LONG":
                 entry = price
@@ -533,22 +555,48 @@ class FreeWillEngineV2:
         Returns ONLY the best setups (80%+ confidence, 3+ confirmations, no contradictions)
         """
         best_setups = {}  # symbol -> best setup
-        
+
+        # ═══════════════════════════════════════════════════════════════
+        # BTC MACRO TREND GATE - Check BTC 4H bias ONCE before scanning
+        # If BTC is in a downtrend, block ALL LONG entries (0% WR on data).
+        # If BTC is in an uptrend, block ALL SHORT entries.
+        # ═══════════════════════════════════════════════════════════════
+        btc_is_bearish = False
+        btc_is_bullish = False
+        if self.market_intel:
+            try:
+                btc_scan = await self.market_intel.get_full_market_scan("BTC/USDT")
+                btc_structure = btc_scan.get("market_structure", {}) if btc_scan else {}
+                btc_bias = btc_structure.get("bias", "neutral")
+                btc_is_bearish = (btc_bias == "bearish")
+                btc_is_bullish = (btc_bias == "bullish")
+                logger.info(f"BTC macro bias: {btc_bias} | blocking {'LONG' if btc_is_bearish else 'SHORT' if btc_is_bullish else 'nothing'}")
+            except Exception as e:
+                logger.debug(f"Could not fetch BTC macro trend: {e}")
+
         for symbol in TOP_PAIRS[:15]:  # Top 15 for speed
             for tf in PRIORITY_TIMEFRAMES:
                 setup = await self.analyze_setup_full(symbol, tf)
-                
+
                 if setup:
                     direction = setup.get("direction")
-                    
+
+                    # BTC macro trend gate
+                    if direction == "LONG" and btc_is_bearish:
+                        logger.info(f"BLOCKED {symbol} LONG - BTC macro is BEARISH")
+                        continue
+                    if direction == "SHORT" and btc_is_bullish:
+                        logger.info(f"BLOCKED {symbol} SHORT - BTC macro is BULLISH")
+                        continue
+
                     # Check if we can alert (includes contradiction check)
                     if not self._can_alert(symbol, direction):
                         continue
-                    
+
                     # Keep best setup per symbol
                     if symbol not in best_setups or setup["confidence"] > best_setups[symbol]["confidence"]:
                         best_setups[symbol] = setup
-                
+
                 await asyncio.sleep(0.2)  # Rate limiting
         
         # Sort by confidence, return top 3 max
@@ -569,7 +617,7 @@ class FreeWillEngineV2:
         # Fetch fresh price to validate
         if self.market_intel:
             try:
-                ta = await self.market_intel.get_technical_analysis(symbol.replace("/", ""), "1h")
+                ta = await self.market_intel.get_technical_analysis(symbol, "1h")
                 current_price = ta.get("price", 0)
                 
                 if current_price:
@@ -596,7 +644,7 @@ class FreeWillEngineV2:
                     
                     # Recalculate SL/TP based on fresh price
                     indicators = ta.get("indicators", {})
-                    atr = indicators.get("atr", current_price * 0.02)
+                    atr = indicators.get("atr") or current_price * 0.02  # fallback if ATR is 0 or None
                     
                     if direction == "LONG":
                         setup["stop"] = current_price - (atr * 1.5)
@@ -611,9 +659,100 @@ class FreeWillEngineV2:
         
         msg = self.format_alert(setup)
         
-        # Route to paper trading accounts
-        if route_engine_signal and msg:
+        # ═══════════════════════════════════════════════════════════════
+        # UNIFIED ENGINE VALIDATION - Validate before routing to paper
+        # ═══════════════════════════════════════════════════════════════
+        if get_engine_manager and EngineType:
             try:
+                engine_manager = get_engine_manager()
+                _symbol    = setup.get("symbol")
+                _direction = setup.get("direction", "long").lower()
+
+                # Compute quant-driven leverage before building signal
+                final_leverage, lev_bd = await engine_manager.get_dynamic_leverage(
+                    _symbol, _direction, EngineType.FREE_WILL_V2
+                )
+
+                # Build signal for unified validation
+                engine_signal = {
+                    "symbol":        _symbol,
+                    "direction":     _direction,
+                    "entry_price":   setup.get("entry", 0),
+                    "position_size": 1500,
+                    "leverage":      final_leverage,
+                    "stop_loss":     setup.get("stop", 0),
+                    "take_profit":   setup.get("target", 0),
+                    "confidence":    setup.get("confidence", 80),
+                    "confluences":   len(setup.get("confirmations", [])),
+                    "reason":        "; ".join(setup.get("confirmations", [])[:3])
+                }
+
+                # Submit to unified validator
+                result = await engine_manager.submit_signal_gated(engine_signal, EngineType.FREE_WILL_V2)
+
+                _setup_adapted = False
+                if result["action"] == "REJECT":
+                    qr = result.get("quant_report", {})
+                    if qr and not result.get("adapted"):
+                        # Adapt: tighten levels, cut size 30%, recompute leverage from report
+                        adapted_signal = dict(engine_signal)
+                        if qr.get("suggested_sl"):    adapted_signal["stop_loss"]    = qr["suggested_sl"]
+                        if qr.get("suggested_entry"): adapted_signal["entry_price"]  = qr["suggested_entry"]
+                        if qr.get("suggested_tp1"):   adapted_signal["take_profit"]  = qr["suggested_tp1"]
+                        adapted_signal["position_size"] = round(adapted_signal["position_size"] * 0.70, 2)
+                        adapted_lev, adapted_lev_bd = await engine_manager.get_dynamic_leverage(
+                            _symbol, _direction, EngineType.FREE_WILL_V2, quant_report=qr
+                        )
+                        adapted_signal["leverage"] = adapted_lev
+                        lev_bd = adapted_lev_bd  # use post-adaptation breakdown
+                        logger.info(f"🔄 Free Will [{setup.get('symbol')}] adapting signal — resubmitting to Quant")
+                        result = await engine_manager.submit_signal_gated(adapted_signal, EngineType.FREE_WILL_V2, adapted=True)
+                        if result["action"] == "REJECT":
+                            logger.warning(f"❌ Free Will [{setup.get('symbol')}] adapted attempt BLOCKED: {result.get('reason')}")
+                            # Alert still goes out — user sees the setup, paper trade is skipped
+                            setup["_quant_blocked"] = True
+                            setup["_quant_reason"] = result.get("reason", "Quant gate")
+                        else:
+                            _setup_adapted = True
+                    else:
+                        logger.warning(f"❌ Free Will [{setup.get('symbol')}] BLOCKED: {result.get('reason')}")
+                        # Alert still goes out — user sees the setup, paper trade is skipped
+                        setup["_quant_blocked"] = True
+                        setup["_quant_reason"] = result.get("reason", "Quant gate")
+
+                # Attach quant/leverage data to setup for Telegram formatting
+                setup["_lev_bd"]  = lev_bd
+                setup["_adapted"] = _setup_adapted
+
+                logger.info(f"✅ Free Will [{setup.get('symbol')}] VALIDATED by unified system")
+                
+            except Exception as e:
+                logger.warning(f"Unified validation failed for Free Will: {e}")
+        
+        # Append analysis-only note if quant gate blocked paper trade
+        if setup.get("_quant_blocked") and msg:
+            msg += "\n\n⚠️ Analysis alert — quant gate blocked paper trade (ranging market conditions)"
+
+        # Route to paper trading accounts (only if quant approved)
+        if route_engine_signal and msg and not setup.get("_quant_blocked"):
+            try:
+                # Regime-adaptive sizing: reduce position size by 50% in RANGING markets
+                # (paired with the lowered QUANT gate threshold for free_will_v2)
+                _risk_pct = 1.5
+                _current_regime = "TRENDING"
+                try:
+                    from quant_analyzer_v2 import QuantGatekeeperV2
+                    _bl = await QuantGatekeeperV2._load_baseline(None, setup.get("symbol", ""))
+                    _current_regime = _bl.get("last_regime", "TRENDING") if _bl else "TRENDING"
+                except Exception:
+                    pass
+                if _current_regime == "RANGING":
+                    _risk_pct = 0.75  # 50% of normal 1.5% risk in ranging markets
+                    logger.info(
+                        f"QUANT GATE: Free Will [{setup.get('symbol')}] regime=RANGING "
+                        f"— threshold lowered, position size halved (risk {_risk_pct}%)"
+                    )
+
                 paper_signal = {
                     "symbol": setup.get("symbol"),
                     "direction": setup.get("direction"),
@@ -623,13 +762,13 @@ class FreeWillEngineV2:
                     "confidence": setup.get("confidence", 80),
                     "confirmations": setup.get("confirmations", []),
                     "timeframe": setup.get("timeframe", "4h"),
-                    "risk_pct": 1.5  # Free Will uses conservative risk
+                    "risk_pct": _risk_pct
                 }
                 await route_engine_signal(paper_signal, "FREE_WILL_V2")
                 logger.info(f"📊 Free Will alert routed to paper accounts: {setup.get('symbol')} {setup.get('direction')}")
             except Exception as e:
                 logger.warning(f"Failed to route Free Will to paper trading: {e}")
-        
+
         return msg, True
     
     def format_alert(self, setup: Dict) -> str:
@@ -699,55 +838,51 @@ class FreeWillEngineV2:
         # Add risk/reward context
         why_parts.append(f"1:{rr} RR = risking {risk_pct:.1f}% to gain {reward_pct:.1f}%")
         
-        # Combine into coherent reasoning
-        why_reason = ". ".join(why_parts[:3]) + "." if why_parts else f"Multiple signals align at {confidence}% probability."
-        
-        # What to expect section
-        if scenarios:
-            scenario_text = scenarios[0]
-        else:
-            scenario_text = f"Price should move toward ${target:,.2f} as signals play out"
+        # Build numbered reasons
+        nums = ["①","②","③","④","⑤"]
+        why_lines = "\n".join(f"{nums[i]} {p}" for i, p in enumerate(why_parts[:5]))
 
-        alert = f"""{emoji} ELITE {direction} {symbol} {timeframe} ({confidence}%)
+        # Note line
+        note = scenarios[0] if scenarios else f"Price should move toward ${target:,.2f} as signals play out"
 
-Entry ${entry:,.2f} | SL ${stop:,.2f} | TP ${target:,.2f}
-Risk: {risk_pct:.1f}% | Reward: {reward_pct:.1f}% | RR 1:{rr}
+        alert = (
+            f"{emoji} {direction} · {symbol} {timeframe}\n"
+            f"Confidence: {confidence}%\n\n"
+            f"Entry   ${entry:,.2f}\n"
+            f"Target  ${target:,.2f}   +{reward_pct:.1f}%\n"
+            f"Stop    ${stop:,.2f}   -{risk_pct:.1f}%\n"
+            f"R:R     1:{rr}\n\n"
+            f"Why This Trade\n"
+            f"{why_lines}\n\n"
+            f"Note\n"
+            f"{note}"
+        )
 
-✅ WHY {direction}:
-{why_reason}
+        # Append Quant Gate / Leverage Engine / ATR Stop blocks if data available
+        lev_bd = setup.get("_lev_bd", {})
+        if lev_bd and _tg_formatters_ok:
+            adapted = setup.get("_adapted", False)
+            alert += "\n\n" + format_quant_block(lev_bd, adapted)
+            alert += "\n\n" + format_leverage_block(lev_bd)
+            alert += "\n\n" + format_atr_block(setup)
 
-🎯 WHAT TO EXPECT:
-{scenario_text}
-• If confident: Enter at ${entry:,.2f}, set SL immediately
-• If cautious: Wait for pullback to ${entry * 0.995 if direction == 'LONG' else entry * 1.005:,.2f}
-
-⚠️ IF WRONG (Price hits ${stop:,.2f}):
-• EXIT immediately - stop loss is non-negotiable
-• Loss = {risk_pct:.1f}% on this position
-• DO NOT: Move stop, add to loser, or hope
-• WAIT: For next valid setup, don't revenge trade
-
-📋 PREPARATION:
-• Set alerts at entry zone before entering
-• Pre-calculate position size for {risk_pct:.1f}% risk
-• Know your exit BEFORE you enter"""
-        
         return alert
     
     async def get_stats(self) -> Dict:
         """Get engine statistics"""
+        t = self._throttler
         return {
             "active": self.active,
             "min_confidence": self.min_confidence,
             "min_confirmations": self.min_confirmations,
-            "alert_cooldown_mins": self.alert_cooldown // 60,
-            "direction_lock_hours": self.direction_lock_time // 3600,
+            "alert_cooldown_mins": t.cooldown_seconds // 60,
+            "direction_lock_hours": t.direction_lock_seconds // 3600,
             "total_alerts_sent": self.total_alerts_sent,
-            "daily_alerts": self.daily_alerts,
-            "max_daily_alerts": self.max_daily_alerts,
+            "daily_alerts": t.daily_alerts,
+            "max_daily_alerts": t.max_daily_alerts,
             "setups_analyzed": self.setups_analyzed,
-            "contradictions_blocked": self.contradictions_blocked,
-            "recent_directions": {k: v[0] for k, v in self.last_direction.items()},
+            "contradictions_blocked": t.contradictions_blocked,
+            "recent_directions": {k: v[0] for k, v in t.last_direction.items()},
             "pairs_monitored": len(TOP_PAIRS),
             "timeframes": PRIORITY_TIMEFRAMES,
             "data_sources": [

@@ -39,7 +39,7 @@ class SMCAnalyzer:
                 return data
         
         try:
-            loop = asyncio.get_event_loop()
+            loop = asyncio.get_running_loop()
             ohlcv = await loop.run_in_executor(
                 executor,
                 lambda: mexc.fetch_ohlcv(symbol, timeframe, limit=limit)

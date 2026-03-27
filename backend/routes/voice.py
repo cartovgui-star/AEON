@@ -6,8 +6,8 @@ TTS, STT, and voice interaction
 import os
 import base64
 import logging
+import anthropic
 from fastapi import APIRouter, Request
-from emergentintegrations.llm.chat import LlmChat, UserMessage
 
 logger = logging.getLogger(__name__)
 
@@ -30,13 +30,12 @@ async def api_voice_respond(request: Request):
         if not user_text:
             return {"error": "No text provided"}
         
-        # Get Aeon's response
-        emergent_key = os.environ.get("EMERGENT_LLM_KEY")
-        
-        voice_llm = LlmChat(
-            api_key=emergent_key,
-            session_id="voice-conversation",
-            system_message="""You are Aeon, a confident trading buddy and life coach having a voice conversation.
+        # Get Aeon's response via Claude
+        client = anthropic.AsyncAnthropic(api_key=os.environ.get('ANTHROPIC_API_KEY', ''))
+        msg = await client.messages.create(
+            model="claude-sonnet-4-5-20250929",
+            max_tokens=150,
+            system="""You are Aeon, a confident trading buddy and life coach having a voice conversation.
 
 IMPORTANT RULES FOR VOICE:
 - Keep responses SHORT (1-3 sentences max)
@@ -45,10 +44,10 @@ IMPORTANT RULES FOR VOICE:
 - No markdown or special formatting
 - Speak like you're talking to a friend
 - Be direct and insightful
-- Add personality - you're confident but warm"""
-        ).with_model("openai", "gpt-4o-mini")
-        
-        aeon_text = await voice_llm.send_message(UserMessage(text=user_text))
+- Add personality - you're confident but warm""",
+            messages=[{"role": "user", "content": user_text}]
+        )
+        aeon_text = msg.content[0].text
         
         # Generate speech
         speech = await generate_speech(aeon_text, voice)

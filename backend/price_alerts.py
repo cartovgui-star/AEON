@@ -126,7 +126,7 @@ class PriceAlertSystem:
 
     async def fetch_price(self, symbol: str) -> Optional[float]:
         try:
-            loop = asyncio.get_event_loop()
+            loop = asyncio.get_running_loop()
             ticker = await loop.run_in_executor(executor, lambda: mexc.fetch_ticker(symbol))
             return ticker.get("last", 0)
         except Exception as e:
@@ -135,7 +135,7 @@ class PriceAlertSystem:
 
     async def fetch_ohlcv(self, symbol: str, timeframe: str = "5m", limit: int = 20) -> List:
         try:
-            loop = asyncio.get_event_loop()
+            loop = asyncio.get_running_loop()
             return await loop.run_in_executor(executor, lambda: mexc.fetch_ohlcv(symbol, timeframe, limit=limit))
         except Exception as e:
             logger.error(f"OHLCV fetch error {symbol}: {e}")
@@ -168,12 +168,16 @@ class PriceAlertSystem:
             except Exception as e:
                 logger.error(f"WebSocket broadcast error: {e}")
         if telegram and self.send_telegram and self.chat_ids:
+            failed = 0
             for chat_id in list(self.chat_ids):
                 try:
                     await self.send_telegram(chat_id, message)
                     await asyncio.sleep(0.3)
-                except Exception:
-                    pass
+                except Exception as e:
+                    failed += 1
+                    logger.warning(f"Telegram alert failed for chat_id {chat_id}: {e}")
+            if failed:
+                logger.warning(f"Alert {alert_type}/{symbol} not delivered to {failed} user(s)")
         logger.info(f"Alert sent: {alert_type} for {symbol}")
 
     async def _send_batched_alert(self, alert_type: str, message: str, data: Dict = None):
@@ -195,12 +199,16 @@ class PriceAlertSystem:
             except Exception:
                 pass
         if self.send_telegram and self.chat_ids:
+            failed = 0
             for chat_id in list(self.chat_ids):
                 try:
                     await self.send_telegram(chat_id, message)
                     await asyncio.sleep(0.3)
-                except Exception:
-                    pass
+                except Exception as e:
+                    failed += 1
+                    logger.warning(f"Batched telegram alert failed for chat_id {chat_id}: {e}")
+            if failed:
+                logger.warning(f"Batched alert {alert_type} not delivered to {failed} user(s)")
         logger.info(f"Batched alert sent: {alert_type}")
 
     def _get_severity(self, alert_type: str) -> str:
@@ -274,15 +282,15 @@ class PriceAlertSystem:
         oversold = [r for r in self._rsi_batch if r["condition"] == "OVERSOLD"]
         overbought = [r for r in self._rsi_batch if r["condition"] == "OVERBOUGHT"]
 
-        lines = ["📊 RSI SCAN SUMMARY\n"]
+        lines = ["RSI Scan · Extremes\n"]
         if oversold:
-            lines.append("🔵 OVERSOLD:")
+            lines.append("Oversold")
             for r in oversold:
-                lines.append(f"  {r['symbol']} RSI {r['rsi']:.0f} | ${r['price']:,.2f}")
+                lines.append(f"  {r['symbol']}  RSI {r['rsi']:.0f}  |  ${r['price']:,.2f}")
         if overbought:
-            lines.append("🔴 OVERBOUGHT:")
+            lines.append("Overbought")
             for r in overbought:
-                lines.append(f"  {r['symbol']} RSI {r['rsi']:.0f} | ${r['price']:,.2f}")
+                lines.append(f"  {r['symbol']}  RSI {r['rsi']:.0f}  |  ${r['price']:,.2f}")
 
         lines.append(f"\n{len(self._rsi_batch)} coin{'s' if len(self._rsi_batch) > 1 else ''} at extremes")
 
@@ -338,18 +346,18 @@ class PriceAlertSystem:
             self._breakout_cooldowns[symbol] = now
             range_pct = ((resistance - support) / support) * 100
             await self._send_alert("breakout", symbol,
-                f"🚀 BREAKOUT {clean_sym}{vol_tag}\n"
+                f"🚀 Breakout · {clean_sym}{vol_tag}\n"
                 f"${price:,.2f} broke ${resistance:,.2f} resistance\n"
-                f"Range was {range_pct:.1f}% | Watch retest of ${resistance:,.2f}",
+                f"Range {range_pct:.1f}% · Watch retest of ${resistance:,.2f}",
                 {"level": resistance, "direction": "bullish", "volume_confirmed": vol_confirmed})
 
         elif price < support * 0.992:  # 0.8% below support (was 0.5%)
             self._breakout_cooldowns[symbol] = now
             range_pct = ((resistance - support) / support) * 100
             await self._send_alert("breakout", symbol,
-                f"💥 BREAKDOWN {clean_sym}{vol_tag}\n"
+                f"💥 Breakdown · {clean_sym}{vol_tag}\n"
                 f"${price:,.2f} broke ${support:,.2f} support\n"
-                f"Range was {range_pct:.1f}% | Watch retest of ${support:,.2f}",
+                f"Range {range_pct:.1f}% · Watch retest of ${support:,.2f}",
                 {"level": support, "direction": "bearish", "volume_confirmed": vol_confirmed})
 
     def _calculate_rsi(self, closes: List[float], period: int = 14) -> Optional[float]:

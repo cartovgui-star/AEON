@@ -1,19 +1,51 @@
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, Component } from "react";
 import "@/App.css";
+
+class ErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error, info) {
+    console.error("Component error:", error, info);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen bg-zinc-950 flex items-center justify-center text-white p-8">
+          <div className="text-center max-w-md">
+            <div className="text-4xl mb-4">⚠️</div>
+            <h2 className="text-xl font-bold text-orange-400 mb-2">Something went wrong</h2>
+            <p className="text-zinc-400 text-sm mb-4">{this.state.error?.message}</p>
+            <button
+              onClick={() => this.setState({ hasError: false, error: null })}
+              className="px-4 py-2 bg-orange-500 hover:bg-orange-600 rounded-lg text-sm font-medium"
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 import axios from "axios";
 import { Card, CardContent } from "./components/ui/card";
 import { ScrollArea } from "./components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./components/ui/tabs";
-import { 
-  MessageCircle, Users, Activity, Clock, Zap, Bot, ExternalLink, Send, 
+import {
+  MessageCircle, Users, Activity, Clock, Zap, Bot, ExternalLink, Send,
   TrendingUp, TrendingDown, BarChart3, Brain, Target, Trophy, Phone,
   Settings, History, PieChart, Home, Menu, X, BookOpen, Layers, Bell, BellRing,
-  Wallet, HelpCircle, FlaskConical, Shield
+  Wallet, HelpCircle, FlaskConical, Shield, Sun, Eye, Atom
 } from "lucide-react";
 import VoiceConversation from "./components/VoiceConversation";
 import TradeHistory from "./components/TradeHistory";
 import SettingsPanel from "./components/SettingsPanel";
-import Analytics from "./components/Analytics";
 import TradeAnalytics from "./components/TradeAnalytics";
 import SMCAnalysis from "./components/SMCAnalysis";
 import Journal from "./components/Journal";
@@ -25,13 +57,37 @@ import Backtesting from "./components/Backtesting";
 import BacktestV21 from "./components/BacktestV21";
 import Intelligence from "./components/Intelligence";
 import SystemHealth from "./components/SystemHealth";
+import EnginesDashboard from "./components/EnginesDashboard";
 import Dashboard from "./components/Dashboard";
 import ScalperDashboard from "./components/ScalperDashboard";
 import MobileNav from "./components/MobileNav";
+import PaperTrading from "./components/PaperTrading";
+import VolumeProfile from "./components/VolumeProfile";
+import QuantAnalyzer from "./components/QuantAnalyzer";
+import PerformanceAnalytics from "./components/PerformanceAnalytics";
+import MorningBriefing from "./components/MorningBriefing";
+import WeeklyReport from "./components/WeeklyReport";
+import LearningEngine from "./components/LearningEngine";
+import OracleDashboard from "./components/OracleDashboard";
+import QuantumDashboard from "./components/QuantumDashboard";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 const WS_URL = BACKEND_URL.replace('https://', 'wss://').replace('http://', 'ws://') + '/ws';
+
+// Set default axios timeout and API key for all requests
+axios.defaults.timeout = 10000;
+axios.defaults.headers.common['X-API-Key'] = process.env.REACT_APP_API_KEY || '';
+
+// Inject API key header into all native fetch() calls to /api routes
+const _origFetch = window.fetch;
+window.fetch = (url, options = {}) => {
+  const apiKey = process.env.REACT_APP_API_KEY;
+  if (apiKey && typeof url === 'string' && url.includes('/api')) {
+    options = { ...options, headers: { 'X-API-Key': apiKey, ...options.headers } };
+  }
+  return _origFetch(url, options);
+};
 
 // Browser notification permission
 const requestNotificationPermission = async () => {
@@ -50,6 +106,14 @@ const showNotification = (title, body, icon = '🔔') => {
       requireInteraction: false
     });
   }
+};
+
+// Fetch with a timeout so hung requests don't block indefinitely
+const fetchWithTimeout = (url, options = {}, timeoutMs = 10000) => {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeoutMs);
+  return fetch(url, { ...options, signal: controller.signal })
+    .finally(() => clearTimeout(id));
 };
 
 // Play notification sound
@@ -120,38 +184,48 @@ function App() {
 
   // WebSocket connection for real-time alerts
   useEffect(() => {
+    let reconnectAttempts = 0;
+    let reconnectTimer = null;
+    let unmounted = false;
+
     const connectWebSocket = () => {
+      if (unmounted) return;
       try {
         wsRef.current = new WebSocket(WS_URL);
-        
+
         wsRef.current.onopen = () => {
           console.log('WebSocket connected');
+          reconnectAttempts = 0;
           setWsConnected(true);
         };
-        
+
         wsRef.current.onmessage = (event) => {
-          const data = JSON.parse(event.data);
-          
-          if (data.type === 'alert') {
-            setUnreadAlerts(prev => prev + 1);
-            
-            // Show browser notification if enabled
-            if (notificationsEnabled) {
-              playNotificationSound();
-              showNotification(
-                `${data.alert_type.replace('_', ' ').toUpperCase()}: ${data.symbol?.replace('/USDT', '')}`,
-                data.message?.substring(0, 100)
-              );
+          try {
+            const data = JSON.parse(event.data);
+            if (data.type === 'alert') {
+              setUnreadAlerts(prev => prev + 1);
+              if (notificationsEnabled) {
+                playNotificationSound();
+                showNotification(
+                  `${data.alert_type.replace('_', ' ').toUpperCase()}: ${data.symbol?.replace('/USDT', '')}`,
+                  data.message?.substring(0, 100)
+                );
+              }
             }
+          } catch (e) {
+            console.error('WebSocket message parse error:', e);
           }
         };
-        
+
         wsRef.current.onclose = () => {
-          console.log('WebSocket disconnected, reconnecting...');
+          if (unmounted) return;
           setWsConnected(false);
-          setTimeout(connectWebSocket, 5000);
+          reconnectAttempts++;
+          const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000);
+          console.log(`WebSocket disconnected, reconnecting in ${delay / 1000}s (attempt ${reconnectAttempts})`);
+          reconnectTimer = setTimeout(connectWebSocket, delay);
         };
-        
+
         wsRef.current.onerror = (error) => {
           console.error('WebSocket error:', error);
         };
@@ -159,11 +233,14 @@ function App() {
         console.error('WebSocket connection failed:', e);
       }
     };
-    
+
     connectWebSocket();
-    
+
     return () => {
+      unmounted = true;
+      clearTimeout(reconnectTimer);
       if (wsRef.current) {
+        wsRef.current.onclose = null; // Prevent reconnect on intentional close
         wsRef.current.close();
       }
     };
@@ -181,6 +258,7 @@ function App() {
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: Home },
     { id: 'trading', label: 'Trading', icon: Wallet },
+    { id: 'paper', label: 'Paper', icon: Target },
     { id: 'scalper', label: 'Scalper', icon: Zap },
     { id: 'trades', label: 'History', icon: History },
     { id: 'alerts', label: 'Alerts', icon: Bell },
@@ -191,11 +269,22 @@ function App() {
     { id: 'smc', label: 'SMC', icon: Layers },
     { id: 'journal', label: 'Journal', icon: BookOpen },
     { id: 'commands', label: 'Commands', icon: HelpCircle },
+    { id: 'engines', label: 'Engines', icon: Zap },
+    { id: 'vp', label: 'Hyper Accuracy', icon: BarChart3 },
+    { id: 'quant', label: 'Quant Analyzer', icon: BarChart3 },
+    { id: 'perf', label: 'Performance', icon: BarChart3 },
     { id: 'health', label: 'Health', icon: Shield },
     { id: 'settings', label: 'Settings', icon: Settings },
+    { id: 'briefing', label: 'Briefing', icon: Sun },
+    { id: 'weekly', label: 'Weekly', icon: BarChart3 },
+    { id: 'learning', label: 'Learning', icon: Brain },
+    { id: 'oracle', label: 'ORACLE', icon: Eye },
+    { id: 'quantum', label: 'Quantum', icon: Atom },
+    { id: 'analysis', label: 'Analysis', icon: Bell },
   ];
 
   return (
+    <ErrorBoundary>
     <div className="min-h-screen bg-gradient-to-br from-zinc-950 via-zinc-900 to-zinc-950 text-white">
       {/* Navigation */}
       <nav className="sticky top-0 z-40 bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-800/50">
@@ -344,11 +433,11 @@ function App() {
         {/* Page: Trading */}
         {currentPage === 'trading' && <Trading />}
 
+        {/* Page: Paper Trading */}
+        {currentPage === 'paper' && <PaperTrading />}
+
         {/* Page: Scalper */}
         {currentPage === 'scalper' && <ScalperDashboard />}
-
-        {/* Page: Analytics */}
-        {currentPage === 'analytics' && <Analytics />}
 
         {/* Page: Price Alerts */}
         {currentPage === 'alerts' && <PriceAlerts />}
@@ -374,11 +463,34 @@ function App() {
         {/* Page: Commands Reference */}
         {currentPage === 'commands' && <CommandsReference />}
 
+        {/* Page: Engines Dashboard */}
+        {currentPage === 'engines' && <EnginesDashboard />}
+
         {/* Page: System Health */}
         {currentPage === 'health' && <SystemHealth />}
+        {currentPage === 'vp' && <VolumeProfile />}
+        {currentPage === 'quant' && <QuantAnalyzer />}
+        {currentPage === 'perf' && <PerformanceAnalytics />}
 
         {/* Page: Trade Analytics (Charts) */}
         {currentPage === 'charts' && <TradeAnalytics />}
+
+        {/* Page: Morning Briefing */}
+        {currentPage === 'briefing' && <MorningBriefing />}
+
+        {/* Page: Weekly Report */}
+        {currentPage === 'weekly' && <WeeklyReport />}
+
+        {/* Page: Learning Engine */}
+        {currentPage === 'learning' && <LearningEngine />}
+
+        {/* Page: ORACLE */}
+        {currentPage === 'oracle' && <OracleDashboard />}
+
+        {/* Page: Quantum */}
+        {currentPage === 'quantum' && <QuantumDashboard />}
+
+        {/* Page: Analysis — removed (redundant with Alerts + TradeAnalytics) */}
       </main>
 
       {/* Mobile Bottom Navigation */}
@@ -390,6 +502,7 @@ function App() {
       {/* Quick Scan Modal */}
       {quickScanCoin && <QuickScanModal coin={quickScanCoin} onClose={() => setQuickScanCoin(null)} />}
     </div>
+    </ErrorBoundary>
   );
 }
 

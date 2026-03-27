@@ -44,7 +44,7 @@ class FreeWillEngine:
     def __init__(self, db: AsyncIOMotorDatabase):
         self.db = db
         self.active = True
-        self.min_confidence = 65  # Only alert on >65% confidence
+        self.min_confidence = 75  # Aligned with system-wide minimum (FREE_WILL_V2 config)
         self.scan_interval = 30  # Scan every 30 seconds
         
         # Track recent alerts to avoid spam - per symbol (not per timeframe)
@@ -261,9 +261,9 @@ class FreeWillEngine:
                     elif imbalance < -30:
                         score -= 0.8 * self.feedback_weights["orderbook_imbalance"]
                         signals.append(f"Orderbook bearish ({imbalance:+.0f}%)")
-            except:
-                pass
-            
+            except Exception as e:
+                logger.debug(f"Orderbook analysis skipped: {e}")
+
             # ═══════════════════════════════════════════════════════════════════
             # Determine Direction and Calculate Setup
             # ═══════════════════════════════════════════════════════════════════

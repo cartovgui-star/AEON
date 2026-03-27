@@ -44,23 +44,15 @@ async def api_messages(limit: int = 50, context: str = None):
 async def api_test():
     """Test all integrations"""
     import os
-    from emergentintegrations.llm.chat import LlmChat, UserMessage
     from server import market_intel, mexc_api_key, telegram_token, chat_ids
-    
-    emergent_key = os.environ.get("EMERGENT_LLM_KEY")
-    
+
     try:
         # Test Binance
-        btc = await market_intel.get_technical_analysis("BTCUSDT", "1h")
+        btc = await market_intel.get_technical_analysis("BTC/USDT", "1h")
         binance_ok = "error" not in btc
-        
-        # Test LLM
-        chat = LlmChat(api_key=emergent_key, session_id="test", system_message="Test").with_model("openai", "gpt-4o-mini")
-        await chat.send_message(UserMessage(text="Hi"))
-        
+
         return {
             "status": "success",
-            "llm": True,
             "binance": binance_ok,
             "mexc": bool(mexc_api_key),
             "telegram": bool(telegram_token),

@@ -87,7 +87,7 @@ class DerivativesIntel:
         
         try:
             perp = self._get_perp_symbol(symbol)
-            loop = asyncio.get_event_loop()
+            loop = asyncio.get_running_loop()
             funding = await loop.run_in_executor(executor, self.okx.fetch_funding_rate, perp)
             
             rate = funding.get("fundingRate", 0) or 0
@@ -115,7 +115,7 @@ class DerivativesIntel:
         
         try:
             perp = self._get_perp_symbol(symbol)
-            loop = asyncio.get_event_loop()
+            loop = asyncio.get_running_loop()
             funding = await loop.run_in_executor(executor, self.bitget.fetch_funding_rate, perp)
             
             rate = funding.get("fundingRate", 0) or 0
@@ -141,7 +141,7 @@ class DerivativesIntel:
         
         try:
             perp = self._get_perp_symbol(symbol)
-            loop = asyncio.get_event_loop()
+            loop = asyncio.get_running_loop()
             funding = await loop.run_in_executor(executor, self.kucoin.fetch_funding_rate, perp)
             
             rate = funding.get("fundingRate", 0) or 0
@@ -166,7 +166,7 @@ class DerivativesIntel:
         
         try:
             perp = self._get_perp_symbol(symbol)
-            loop = asyncio.get_event_loop()
+            loop = asyncio.get_running_loop()
             funding = await loop.run_in_executor(executor, self.gate.fetch_funding_rate, perp)
             
             rate = funding.get("fundingRate", 0) or 0
@@ -239,7 +239,7 @@ class DerivativesIntel:
         
         try:
             perp = self._get_perp_symbol(symbol)
-            loop = asyncio.get_event_loop()
+            loop = asyncio.get_running_loop()
             oi = await loop.run_in_executor(executor, self.okx.fetch_open_interest, perp)
             
             result = {
@@ -264,7 +264,7 @@ class DerivativesIntel:
         
         try:
             perp = self._get_perp_symbol(symbol)
-            loop = asyncio.get_event_loop()
+            loop = asyncio.get_running_loop()
             oi = await loop.run_in_executor(executor, self.bitget.fetch_open_interest, perp)
             
             result = {

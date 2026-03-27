@@ -7,58 +7,95 @@ from typing import Tuple, Optional
 
 logger = logging.getLogger(__name__)
 
-HELP_TEXT = """🤖 AEON TRADING BOT
+HELP_TEXT = """🤖 AEON TRADING BOT — COMMAND LIST
 
-📊 MARKET COMMANDS
-• /market - Market summary
-• /fear, /fng - Fear & Greed Index
-• /movers - Top gainers/losers
-• /trending - Trending coins
-• /whales - Whale activity
-• /news - Latest crypto news
+📊 MARKET
+• /market — Global market summary
+• /fear /fng — Fear & Greed Index
+• /movers /gainers — Top gainers/losers
+• /trending /hot — Trending coins
 
-📈 TRADING COMMANDS
-• /stats - Trading statistics
-• /auto [on/off] - Auto trading toggle
-• /scan [symbol] - Scan for opportunities
-• /risk - Risk check
+🔍 PRICE & ANALYSIS
+• /price [coin] — Live price (BTC/ETH/SOL default)
+• /top100 /top — Top coins by volume
+• /scan [coin] — Deep scan with entry/exit zones
+• /quick [coin] — Quick opportunity check
+• /ta [coin] [tf] — Technical indicators
+• /quant — Quant scan top 10 coins (score ranked)
+• /quant [coin] — Deep 10-factor quant report
 
-🎯 ELITE STRATEGY
-• /elite - Elite strategy status
-• /elite scan - Scan for elite signals
-• /elite relaxed - More signals (70% conf)
-• /elite strict - Fewer signals (92% conf)
-• /elite backtest - Run backtest
+📡 DERIVATIVES & INTEL
+• /funding [coin] — Aggregated funding rates
+• /positions [coin] — Long/short ratio
+• /oi [coin] — Open interest
+• /news — Latest crypto news
+• /whales — Whale activity & large moves
+• /onchain /chain — BTC on-chain data
+• /intel — Full market intelligence report
 
-📊 MTF CONFLUENCE
-• /mtf - Scan all for MTF confluence
-• /mtf BTC - Analyze specific symbol
-• /confluence - Alias for /mtf
+🎯 SIGNALS
+• /elite — Elite strategy status
+• /elite scan — Scan for high-conf signals
+• /elite [coin] — Analyze specific coin
+• /elite on /elite off — Toggle elite alerts
+• /vwap — VWAP scalper status
+• /vwap scan — Run VWAP scan now
+• /vwap [coin] — VWAP analysis for coin
+• /vwap on /vwap off — Toggle VWAP alerts
+• /yolo — YOLO mode status/scan
+• /mtf /confluence — Multi-timeframe scan
+• /mtf [coin] — MTF analysis for coin
+
+🤖 AUTO TRADING
+• /auto — Trading status
+• /auto on /auto off — Toggle auto trading
+• /open — View open positions
+• /opps — Current opportunities
+• /mode — Change risk mode (yolo/easy/balanced/strict/elite)
+• /risk /riskcheck — Risk assessment
+• /strategy — Strategy weights
+
+📈 STATS
+• /stats — Full performance stats
+• /accuracy /acc — Signal accuracy breakdown
+• /leaderboard /lb — Top performing coins
 
 💼 PAPER TRADING
-• /accounts - View paper accounts
-• /pro - PRO account ($50K)
-• /starter - STARTER account ($1.5K)
-• /paper [symbol] - Check position
+• /accounts — View PRO + STARTER accounts
+• /pro — PRO account details ($50K)
+• /starter — STARTER account details ($1.5K)
+• /paper [coin] — Check position for coin
+• /addmargin [pro|starter] [amount] — Add margin
 
 🔧 ENGINES
-• /engines - List all engines
-• /engine [id] - Engine details
-• /engine [id] on/off - Toggle engine
+• /engines — List all trading engines
+• /engine [id] on/off — Toggle engine
 
-🧠 AI MODEL
-• /openai - Switch to GPT-4o
-• /claude - Switch to Claude
-• /model - Current model status
+🔔 ALERTS
+• /alerts — View your price alerts
+• /alert [coin] [price] — Add price alert
+• /alert remove [coin] — Remove alert
 
-⚙️ SETTINGS
-• /settings - Your preferences
-• /alerts - Manage alerts
-• /voice [on/off] - Voice responses
+🧮 CALCULATORS
+• /calc [entry] [exit] [size] [lev] [dir] — PnL calc
+• /calcsize [bal] [risk%] [entry] [stop] [lev] — Position size
 
-❓ SUPPORT
-• /help - This menu
-• /ping - Check bot status
+🧠 LEARNING
+• /learn — Learning system stats
+• /insights — AI trading insights
+• /patterns — Detected market patterns
+
+🤖 AI MODEL
+• /claude — Switch to Claude Sonnet
+• /gemini — Switch to Gemini Flash
+• /model — Current model
+
+⚙️ SETTINGS & INFO
+• /settings — Your preferences
+• /voice on/off — Voice responses
+• /status — System status (all engines)
+• /ping — Bot health check
+• /help — This menu
 """
 
 
@@ -90,14 +127,14 @@ Let's make some gains! 🚀"""
 async def handle_ping(text: str, chat_id: int, context: dict) -> Tuple[str, str]:
     """Handle /ping command"""
     from datetime import datetime, timezone
-    
+    from feed_health import feed_health
+
     now = datetime.now(timezone.utc)
     response = f"""🏓 PONG!
 
-Status: 🟢 Online
-Time: {now.strftime('%Y-%m-%d %H:%M:%S')} UTC
-
-All systems operational."""
+Bot: 🟢 Online
+{feed_health.status_line()}
+Time: {now.strftime('%Y-%m-%d %H:%M:%S')} UTC"""
     return response, "general"
 
 
@@ -106,13 +143,17 @@ async def handle_status(text: str, chat_id: int, context: dict) -> Tuple[str, st
     import app_state
     from autonomous_trader_v2 import autonomous_trader_v2
     from elite_strategy_v3 import get_elite_strategy
-    
+    from feed_health import feed_health
+
     try:
         v2_stats = await autonomous_trader_v2.get_stats()
         elite = get_elite_strategy(app_state.advanced_strategies, None, app_state.enhanced_intel)
         elite_stats = elite.get_stats()
-        
+
         response = f"""📊 SYSTEM STATUS
+
+📡 DATA FEEDS
+{feed_health.status_line()}
 
 🤖 AUTONOMOUS V2.1
 Status: {'🟢 ACTIVE' if v2_stats.get('active') else '🔴 PAUSED'}
@@ -125,12 +166,10 @@ Mode: {elite_stats.get('mode', 'STRICT')}
 Signals Generated: {elite_stats.get('signals_generated', 0)}
 
 💼 PAPER TRADING
-Accounts: PRO ($50K) + STARTER ($1.5K)
-
-All engines running normally."""
+Accounts: PRO ($50K) + STARTER ($1.5K)"""
     except Exception as e:
         response = f"❌ Error getting status: {str(e)}"
-    
+
     return response, "general"
 
 
@@ -143,8 +182,8 @@ async def handle_settings(text: str, chat_id: int, context: dict) -> Tuple[str, 
         
         voice = user_settings.get("voice_enabled", False)
         alerts = user_settings.get("alerts_enabled", True)
-        model = user_settings.get("model", "openai")
-        
+        model = user_settings.get("model", "claude")
+
         response = f"""⚙️ YOUR SETTINGS
 
 🔔 Alerts: {'ON' if alerts else 'OFF'}
@@ -154,7 +193,7 @@ async def handle_settings(text: str, chat_id: int, context: dict) -> Tuple[str, 
 Change with:
 • /alerts [on/off]
 • /voice [on/off]
-• /openai or /claude"""
+• /claude or /gemini"""
     except Exception as e:
         response = f"❌ Error getting settings: {str(e)}"
     

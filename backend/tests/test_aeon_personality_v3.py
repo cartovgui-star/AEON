@@ -23,7 +23,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from aeon_personality import AeonMind, build_system_prompt, build_user_prompt
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://aeon-trading-2.preview.emergentagent.com')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://aeon-engine.preview.emergentagent.com')
 
 
 class TestAeonMindModeDetection:

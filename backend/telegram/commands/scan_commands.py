@@ -123,7 +123,7 @@ async def handle_quick_analysis(text: str, chat_id: int, context: dict) -> Tuple
     symbol = parts[1].upper() if len(parts) >= 2 else "BTC"
     
     try:
-        ta = await app_state.market_intel.get_technical_analysis(symbol + "USDT", "4h")
+        ta = await app_state.market_intel.get_technical_analysis(f"{symbol}/USDT", "4h")
         
         if ta:
             indicators = ta.get("indicators", {})

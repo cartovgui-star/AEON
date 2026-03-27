@@ -166,7 +166,7 @@ class TelegramHandlers:
         mexc = ccxt.mexc()
         
         import asyncio
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         tickers = await loop.run_in_executor(
             executor, 
             mexc.fetch_tickers, 
@@ -211,7 +211,7 @@ Stop: ${analysis.get('stop', 0):,.2f}
         symbol = parts[1].upper() if len(parts) > 1 else "BTC"
         interval = parts[2] if len(parts) > 2 else "1h"
         
-        ta = await self.market_intel.get_technical_analysis(symbol + "USDT", interval)
+        ta = await self.market_intel.get_technical_analysis(f"{symbol}/USDT", interval)
         indicators = ta.get('indicators', {})
         
         return f"""📊 {symbol} TA ({interval})

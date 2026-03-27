@@ -26,16 +26,9 @@ VOICES = {
     "australian": "en-AU-WilliamNeural"
 }
 
-# Whisper STT (if available)
-try:
-    from emergentintegrations.llm.openai import OpenAISpeechToText
-    WHISPER_AVAILABLE = True
-    stt_client = OpenAISpeechToText(api_key=os.getenv("EMERGENT_LLM_KEY"))
-    logger.info("OpenAI Whisper STT initialized")
-except ImportError:
-    WHISPER_AVAILABLE = False
-    stt_client = None
-    logger.warning("OpenAI Whisper not available - using browser STT only")
+# Whisper STT not available - using browser STT only
+WHISPER_AVAILABLE = False
+stt_client = None
 
 
 async def generate_speech(text: str, voice: str = "guy") -> dict:

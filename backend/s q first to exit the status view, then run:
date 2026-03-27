@@ -1,0 +1,20 @@
+[0;1;32m●[0m aeon.service - Aeon Trading Bot
+     Loaded: loaded (]8;;file://ubuntu-s-1vcpu-2gb-70gb-intel-nyc3-01/etc/systemd/system/aeon.service/etc/systemd/system/aeon.service]8;;; [0;1;32menabled[0m; preset: [0;1;32menabled[0m)
+     Active: [0;1;32mactive (running)[0m since Wed 2026-03-04 05:16:36 UTC; 33s ago
+   Main PID: 954491 (uvicorn)
+      Tasks: 14 (limit: 2318)
+     Memory: 721.5M (peak: 743.3M)
+        CPU: 13.974s
+     CGroup: /system.slice/aeon.service
+             └─[0;38;5;245m954491 /root/aeon-finale-formv1.2.3.6/backend/venv/bin/python3 /root/aeon-finale-formv1.2.3.6/backend/venv/bin/uvicorn server:app --host 0.0.0.0 --port 8000[0m
+
+Mar 04 05:16:44 ubuntu-s-1vcpu-2gb-70gb-intel-nyc3-01 uvicorn[954491]: 2026-03-04 05:16:44,276 - server - INFO - 📊 PAPER PRICE UPDATE LOOP - TP/SL monitoring every 30s
+Mar 04 05:16:44 ubuntu-s-1vcpu-2gb-70gb-intel-nyc3-01 uvicorn[954491]: 2026-03-04 05:16:44,276 - vwap_scalper - INFO - 🎯 VWAP Scalper started - scanning every 5 minutes
+Mar 04 05:16:44 ubuntu-s-1vcpu-2gb-70gb-intel-nyc3-01 uvicorn[954491]: 2026-03-04 05:16:44,282 - yolo_engine - INFO - 🚀 YOLO ENGINE STARTED - Scanning every 3 minutes
+Mar 04 05:16:44 ubuntu-s-1vcpu-2gb-70gb-intel-nyc3-01 uvicorn[954491]: 2026-03-04 05:16:44,291 - paper_trading - INFO - 📊 Paper Trading Price Update Loop started - checking every 30s
+Mar 04 05:16:44 ubuntu-s-1vcpu-2gb-70gb-intel-nyc3-01 uvicorn[954491]: 2026-03-04 05:16:44,292 - self_healer - INFO - [SelfHealer] Monitoring loop started
+Mar 04 05:16:44 ubuntu-s-1vcpu-2gb-70gb-intel-nyc3-01 uvicorn[954491]: INFO:     Application startup complete.
+Mar 04 05:16:44 ubuntu-s-1vcpu-2gb-70gb-intel-nyc3-01 uvicorn[954491]: ERROR:    [Errno 98] error while attempting to bind on address ('0.0.0.0', 8000): address already in use
+Mar 04 05:16:44 ubuntu-s-1vcpu-2gb-70gb-intel-nyc3-01 uvicorn[954491]: INFO:     Waiting for application shutdown.
+Mar 04 05:16:44 ubuntu-s-1vcpu-2gb-70gb-intel-nyc3-01 uvicorn[954491]: INFO:     Application shutdown complete.
+Mar 04 05:16:50 ubuntu-s-1vcpu-2gb-70gb-intel-nyc3-01 uvicorn[954491]: 2026-03-04 05:16:50,477 - market_intelligence - ERROR - Klines error: mexc does not have market symbol BTCUSDT

@@ -17,7 +17,6 @@ executor = ThreadPoolExecutor(max_workers=5)
 EXCHANGES_CONFIG = [
     {"id": "mexc", "name": "MEXC"},
     {"id": "binance", "name": "Binance"},
-    {"id": "bybit", "name": "Bybit"},
     {"id": "okx", "name": "OKX"},
     {"id": "kucoin", "name": "KuCoin"},
 ]
@@ -54,7 +53,7 @@ class ArbitrageDetector:
             ex = self.exchanges.get(exchange_id)
             if not ex:
                 return {}
-            loop = asyncio.get_event_loop()
+            loop = asyncio.get_running_loop()
             ticker = await loop.run_in_executor(
                 executor,
                 lambda: ex["instance"].fetch_ticker(symbol)

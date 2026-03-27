@@ -30,6 +30,11 @@ TRADE STYLES:
 - SCALP: 5m-15m, 50-200x leverage, quick in/out (session filter ON)
 - DAY: 1h-4h, 20-75x leverage, medium holds (session filter ON)
 - SWING: 4h-1d, 10-25x leverage, longer positions (no session filter)
+
+UNIFIED ENGINE INTEGRATION:
+- All signals validated through EngineManager
+- Risk controls: position limits, daily loss limits, R:R enforcement
+- Blacklist/cooldown per engine after losses
 """
 
 import asyncio
@@ -48,47 +53,63 @@ except ImportError:
     route_engine_signal = None
     logger.warning("Paper trading not available for signal routing")
 
+# Import unified engine system
+try:
+    from aeon_engine_system import get_engine_manager, EngineType
+except ImportError:
+    get_engine_manager = None
+    EngineType = None
+    logger.warning("Unified engine system not available")
+
+# Telegram message formatters (import lazily to avoid circular deps at module load)
+try:
+    from telegram_sender import format_quant_block, format_leverage_block, format_atr_block
+    _tg_formatters_ok = True
+except ImportError:
+    _tg_formatters_ok = False
+
 # Trading pairs - prioritized by liquidity (MEXC supported)
 TRADING_PAIRS = [
     "BTC/USDT", "ETH/USDT", "SOL/USDT", "BNB/USDT", "XRP/USDT",
-    "DOGE/USDT", "ADA/USDT", "AVAX/USDT", "LINK/USDT", "DOT/USDT",
-    "ATOM/USDT", "UNI/USDT", "LTC/USDT", "ARB/USDT", "OP/USDT",
-    "INJ/USDT", "NEAR/USDT", "APT/USDT", "FIL/USDT", "TRX/USDT",
-    "POL/USDT", "SHIB/USDT", "BCH/USDT", "ETC/USDT", "XLM/USDT"
+    "ADA/USDT", "DOGE/USDT", "AVAX/USDT", "LINK/USDT", "DOT/USDT",
+    "MATIC/USDT"
+    # ARB removed: 76 trades, 8% WR, -$10,255 (2026-03-22)
 ]
 
 # Priority timeframes for quality signals
-TIMEFRAMES = ["4h", "1h", "1d"]
+# NOTE: 1d removed - data shows 0/12 win rate on daily signals (moves already exhausted by the time signal fires)
+TIMEFRAMES = ["4h", "1h"]
 
-# Trade Style Configurations
+# Trade Style Configurations - EACH STYLE UNIQUE
+# NOTE: Leverage caps reduced significantly after data showed 28/64 trades liquidated at avg 50x
 TRADE_STYLES = {
     "SCALP": {
         "timeframes": ["5m", "15m"],
-        "min_leverage": 50,
-        "max_leverage": 200,
-        "stop_atr_mult": 1.0,  # Tight stops
-        "target_atr_mult": 1.5,  # Quick profits
-        "min_confidence": 70,
+        "min_leverage": 5,
+        "max_leverage": 20,
+        "stop_atr_mult": 1.5,
+        "target_atr_mult": 2.5,
+        "min_confidence": 65,
         "max_hold_hours": 4,
         "emoji": "⚡"
     },
     "DAY": {
         "timeframes": ["1h", "4h"],
-        "min_leverage": 20,
-        "max_leverage": 75,
-        "stop_atr_mult": 1.5,
-        "target_atr_mult": 2.5,
-        "min_confidence": 65,
+        "min_leverage": 3,
+        "max_leverage": 15,
+        "stop_atr_mult": 2.0,
+        "target_atr_mult": 3.5,
+        "min_confidence": 70,
         "max_hold_hours": 24,
         "emoji": "🔥"
     },
     "SWING": {
         "timeframes": ["4h", "1d"],
-        "min_leverage": 10,
-        "max_leverage": 25,
-        "stop_atr_mult": 2.0,
-        "target_atr_mult": 4.0,
-        "min_confidence": 60,
+        "min_leverage": 2,
+        "max_leverage": 10,
+        "stop_atr_mult": 2.5,
+        "target_atr_mult": 5.0,
+        "min_confidence": 75,
         "max_hold_hours": 168,  # 7 days
         "emoji": "🎯"
     }
@@ -129,14 +150,14 @@ class AutonomousTraderV2:
         self.db = db
         self.active = True  # Always active
         
-        # V2.1 HIGH WIN RATE SETTINGS
-        self.min_confidence = 90  # Raised from 80% to 90%
-        self.min_confirmations = 5  # Raised from 3 to 5 (ALL must agree)
-        self.min_rr_ratio = 3.0  # Raised from 2:1 to 3:1
+        # V2.1 SETTINGS - balanced for active trading
+        self.min_confidence = 80  # 80% minimum — spec requirement
+        self.min_confirmations = 3  # 3/5 confirmations must agree
+        self.min_rr_ratio = 2.0  # Default balanced R:R
         
-        # LEVERAGE SETTINGS (Bot has FREE WILL to choose - UNCHANGED)
-        self.max_leverage = 200  # Up to 200x
-        self.min_leverage = 10   # Minimum 10x
+        # LEVERAGE SETTINGS - reduced after data showed 44% liquidation rate at avg 50x
+        self.max_leverage = 20   # Hard cap 20x (was 50x)
+        self.min_leverage = 2    # Minimum 2x
         self.dynamic_leverage = True  # Auto-adjust based on confidence
         
         # Position sizing (scaled entry)
@@ -144,10 +165,10 @@ class AutonomousTraderV2:
         self.max_position_pct = 15   # Max 15% for highest confidence
         self.default_position_size = 1000  # $1000 per trade base
         
-        # Risk management (tighter controls)
-        self.max_open_trades = 5  # Reduced from 15 to 5
-        self.default_stop_atr = 1.5  # 1.5x ATR (bounded 1-2x)
-        self.default_target_atr = 4.5  # 4.5x ATR for 3:1 R:R
+        # Risk management
+        self.max_open_trades = 10  # Balanced limit
+        self.default_stop_atr = 2.0  # 2x ATR
+        self.default_target_atr = 4.0  # 4x ATR for 2:1 R:R
         
         # NEW: 200 EMA Trend Filter
         self.ema_200_filter_enabled = True
@@ -173,7 +194,7 @@ class AutonomousTraderV2:
         self.total_signals = 0
         self.total_trades = 0
         self.daily_trades = 0
-        self.max_daily_trades = 999999  # No limit
+        self.max_daily_trades = 15  # Match EngineManager config (was 999999 — effectively unlimited)
         self.last_trade_date = None
         
         # Filter statistics (for reporting)
@@ -282,63 +303,56 @@ class AutonomousTraderV2:
     
     def calculate_leverage(self, confidence: float, market_regime: str = None, trade_style: str = None, atr_pct: float = None) -> int:
         """
-        ATR-based leverage calculation (volatility-adjusted):
-        - ATR > 2% = 10-25x (volatile, conservative)
+        Deterministic ATR-based leverage calculation (volatility-adjusted):
+        - ATR > 2% = 10-25x (high volatility → lower leverage)
         - ATR 1-2% = 25-75x (moderate)
-        - ATR < 1% = 50-200x (low vol, aggressive)
-        
-        Bot has FREE WILL - adds randomness for variety.
+        - ATR < 1% = 50-125x (low volatility → higher leverage)
+        Confidence scales within the ATR band; regime applies fixed adjustments.
         """
         if not self.dynamic_leverage:
             return self.min_leverage
-        
+
         # Get style config
         style = trade_style or "DAY"
         style_config = TRADE_STYLES.get(style, TRADE_STYLES["DAY"])
         style_min = style_config["min_leverage"]
         style_max = style_config["max_leverage"]
-        
-        import random
-        
-        # ATR-based leverage calculation
+
+        # ATR-based base leverage (deterministic band midpoints)
+        # NOTE: Bands halved after 44% liquidation rate at avg 50x leverage
         if atr_pct is not None:
             if atr_pct > 2.0:
-                # High volatility = low leverage (10-25x range)
-                base_leverage = random.uniform(10, 25)
+                band_min, band_max = 3, 10    # High volatility → very conservative
             elif atr_pct > 1.0:
-                # Medium volatility = moderate leverage (25-75x)
-                base_leverage = random.uniform(25, 75)
+                band_min, band_max = 5, 15    # Moderate volatility
             else:
-                # Low volatility = high leverage (50-200x)
-                base_leverage = random.uniform(50, 200)
-        else:
-            # Fallback to confidence-based
+                band_min, band_max = 8, 20    # Low volatility
+            # Scale within band by confidence
             style_min_conf = style_config["min_confidence"]
-            conf_normalized = (confidence - style_min_conf) / (95 - style_min_conf)
-            conf_normalized = max(0, min(1, conf_normalized))
+            conf_normalized = (confidence - style_min_conf) / max(1, 95 - style_min_conf)
+            conf_normalized = max(0.0, min(1.0, conf_normalized))
+            base_leverage = band_min + (band_max - band_min) * conf_normalized
+        else:
+            # Fallback: confidence-based within style range
+            style_min_conf = style_config["min_confidence"]
+            conf_normalized = (confidence - style_min_conf) / max(1, 95 - style_min_conf)
+            conf_normalized = max(0.0, min(1.0, conf_normalized))
             base_leverage = style_min + (style_max - style_min) * conf_normalized
-        
-        # Add FREE WILL randomness (±15% variation)
-        variation = random.uniform(0.85, 1.15)
-        leverage = base_leverage * variation
-        
-        # Adjust for market regime
+
+        # Fixed regime adjustments (no randomness)
         regime = market_regime or self.market_regime
         if regime == "VOLATILE":
-            leverage *= random.uniform(0.7, 0.9)  # REDUCE in volatile (safety)
-        elif regime == "TRENDING_UP" or regime == "TRENDING_DOWN":
-            leverage *= random.uniform(1.0, 1.2)  # Trend following
+            base_leverage *= 0.8    # Reduce 20% in choppy/volatile
+        elif regime in ("TRENDING_UP", "TRENDING_DOWN"):
+            base_leverage *= 1.1   # Add 10% with clear trend
         elif regime == "RANGING":
-            leverage *= random.uniform(0.6, 0.8)  # Less in choppy
-        
-        # Cap within style bounds
-        leverage = min(int(leverage), style_max)
-        leverage = max(leverage, style_min)
-        
-        # Round to nice numbers (multiples of 5)
+            base_leverage *= 0.7   # Reduce 30% in ranging market
+
+        # Cap within style bounds, round to nearest 5
+        leverage = max(style_min, min(style_max, int(base_leverage)))
         leverage = round(leverage / 5) * 5
         leverage = max(style_min, min(style_max, leverage))
-        
+
         return leverage
     
     def calculate_kelly_position_size(self, win_rate: float, avg_win: float, avg_loss: float, confidence: float) -> float:
@@ -568,7 +582,7 @@ class AutonomousTraderV2:
         """Only trade during high-volume sessions (London/NY)"""
         session = self.get_current_session()
         # Best sessions: LONDON, NEW_YORK, LONDON_NY_OVERLAP
-        return session in ["LONDON", "NEW_YORK", "OVERLAP"]
+        return session in ["LONDON", "NEW_YORK", "OVERLAP", "LONDON_NY_OVERLAP"]
     
     def check_daily_limit(self) -> bool:
         """Check if we've hit daily trade limit"""
@@ -622,9 +636,9 @@ class AutonomousTraderV2:
             logger.info(f"Loading settings from DB: {settings}")
             if settings:
                 self.active = settings.get("active", True)
-                self.min_confidence = settings.get("min_confidence", 90)  # V2.1 default
-                self.min_confirmations = settings.get("min_confirmations", 5)  # V2.1 default
-                self.min_rr_ratio = settings.get("min_rr_ratio", 3.0)  # V2.1 default
+                self.min_confidence = settings.get("min_confidence", 75)
+                self.min_confirmations = settings.get("min_confirmations", 3)
+                self.min_rr_ratio = settings.get("min_rr_ratio", 2.0)
                 self.max_open_trades = settings.get("max_open_trades", 5)  # V2.1 default
                 self.ema_200_filter_enabled = settings.get("ema_200_filter_enabled", True)
                 self.adx_filter_enabled = settings.get("adx_filter_enabled", True)
@@ -829,7 +843,7 @@ class AutonomousTraderV2:
         """
         V2.1 HIGH WIN RATE - Complete multi-source signal analysis
         Returns signal only if ALL quality thresholds are met.
-        
+
         PRE-CHECKS (in order):
         1. Pair not blacklisted/on cooldown
         2. 200 EMA Trend Filter (MANDATORY FIRST)
@@ -837,13 +851,16 @@ class AutonomousTraderV2:
         4. Volume > 1.5x average
         5. Session filter (for SCALP/DAY)
         6. ATR volatility filter
-        
+
         POST-CHECKS:
         - 90% minimum confidence
         - 5/5 confirmations
         - 3:1 R:R minimum
         - RSI must agree with trend
         """
+        from post_mortem_engine import get_post_mortem
+        if get_post_mortem().is_engine_paused("autonomous_trader_v2"):
+            return None  # blindspot pause active
         self.total_signals += 1
         
         try:
@@ -866,7 +883,7 @@ class AutonomousTraderV2:
             if not self.market_intel:
                 return None
             
-            ta = await self.market_intel.get_technical_analysis(symbol.replace("/", ""), timeframe)
+            ta = await self.market_intel.get_technical_analysis(symbol, timeframe)
             indicators = ta.get("indicators", {})
             price = ta.get("price", 0)
             
@@ -883,9 +900,9 @@ class AutonomousTraderV2:
             ema_20 = indicators.get("ema_20", price)
             ema_21 = indicators.get("ema_21", ema_20)
             ema_50 = indicators.get("ema_50", price)
-            ema_200 = indicators.get("ema_200", price)
-            atr = indicators.get("atr", price * 0.02)
-            atr_avg = indicators.get("atr_avg", atr)
+            ema_200 = indicators.get("ema_200") or None  # None if not available (insufficient candles)
+            atr = indicators.get("atr") or price * 0.02
+            atr_avg = indicators.get("atr_avg") or atr
             volume = indicators.get("volume", 0)
             volume_avg = indicators.get("volume_sma_20", volume)
             volume_spike = indicators.get("volume_spike", False)
@@ -904,14 +921,14 @@ class AutonomousTraderV2:
             # ═══════════════════════════════════════════════════════════════════
             
             ema_200_trend = None
-            if self.ema_200_filter_enabled:
-                ema_distance_pct = ((price - ema_200) / ema_200) * 100 if ema_200 > 0 else 0
-                
+            if self.ema_200_filter_enabled and ema_200 is not None:
+                ema_distance_pct = ((price - ema_200) / ema_200) * 100
+
                 if abs(ema_distance_pct) < self.ema_no_trade_zone_pct:
                     self.filter_stats["ema_200_filtered"] += 1
                     logger.debug(f"Skipping {symbol} - Price within {self.ema_no_trade_zone_pct}% of 200 EMA (no trade zone)")
                     return None
-                
+
                 # Determine allowed direction based on 200 EMA
                 if ema_distance_pct > 0:
                     ema_200_trend = "BULLISH"  # Price above 200 EMA = LONG only
@@ -1020,8 +1037,8 @@ class AutonomousTraderV2:
                                     strength = 4 if d.get("strength") == "STRONG" else 3
                                     tech_signals_sell += strength
                                     confirmations.append(f"RSI BEARISH DIVERGENCE ({div_type})")
-                except:
-                    pass
+                except Exception as e:
+                    logger.debug(f"Divergence analysis unavailable for {symbol}: {e}")
             
             # MACD (12,26,9): Crossover + histogram expansion
             if "BULLISH" in str(macd_signal).upper():
@@ -1114,8 +1131,8 @@ class AutonomousTraderV2:
                     # Add key levels
                     entry_levels.append(("SUPPORT", support))
                     entry_levels.append(("RESISTANCE", resistance))
-                except:
-                    pass
+                except Exception as e:
+                    logger.debug(f"Market structure unavailable for {symbol}: {e}")
             
             # SMC: FVG and Order Blocks
             if self.smc_analysis:
@@ -1150,9 +1167,46 @@ class AutonomousTraderV2:
                     elif liq.get("sweep_high"):
                         smc_signals_sell += 1
                         confirmations.append("Liq sweep high (short)")
-                except:
-                    pass
-            
+                except Exception as e:
+                    logger.debug(f"SMC analysis unavailable for {symbol}: {e}")
+
+            # ── VP Institutional Levels (bonus SMC confirmations) ──────────────
+            try:
+                from app_state import state as _state
+                if _state.vp_engine:
+                    vp_levels = await _state.vp_engine.get_key_vp_levels(symbol)
+                    if vp_levels and vp_levels.get("current_price"):
+                        poc = vp_levels.get("poc", 0)
+                        vah = vp_levels.get("vah", 0)
+                        val = vp_levels.get("val", 0)
+                        liq_above = vp_levels.get("nearest_liq_above")
+                        liq_below = vp_levels.get("nearest_liq_below")
+                        price_loc = vp_levels.get("price_location", "")
+
+                        # Entry near POC (high-probability reversal zone) → +1 confirmation
+                        if poc and abs(price - poc) / poc < 0.005:
+                            smc_signals_buy += 1 if price > poc else 0
+                            smc_signals_sell += 1 if price < poc else 0
+                            confirmations.append(f"Price at VP POC ${poc:,.2f}")
+
+                        # Price at VAL (LONG) or VAH (SHORT) → institutional level
+                        if val and abs(price - val) / val < 0.008:
+                            smc_signals_buy += 1
+                            confirmations.append(f"Price at Value Area Low ${val:,.2f} (LONG setup)")
+                        if vah and abs(price - vah) / vah < 0.008:
+                            smc_signals_sell += 1
+                            confirmations.append(f"Price at Value Area High ${vah:,.2f} (SHORT setup)")
+
+                        # Liq cluster as TP target magnet
+                        if liq_above and price_loc in ("below_value_area", "near_val"):
+                            smc_signals_buy += 1
+                            confirmations.append(f"Liq cluster above @ ${liq_above:,.2f} (LONG target)")
+                        if liq_below and price_loc in ("above_value_area", "near_vah"):
+                            smc_signals_sell += 1
+                            confirmations.append(f"Liq cluster below @ ${liq_below:,.2f} (SHORT target)")
+            except Exception as vp_err:
+                logger.debug(f"VP levels check failed for {symbol}: {vp_err}")
+
             # ═══════════════════════════════════════════════════════════════════
             # DERIVATIVES / ORDER FLOW (20% weight)
             # Funding, OI, L/S Ratio, CVD
@@ -1171,8 +1225,8 @@ class AutonomousTraderV2:
                     elif cvd_bias == "BEARISH" and buy_pct < 45:
                         deriv_signals_sell += 2
                         confirmations.append(f"-CVD ({buy_pct:.0f}% buys)")
-                except:
-                    pass
+                except Exception as e:
+                    logger.debug(f"CVD data unavailable for {symbol}: {e}")
             
             # Derivatives: Funding, OI, L/S Ratio
             if self.derivatives_intel:
@@ -1189,7 +1243,34 @@ class AutonomousTraderV2:
                     elif avg_funding < -0.001:  # <-0.1%
                         deriv_signals_buy += 2
                         confirmations.append(f"Funding {avg_funding*100:.2f}% (long)")
-                    
+
+                    # Funding MOMENTUM: velocity matters more than absolute level
+                    try:
+                        fm = await self.market_intel.get_funding_momentum(symbol)
+                        fm_signal = fm.get("signal", "NEUTRAL")
+                        fm_squeeze = fm.get("squeeze_risk", "LOW")
+                        if fm_signal == "BEARISH" and fm_squeeze == "HIGH":
+                            deriv_signals_sell += 2
+                            confirmations.append(f"Funding momentum rising — HIGH squeeze risk")
+                        elif fm_signal == "BEARISH" and fm_squeeze == "MEDIUM":
+                            deriv_signals_sell += 1
+                            confirmations.append(f"Funding momentum rising — MEDIUM squeeze risk")
+                        elif fm_signal == "BULLISH" and fm_squeeze == "HIGH":
+                            deriv_signals_buy += 2
+                            confirmations.append(f"Funding momentum bearish — HIGH short squeeze risk")
+                        elif fm_signal == "BULLISH" and fm_squeeze == "MEDIUM":
+                            deriv_signals_buy += 1
+                            confirmations.append(f"Funding momentum bearish — MEDIUM short squeeze risk")
+                        elif fm_signal == "REVERSAL":
+                            if avg_funding > 0:
+                                deriv_signals_buy += 1
+                                confirmations.append("Funding squeeze complete — long squeeze done")
+                            else:
+                                deriv_signals_sell += 1
+                                confirmations.append("Funding squeeze complete — short squeeze done")
+                    except Exception:
+                        pass
+
                     # Long/Short ratio: >1.5 longs = short, <0.5 = long
                     ls = deriv.get("long_short", {}).get("global", {})
                     long_pct = ls.get("long_pct", 50)
@@ -1207,8 +1288,8 @@ class AutonomousTraderV2:
                     oi_change = oi.get("change_24h", 0)
                     if oi_change > 10:  # OI spike
                         confirmations.append(f"OI spike +{oi_change:.0f}%")
-                except:
-                    pass
+                except Exception as e:
+                    logger.debug(f"Derivatives data unavailable for {symbol}: {e}")
             
             # ═══════════════════════════════════════════════════════════════════
             # F&G (Context display only - NO direction influence)
@@ -1218,8 +1299,8 @@ class AutonomousTraderV2:
                     fg = await self.enhanced_intel.get_fear_greed_index()
                     fg_value = fg.get("value", 50)
                     self.fear_greed = fg_value
-                except:
-                    pass
+                except Exception as e:
+                    logger.debug(f"Fear & Greed data unavailable: {e}")
             
             # ═══════════════════════════════════════════════════════════════════
             # WEIGHTED CONFLUENCE SCORING
@@ -1284,7 +1365,33 @@ class AutonomousTraderV2:
             if direction == "SHORT" and ema_200_trend != "BEARISH":
                 self.filter_stats["ema_200_filtered"] += 1
                 return None
-            
+
+            # ═══════════════════════════════════════════════════════════════════
+            # BTC MACRO TREND GATE - Never trade against the macro trend.
+            # Data: 0 LONG wins in bearish BTC macro (0/32 trades).
+            # btc_bias is updated by detect_market_regime() each scan cycle.
+            # ═══════════════════════════════════════════════════════════════════
+            if direction == "LONG" and self.btc_bias == "BEARISH":
+                logger.debug(f"Skipping {symbol} LONG - BTC macro trend is BEARISH")
+                self.filter_stats["ema_200_filtered"] += 1
+                return None
+            if direction == "SHORT" and self.btc_bias == "BULLISH":
+                logger.debug(f"Skipping {symbol} SHORT - BTC macro trend is BULLISH")
+                self.filter_stats["ema_200_filtered"] += 1
+                return None
+
+            # ── Regime Gate ────────────────────────────────────────────────────
+            # Block in VOLATILE_EXPANSION; require higher confidence in RANGING
+            try:
+                from regime_engine import get_regime_engine
+                regime_result = await get_regime_engine().detect_regime(symbol, self.market_intel)
+                regime = regime_result.get("regime", "WEAK_TREND")
+                if regime == "VOLATILE_EXPANSION":
+                    logger.debug(f"⛔ Regime BLOCK {symbol}: VOLATILE_EXPANSION")
+                    return None
+            except Exception as _re:
+                logger.debug(f"Regime check failed for {symbol}: {_re}")
+
             # Calculate weighted confidence score
             tech_score = min(100, (total_tech_buy if direction == "LONG" else total_tech_sell) * 12)
             smc_score = min(100, (total_smc_buy if direction == "LONG" else total_smc_sell) * 25)
@@ -1541,7 +1648,7 @@ class AutonomousTraderV2:
         return signals
     
     async def take_trade(self, signal: Dict) -> Dict:
-        """Execute a paper trade"""
+        """Execute a paper trade - validates through unified engine system first"""
         if len(self.open_trades) >= self.max_open_trades:
             return {"error": "Max open trades reached"}
         
@@ -1562,11 +1669,85 @@ class AutonomousTraderV2:
             atr_pct=atr_pct
         )
         
-        # Get style config for leverage calculation
+        # Calculate full position size
+        full_position_size = self.calculate_position_size(signal["confidence"], signal.get("position_size_pct", 2))
+
+        # ═══════════════════════════════════════════════════════════════
+        # UNIFIED ENGINE VALIDATION
+        # ═══════════════════════════════════════════════════════════════
+        if get_engine_manager and EngineType:
+            try:
+                engine_manager = get_engine_manager()
+                _symbol    = signal["symbol"]
+                _direction = signal["direction"].lower()
+
+                # Compute quant-driven leverage before building signal
+                final_leverage, lev_bd = await engine_manager.get_dynamic_leverage(
+                    _symbol, _direction, EngineType.AUTONOMOUS_TRADER_V2
+                )
+
+                # Build signal for unified validation
+                engine_signal = {
+                    "symbol":        _symbol,
+                    "direction":     _direction,
+                    "entry_price":   signal["entry"],
+                    "position_size": full_position_size,
+                    "leverage":      final_leverage,
+                    "stop_loss":     signal["stop"],
+                    "take_profit":   signal["target"],
+                    "confidence":    signal["confidence"],
+                    "confluences":   len(signal.get("confirmations", [])),
+                    "reason":        "; ".join(signal.get("confirmations", [])[:3])
+                }
+
+                # Submit to unified validator
+                result = await engine_manager.submit_signal_gated(engine_signal, EngineType.AUTONOMOUS_TRADER_V2)
+
+                _signal_adapted = False
+                if result["action"] == "REJECT":
+                    qr = result.get("quant_report", {})
+                    if qr and not result.get("adapted"):
+                        adapted_signal = dict(engine_signal)
+                        if qr.get("suggested_sl"):    adapted_signal["stop_loss"]    = qr["suggested_sl"]
+                        if qr.get("suggested_entry"): adapted_signal["entry_price"]  = qr["suggested_entry"]
+                        if qr.get("suggested_tp1"):   adapted_signal["take_profit"]  = qr["suggested_tp1"]
+                        adapted_signal["position_size"] = round(adapted_signal["position_size"] * 0.70, 2)
+                        adapted_lev, adapted_lev_bd = await engine_manager.get_dynamic_leverage(
+                            _symbol, _direction, EngineType.AUTONOMOUS_TRADER_V2, quant_report=qr
+                        )
+                        adapted_signal["leverage"] = adapted_lev
+                        lev_bd = adapted_lev_bd  # use post-adaptation breakdown
+                        logger.info(f"🔄 [{signal['symbol']}] adapting signal — resubmitting to Quant")
+                        result = await engine_manager.submit_signal_gated(adapted_signal, EngineType.AUTONOMOUS_TRADER_V2, adapted=True)
+                        if result["action"] == "REJECT":
+                            logger.warning(f"❌ [{signal['symbol']}] adapted attempt BLOCKED: {result.get('reason')}")
+                            return {"error": f"Blocked (adapted): {result.get('reason')}", "issues": []}
+                        _signal_adapted = True
+                    else:
+                        logger.warning(f"❌ [{signal['symbol']}] BLOCKED by unified validator: {result.get('reason')}")
+                        return {"error": f"Blocked: {result.get('reason')}", "issues": result.get("issues", [])}
+
+                # Attach quant/leverage data to signal for Telegram formatting
+                signal["_lev_bd"]   = lev_bd
+                signal["_adapted"]  = _signal_adapted
+                signal["_position_size"] = full_position_size
+
+                # Use the validated trade ID from engine manager
+                unified_trade_id = result.get("trade", {}).get("trade_id")
+                logger.info(f"✅ [{signal['symbol']}] VALIDATED by unified engine system")
+                
+            except Exception as e:
+                logger.warning(f"Unified engine validation failed (proceeding anyway): {e}")
+                unified_trade_id = None
+        else:
+            unified_trade_id = None
+        
+        # Get style config for this trade
         style_config = self.get_trade_style_config(trade_style)
         
         trade = {
             "id": f"trade_{self.total_trades + 1}",
+            "unified_id": unified_trade_id,  # Link to unified engine system
             "symbol": signal["symbol"],
             "direction": signal["direction"],
             "entry_price": signal["entry"],
@@ -1574,7 +1755,7 @@ class AutonomousTraderV2:
             "target_price": signal["target"],
             "partial_target": signal["partial_target"],
             "position_size_pct": signal["position_size_pct"],
-            "leverage": self.calculate_leverage(signal["confidence"], trade_style=trade_style, atr_pct=atr_pct),
+            "leverage": leverage,
             "confidence": signal["confidence"],
             "confirmations": signal["confirmations"],
             "timeframe": signal["timeframe"],
@@ -1586,9 +1767,6 @@ class AutonomousTraderV2:
             "pnl_pct": 0,
             "trail_stop": signal["stop"]
         }
-        
-        # Calculate full position size
-        full_position_size = self.calculate_position_size(signal["confidence"], signal.get("position_size_pct", 2))
         
         # Apply position scaling if enabled
         if self.position_scaling_enabled:
@@ -1622,7 +1800,8 @@ class AutonomousTraderV2:
                     "confidence": signal["confidence"],
                     "confirmations": signal["confirmations"],
                     "timeframe": signal["timeframe"],
-                    "risk_pct": signal.get("position_size_pct", 2)
+                    "risk_pct": signal.get("position_size_pct", 2),
+                    "unified_trade_id": unified_trade_id
                 }
                 paper_results = await route_engine_signal(paper_signal, "AUTONOMOUS_V2")
                 for r in paper_results:
@@ -1673,7 +1852,7 @@ class AutonomousTraderV2:
                 partial = trade["partial_target"]
                 
                 # Get current RSI for momentum fade detection
-                ta = await self.market_intel.get_technical_analysis(trade["symbol"].replace("/", ""), "1h")
+                ta = await self.market_intel.get_technical_analysis(trade["symbol"], "1h")
                 current_rsi = ta.get("indicators", {}).get("rsi", 50)
                 
                 hit_stop = False
@@ -1778,9 +1957,13 @@ class AutonomousTraderV2:
                     else:
                         pnl_pct = ((entry - exit_price) / entry) * 100
                     
+                    # Calculate USD PnL for unified engine
+                    pnl_usd = trade.get("position_size", 0) * (pnl_pct / 100)
+                    
                     trade["status"] = "CLOSED"
                     trade["exit_price"] = exit_price
                     trade["pnl_pct"] = pnl_pct
+                    trade["pnl_usd"] = pnl_usd
                     trade["exit_time"] = datetime.now(timezone.utc)
                     
                     # Determine exit reason with pattern info
@@ -1796,6 +1979,21 @@ class AutonomousTraderV2:
                     # Update pair stats (for blacklist/cooldown)
                     is_win = pnl_pct > 0
                     self.update_pair_stats(trade["symbol"], is_win)
+                    
+                    # ═══════════════════════════════════════════════════════════════
+                    # NOTIFY UNIFIED ENGINE SYSTEM OF CLOSED TRADE
+                    # ═══════════════════════════════════════════════════════════════
+                    if get_engine_manager and EngineType and trade.get("unified_id"):
+                        try:
+                            engine_manager = get_engine_manager()
+                            engine_manager.close_trade(
+                                EngineType.AUTONOMOUS_TRADER_V2,
+                                trade["unified_id"],
+                                exit_price,
+                                pnl_usd
+                            )
+                        except Exception as e:
+                            logger.warning(f"Failed to close trade in unified engine: {e}")
                     
                     self.open_trades.remove(trade)
                     self.closed_trades.append(trade)
@@ -1829,23 +2027,36 @@ class AutonomousTraderV2:
     # ═══════════════════════════════════════════════════════════════════════════
     
     async def get_stats(self) -> Dict:
-        """Get comprehensive trading statistics"""
-        wins = [t for t in self.closed_trades if t["pnl_pct"] > 0]
-        losses = [t for t in self.closed_trades if t["pnl_pct"] <= 0]
-        
-        total_pnl = sum(t["pnl_pct"] for t in self.closed_trades)
+        """Get comprehensive trading statistics (includes paper trades)"""
+        # Pull closed paper trades from DB to include in stats
+        paper_closed = []
+        try:
+            if self.db is not None:
+                raw = await self.db.paper_trades.find({"status": "closed"}).to_list(500)
+                for t in raw:
+                    pnl = t.get("pnl_pct") or t.get("unrealized_pnl_pct") or t.get("pnl", 0) or 0
+                    paper_closed.append({"pnl_pct": float(pnl)})
+        except Exception as e:
+            logger.warning(f"Could not load paper trades for stats: {e}")
+
+        all_closed = self.closed_trades + paper_closed
+
+        wins = [t for t in all_closed if t["pnl_pct"] > 0]
+        losses = [t for t in all_closed if t["pnl_pct"] <= 0]
+
+        total_pnl = sum(t["pnl_pct"] for t in all_closed)
         avg_win = sum(t["pnl_pct"] for t in wins) / len(wins) if wins else 0
         avg_loss = sum(t["pnl_pct"] for t in losses) / len(losses) if losses else 0
-        
+
         # Profit factor
         gross_profit = sum(t["pnl_pct"] for t in wins) if wins else 0
         gross_loss = abs(sum(t["pnl_pct"] for t in losses)) if losses else 1
         profit_factor = gross_profit / gross_loss if gross_loss > 0 else 0
-        
+
         # Expectancy
-        win_rate = len(wins) / len(self.closed_trades) * 100 if self.closed_trades else 0
+        win_rate = len(wins) / len(all_closed) * 100 if all_closed else 0
         expectancy = (win_rate/100 * avg_win) - ((100-win_rate)/100 * abs(avg_loss))
-        
+
         # Current open PnL
         open_pnl = 0
         for trade in self.open_trades:
@@ -1858,15 +2069,17 @@ class AutonomousTraderV2:
                         open_pnl += ((current - entry) / entry) * 100
                     else:
                         open_pnl += ((entry - current) / entry) * 100
-            except:
-                pass
-        
+            except Exception as e:
+                logger.debug(f"PnL calc error for {trade.get('symbol')}: {e}")
+
+        total_count = self.total_trades + len(paper_closed)
+
         return {
             "active": self.active,
             "total_signals_analyzed": self.total_signals,
-            "total_trades": self.total_trades,
+            "total_trades": total_count,
             "open_trades": len(self.open_trades),
-            "closed_trades": len(self.closed_trades),
+            "closed_trades": len(all_closed),
             "wins": len(wins),
             "losses": len(losses),
             "win_rate": round(win_rate, 1),
@@ -1876,8 +2089,8 @@ class AutonomousTraderV2:
             "avg_loss_pct": round(avg_loss, 2),
             "profit_factor": round(profit_factor, 2),
             "expectancy": round(expectancy, 2),
-            "best_trade": max(self.closed_trades, key=lambda x: x["pnl_pct"])["pnl_pct"] if self.closed_trades else 0,
-            "worst_trade": min(self.closed_trades, key=lambda x: x["pnl_pct"])["pnl_pct"] if self.closed_trades else 0,
+            "best_trade": max(all_closed, key=lambda x: x["pnl_pct"])["pnl_pct"] if all_closed else 0,
+            "worst_trade": min(all_closed, key=lambda x: x["pnl_pct"])["pnl_pct"] if all_closed else 0,
             "market_regime": self.market_regime,
             "btc_bias": self.btc_bias,
             "fear_greed": self.fear_greed,
@@ -1918,25 +2131,34 @@ class AutonomousTraderV2:
             reason = "Bearish internals align" + (f" at {signal.get('entry_reason', 'key level')}" if signal.get('entry_reason') else "")
         
         # Format per spec
-        alert = f"""🧠 AEON: {symbol}USDT {direction} | {trade_type}
+        alert = (
+            f"🧠 AEON: {symbol}USDT {direction} | {trade_type}\n"
+            f"\n"
+            f"📊 Signals: {signal_list}\n"
+            f"\n"
+            f"⚡ Confidence: {conf_level} ({confidence:.0f}%)\n"
+            f"\n"
+            f"💰 Trade Setup:\n"
+            f"Entry: ${entry:,.2f}\n"
+            f"SL: ${stop:,.2f} (ATR-based)\n"
+            f"TP1: ${partial:,.2f} (50%)\n"
+            f"TP2: ${target:,.2f}\n"
+            f"R:R 1:{rr:.1f}\n"
+            f"\n"
+            f"📐 Position: ${position_size:,.0f} @ {leverage}x\n"
+            f"\n"
+            f"💡 {reason}\n"
+        )
 
-📊 Signals: {signal_list}
+        # Append Quant Gate / Leverage Engine / ATR Stop blocks if data available
+        lev_bd = signal.get("_lev_bd", {})
+        if lev_bd and _tg_formatters_ok:
+            adapted = signal.get("_adapted", False)
+            alert += "\n" + format_quant_block(lev_bd, adapted)
+            alert += "\n\n" + format_leverage_block(lev_bd)
+            alert += "\n\n" + format_atr_block(signal)
 
-⚡ Confidence: {conf_level} ({confidence:.0f}%)
-
-💰 Trade Setup:
-Entry: ${entry:,.2f}
-SL: ${stop:,.2f} (ATR-based)
-TP1: ${partial:,.2f} (50%)
-TP2: ${target:,.2f}
-R:R 1:{rr:.1f}
-
-📐 Position: ${position_size:,.0f} @ {leverage}x
-
-💡 {reason}
-
-⚠️ PAPER TRADE | 1% risk max"""
-        
+        alert += "\n\n⚠️ PAPER TRADE | 1% risk max"
         return alert
 
 

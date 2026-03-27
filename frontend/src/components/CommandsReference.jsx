@@ -2,10 +2,11 @@ import React, { useState } from 'react';
 import { 
   MessageSquare, TrendingUp, Wallet, Globe, Newspaper, Calculator, 
   Bot, Target, Bell, BookOpen, Brain, Settings, ChevronDown, ChevronRight,
-  Copy, Check, Zap, Moon, Sun
+  Copy, Check, Zap, Moon, Rocket, BarChart3, LineChart, Activity,
+  DollarSign, Layers, RefreshCw, Shield
 } from 'lucide-react';
 
-const CommandCategory = ({ title, icon: Icon, commands, color, isOpen, onToggle }) => {
+const CommandCategory = ({ title, icon: Icon, commands, color, isOpen, onToggle, badge }) => {
   const [copiedCmd, setCopiedCmd] = useState(null);
   
   const copyCommand = (cmd) => {
@@ -23,6 +24,11 @@ const CommandCategory = ({ title, icon: Icon, commands, color, isOpen, onToggle 
         <div className="flex items-center gap-3">
           <Icon className={`w-5 h-5 ${color}`} />
           <span className="font-medium text-white">{title}</span>
+          {badge && (
+            <span className={`text-xs px-2 py-0.5 rounded ${badge.color}`}>
+              {badge.text}
+            </span>
+          )}
         </div>
         {isOpen ? <ChevronDown className="w-4 h-4 text-zinc-400" /> : <ChevronRight className="w-4 h-4 text-zinc-400" />}
       </button>
@@ -32,10 +38,16 @@ const CommandCategory = ({ title, icon: Icon, commands, color, isOpen, onToggle 
           {commands.map((cmd, idx) => (
             <div key={idx} className="flex items-start justify-between gap-4 py-2 border-b border-zinc-800/50 last:border-0">
               <div className="flex-1">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <code className="text-orange-400 font-mono text-sm bg-zinc-800/50 px-2 py-0.5 rounded">
                     {cmd.command}
                   </code>
+                  {cmd.hot && (
+                    <span className="text-xs bg-red-500/20 text-red-300 px-1.5 py-0.5 rounded">HOT</span>
+                  )}
+                  {cmd.new && (
+                    <span className="text-xs bg-green-500/20 text-green-300 px-1.5 py-0.5 rounded">NEW</span>
+                  )}
                   <button 
                     onClick={() => copyCommand(cmd.command)}
                     className="p-1 hover:bg-zinc-700 rounded transition-colors"
@@ -62,7 +74,7 @@ const CommandCategory = ({ title, icon: Icon, commands, color, isOpen, onToggle 
 };
 
 export const CommandsReference = () => {
-  const [openCategories, setOpenCategories] = useState(['personas', 'analysis']);
+  const [openCategories, setOpenCategories] = useState(['engines', 'paper', 'analysis']);
 
   const toggleCategory = (cat) => {
     setOpenCategories(prev => 
@@ -72,15 +84,48 @@ export const CommandsReference = () => {
 
   const categories = [
     {
-      id: 'personas',
-      title: 'Personas',
-      icon: MessageSquare,
-      color: 'text-purple-400',
+      id: 'engines',
+      title: 'Trading Engines',
+      icon: Rocket,
+      color: 'text-red-400',
+      badge: { text: '7 ENGINES', color: 'bg-red-500/20 text-red-300' },
       commands: [
-        { command: 'alchemy mode', description: 'Mystical trading wisdom - symbols, riddles, probing questions' },
-        { command: 'philosopher mode', description: 'Same as alchemy mode' },
-        { command: 'casual mode', description: 'Return to default sharp trading buddy' },
-        { command: 'just talk', description: 'Exit mystical mode, casual conversation' },
+        { command: '/auto', description: 'Main Autonomous Trader v2 status (80% conf, 3 confirms)', hot: true },
+        { command: '/auto on', description: 'Enable autonomous trading' },
+        { command: '/auto off', description: 'Pause autonomous trading' },
+        { command: '/mode easy', description: 'Set Easy mode (70% conf, 2 confirms) - more trades', new: true },
+        { command: '/mode balanced', description: 'Set Balanced mode (80% conf, 3 confirms) - default' },
+        { command: '/mode strict', description: 'Set Strict mode (85% conf, 4 confirms) - selective' },
+        { command: '/mode elite', description: 'Set Elite mode (90% conf, 5 confirms) - ultra selective' },
+        { command: '/fw', description: 'Free Will Engine status (75% conf, 2 confirms)' },
+        { command: '/fw on', description: 'Enable Free Will proactive alerts' },
+        { command: '/dual', description: 'Dual Engine status (Day Trader + Long Term)' },
+        { command: '/yolo', description: 'YOLO Engine status (50% conf, 1 confirm) - MAX aggression', hot: true },
+        { command: '/yolo scan', description: 'Run immediate YOLO scan across all markets' },
+        { command: '/yolo on', description: 'Enable YOLO Engine' },
+        { command: '/vwap', description: 'VWAP Scalper status (70% conf, EMA cross + RSI)', new: true },
+        { command: '/vwap scan', description: 'Run VWAP scan for signals' },
+        { command: '/vwap btc', description: 'Analyze specific symbol with VWAP strategy', example: '/vwap eth' },
+        { command: '/elite', description: 'Elite Strategy status (90% conf, 5 confirms)' },
+      ]
+    },
+    {
+      id: 'paper',
+      title: 'Paper Trading',
+      icon: Wallet,
+      color: 'text-green-400',
+      badge: { text: 'LIVE', color: 'bg-green-500/20 text-green-300' },
+      commands: [
+        { command: '/accounts', description: 'View both paper accounts (PRO $50K + STARTER $1.5K)', hot: true },
+        { command: '/pro', description: 'View PRO account details & positions' },
+        { command: '/starter', description: 'View STARTER account details & positions' },
+        { command: '/paper btc', description: 'View paper position for specific symbol', example: '/paper eth' },
+        { command: '/addmargin pro 1000', description: 'Add margin to account', example: '/addmargin starter 500' },
+        { command: '/open', description: 'View all open positions across accounts' },
+        { command: '/close btc', description: 'Manually close a position' },
+        { command: '/tp btc 72000', description: 'Set take profit price', example: '/tp eth 2500' },
+        { command: '/sl btc 65000', description: 'Set stop loss price', example: '/sl eth 1800' },
+        { command: '/trail btc 5', description: 'Set trailing stop percentage', example: '/trail eth 3' },
       ]
     },
     {
@@ -89,23 +134,28 @@ export const CommandsReference = () => {
       icon: TrendingUp,
       color: 'text-blue-400',
       commands: [
-        { command: '/scan btc', description: 'Full market analysis with entry, target, and stop-loss levels' },
-        { command: '/ta btc 1h', description: 'Technical indicators (RSI, MACD, BB, EMA, Stoch)', example: '/ta eth 4h' },
-        { command: '/mtf btc', description: 'Multi-timeframe confluence analysis (1h, 4h, 1d)' },
-        { command: '/sentiment btc', description: 'Sentiment analysis with score and signals' },
-        { command: '/price', description: 'Live MEXC orderbook for BTC, ETH, SOL' },
+        { command: '/scan btc', description: 'Full SMC analysis with entry, targets, stop-loss', hot: true },
+        { command: '/ta btc 1h', description: 'Technical indicators (RSI, MACD, BB, EMA)', example: '/ta eth 4h' },
+        { command: '/mtf btc', description: 'Multi-timeframe confluence (1h + 4h + 1d)' },
+        { command: '/smc btc', description: 'Smart Money Concepts - order blocks, FVG, liquidity' },
+        { command: '/structure btc', description: 'Market structure analysis (HH/HL/LH/LL)' },
+        { command: '/sentiment btc', description: 'Sentiment analysis with score' },
+        { command: '/divergence btc', description: 'RSI/MACD divergence detection' },
+        { command: '/price', description: 'Live MEXC prices for major coins' },
       ]
     },
     {
       id: 'derivatives',
       title: 'Derivatives Data',
-      icon: Wallet,
-      color: 'text-green-400',
+      icon: LineChart,
+      color: 'text-purple-400',
       commands: [
-        { command: '/funding btc', description: 'Aggregated funding rates from OKX, Bitget, KuCoin, Gate.io' },
+        { command: '/funding btc', description: 'Funding rates from OKX, Bitget, KuCoin, Gate.io' },
         { command: '/deriv btc', description: 'Full derivatives report (funding + OI + L/S ratio)' },
         { command: '/positions btc', description: 'Long/short ratio and positioning data' },
         { command: '/liqs btc', description: 'Liquidation data and market stress levels' },
+        { command: '/options btc', description: 'Max pain & Put/Call ratio' },
+        { command: '/cvd btc', description: 'Order flow / Cumulative Volume Delta' },
         { command: '/cg btc', description: 'Coinglass data (requires API key)' },
       ]
     },
@@ -115,11 +165,12 @@ export const CommandsReference = () => {
       icon: Globe,
       color: 'text-cyan-400',
       commands: [
-        { command: '/market', description: 'Global market summary' },
+        { command: '/market', description: 'Global market summary with BTC dominance' },
         { command: '/fear', description: 'Fear & Greed Index with interpretation' },
         { command: '/top100', description: 'Top 10 coins by market cap' },
         { command: '/movers', description: 'Top gainers and losers (24h)' },
         { command: '/trending', description: 'Most searched/trending coins' },
+        { command: '/opps', description: 'Current market opportunities (85%+ confidence)', hot: true },
       ]
     },
     {
@@ -128,7 +179,7 @@ export const CommandsReference = () => {
       icon: Newspaper,
       color: 'text-yellow-400',
       commands: [
-        { command: '/news', description: 'Latest crypto headlines with clickable links + sentiment' },
+        { command: '/news', description: 'Latest crypto headlines with sentiment' },
         { command: '/whales', description: 'Whale activity (transactions >10 BTC)' },
         { command: '/onchain', description: 'BTC network stats (fees, hashrate, mempool)' },
       ]
@@ -139,49 +190,8 @@ export const CommandsReference = () => {
       icon: Calculator,
       color: 'text-pink-400',
       commands: [
-        { command: '/calc 65000 68000 1000 10 long', description: 'Calculate PnL, ROI, liquidation price', example: '/calc entry exit size leverage direction' },
-        { command: '/calcsize 10000 2 65000 63000 10', description: 'Calculate position size from risk', example: '/calcsize balance risk% entry stop leverage' },
-      ]
-    },
-    {
-      id: 'auto',
-      title: 'Autonomous Trading',
-      icon: Bot,
-      color: 'text-orange-400',
-      commands: [
-        { command: '/auto', description: 'Trading status & paper trading stats' },
-        { command: '/auto on', description: 'Enable autonomous trading' },
-        { command: '/auto off', description: 'Pause autonomous trading' },
-        { command: '/opps', description: 'Current market opportunities (85%+ confidence)' },
-        { command: '/open', description: 'View open positions' },
-        { command: '/close btc', description: 'Manually close a position' },
-        { command: '/trail btc 5', description: 'Set trailing stop to 5%' },
-        { command: '/tp btc 72000', description: 'Set take profit price' },
-      ]
-    },
-    {
-      id: 'freewill',
-      title: 'Free Will Engine (24/7)',
-      icon: Zap,
-      color: 'text-amber-400',
-      commands: [
-        { command: '/fw', description: 'View Free Will status & stats' },
-        { command: '/fwconf 80', description: 'Set minimum confidence (50-95%)', example: '/fwconf 70' },
-        { command: 'free on', description: 'Enable proactive alerts' },
-        { command: 'free off', description: 'Disable proactive alerts' },
-      ]
-    },
-    {
-      id: 'smc',
-      title: 'Smart Money (SMC)',
-      icon: Target,
-      color: 'text-indigo-400',
-      commands: [
-        { command: '/smc btc', description: 'Full SMC analysis - order blocks, FVG, liquidity' },
-        { command: '/structure btc', description: 'Market structure (HH/HL/LH/LL)' },
-        { command: '/vwap btc', description: 'VWAP levels' },
-        { command: '/cvd btc', description: 'Order flow / Cumulative Volume Delta' },
-        { command: '/options btc', description: 'Max pain & Put/Call ratio' },
+        { command: '/calc 65000 68000 1000 10 long', description: 'Calculate PnL, ROI, liquidation', example: '/calc entry exit size leverage direction' },
+        { command: '/calcsize 10000 2 65000 63000 10', description: 'Position size from risk %', example: '/calcsize balance risk% entry stop leverage' },
       ]
     },
     {
@@ -190,32 +200,49 @@ export const CommandsReference = () => {
       icon: Bell,
       color: 'text-red-400',
       commands: [
-        { command: '/alerts', description: 'View current alert status' },
+        { command: '/alerts', description: 'View current alerts' },
         { command: '/alert add btc above 70000', description: 'Add price alert' },
         { command: '/alert remove [id]', description: 'Remove an alert' },
       ]
     },
     {
-      id: 'journal',
-      title: 'Journal & Memory',
-      icon: BookOpen,
-      color: 'text-emerald-400',
+      id: 'learning',
+      title: '24/7 Learning',
+      icon: Brain,
+      color: 'text-violet-400',
+      badge: { text: 'AI', color: 'bg-violet-500/20 text-violet-300' },
       commands: [
-        { command: '/journal', description: 'Performance stats and history' },
+        { command: '/learn', description: 'Learning engine status & patterns learned', new: true },
         { command: '/insights', description: 'AI-generated trading insights' },
+        { command: '/journal', description: 'Performance stats and trade history' },
         { command: '/strat btc', description: 'Run all strategies on a coin' },
       ]
     },
     {
-      id: 'advanced',
-      title: 'Advanced Analysis',
-      icon: Brain,
-      color: 'text-violet-400',
+      id: 'personas',
+      title: 'Personas & Modes',
+      icon: MessageSquare,
+      color: 'text-amber-400',
       commands: [
-        { command: '/divergence btc', description: 'RSI/MACD divergence detection' },
+        { command: 'alchemy mode', description: 'Mystical trading wisdom - symbols, riddles, probing questions' },
+        { command: 'philosopher mode', description: 'Same as alchemy mode' },
+        { command: 'casual mode', description: 'Return to default sharp trading buddy' },
+        { command: 'just talk', description: 'Exit mystical mode, casual conversation' },
         { command: '/probe', description: 'Standard introspection question' },
         { command: '/probe deep', description: 'Multi-layer spiral questions' },
         { command: '/probe ordeal', description: 'Shadow work / harsh truth mode' },
+      ]
+    },
+    {
+      id: 'system',
+      title: 'System & Health',
+      icon: Shield,
+      color: 'text-emerald-400',
+      commands: [
+        { command: '/status', description: 'Overall system health & all engines status' },
+        { command: '/stats', description: 'Trading statistics summary' },
+        { command: '/health', description: 'Self-healer status & service monitoring' },
+        { command: '/help', description: 'Quick command reference' },
       ]
     },
   ];
@@ -243,17 +270,47 @@ export const CommandsReference = () => {
         </div>
       </div>
 
-      <div className="bg-zinc-900/30 border border-zinc-800 rounded-lg p-4 mb-4">
-        <div className="flex items-center gap-2 mb-2">
-          <Moon className="w-4 h-4 text-purple-400" />
-          <span className="text-sm font-medium text-white">Quick Mode Toggle</span>
+      {/* Quick Stats Banner */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-3 text-center">
+          <Rocket className="w-5 h-5 text-red-400 mx-auto mb-1" />
+          <p className="text-lg font-bold text-white">7</p>
+          <p className="text-xs text-zinc-500">Trading Engines</p>
         </div>
-        <p className="text-zinc-400 text-sm">
-          Say <code className="text-purple-400 bg-zinc-800 px-1 rounded">"alchemy mode"</code> for mystical wisdom or 
-          <code className="text-orange-400 bg-zinc-800 px-1 rounded ml-1">"casual mode"</code> to return to normal.
-        </p>
+        <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-3 text-center">
+          <Activity className="w-5 h-5 text-green-400 mx-auto mb-1" />
+          <p className="text-lg font-bold text-white">80+</p>
+          <p className="text-xs text-zinc-500">Commands</p>
+        </div>
+        <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-3 text-center">
+          <DollarSign className="w-5 h-5 text-amber-400 mx-auto mb-1" />
+          <p className="text-lg font-bold text-white">2</p>
+          <p className="text-xs text-zinc-500">Paper Accounts</p>
+        </div>
+        <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-3 text-center">
+          <Brain className="w-5 h-5 text-purple-400 mx-auto mb-1" />
+          <p className="text-lg font-bold text-white">24/7</p>
+          <p className="text-xs text-zinc-500">AI Learning</p>
+        </div>
       </div>
 
+      {/* Quick Actions */}
+      <div className="bg-gradient-to-r from-orange-500/10 to-red-500/10 border border-orange-500/30 rounded-lg p-4">
+        <div className="flex items-center gap-2 mb-3">
+          <Zap className="w-4 h-4 text-orange-400" />
+          <span className="text-sm font-medium text-white">Quick Start Commands</span>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <code className="text-xs bg-zinc-800 text-orange-300 px-2 py-1 rounded cursor-pointer hover:bg-zinc-700">/auto</code>
+          <code className="text-xs bg-zinc-800 text-green-300 px-2 py-1 rounded cursor-pointer hover:bg-zinc-700">/accounts</code>
+          <code className="text-xs bg-zinc-800 text-blue-300 px-2 py-1 rounded cursor-pointer hover:bg-zinc-700">/scan btc</code>
+          <code className="text-xs bg-zinc-800 text-red-300 px-2 py-1 rounded cursor-pointer hover:bg-zinc-700">/yolo</code>
+          <code className="text-xs bg-zinc-800 text-purple-300 px-2 py-1 rounded cursor-pointer hover:bg-zinc-700">/opps</code>
+          <code className="text-xs bg-zinc-800 text-cyan-300 px-2 py-1 rounded cursor-pointer hover:bg-zinc-700">/market</code>
+        </div>
+      </div>
+
+      {/* Command Categories */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {categories.map(cat => (
           <CommandCategory
@@ -265,26 +322,32 @@ export const CommandsReference = () => {
         ))}
       </div>
 
+      {/* Supported Pairs */}
       <div className="bg-zinc-900/30 border border-zinc-800 rounded-lg p-4">
-        <h3 className="text-sm font-medium text-white mb-2">Supported Pairs (44 Total)</h3>
-        <p className="text-xs text-zinc-400">
-          <span className="text-orange-400">Major:</span> BTC, ETH, BNB, SOL, XRP, DOGE, ADA, AVAX, SHIB, DOT
-          <br />
-          <span className="text-blue-400">DeFi/L1:</span> LINK, TRX, BCH, LTC, NEAR, UNI, APT, ICP, ETC, FIL, ATOM, XLM
-          <br />
-          <span className="text-green-400">L2/Infra:</span> ARB, OP, INJ, HBAR, VET, GRT, AAVE, ALGO
-          <br />
-          <span className="text-pink-400">Gaming:</span> SAND, AXS, MANA, ENJ, CHZ, FLOW
-          <br />
-          <span className="text-yellow-400">Others:</span> XTZ, NEO, SNX, CRV, RUNE, ZEC, DASH, COMP
-        </p>
+        <h3 className="text-sm font-medium text-white mb-2">Supported Trading Pairs (44 Total)</h3>
+        <div className="text-xs text-zinc-400 space-y-1">
+          <p><span className="text-orange-400">Major:</span> BTC, ETH, BNB, SOL, XRP, DOGE, ADA, AVAX, SHIB, DOT</p>
+          <p><span className="text-blue-400">DeFi/L1:</span> LINK, TRX, BCH, LTC, NEAR, UNI, APT, ICP, ETC, FIL, ATOM, XLM</p>
+          <p><span className="text-green-400">L2/Infra:</span> ARB, OP, INJ, HBAR, VET, GRT, AAVE, ALGO</p>
+          <p><span className="text-pink-400">Gaming:</span> SAND, AXS, MANA, ENJ, CHZ, FLOW</p>
+          <p><span className="text-yellow-400">Others:</span> XTZ, NEO, SNX, CRV, RUNE, ZEC, DASH, COMP</p>
+        </div>
       </div>
 
-      <div className="bg-gradient-to-r from-orange-500/10 to-amber-500/10 border border-orange-500/30 rounded-lg p-4">
-        <h3 className="text-sm font-medium text-orange-400 mb-2">Scheduled Rituals</h3>
+      {/* Scheduled Events */}
+      <div className="bg-gradient-to-r from-purple-500/10 to-blue-500/10 border border-purple-500/30 rounded-lg p-4">
+        <h3 className="text-sm font-medium text-purple-300 mb-2 flex items-center gap-2">
+          <RefreshCw className="w-4 h-4" />
+          Automated Schedules
+        </h3>
         <ul className="text-xs text-zinc-300 space-y-1">
-          <li>6:00 AM CST - Daily crypto market summary</li>
-          <li>Proactive messages every 2 hours when Free Will is ON</li>
+          <li>06:00 AM CT - Daily market briefing</li>
+          <li>08:00 PM CT (Sunday) - Weekly performance report</li>
+          <li>Every 30 sec - Paper trading price updates</li>
+          <li>Every 3 min - YOLO Engine scan</li>
+          <li>Every 5 min - VWAP Scalper scan</li>
+          <li>Every 2 hours - Free Will proactive alerts</li>
+          <li>Hourly - Learning engine pattern analysis</li>
         </ul>
       </div>
     </div>

@@ -76,7 +76,7 @@ class BacktestV21Engine:
             return []
         
         try:
-            loop = asyncio.get_event_loop()
+            loop = asyncio.get_running_loop()
             
             # Calculate limit based on days and interval
             interval_minutes = {

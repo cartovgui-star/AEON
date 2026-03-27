@@ -55,7 +55,7 @@ class OrderFlowAnalyzer:
                 formatted += "USDT"
             full_symbol = formatted.replace("USDT", "/USDT")
             
-            loop = asyncio.get_event_loop()
+            loop = asyncio.get_running_loop()
             trades = await loop.run_in_executor(
                 executor,
                 lambda: self.mexc.fetch_trades(full_symbol, limit=limit)

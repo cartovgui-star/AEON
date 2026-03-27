@@ -20,6 +20,8 @@ export default function TradeHistory() {
 
   useEffect(() => {
     fetchTrades();
+    const interval = setInterval(fetchTrades, 10000);
+    return () => clearInterval(interval);
   }, []);
 
   const fetchTrades = async () => {
@@ -30,9 +32,9 @@ export default function TradeHistory() {
         fetch(`${API_URL}/api/trading/v2/closed`),
         fetch(`${API_URL}/api/trading/v2/live-positions`)
       ]);
-      const openData = await openRes.json();
-      const closedData = await closedRes.json();
-      const positionsData = await positionsRes.json();
+      const openData = openRes.ok ? await openRes.json() : { open_trades: [] };
+      const closedData = closedRes.ok ? await closedRes.json() : { closed_trades: [] };
+      const positionsData = positionsRes.ok ? await positionsRes.json() : { positions: [] };
       
       // Merge open trades with live position data for current prices
       const openWithPrices = (openData.open_trades || []).map(trade => {
@@ -55,8 +57,8 @@ export default function TradeHistory() {
   };
 
   const allTrades = [
-    ...trades.open.map(t => ({ ...t, status: 'OPEN', sort_date: new Date(t.entry_time) })),
-    ...trades.closed.map(t => ({ ...t, status: 'CLOSED', sort_date: new Date(t.exit_time || t.entry_time) }))
+    ...trades.open.map(t => ({ ...t, status: 'OPEN', sort_date: new Date(t.entry_time || t.opened_at) })),
+    ...trades.closed.map(t => ({ ...t, status: 'CLOSED', sort_date: new Date(t.closed_at || t.exit_time || t.entry_time || t.opened_at) }))
   ].sort((a, b) => {
     if (sortBy === 'date') {
       return sortOrder === 'desc' ? b.sort_date - a.sort_date : a.sort_date - b.sort_date;

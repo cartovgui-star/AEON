@@ -1,6 +1,6 @@
 """
 AI Model Switching Command Handlers
-Commands: /openai, /claude, /gpt, /model
+Commands: /claude, /gemini, /model
 """
 import logging
 from typing import Tuple, Optional
@@ -9,37 +9,32 @@ logger = logging.getLogger(__name__)
 
 # Model configurations
 MODEL_CONFIGS = {
-    "openai": {
-        "display_name": "OpenAI GPT-4o",
-        "provider": "openai",
-        "model": "gpt-4o",
-        "description": "Fast, direct responses - good for quick answers and general tasks.",
-        "emoji": "🤖"
-    },
     "claude": {
         "display_name": "Claude Sonnet 4.5",
-        "provider": "anthropic", 
-        "model": "claude-sonnet-4-5-20241022",
-        "description": "Detailed, nuanced responses - great for complex analysis and reasoning.",
+        "provider": "anthropic",
+        "model": "claude-sonnet-4-5-20250929",
+        "description": "Deep analysis, nuanced reasoning - great for complex market reads.",
         "emoji": "🧠"
+    },
+    "gemini": {
+        "display_name": "Gemini 2.0 Flash",
+        "provider": "google",
+        "model": "gemini-2.0-flash",
+        "description": "Fast, broad context - great for quick answers and news summaries.",
+        "emoji": "✨"
     }
 }
 
-DEFAULT_MODEL = "openai"
+DEFAULT_MODEL = "claude"
 
 # Model key aliases
 MODEL_ALIASES = {
-    "gpt": "openai",
-    "gpt4": "openai",
-    "gpt-4": "openai",
-    "gpt4o": "openai",
-    "gpt-4o": "openai",
-    "openai": "openai",
     "claude": "claude",
     "anthropic": "claude",
     "sonnet": "claude",
-    "sonnet4": "claude",
-    "sonnet-4": "claude",
+    "gemini": "gemini",
+    "google": "gemini",
+    "flash": "gemini",
 }
 
 
@@ -103,37 +98,37 @@ async def set_user_model(chat_id: int, model: str, db=None) -> bool:
     return True
 
 
-async def handle_openai_switch(text: str, chat_id: int, context: dict) -> Tuple[str, str]:
-    """Handle /openai or /gpt command"""
-    db = context.get('db')
-    success = await set_user_model(chat_id, "openai", db)
-    
-    if success:
-        response = """✅ SWITCHED TO OPENAI GPT-4o
-
-Fast, direct responses - good for quick answers.
-
-Switch back: /claude"""
-    else:
-        response = "❌ Failed to switch. Try again."
-    
-    return response, "settings"
-
-
 async def handle_claude_switch(text: str, chat_id: int, context: dict) -> Tuple[str, str]:
     """Handle /claude or /anthropic command"""
     db = context.get('db')
     success = await set_user_model(chat_id, "claude", db)
-    
+
     if success:
-        response = """✅ SWITCHED TO CLAUDE SONNET 4.5
+        response = """✅ SWITCHED TO CLAUDE SONNET 4.5 🧠
 
-Detailed, nuanced responses - great for analysis.
+Deep analysis, nuanced reasoning - great for complex market reads.
 
-Switch back: /openai"""
+Switch: /gemini"""
     else:
         response = "❌ Failed to switch. Try again."
-    
+
+    return response, "settings"
+
+
+async def handle_gemini_switch(text: str, chat_id: int, context: dict) -> Tuple[str, str]:
+    """Handle /gemini or /google command"""
+    db = context.get('db')
+    success = await set_user_model(chat_id, "gemini", db)
+
+    if success:
+        response = """✅ SWITCHED TO GEMINI 2.0 FLASH ✨
+
+Fast, broad context - great for quick answers and news summaries.
+
+Switch: /claude"""
+    else:
+        response = "❌ Failed to switch. Try again."
+
     return response, "settings"
 
 
@@ -141,41 +136,39 @@ async def handle_model_status(text: str, chat_id: int, context: dict) -> Tuple[s
     """Handle /model command"""
     db = context.get('db')
     parts = text.lower().split()
-    
+
     if len(parts) == 1:
-        # Show current model
         current_model = await get_user_model(chat_id, db)
         config = get_model_config(current_model)
-        
+
         response = f"""{config['emoji']} CURRENT AI: {config['display_name']}
 
 {config['description']}
 
-SWITCH: /openai or /claude"""
+SWITCH: /claude or /gemini"""
     else:
-        # Try to switch model
         requested = parts[1]
         resolved = resolve_model_key(requested)
-        
+
         if resolved in MODEL_CONFIGS:
             success = await set_user_model(chat_id, resolved, db)
             if success:
                 config = get_model_config(resolved)
-                response = f"✅ Switched to {config['display_name']}"
+                response = f"✅ Switched to {config['emoji']} {config['display_name']}"
             else:
-                response = "❌ Failed to switch. Try /openai or /claude"
+                response = "❌ Failed to switch. Try /claude or /gemini"
         else:
-            response = "❌ Unknown model. Use /openai or /claude"
-    
+            response = "❌ Unknown model. Use /claude or /gemini"
+
     return response, "settings"
 
 
 # Export handlers
 MODEL_HANDLERS = {
-    '/openai': handle_openai_switch,
-    '/gpt': handle_openai_switch,
     '/claude': handle_claude_switch,
     '/anthropic': handle_claude_switch,
+    '/gemini': handle_gemini_switch,
+    '/google': handle_gemini_switch,
     '/model': handle_model_status,
 }
 
@@ -183,12 +176,12 @@ MODEL_HANDLERS = {
 async def route_model_command(text: str, chat_id: int, context: dict) -> Optional[Tuple[str, str]]:
     """Route model commands"""
     text_lower = text.lower().strip()
-    
-    if text_lower == '/openai' or text_lower == '/gpt':
-        return await handle_openai_switch(text, chat_id, context)
-    elif text_lower == '/claude' or text_lower == '/anthropic':
+
+    if text_lower in ('/claude', '/anthropic'):
         return await handle_claude_switch(text, chat_id, context)
+    elif text_lower in ('/gemini', '/google'):
+        return await handle_gemini_switch(text, chat_id, context)
     elif text_lower.startswith('/model'):
         return await handle_model_status(text, chat_id, context)
-    
+
     return None

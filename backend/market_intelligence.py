@@ -1,6 +1,6 @@
 """
 AEON MARKET INTELLIGENCE MODULE
-Using MEXC + Bybit (both work without geo-restrictions) + Technical Analysis
+Using MEXC + Technical Analysis
 """
 
 import ccxt
@@ -11,26 +11,42 @@ from typing import Dict, Any, List
 import ta
 import logging
 import asyncio
+import time
 import os
+import httpx
+
+from mexc_utils import format_mexc_symbol
 
 logger = logging.getLogger(__name__)
 
 
 class MarketIntelligence:
-    """Market data using MEXC/Bybit + Technical Analysis"""
-    
+    """Market data using MEXC + Technical Analysis"""
+
     def __init__(self):
+        self._ticker_cache: Dict[str, tuple] = {}  # symbol -> (data, timestamp)
+        self._ticker_cache_ttl = 5  # seconds
+        self._deriv_cache: Dict[str, tuple] = {}  # key -> (data, timestamp)
+        self._deriv_cache_ttl = 30  # seconds
+
         # MEXC (user already has keys)
         self.mexc = ccxt.mexc({
             'apiKey': os.environ.get('MEXC_API_KEY', ''),
             'secret': os.environ.get('MEXC_SECRET_KEY', ''),
             'enableRateLimit': True
         })
-        
-        # Bybit as backup (no auth needed for public data)
-        self.bybit = ccxt.bybit({'enableRateLimit': True})
-        
+
+        # MEXC public instance — no API key, used for all public market data
+        # (OHLCV, tickers, orderbook). CCXT signs requests with invalid keys
+        # even on public endpoints, which breaks klines. This instance bypasses that.
+        self.mexc_public = ccxt.mexc({'enableRateLimit': True})
+
         self.primary = self.mexc
+        self._mexc_contract_base = "https://contract.mexc.com/api/v1/contract"
+
+        # Circuit breaker for MEXC L/S ratio API (returns 403 permanently)
+        self._lsr_fail_count: int = 0
+        self._lsr_disabled_until: float = 0.0  # epoch seconds
         self.symbols = [
             "BTC/USDT", "ETH/USDT", "BNB/USDT", "SOL/USDT", "XRP/USDT", 
             "DOGE/USDT", "ADA/USDT", "AVAX/USDT", "SHIB/USDT", "DOT/USDT",
@@ -45,30 +61,40 @@ class MarketIntelligence:
     
     def get_klines_sync(self, symbol: str = "BTC/USDT", timeframe: str = "1h", limit: int = 100) -> pd.DataFrame:
         """Fetch OHLCV data"""
+        symbol = format_mexc_symbol(symbol)
         try:
-            ohlcv = self.primary.fetch_ohlcv(symbol, timeframe, limit=limit)
+            ohlcv = self.mexc_public.fetch_ohlcv(symbol, timeframe, limit=limit)
             df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
             df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
             return df
         except Exception as e:
             logger.error(f"Klines error: {e}")
-            # Try backup
-            try:
-                ohlcv = self.bybit.fetch_ohlcv(symbol, timeframe, limit=limit)
-                df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
-                df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
-                return df
-            except:
-                return pd.DataFrame()
+            return pd.DataFrame()
     
     async def get_klines(self, symbol: str, timeframe: str = "1h", limit: int = 100) -> pd.DataFrame:
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         return await loop.run_in_executor(None, self.get_klines_sync, symbol, timeframe, limit)
-    
+
+    async def get_ohlcv(self, symbol: str, timeframe: str = "5m", limit: int = 200) -> Dict:
+        """Return OHLCV as candles list [[ts, o, h, l, c, v], ...] for vwap_scalper compatibility."""
+        symbol = format_mexc_symbol(symbol)
+        try:
+            loop = asyncio.get_running_loop()
+            raw = await loop.run_in_executor(
+                None, lambda: self.mexc_public.fetch_ohlcv(symbol, timeframe, limit=limit)
+            )
+            if not raw:
+                raise ValueError("empty")
+            return {"candles": raw, "symbol": symbol, "timeframe": timeframe}
+        except Exception as e:
+            logger.error(f"get_ohlcv error {symbol}: {e}")
+            return {"error": str(e)}
+
     def get_ticker_sync(self, symbol: str = "BTC/USDT") -> Dict[str, Any]:
         """Get current ticker"""
+        symbol = format_mexc_symbol(symbol)
         try:
-            ticker = self.primary.fetch_ticker(symbol)
+            ticker = self.mexc_public.fetch_ticker(symbol)
             return {
                 "symbol": symbol,
                 "price": ticker['last'],
@@ -79,27 +105,24 @@ class MarketIntelligence:
             }
         except Exception as e:
             logger.error(f"Ticker error: {e}")
-            try:
-                ticker = self.bybit.fetch_ticker(symbol)
-                return {
-                    "symbol": symbol,
-                    "price": ticker['last'],
-                    "change_24h": ticker.get('percentage', 0),
-                    "high_24h": ticker.get('high', 0),
-                    "low_24h": ticker.get('low', 0),
-                    "volume_24h": ticker.get('quoteVolume', 0),
-                }
-            except:
-                return {"error": str(e)}
+            return {"error": str(e)}
     
     async def get_ticker(self, symbol: str) -> Dict[str, Any]:
-        loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(None, self.get_ticker_sync, symbol)
+        now = time.time()
+        cached = self._ticker_cache.get(symbol)
+        if cached and (now - cached[1]) < self._ticker_cache_ttl:
+            return cached[0]
+        loop = asyncio.get_running_loop()
+        result = await loop.run_in_executor(None, self.get_ticker_sync, symbol)
+        if "error" not in result:
+            self._ticker_cache[symbol] = (result, now)
+        return result
     
     def get_orderbook_sync(self, symbol: str = "BTC/USDT", limit: int = 20) -> Dict[str, Any]:
         """Get orderbook analysis"""
+        symbol = format_mexc_symbol(symbol)
         try:
-            book = self.primary.fetch_order_book(symbol, limit)
+            book = self.mexc_public.fetch_order_book(symbol, limit)
             bid_depth = sum([b[1] * b[0] for b in book['bids'][:10]])
             ask_depth = sum([a[1] * a[0] for a in book['asks'][:10]])
             total = bid_depth + ask_depth
@@ -116,12 +139,13 @@ class MarketIntelligence:
             return {"error": str(e)}
     
     async def get_orderbook(self, symbol: str) -> Dict[str, Any]:
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         return await loop.run_in_executor(None, self.get_orderbook_sync, symbol)
     
     async def get_technical_analysis(self, symbol: str = "BTC/USDT", interval: str = "1h") -> Dict[str, Any]:
         """Full technical analysis"""
-        df = await self.get_klines(symbol, interval, 100)
+        symbol = format_mexc_symbol(symbol)
+        df = await self.get_klines(symbol, interval, 250)  # 250 candles needed for EMA 200
         
         if df.empty:
             return {"error": "Failed to fetch data"}
@@ -148,6 +172,7 @@ class MarketIntelligence:
             ema_9 = ta.trend.EMAIndicator(df['close'], window=9).ema_indicator().iloc[-1]
             ema_21 = ta.trend.EMAIndicator(df['close'], window=21).ema_indicator().iloc[-1]
             ema_50 = ta.trend.EMAIndicator(df['close'], window=50).ema_indicator().iloc[-1]
+            ema_200 = ta.trend.EMAIndicator(df['close'], window=200).ema_indicator().iloc[-1] if len(df) >= 200 else None
             
             # ATR
             atr = ta.volatility.AverageTrueRange(df['high'], df['low'], df['close'], window=14).average_true_range().iloc[-1]
@@ -157,6 +182,14 @@ class MarketIntelligence:
             stoch_k = stoch.stoch().iloc[-1]
             stoch_d = stoch.stoch_signal().iloc[-1]
             
+            # ADX
+            try:
+                adx_ind = ta.trend.ADXIndicator(df['high'], df['low'], df['close'], window=14)
+                adx_val = adx_ind.adx().iloc[-1]
+                adx_val = round(float(adx_val), 2) if adx_val == adx_val else 0.0  # nan check
+            except Exception:
+                adx_val = 0.0
+
             # Volume
             avg_vol = df['volume'].tail(20).mean()
             curr_vol = df['volume'].iloc[-1]
@@ -229,12 +262,15 @@ class MarketIntelligence:
                     "bb_middle": round(bb_middle, 2),
                     "bb_lower": round(bb_lower, 2),
                     "ema_9": round(ema_9, 2),
+                    "ema_20": round(ema_21, 2),
                     "ema_21": round(ema_21, 2),
                     "ema_50": round(ema_50, 2),
+                    "ema_200": round(ema_200, 2) if ema_200 is not None else None,
                     "atr": round(atr, 2),
                     "stoch_k": round(stoch_k, 2),
                     "stoch_d": round(stoch_d, 2),
                     "volume_ratio": round(vol_ratio, 2),
+                    "adx": adx_val,
                     "trend": "bullish" if ema_9 > ema_21 > ema_50 else "bearish" if ema_9 < ema_21 < ema_50 else "neutral"
                 },
                 "market_structure": structure,
@@ -329,6 +365,7 @@ class MarketIntelligence:
     
     async def get_full_market_scan(self, symbol: str = "BTC/USDT") -> Dict[str, Any]:
         """Comprehensive market scan"""
+        symbol = format_mexc_symbol(symbol)
         try:
             ta_data = await self.get_technical_analysis(symbol, "1h")
             ticker = await self.get_ticker(symbol)
@@ -423,145 +460,381 @@ class MarketIntelligence:
             "market_data": scan,
         }
     
+    def _deriv_cache_get(self, key: str):
+        """Return cached value if still valid, else None."""
+        entry = self._deriv_cache.get(key)
+        if entry:
+            value, ts = entry[0], entry[1]
+            ttl = entry[2] if len(entry) > 2 else self._deriv_cache_ttl
+            if (time.time() - ts) < ttl:
+                return value
+        return None
+
+    def _deriv_cache_set(self, key: str, value, ttl: int = None):
+        """Store value in cache. ttl overrides the class default if provided."""
+        if ttl is not None:
+            self._deriv_cache[key] = (value, time.time(), ttl)
+        else:
+            self._deriv_cache[key] = (value, time.time())
+
+    def _mexc_futures_symbol(self, symbol: str) -> str:
+        """Convert 'BTC/USDT' -> 'BTC_USDT' for MEXC futures endpoints."""
+        return symbol.replace("/", "_")
+
     async def get_long_short_ratio(self, symbol: str, period: str = "1h", limit: int = 5) -> List[Dict]:
-        """Get long/short ratio data (mock implementation for MEXC)"""
+        """Get long/short ratio from MEXC contract API."""
+        # Circuit breaker: if API has been returning 403, skip until cooldown expires
+        if time.time() < self._lsr_disabled_until:
+            return []
+
+        cache_key = f"lsr:{symbol}:{period}:{limit}"
+        cached = self._deriv_cache_get(cache_key)
+        if cached is not None:
+            return cached
+
+        mexc_sym = self._mexc_futures_symbol(symbol)
+        url = f"{self._mexc_contract_base}/long_short_pos_ratio"
+        params = {"symbol": mexc_sym, "period": period}
         try:
-            # MEXC doesn't provide this data via public API, so we'll return mock data
-            # In a real implementation, this would come from Binance futures API
-            import random
-            
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                resp = await client.get(url, params=params)
+                if resp.status_code == 403:
+                    self._lsr_fail_count += 1
+                    if self._lsr_fail_count >= 3:
+                        self._lsr_disabled_until = time.time() + 6 * 3600  # 6 hours
+                        logger.warning(
+                            "CIRCUIT BREAKER: MEXC L/S ratio API disabled for 6h "
+                            "— endpoint returning 403 Forbidden"
+                        )
+                        self._lsr_fail_count = 0
+                    return []
+                self._lsr_fail_count = 0  # reset on success
+                resp.raise_for_status()
+                body = resp.json()
+
+            items = body.get("data") or []
+            if isinstance(items, dict):
+                items = [items]
             data = []
-            for i in range(limit):
-                ratio = random.uniform(0.8, 1.5)  # Random L/S ratio
-                long_pct = ratio / (1 + ratio)
-                short_pct = 1 - long_pct
-                
+            for item in items[:limit]:
+                long_ratio = float(item.get("longRatio", 0.5))
+                short_ratio = float(item.get("shortRatio", 0.5))
+                ratio = round(long_ratio / short_ratio, 4) if short_ratio else 1.0
+                ts_ms = item.get("timestamp", 0)
+                ts = datetime.fromtimestamp(int(ts_ms) / 1000, tz=timezone.utc).isoformat() if ts_ms else datetime.now(timezone.utc).isoformat()
                 data.append({
                     "symbol": symbol,
-                    "long_short_ratio": round(ratio, 2),
-                    "long_account": round(long_pct, 3),
-                    "short_account": round(short_pct, 3),
-                    "timestamp": datetime.now(timezone.utc).isoformat()
+                    "long_short_ratio": ratio,
+                    "long_account": round(long_ratio, 4),
+                    "short_account": round(short_ratio, 4),
+                    "timestamp": ts,
                 })
-            
+            self._deriv_cache_set(cache_key, data)
             return data
         except Exception as e:
-            logger.error(f"Long/short ratio error: {e}")
-            return []
-    
+            logger.warning(f"MEXC long/short ratio error for {symbol}: {e}")
+            cached_fallback = self._deriv_cache.get(cache_key)
+            return cached_fallback[0] if cached_fallback else []
+
     async def get_top_trader_long_short_ratio(self, symbol: str, period: str = "1h", limit: int = 5) -> List[Dict]:
-        """Get top trader (whale) long/short ratio data (mock implementation)"""
+        """Get top-trader long/short ratio from MEXC contract API (uses same pos ratio endpoint)."""
+        # Circuit breaker: reuse same disable window as get_long_short_ratio
+        if time.time() < self._lsr_disabled_until:
+            return []
+
+        cache_key = f"top_lsr:{symbol}:{period}:{limit}"
+        cached = self._deriv_cache_get(cache_key)
+        if cached is not None:
+            return cached
+
+        mexc_sym = self._mexc_futures_symbol(symbol)
+        url = f"{self._mexc_contract_base}/long_short_pos_ratio"
+        params = {"symbol": mexc_sym, "period": period}
         try:
-            import random
-            
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                resp = await client.get(url, params=params)
+                if resp.status_code == 403:
+                    return []
+                resp.raise_for_status()
+                body = resp.json()
+
+            items = body.get("data") or []
+            if isinstance(items, dict):
+                items = [items]
             data = []
-            for i in range(limit):
-                ratio = random.uniform(0.9, 1.3)  # Whales tend to be more balanced
-                long_pct = ratio / (1 + ratio)
-                short_pct = 1 - long_pct
-                
+            for item in items[:limit]:
+                long_ratio = float(item.get("longRatio", 0.5))
+                short_ratio = float(item.get("shortRatio", 0.5))
+                ratio = round(long_ratio / short_ratio, 4) if short_ratio else 1.0
+                ts_ms = item.get("timestamp", 0)
+                ts = datetime.fromtimestamp(int(ts_ms) / 1000, tz=timezone.utc).isoformat() if ts_ms else datetime.now(timezone.utc).isoformat()
                 data.append({
                     "symbol": symbol,
-                    "long_short_ratio": round(ratio, 2),
-                    "long_account": round(long_pct, 3),
-                    "short_account": round(short_pct, 3),
-                    "timestamp": datetime.now(timezone.utc).isoformat()
+                    "long_short_ratio": ratio,
+                    "long_account": round(long_ratio, 4),
+                    "short_account": round(short_ratio, 4),
+                    "timestamp": ts,
                 })
-            
+            self._deriv_cache_set(cache_key, data)
             return data
         except Exception as e:
-            logger.error(f"Top trader L/S ratio error: {e}")
-            return []
-    
+            logger.warning(f"MEXC top trader L/S ratio error for {symbol}: {e}")
+            cached_fallback = self._deriv_cache.get(cache_key)
+            return cached_fallback[0] if cached_fallback else []
+
     async def get_taker_long_short_ratio(self, symbol: str, period: str = "1h", limit: int = 5) -> List[Dict]:
-        """Get taker buy/sell ratio data (mock implementation)"""
+        """Get taker buy/sell volume ratio from MEXC contract deal_stat endpoint."""
+        cache_key = f"taker_lsr:{symbol}:{period}:{limit}"
+        cached = self._deriv_cache_get(cache_key)
+        if cached is not None:
+            return cached
+
+        mexc_sym = self._mexc_futures_symbol(symbol)
+        url = f"{self._mexc_contract_base}/deal_stat"
+        params = {"symbol": mexc_sym, "period": period}
         try:
-            import random
-            
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                resp = await client.get(url, params=params)
+                resp.raise_for_status()
+                body = resp.json()
+
+            items = body.get("data") or []
+            if isinstance(items, dict):
+                items = [items]
             data = []
-            for i in range(limit):
-                buy_vol = random.uniform(0.4, 0.7)
-                sell_vol = 1 - buy_vol
-                
+            for item in items[:limit]:
+                buy_vol = float(item.get("takerBuyVol", 0))
+                sell_vol = float(item.get("takerSellVol", 0))
+                total = buy_vol + sell_vol
+                buy_ratio = round(buy_vol / total, 4) if total else 0.5
+                sell_ratio = round(sell_vol / total, 4) if total else 0.5
+                ts_ms = item.get("timestamp", 0)
+                ts = datetime.fromtimestamp(int(ts_ms) / 1000, tz=timezone.utc).isoformat() if ts_ms else datetime.now(timezone.utc).isoformat()
                 data.append({
                     "symbol": symbol,
-                    "buy_vol": round(buy_vol, 3),
-                    "sell_vol": round(sell_vol, 3),
-                    "timestamp": datetime.now(timezone.utc).isoformat()
+                    "buy_vol": buy_ratio,
+                    "sell_vol": sell_ratio,
+                    "timestamp": ts,
                 })
-            
+            self._deriv_cache_set(cache_key, data)
             return data
         except Exception as e:
-            logger.error(f"Taker ratio error: {e}")
-            return []
-    
+            logger.warning(f"MEXC taker ratio error for {symbol}: {e}")
+            cached_fallback = self._deriv_cache.get(cache_key)
+            return cached_fallback[0] if cached_fallback else []
+
     async def get_current_funding_rate(self, symbol: str) -> Dict[str, Any]:
-        """Get current funding rate (mock implementation for MEXC)"""
+        """Get current funding rate from MEXC contract funding_rate endpoint."""
+        cache_key = f"cur_fr:{symbol}"
+        cached = self._deriv_cache_get(cache_key)
+        if cached is not None:
+            return cached
+
+        mexc_sym = self._mexc_futures_symbol(symbol)
+        url = f"{self._mexc_contract_base}/funding_rate/{mexc_sym}"
         try:
-            import random
-            
-            # Get current price for mark price
-            ticker = await self.get_ticker(symbol)
-            price = ticker.get('price', 0)
-            
-            # Mock funding rate (typically between -0.1% to +0.1%)
-            funding_rate = random.uniform(-0.001, 0.001)
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                resp = await client.get(url)
+                resp.raise_for_status()
+                body = resp.json()
+
+            data = body.get("data") or {}
+            if not data:
+                result = {"symbol": symbol, "funding_rate": 0.0, "funding_rate_pct": "+0.0000%",
+                          "mark_price": None, "index_price": None,
+                          "next_funding_time": None,
+                          "timestamp": datetime.now(timezone.utc).isoformat()}
+                self._deriv_cache_set(cache_key, result)
+                return result
+
+            funding_rate = float(data.get("fundingRate", 0))
             funding_rate_pct = f"{funding_rate * 100:+.4f}%"
-            
-            return {
+            next_ts_ms = data.get("nextSettleTime", 0)
+            next_funding_time = (
+                datetime.fromtimestamp(int(next_ts_ms) / 1000, tz=timezone.utc).isoformat()
+                if next_ts_ms else (datetime.now(timezone.utc) + timedelta(hours=8)).isoformat()
+            )
+            ts_ms = data.get("timestamp", 0)
+            ts = datetime.fromtimestamp(int(ts_ms) / 1000, tz=timezone.utc).isoformat() if ts_ms else datetime.now(timezone.utc).isoformat()
+
+            result = {
                 "symbol": symbol,
                 "funding_rate": funding_rate,
                 "funding_rate_pct": funding_rate_pct,
-                "mark_price": price,
-                "index_price": price * random.uniform(0.999, 1.001),  # Slight variation
-                "next_funding_time": (datetime.now(timezone.utc) + timedelta(hours=8)).isoformat(),
-                "timestamp": datetime.now(timezone.utc).isoformat()
+                "mark_price": None,
+                "index_price": None,
+                "next_funding_time": next_funding_time,
+                "timestamp": ts,
             }
+            self._deriv_cache_set(cache_key, result)
+            return result
         except Exception as e:
-            logger.error(f"Funding rate error: {e}")
-            return {"error": str(e)}
-    
+            logger.warning(f"MEXC funding rate error for {symbol}: {e}")
+            cached_fallback = self._deriv_cache.get(cache_key)
+            if cached_fallback:
+                return cached_fallback[0]
+            return {"symbol": symbol, "funding_rate": 0.0, "funding_rate_pct": "+0.0000%",
+                    "mark_price": None, "index_price": None, "next_funding_time": None,
+                    "timestamp": datetime.now(timezone.utc).isoformat()}
+
     async def get_funding_rate(self, symbol: str, limit: int = 5) -> List[Dict]:
-        """Get historical funding rates (mock implementation)"""
+        """Get historical funding rates from MEXC contract funding_rate/history endpoint."""
+        cache_key = f"hist_fr:{symbol}:{limit}"
+        cached = self._deriv_cache_get(cache_key)
+        if cached is not None:
+            return cached
+
+        mexc_sym = self._mexc_futures_symbol(symbol)
+        url = f"{self._mexc_contract_base}/funding_rate/history"
+        params = {"symbol": mexc_sym, "page_num": 1, "page_size": limit}
         try:
-            import random
-            
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                resp = await client.get(url, params=params)
+                resp.raise_for_status()
+                body = resp.json()
+
+            result_list = (body.get("data") or {}).get("resultList") or []
             data = []
-            for i in range(limit):
-                funding_rate = random.uniform(-0.001, 0.001)
+            for item in result_list:
+                funding_rate = float(item.get("fundingRate", 0))
                 funding_rate_pct = f"{funding_rate * 100:+.4f}%"
-                
+                ts_ms = item.get("settleTime", 0)
+                ts = datetime.fromtimestamp(int(ts_ms) / 1000, tz=timezone.utc).isoformat() if ts_ms else datetime.now(timezone.utc).isoformat()
                 data.append({
                     "symbol": symbol,
                     "funding_rate": funding_rate,
                     "funding_rate_pct": funding_rate_pct,
-                    "timestamp": (datetime.now(timezone.utc) - timedelta(hours=8*i)).isoformat()
+                    "timestamp": ts,
                 })
-            
+            self._deriv_cache_set(cache_key, data)
             return data
         except Exception as e:
-            logger.error(f"Historical funding rate error: {e}")
-            return []
-    
-    async def get_liquidations(self, symbol: str) -> Dict[str, Any]:
-        """Get liquidation data (mock implementation)"""
+            logger.warning(f"MEXC historical funding rate error for {symbol}: {e}")
+            cached_fallback = self._deriv_cache.get(cache_key)
+            return cached_fallback[0] if cached_fallback else []
+
+    async def get_funding_momentum(self, symbol: str) -> Dict:
+        """
+        Analyze funding rate TREND (velocity), not just the current level.
+        Rising funding = longs piling in = potential squeeze.
+        Falling from extreme = squeeze completed = reversal signal.
+        Returns: signal, velocity, current, trend, squeeze_risk
+        """
         try:
-            import random
-            
-            # Mock liquidation data
-            long_liq = random.uniform(1000000, 10000000)  # $1M - $10M
-            short_liq = random.uniform(1000000, 10000000)
-            
+            rates = await self.get_funding_rate(symbol, limit=8)
+            if len(rates) < 3:
+                return {"signal": "NEUTRAL", "velocity": 0.0, "current": 0.0, "trend": "flat"}
+
+            values = [r["funding_rate"] for r in rates]  # newest first
+            current = values[0]
+            prev = values[1]
+            older = values[2]
+
+            velocity = current - prev
+            acceleration = (current - prev) - (prev - older)
+
+            signal = "NEUTRAL"
+            squeeze_risk = "LOW"
+
+            if current > 0.001 and velocity > 0:
+                signal = "BEARISH"
+                if current > 0.002 and velocity > 0.0003:
+                    squeeze_risk = "HIGH"
+                elif current > 0.0015:
+                    squeeze_risk = "MEDIUM"
+            elif current < -0.0003 and velocity < 0:
+                signal = "BULLISH"
+                if current < -0.0008:
+                    squeeze_risk = "HIGH"
+                elif current < -0.0005:
+                    squeeze_risk = "MEDIUM"
+            elif abs(prev) > 0.002 and abs(current) < abs(prev) * 0.6:
+                signal = "REVERSAL"
+                squeeze_risk = "MEDIUM"
+
+            trend = "rising" if velocity > 0.0001 else "falling" if velocity < -0.0001 else "flat"
             return {
-                "symbol": symbol,
-                "long_liquidations": f"${long_liq/1e6:.1f}M",
-                "short_liquidations": f"${short_liq/1e6:.1f}M",
-                "total_liquidations": f"${(long_liq + short_liq)/1e6:.1f}M",
-                "timestamp": datetime.now(timezone.utc).isoformat()
+                "signal": signal,
+                "current": round(current * 100, 5),
+                "prev": round(prev * 100, 5),
+                "velocity": round(velocity * 100, 6),
+                "acceleration": round(acceleration * 100, 7),
+                "trend": trend,
+                "squeeze_risk": squeeze_risk,
+                "history": [round(v * 100, 5) for v in values[:5]],
             }
         except Exception as e:
-            logger.error(f"Liquidations error: {e}")
-            return {"error": str(e)}
+            logger.warning(f"Funding momentum error for {symbol}: {e}")
+            return {"signal": "NEUTRAL", "velocity": 0.0, "current": 0.0, "trend": "flat"}
+
+    async def get_liquidations(self, symbol: str) -> Dict[str, Any]:
+        """
+        Estimate liquidation pressure from open-interest changes via MEXC contract API.
+        Compares current OI against the previous snapshot stored in cache.
+        """
+        cache_key = f"liqs:{symbol}"
+        cached = self._deriv_cache_get(cache_key)
+        if cached is not None:
+            return cached
+
+        mexc_sym = self._mexc_futures_symbol(symbol)
+        url = f"{self._mexc_contract_base}/open_interest/{mexc_sym}"
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                resp = await client.get(url)
+                resp.raise_for_status()
+                body = resp.json()
+
+            oi_now = 0.0
+            if body.get("code") == 0 and body.get("data"):
+                oi_now = float(body["data"].get("openInterest", 0))
+
+            # Use previous snapshot from deriv cache to estimate OI change
+            prev_key = f"oi_prev:{symbol}"
+            prev_entry = self._deriv_cache.get(prev_key)
+            oi_prev = prev_entry[0] if prev_entry else oi_now
+            self._deriv_cache_set(prev_key, oi_now, ttl=3600)
+
+            oi_change = oi_now - oi_prev
+            oi_change_pct = round((oi_change / oi_prev * 100) if oi_prev else 0, 4)
+
+            ticker = await self.get_ticker(symbol)
+            price = ticker.get("price", 0) or 0
+            oi_change_usd = abs(oi_change) * price
+
+            if oi_change < 0:
+                long_liq_usd = oi_change_usd
+                short_liq_usd = 0.0
+                direction = "long_liq"
+            elif oi_change > 0:
+                long_liq_usd = 0.0
+                short_liq_usd = oi_change_usd
+                direction = "short_liq"
+            else:
+                long_liq_usd = short_liq_usd = 0.0
+                direction = "neutral"
+
+            total_usd = long_liq_usd + short_liq_usd
+            ts_ms = (body.get("data") or {}).get("timestamp", 0)
+            ts = datetime.fromtimestamp(int(ts_ms) / 1000, tz=timezone.utc).isoformat() if ts_ms else datetime.now(timezone.utc).isoformat()
+
+            result = {
+                "symbol": symbol,
+                "long_liquidations": f"${long_liq_usd/1e6:.1f}M",
+                "short_liquidations": f"${short_liq_usd/1e6:.1f}M",
+                "total_liquidations": f"${total_usd/1e6:.1f}M",
+                "oi_change_pct": oi_change_pct,
+                "oi_direction": direction,
+                "timestamp": ts,
+            }
+            self._deriv_cache_set(cache_key, result)
+            return result
+        except Exception as e:
+            logger.warning(f"MEXC liquidations error for {symbol}: {e}")
+            cached_fallback = self._deriv_cache.get(cache_key)
+            if cached_fallback:
+                return cached_fallback[0]
+            return {"symbol": symbol, "error": str(e)}
 
 
 # Global instance

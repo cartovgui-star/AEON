@@ -230,9 +230,9 @@ class AdditionalDataSources:
                     self._set_cache(cache_key, result)
                     return result
                     
-        except:
-            pass
-        
+        except Exception as e:
+            logger.debug(f"ETH gas fetch error: {e}")
+
         return {"error": "Failed to fetch ETH gas prices"}
     
     async def get_defi_llama_tvl(self, protocol: str = None) -> Dict:

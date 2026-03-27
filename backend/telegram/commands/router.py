@@ -22,6 +22,10 @@ from .alerts_commands import route_alert_command
 from .auto_commands import route_auto_command
 from .news_commands import route_news_command
 from .price_commands import route_price_command
+from .vwap_commands import route_vwap_command
+from .yolo_commands import route_yolo_command
+from .learning_commands import route_learning_command
+from .quant_commands import route_quant_command
 
 
 async def route_command(text: str, chat_id: int, context: dict) -> Optional[Tuple[str, str]]:
@@ -52,6 +56,10 @@ async def route_command(text: str, chat_id: int, context: dict) -> Optional[Tupl
         route_scan_command,         # /scan, /opps
         route_mtf_command,          # /mtf, /confluence
         route_auto_command,         # /auto, /riskcheck
+        route_vwap_command,         # /vwap, /vwap scan
+        route_yolo_command,         # /yolo, /yolo scan, /yolo on/off
+        route_learning_command,     # /learn, /insights, /patterns
+        route_quant_command,        # /quant, /quant [coin]
         
         # Analytics
         route_stats_command,        # /stats, /accuracy, /leaderboard
@@ -61,7 +69,7 @@ async def route_command(text: str, chat_id: int, context: dict) -> Optional[Tupl
         route_news_command,         # /news, /whales, /intel
         
         # AI models
-        route_model_command,        # /openai, /claude
+        route_model_command,        # /claude, /gemini
     ]
     
     for router in routers:

@@ -8,7 +8,6 @@ from datetime import datetime
 # These will be set by server.py during initialization
 db = None
 chat_ids: Set[int] = set()
-emergent_key = ""
 mexc = None
 autonomous_trader = None
 autonomous_trader_v2 = None
@@ -36,6 +35,15 @@ confluence_analyzer = None
 ws_manager = None
 aeon_mind = None
 self_healer = None
+vwap_scalper = None  # VWAP + EMA Cross + RSI Scalper
+vp_engine = None     # Hyper Accuracy Engine (VP + Liq Heatmap + Orderbook + BTC Gate)
+quant_analyzer = None  # Quant Analyzer Engine - pure multi-factor technical scoring
+analytics_engine = None  # Performance Analytics Engine
+regime_engine = None     # Market Regime Detection Engine
+yolo_engine = None   # YOLO Engine - independent aggressive trading
+continuous_learner = None  # Continuous Learning Engine
+paper_trading = None  # Paper Trading System
+engine_manager = None  # Unified Engine Manager - 7 engines
 
 # Telegram helpers
 send_telegram_message = None
