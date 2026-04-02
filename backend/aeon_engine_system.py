@@ -27,15 +27,16 @@ except ImportError:
 
 
 class EngineType(Enum):
-    """All 8 independent engines"""
-    AUTONOMOUS_TRADER_V2 = "autonomous_trader_v2"
-    FREE_WILL_V2 = "free_will_v2"
-    DUAL_ENGINE = "dual_engine"
-    YOLO_ENGINE = "yolo_engine"
-    VWAP_SCALPER = "vwap_scalper"
-    ELITE_STRATEGY = "elite_strategy"
-    DAY_TRADER = "day_trader"
-    VOLUME_PROFILE = "volume_profile"
+    """All 9 independent engines"""
+    AUTONOMOUS_TRADER_V2   = "autonomous_trader_v2"
+    FREE_WILL_V2           = "free_will_v2"
+    DUAL_ENGINE            = "dual_engine"
+    YOLO_ENGINE            = "yolo_engine"
+    VWAP_SCALPER           = "vwap_scalper"
+    ELITE_STRATEGY         = "elite_strategy"
+    DAY_TRADER             = "day_trader"
+    VOLUME_PROFILE         = "volume_profile"
+    INSTITUTIONAL_SCALPER  = "institutional_scalper"
 
 
 class TradeStatus(Enum):
@@ -174,6 +175,22 @@ ENGINE_CONFIGS = {
         use_cooldown=False,
         description="Hyper Accuracy: Volume Profile + Liquidation Heatmap + Orderbook",
         risk_profile="balanced"
+    ),
+
+    EngineType.INSTITUTIONAL_SCALPER: EngineConfig(
+        engine_type=EngineType.INSTITUTIONAL_SCALPER,
+        min_confidence=85.0,
+        min_confluences=2,
+        max_leverage=30,
+        max_position_size=1200,
+        max_concurrent_trades=3,
+        max_daily_trades=3,
+        max_loss_per_day=-350,
+        use_blacklist=True,
+        use_cooldown=True,
+        cooldown_hours=6,
+        description="Pure SMC: Order Blocks, FVG, BOS, Liq Sweeps on 1H/4H/1D",
+        risk_profile="conservative"
     ),
 }
 

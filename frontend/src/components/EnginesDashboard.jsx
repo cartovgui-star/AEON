@@ -5,13 +5,14 @@ import { Card, CardContent } from './ui/card';
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
 const ENGINE_META = {
-  autonomous_trader_v2: { label: 'Autonomous Trader', emoji: '🤖', color: 'blue' },
-  free_will_v2:         { label: 'Free Will',          emoji: '🧠', color: 'purple' },
-  dual_engine:          { label: 'Dual Engine',         emoji: '⚡', color: 'yellow' },
-  day_trader:           { label: 'Day Trader',          emoji: '📈', color: 'orange' },
-  yolo_engine:          { label: 'YOLO Engine',         emoji: '🚀', color: 'red' },
-  vwap_scalper:         { label: 'VWAP Scalper',        emoji: '🎯', color: 'teal' },
-  elite_strategy:       { label: 'Elite Strategy',      emoji: '👑', color: 'gold' },
+  autonomous_trader_v2:   { label: 'Autonomous Trader',      emoji: '🤖', color: 'blue'   },
+  free_will_v2:           { label: 'Free Will',               emoji: '🧠', color: 'purple' },
+  dual_engine:            { label: 'Dual Engine',              emoji: '⚡', color: 'yellow' },
+  day_trader:             { label: 'Day Trader',               emoji: '📈', color: 'orange' },
+  yolo_engine:            { label: 'YOLO Engine',              emoji: '🚀', color: 'red'    },
+  vwap_scalper:           { label: 'VWAP Scalper',             emoji: '🎯', color: 'teal'   },
+  elite_strategy:         { label: 'Elite Strategy',           emoji: '👑', color: 'gold'   },
+  institutional_scalper:  { label: 'Institutional Scalper',    emoji: '🏛️', color: 'indigo' },
 };
 
 const COLOR_MAP = {
@@ -22,6 +23,7 @@ const COLOR_MAP = {
   red:    { bg: 'bg-red-500/10',    border: 'border-red-500/30',    text: 'text-red-400'    },
   teal:   { bg: 'bg-teal-500/10',   border: 'border-teal-500/30',   text: 'text-teal-400'   },
   gold:   { bg: 'bg-amber-500/10',  border: 'border-amber-500/30',  text: 'text-amber-400'  },
+  indigo: { bg: 'bg-indigo-500/10', border: 'border-indigo-500/30', text: 'text-indigo-400' },
 };
 
 function WinRateBar({ rate }) {
@@ -42,12 +44,14 @@ function PnlBadge({ pnl }) {
 
 // Engines that have dedicated toggle endpoints
 const ENGINE_TOGGLE_ENDPOINTS = {
-  autonomous_trader_v2: '/api/trading/toggle',
-  free_will_v2:         '/api/freewill/toggle',
-  dual_engine:          '/api/dual/toggle',
-  day_trader:           '/api/dual/day-trader/toggle',
-  yolo_engine:          '/api/yolo/toggle',
-  vwap_scalper:         '/api/vwap-scalper/toggle',
+  autonomous_trader_v2:  '/api/trading/toggle',
+  free_will_v2:          '/api/freewill/toggle',
+  dual_engine:           '/api/dual/toggle',
+  day_trader:            '/api/dual/day-trader/toggle',
+  yolo_engine:           '/api/yolo/toggle',
+  vwap_scalper:          '/api/vwap-scalper/toggle',
+  elite_strategy:        '/api/elite/toggle',
+  institutional_scalper: '/api/institutional-scalper/toggle',
 };
 
 function EngineCard({ name, data, isActive, onToggle, toggling }) {
@@ -238,13 +242,15 @@ export default function EnginesDashboard() {
   const fetchStatus = useCallback(async () => {
     try {
       // Fetch engine system status + per-engine active states in parallel
-      const [statusRes, v2, fw, dual, yolo, vwap] = await Promise.allSettled([
+      const [statusRes, v2, fw, dual, yolo, vwap, elite, inst] = await Promise.allSettled([
         fetch(`${API_URL}/api/engines/status`).then(r => r.json()),
         fetch(`${API_URL}/api/trading/v2/stats`).then(r => r.json()),
         fetch(`${API_URL}/api/freewill/stats`).then(r => r.json()),
         fetch(`${API_URL}/api/dual/stats`).then(r => r.json()),
         fetch(`${API_URL}/api/yolo/stats`).then(r => r.json()),
         fetch(`${API_URL}/api/vwap-scalper/stats`).then(r => r.json()),
+        fetch(`${API_URL}/api/elite/status`).then(r => r.json()),
+        fetch(`${API_URL}/api/institutional-scalper/stats`).then(r => r.json()),
       ]);
 
       if (statusRes.status === 'fulfilled') {
@@ -255,12 +261,14 @@ export default function EnginesDashboard() {
       }
 
       setActiveStates({
-        autonomous_trader_v2: v2.status === 'fulfilled' ? v2.value.active : undefined,
-        free_will_v2:         fw.status === 'fulfilled' ? fw.value.active : undefined,
-        dual_engine:          dual.status === 'fulfilled' ? dual.value.active : undefined,
-        day_trader:           dual.status === 'fulfilled' ? dual.value.day_trader?.active : undefined,
-        yolo_engine:          yolo.status === 'fulfilled' ? yolo.value.active : undefined,
-        vwap_scalper:         vwap.status === 'fulfilled' ? vwap.value.active : undefined,
+        autonomous_trader_v2:  v2.status    === 'fulfilled' ? v2.value.active              : undefined,
+        free_will_v2:          fw.status    === 'fulfilled' ? fw.value.active              : undefined,
+        dual_engine:           dual.status  === 'fulfilled' ? dual.value.active            : undefined,
+        day_trader:            dual.status  === 'fulfilled' ? dual.value.day_trader?.active : undefined,
+        yolo_engine:           yolo.status  === 'fulfilled' ? yolo.value.active            : undefined,
+        vwap_scalper:          vwap.status  === 'fulfilled' ? vwap.value.active            : undefined,
+        elite_strategy:        elite.status === 'fulfilled' ? elite.value.active           : undefined,
+        institutional_scalper: inst.status  === 'fulfilled' ? inst.value.active            : undefined,
       });
 
       setLastUpdate(new Date().toLocaleTimeString());

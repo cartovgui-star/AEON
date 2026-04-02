@@ -4,7 +4,7 @@ import {
   Play, Pause, RefreshCw, X, Settings2, Zap, Radio, BarChart3,
   AlertTriangle, Shield, Flame, Clock, ChevronRight, Percent,
   ArrowUpRight, ArrowDownRight, Crosshair, LineChart, CandlestickChart,
-  Wallet, Crown, Leaf, CheckCircle
+  Wallet, Crown, Leaf, CheckCircle, FlaskConical, Microscope
 } from 'lucide-react';
 import TradingChart from './TradingChart';
 
@@ -70,7 +70,8 @@ const PositionRow = ({ position, onClose, onSelect, closing }) => {
   const leveragedPnl = pnl * leverage;
   const isProfitable = leveragedPnl >= 0;
   const symbol = (position.symbol || '').replace('/USDT', '');
-  const accountBadge = position.account_id === 'STARTER' ? '🌱' : position.account_id === 'PRO' ? '👑' : '🤖';
+  const ACCT_BADGE = { PRO: '👑', STARTER: '🌱', REAL_LIFE: '💵', THE_PROOF: '🔬', BENCHMARK: '📊' };
+  const accountBadge = ACCT_BADGE[position.account_id] || '🤖';
 
   return (
     <div
@@ -136,7 +137,11 @@ const AccountCard = ({ account, onReset }) => {
     <div className={`glass-card p-4 ${isCritical ? 'border-rose-500/50' : isLow ? 'border-amber-500/30' : ''}`}>
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          {account.account_id === 'PRO' ? <Crown className="w-4 h-4 text-amber-500" /> : <Leaf className="w-4 h-4 text-green-500" />}
+          {account.account_id === 'PRO'        ? <Crown       className="w-4 h-4 text-amber-500"  /> :
+           account.account_id === 'REAL_LIFE'  ? <DollarSign  className="w-4 h-4 text-blue-400"   /> :
+           account.account_id === 'THE_PROOF'  ? <Microscope  className="w-4 h-4 text-violet-400" /> :
+           account.account_id === 'BENCHMARK'  ? <BarChart3   className="w-4 h-4 text-orange-400" /> :
+                                                  <Leaf        className="w-4 h-4 text-green-500"  />}
           <span className="font-semibold text-white">{account.name || account.account_id}</span>
           {isCritical && <span className="text-xs bg-rose-500/20 text-rose-300 px-1.5 py-0.5 rounded">Auto-reloading</span>}
           {isLow && !isCritical && <span className="text-xs bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded">Low</span>}

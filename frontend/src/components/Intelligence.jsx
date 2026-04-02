@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Brain, RefreshCw, Loader2, Shield, Activity,
-  ArrowRightLeft, AlertTriangle, Eye
+  ArrowRightLeft, AlertTriangle, Eye, Globe, TrendingUp, TrendingDown
 } from 'lucide-react';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
@@ -51,17 +51,20 @@ export default function Intelligence() {
   const [sentiment, setSentiment] = useState(null);
   const [arbitrage, setArbitrage] = useState(null);
   const [health, setHealth] = useState(null);
+  const [regime, setRegime] = useState(null);
   const [loading, setLoading] = useState(true);
   const [arbiLoading, setArbiLoading] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
-      const [sentRes, healthRes] = await Promise.all([
+      const [sentRes, healthRes, regimeRes] = await Promise.all([
         fetch(API_URL + '/api/sentiment/composite?symbol=BTC'),
-        fetch(API_URL + '/api/strategy-health/status')
+        fetch(API_URL + '/api/strategy-health/status'),
+        fetch(API_URL + '/api/regime/global'),
       ]);
       setSentiment(await sentRes.json());
       setHealth(await healthRes.json());
+      try { const r = await regimeRes.json(); if (!r.error) setRegime(r); } catch {}
     } catch (err) {
       console.error('Intel fetch error:', err);
     }
@@ -162,6 +165,34 @@ export default function Intelligence() {
           <HeadlineList headlines={headlines} />
         </div>
       </div>
+
+      {/* MACRO REGIME */}
+      {regime && (
+        <>
+          <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+            <Globe className="w-5 h-5 text-sky-400" /> Global Market Regime
+          </h2>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {Object.entries(regime).map(([key, val]) => {
+              if (typeof val !== 'string' && typeof val !== 'number') return null;
+              const isUp = String(val).toLowerCase().includes('bull') || String(val).toLowerCase().includes('risk_on');
+              const isDn = String(val).toLowerCase().includes('bear') || String(val).toLowerCase().includes('risk_off');
+              const col  = isUp ? 'text-green-400' : isDn ? 'text-red-400' : 'text-zinc-300';
+              const label = key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+              return (
+                <div key={key} className="bg-zinc-800/30 border border-zinc-700/50 rounded-xl p-3">
+                  <p className="text-xs text-zinc-500 mb-1">{label}</p>
+                  <p className={`text-sm font-semibold ${col} flex items-center gap-1`}>
+                    {isUp && <TrendingUp className="w-3 h-3" />}
+                    {isDn && <TrendingDown className="w-3 h-3" />}
+                    {String(val)}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
 
       {/* ARBITRAGE */}
       <div className="flex items-center justify-between">

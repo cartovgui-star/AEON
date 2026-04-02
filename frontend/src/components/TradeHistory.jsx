@@ -9,6 +9,8 @@ import { Card, CardContent } from './ui/card';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
+const PAGE_SIZE = 25;
+
 export default function TradeHistory() {
   const [trades, setTrades] = useState({ open: [], closed: [] });
   const [loading, setLoading] = useState(true);
@@ -17,6 +19,7 @@ export default function TradeHistory() {
   const [showLogicBreakdown, setShowLogicBreakdown] = useState(false);
   const [sortBy, setSortBy] = useState('date');
   const [sortOrder, setSortOrder] = useState('desc');
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     fetchTrades();
@@ -80,6 +83,9 @@ export default function TradeHistory() {
     return true;
   });
 
+  const totalPages = Math.max(1, Math.ceil(filteredTrades.length / PAGE_SIZE));
+  const pagedTrades = filteredTrades.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
   const stats = {
     total: trades.closed.length,
     open: trades.open.length,
@@ -105,33 +111,34 @@ export default function TradeHistory() {
 
   return (
     <div className="space-y-6">
-      {/* Stats Overview */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
-        <Card className="bg-zinc-800/30 border-zinc-700/50">
+      {/* Stats Overview — horizontal scroll on mobile */}
+      <div className="flex gap-3 overflow-x-auto pb-1 md:grid md:grid-cols-4 lg:grid-cols-8 md:overflow-visible">
+
+        <Card className="bg-zinc-800/30 border-zinc-700/50 flex-shrink-0 min-w-[120px] md:min-w-0">
           <CardContent className="p-4">
             <p className="text-zinc-500 text-xs">Total Closed</p>
             <p className="text-2xl font-bold text-white">{stats.total}</p>
           </CardContent>
         </Card>
-        <Card className="bg-zinc-800/30 border-zinc-700/50">
+        <Card className="bg-zinc-800/30 border-zinc-700/50 flex-shrink-0 min-w-[120px] md:min-w-0">
           <CardContent className="p-4">
             <p className="text-zinc-500 text-xs">Open Now</p>
             <p className="text-2xl font-bold text-orange-400">{stats.open}</p>
           </CardContent>
         </Card>
-        <Card className="bg-zinc-800/30 border-zinc-700/50">
+        <Card className="bg-zinc-800/30 border-zinc-700/50 flex-shrink-0 min-w-[120px] md:min-w-0">
           <CardContent className="p-4">
             <p className="text-zinc-500 text-xs">Winners</p>
             <p className="text-2xl font-bold text-green-400">{stats.winners}</p>
           </CardContent>
         </Card>
-        <Card className="bg-zinc-800/30 border-zinc-700/50">
+        <Card className="bg-zinc-800/30 border-zinc-700/50 flex-shrink-0 min-w-[120px] md:min-w-0">
           <CardContent className="p-4">
             <p className="text-zinc-500 text-xs">Losers</p>
             <p className="text-2xl font-bold text-red-400">{stats.losers}</p>
           </CardContent>
         </Card>
-        <Card className="bg-zinc-800/30 border-zinc-700/50">
+        <Card className="bg-zinc-800/30 border-zinc-700/50 flex-shrink-0 min-w-[120px] md:min-w-0">
           <CardContent className="p-4">
             <p className="text-zinc-500 text-xs">Win Rate</p>
             <p className={`text-2xl font-bold ${stats.winRate >= 50 ? 'text-green-400' : 'text-red-400'}`}>
@@ -139,7 +146,7 @@ export default function TradeHistory() {
             </p>
           </CardContent>
         </Card>
-        <Card className="bg-zinc-800/30 border-zinc-700/50">
+        <Card className="bg-zinc-800/30 border-zinc-700/50 flex-shrink-0 min-w-[120px] md:min-w-0">
           <CardContent className="p-4">
             <p className="text-zinc-500 text-xs">Total PnL</p>
             <p className={`text-2xl font-bold ${stats.pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
@@ -147,13 +154,13 @@ export default function TradeHistory() {
             </p>
           </CardContent>
         </Card>
-        <Card className="bg-zinc-800/30 border-zinc-700/50">
+        <Card className="bg-zinc-800/30 border-zinc-700/50 flex-shrink-0 min-w-[120px] md:min-w-0">
           <CardContent className="p-4">
             <p className="text-zinc-500 text-xs">Avg Win</p>
             <p className="text-2xl font-bold text-green-400">+{stats.avgWin.toFixed(1)}%</p>
           </CardContent>
         </Card>
-        <Card className="bg-zinc-800/30 border-zinc-700/50">
+        <Card className="bg-zinc-800/30 border-zinc-700/50 flex-shrink-0 min-w-[120px] md:min-w-0">
           <CardContent className="p-4">
             <p className="text-zinc-500 text-xs">Avg Loss</p>
             <p className="text-2xl font-bold text-red-400">{stats.avgLoss.toFixed(1)}%</p>
@@ -178,12 +185,12 @@ export default function TradeHistory() {
       </button>
 
       {/* Filters & Controls */}
-      <div className="flex flex-wrap items-center gap-4">
-        <div className="flex bg-zinc-800/50 rounded-lg p-1">
+      <div className="flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center gap-3">
+        <div className="flex overflow-x-auto bg-zinc-800/50 rounded-lg p-1 w-full sm:w-auto">
           {['all', 'open', 'closed', 'winners', 'losers'].map(t => (
-            <button 
-              key={t} 
-              onClick={() => setTab(t)}
+            <button
+              key={t}
+              onClick={() => { setTab(t); setPage(1); }}
               className={`px-3 py-2 rounded-md text-sm font-medium transition-all ${
                 tab === t ? 'bg-orange-500 text-white' : 'text-zinc-400 hover:text-white'
               }`}
@@ -193,10 +200,10 @@ export default function TradeHistory() {
           ))}
         </div>
         
-        <div className="flex items-center gap-2 ml-auto">
+        <div className="flex items-center gap-2 sm:ml-auto">
           <select 
             value={sortBy} 
-            onChange={(e) => setSortBy(e.target.value)}
+            onChange={(e) => { setSortBy(e.target.value); setPage(1); }}
             className="bg-zinc-800/50 text-zinc-300 text-sm rounded-lg px-3 py-2 border border-zinc-700"
           >
             <option value="date">Sort by Date</option>
@@ -238,13 +245,13 @@ export default function TradeHistory() {
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-800">
-              {filteredTrades.length === 0 ? (
+              {pagedTrades.length === 0 ? (
                 <tr>
                   <td colSpan={11} className="px-4 py-12 text-center text-zinc-500">
                     {loading ? 'Loading trades...' : 'No trades found'}
                   </td>
                 </tr>
-              ) : filteredTrades.map((trade, i) => (
+              ) : pagedTrades.map((trade, i) => (
                 <tr 
                   key={trade.id || i} 
                   className="hover:bg-zinc-800/50 cursor-pointer transition-colors"
@@ -294,6 +301,53 @@ export default function TradeHistory() {
           </table>
         </div>
       </Card>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between px-2 py-3">
+          <span className="text-xs text-zinc-500">
+            {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filteredTrades.length)} of {filteredTrades.length} trades
+          </span>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="px-3 py-1.5 text-sm bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              ← Prev
+            </button>
+            {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
+              const p = totalPages <= 7
+                ? i + 1
+                : page <= 4
+                  ? i + 1
+                  : page >= totalPages - 3
+                    ? totalPages - 6 + i
+                    : page - 3 + i;
+              return (
+                <button
+                  key={p}
+                  onClick={() => setPage(p)}
+                  className={`w-8 h-8 text-sm rounded-lg transition-colors ${
+                    p === page
+                      ? 'bg-orange-500 text-white font-medium'
+                      : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-400'
+                  }`}
+                >
+                  {p}
+                </button>
+              );
+            })}
+            <button
+              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+              disabled={page === totalPages}
+              className="px-3 py-1.5 text-sm bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              Next →
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Trade Detail Modal */}
       {selectedTrade && (

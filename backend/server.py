@@ -113,6 +113,10 @@ from aeon_engine_system import init_engine_manager, get_engine_manager, EngineMa
 from quant_analyzer_v2 import get_quant_gatekeeper_v2
 import app_state
 
+from signal_deduplicator import init_signal_deduplicator, signal_deduplicator as _signal_dedup
+from unified_alert import init_alerter, send_alert, AeonPersona, alerter
+from alert_monitors import init_monitors
+
 ROOT_DIR = Path(__file__).parent
 
 # MongoDB
@@ -153,6 +157,13 @@ vwap_scalper = init_vwap_scalper(db)
 
 # YOLO Engine (Independent aggressive trading)
 yolo_engine = init_yolo_engine(db)
+
+# Institutional Scalper (Pure SMC: OB, FVG, BOS, Liq Sweeps on 1H/4H/1D)
+from institutional_scalper import init_institutional_scalper, InstitutionalScalper
+inst_scalper = init_institutional_scalper(db)
+
+# Signal deduplicator — suppresses duplicate/contradicting engine alerts
+_signal_dedup_inst = init_signal_deduplicator(db)
 
 # ORACLE CORE — Pure market intelligence engine (no trading, no positions)
 from oracle_engine import init_oracle, get_oracle, get_oracle_bias
@@ -546,12 +557,8 @@ async def check_funding_rate_alerts():
         return
 
     last_funding_alert_time = now
-    alert = "⚡ FUNDING SCAN\n\n" + "\n".join(extreme_funding) + f"\n\n{len(extreme_funding)} extreme rate{'s' if len(extreme_funding) > 1 else ''} - squeeze risk elevated"
-
-    for chat_id in list(chat_ids):
-        settings = await get_user_settings(chat_id)
-        if settings.get("free_will", True):
-            await send_telegram_message(chat_id, alert)
+    funding_body = "\n".join(extreme_funding) + f"\n{len(extreme_funding)} extreme rate{'s' if len(extreme_funding) > 1 else ''} — squeeze risk elevated"
+    await send_alert("RISK", "EXTREME FUNDING RATES DETECTED", funding_body, engine="funding_monitor")
 
 
 async def autonomous_trading_loop():
@@ -612,23 +619,19 @@ async def autonomous_trading_loop():
                             continue
                         record_signal_alert(sym, dirn)
 
-                        # Send elite alert to users
+                        # Send elite alert to users via unified alerter
                         alert_msg = autonomous_trader_v2.format_signal_alert(signal)
+                        await send_alert("SIGNAL", "AUTONOMOUS SIGNAL", alert_msg,
+                            pair=sym, engine="autonomous_v2")
 
+                        # Log trade per chat_id
                         for chat_id in list(chat_ids):
-                            settings = await get_user_settings(chat_id)
-                            if settings.get("free_will", True):
-                                await send_telegram_message(chat_id, alert_msg)
-                                
-                                # Log trade
-                                await db.auto_trades_v2.insert_one({
-                                    "chat_id": chat_id,
-                                    "trade": trade,
-                                    "signal": signal,
-                                    "timestamp": datetime.now(timezone.utc)
-                                })
-                            
-                            await asyncio.sleep(0.5)
+                            await db.auto_trades_v2.insert_one({
+                                "chat_id": chat_id,
+                                "trade": trade,
+                                "signal": signal,
+                                "timestamp": datetime.now(timezone.utc)
+                            })
                 
                 # Evaluate open trades (trail stops, partials, exits)
                 closed = await autonomous_trader_v2.evaluate_trades()
@@ -647,24 +650,24 @@ async def autonomous_trading_loop():
                     # Get updated stats
                     stats = await autonomous_trader_v2.get_stats()
                     
-                    for chat_id in list(chat_ids):
-                        settings = await get_user_settings(chat_id)
-                        if settings.get("free_will", True):
-                            msg = f"""{emoji} TRADE CLOSED ({reason})
-
-{result.get('symbol', '')} {result.get('direction', '')}
-Entry: ${result.get('entry_price', 0):,.2f}
-Exit: ${result.get('exit_price', 0):,.2f}
-PnL: {pnl:+.2f}%
-
-📊 v2 ENGINE STATS:
-Win Rate: {stats.get('win_rate', 0)}%
-Total PnL: {stats.get('total_pnl_pct', 0):+.2f}%
-Profit Factor: {stats.get('profit_factor', 0)}
-Record: {stats.get('wins', 0)}W / {stats.get('losses', 0)}L
-
-👁️ «The algorithm evolves. Each trade teaches.»"""
-                            await send_telegram_message(chat_id, msg)
+                    _sym_r   = result.get('symbol', '')
+                    _dir_r   = result.get('direction', '')
+                    _entry_r = result.get('entry_price', 0)
+                    _exit_r  = result.get('exit_price', 0)
+                    _pnl_usd = result.get('pnl_usd', 0)
+                    title_r, body_r = AeonPersona.position_closed(
+                        symbol=_sym_r, direction=_dir_r,
+                        entry=_entry_r, exit_price=_exit_r,
+                        pnl_pct=pnl, pnl_usd=_pnl_usd,
+                        reason=reason, engine="autonomous_v2"
+                    )
+                    body_r += (
+                        f"\n\nWin Rate: {stats.get('win_rate', 0)}% | "
+                        f"PF: {stats.get('profit_factor', 0)} | "
+                        f"{stats.get('wins', 0)}W/{stats.get('losses', 0)}L"
+                    )
+                    await send_alert("TRADE", title_r, body_r,
+                        pair=_sym_r, engine="autonomous_v2")
                 
                 # Check for funding rate alerts
                 await check_funding_rate_alerts()
@@ -785,20 +788,17 @@ async def free_will_scanner():
 
                     record_signal_alert(sym, direction)
 
-                    # Send to users with free_will enabled
+                    # Send via unified alerter
+                    await send_alert("SIGNAL", "ELITE SETUP DETECTED", alert_msg,
+                        pair=sym, engine="free_will_v2")
+
+                    # Log alert per chat_id
                     for chat_id in list(chat_ids):
-                        settings = await get_user_settings(chat_id)
-                        if settings.get("free_will", True):
-                            await send_telegram_message(chat_id, alert_msg)
-                            
-                            # Log alert
-                            await db.free_will_alerts.insert_one({
-                                "chat_id": chat_id,
-                                "setup": setup,
-                                "timestamp": datetime.now(timezone.utc)
-                            })
-                        
-                        await asyncio.sleep(0.5)
+                        await db.free_will_alerts.insert_one({
+                            "chat_id": chat_id,
+                            "setup": setup,
+                            "timestamp": datetime.now(timezone.utc)
+                        })
                     
                     # Send to dashboard with detailed reasoning
                     confirmations = setup.get("confirmations", [])
@@ -901,18 +901,15 @@ async def dual_trading_scanner():
 
                     record_signal_alert(_sym, _dirn)
 
+                    await send_alert("SIGNAL", "DAY TRADE SETUP", alert_msg,
+                        pair=_sym, engine="dual_engine_day")
                     for chat_id in list(chat_ids):
-                        settings = await get_user_settings(chat_id)
-                        if settings.get("free_will", True):
-                            await send_telegram_message(chat_id, alert_msg)
-                            
-                            await db.dual_alerts.insert_one({
-                                "chat_id": chat_id,
-                                "setup": setup,
-                                "style": "day_trader",
-                                "timestamp": datetime.now(timezone.utc)
-                            })
-                        await asyncio.sleep(0.3)
+                        await db.dual_alerts.insert_one({
+                            "chat_id": chat_id,
+                            "setup": setup,
+                            "style": "day_trader",
+                            "timestamp": datetime.now(timezone.utc)
+                        })
                     
                     # Send to dashboard with detailed reasoning
                     confirmations = setup.get("confirmations", [])
@@ -972,18 +969,15 @@ async def dual_trading_scanner():
 
                     record_signal_alert(_sym, _dirn)
 
+                    await send_alert("SIGNAL", "LONG-TERM SETUP", alert_msg,
+                        pair=_sym, engine="dual_engine_lt")
                     for chat_id in list(chat_ids):
-                        settings = await get_user_settings(chat_id)
-                        if settings.get("free_will", True):
-                            await send_telegram_message(chat_id, alert_msg)
-                            
-                            await db.dual_alerts.insert_one({
-                                "chat_id": chat_id,
-                                "setup": setup,
-                                "style": "long_term",
-                                "timestamp": datetime.now(timezone.utc)
-                            })
-                        await asyncio.sleep(0.3)
+                        await db.dual_alerts.insert_one({
+                            "chat_id": chat_id,
+                            "setup": setup,
+                            "style": "long_term",
+                            "timestamp": datetime.now(timezone.utc)
+                        })
                     
                     # Send to dashboard with detailed reasoning
                     confirmations = setup.get("confirmations", [])
@@ -1093,6 +1087,7 @@ async def lifespan(app: FastAPI):
     app_state.self_healer = self_healer
     app_state.vwap_scalper = vwap_scalper
     app_state.yolo_engine = yolo_engine
+    app_state.inst_scalper = inst_scalper
     app_state.continuous_learner = continuous_learner
     app_state.paper_trading = paper_trading
     app_state.send_telegram_message = send_telegram_message
@@ -1107,11 +1102,7 @@ async def lifespan(app: FastAPI):
     # Inject Quant Gatekeeper V2 — every engine signal passes through this before firing
     async def _quant_telegram(msg: str):
         try:
-            from telegram_sender import send_telegram_message
-            settings = await db.user_settings.find_one({"_id": "global"}) or {}
-            chat_id  = settings.get("telegram_chat_id")
-            if chat_id:
-                await send_telegram_message(chat_id, msg)
+            await send_alert("SYSTEM", "QUANT ANOMALY", msg, engine="quant_gatekeeper")
         except Exception as _e:
             logger.debug(f"quant anomaly telegram: {_e}")
 
@@ -1223,6 +1214,16 @@ async def lifespan(app: FastAPI):
         paper_trading=paper_trading
     )
     yolo_task = asyncio.create_task(yolo_engine.run_loop(180))  # Scan every 3 mins
+
+    # Institutional Scalper — Pure SMC (OB, FVG, BOS, Liq Sweeps) on 1H/4H/1D
+    inst_scalper.set_dependencies(
+        market_intel=market_intel,
+        send_alert=send_telegram_message,
+        chat_ids=chat_ids,
+        paper_trading=paper_trading
+    )
+    inst_task = asyncio.create_task(inst_scalper.run_loop(3600))  # Scan every hour
+    logger.info("🏦 INSTITUTIONAL SCALPER ACTIVATED — Pure SMC: OB/FVG/BOS/LiqSweep on 1H/4H/1D")
 
     # ELITE STRATEGY v3 — autonomous scan every 30 min (Fix #15)
     _elite_auto = get_elite_strategy(
@@ -1359,6 +1360,7 @@ async def lifespan(app: FastAPI):
     self_healer.register("vp_engine", vp_task, lambda: vp_eng.run_scan_loop(300))
     self_healer.register("vwap_scalper", vwap_task, lambda: vwap_scalper.run_scan_loop(300))
     self_healer.register("yolo_engine", yolo_task, lambda: yolo_engine.run_loop(180))
+    self_healer.register("institutional_scalper", inst_task, lambda: inst_scalper.run_loop(3600))
     self_healer.register("elite_strategy", elite_task, lambda: _elite_auto.run_loop(1800))
     self_healer.register("oracle", oracle_task, oracle.run_loop)
     if oria_stress_task:
@@ -1397,6 +1399,17 @@ async def lifespan(app: FastAPI):
     logger.info("📡 FEED HEALTH MONITOR STARTED — auto-recovery every 30s when degraded")
     # ─────────────────────────────────────────────────────────────────────────
 
+    # Initialize unified alert system
+    await _signal_dedup_inst.load_from_db()
+    init_alerter(db=db, chat_ids=chat_ids, send_fn=send_telegram_message, signal_deduplicator=_signal_dedup_inst)
+
+    # Start critical alert monitors
+    _monitors = init_monitors(db=db, alerter=alerter)
+    monitor_tasks = [asyncio.create_task(m.run_loop()) for m in _monitors]
+    for i, m in enumerate(_monitors):
+        self_healer.register(f"monitor_{m.__class__.__name__}", monitor_tasks[i], m.run_loop)
+    logger.info("🔔 UNIFIED ALERT SYSTEM + MONITORS ACTIVE")
+
     yield
 
     feed_health.stop()
@@ -1408,13 +1421,15 @@ async def lifespan(app: FastAPI):
     continuous_learner.is_active = False
     vwap_scalper.active = False
     yolo_engine.active = False
+    inst_scalper.active = False
     _elite_auto.enabled = False
 
     # Cancel all background tasks and wait briefly for graceful exit
     all_tasks = [
         healer_task, ritual_task, trading_task, freewill_task, dual_task,
         alert_task, briefing_task, weekly_task, learning_task,
-        vwap_task, yolo_task, elite_task, paper_health_task, paper_price_task,
+        vwap_task, yolo_task, inst_task, elite_task, paper_health_task, paper_price_task,
+        *monitor_tasks,
     ]
     for task in all_tasks:
         task.cancel()
@@ -4909,6 +4924,50 @@ from routes.analytics import router as analytics_router
 app.include_router(analytics_router)
 from routes.regime import router as regime_router
 app.include_router(regime_router)
+
+# ── Institutional Scalper routes ──────────────────────────────────────────────
+from fastapi import APIRouter as _AR
+_inst_router = _AR(prefix="/api/institutional-scalper", tags=["Institutional Scalper"])
+
+@_inst_router.get("/stats")
+async def api_inst_scalper_stats():
+    s = app_state.inst_scalper
+    if not s:
+        return {"active": False, "error": "not initialized"}
+    raw = s.get_stats()
+    return {
+        "active": raw["active"],
+        "risk_profile": "conservative",
+        "stats": {
+            "win_rate":      raw["win_rate"],
+            "total_trades":  raw["total_trades"],
+            "wins":          raw["wins"],
+            "losses":        raw["losses"],
+            "total_pnl":     0,
+            "daily_pnl":     round(raw.get("daily_loss_usd", 0), 2),
+            "daily_trades":  raw.get("signals_today", 0),
+            "open_trades":   0,
+            "blocked_trades": 0,
+        },
+        "config": {
+            "min_confidence": raw["min_confidence"],
+            "min_confluences": 2,
+            "max_leverage":   int(raw["leverage_range"].split("–")[1].rstrip("x")),
+            "max_position_size": 1200,
+            "max_daily_trades":  raw["max_signals_per_day"],
+        },
+        "open_trades": [],
+    }
+
+@_inst_router.post("/toggle")
+async def api_inst_scalper_toggle(active: bool = True):
+    s = app_state.inst_scalper
+    if not s:
+        return {"success": False, "error": "not initialized"}
+    s.active = active
+    return {"success": True, "active": active}
+
+app.include_router(_inst_router)
 
 _allowed_origins = [
     o.strip() for o in os.environ.get(

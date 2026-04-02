@@ -41,7 +41,7 @@ import {
   MessageCircle, Users, Activity, Clock, Zap, Bot, ExternalLink, Send,
   TrendingUp, TrendingDown, BarChart3, Brain, Target, Trophy, Phone,
   Settings, History, PieChart, Home, Menu, X, BookOpen, Layers, Bell, BellRing,
-  Wallet, HelpCircle, FlaskConical, Shield, Sun, Eye, Atom
+  Wallet, HelpCircle, FlaskConical, Shield, Sun, Eye, Atom, Search
 } from "lucide-react";
 import VoiceConversation from "./components/VoiceConversation";
 import TradeHistory from "./components/TradeHistory";
@@ -70,6 +70,8 @@ import WeeklyReport from "./components/WeeklyReport";
 import LearningEngine from "./components/LearningEngine";
 import OracleDashboard from "./components/OracleDashboard";
 import QuantumDashboard from "./components/QuantumDashboard";
+import NewsFeed from "./components/NewsFeed";
+import CommandPalette from "./components/CommandPalette";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -142,6 +144,7 @@ function App() {
   const [unreadAlerts, setUnreadAlerts] = useState(0);
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [quickScanCoin, setQuickScanCoin] = useState(null);
+  const [paletteOpen, setPaletteOpen] = useState(false);
   const wsRef = useRef(null);
 
   const fetchData = async () => {
@@ -181,6 +184,18 @@ function App() {
     if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
     return `${Math.floor(diff / 86400)}d ago`;
   };
+
+  // Command palette keyboard shortcut (Cmd+K / Ctrl+K)
+  useEffect(() => {
+    const handler = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setPaletteOpen(open => !open);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
 
   // WebSocket connection for real-time alerts
   useEffect(() => {
@@ -265,6 +280,7 @@ function App() {
     { id: 'backtest', label: 'Backtest', icon: FlaskConical },
     { id: 'backtest-v21', label: 'V2.1 Test', icon: Target },
     { id: 'intel', label: 'Intel', icon: Brain },
+    { id: 'news', label: 'News', icon: Bell },
     { id: 'charts', label: 'Analytics', icon: BarChart3 },
     { id: 'smc', label: 'SMC', icon: Layers },
     { id: 'journal', label: 'Journal', icon: BookOpen },
@@ -286,6 +302,13 @@ function App() {
   return (
     <ErrorBoundary>
     <div className="min-h-screen bg-gradient-to-br from-zinc-950 via-zinc-900 to-zinc-950 text-white">
+      {paletteOpen && (
+        <CommandPalette
+          navItems={navItems}
+          onNavigate={setCurrentPage}
+          onClose={() => setPaletteOpen(false)}
+        />
+      )}
       {/* Navigation */}
       <nav className="sticky top-0 z-40 bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-800/50">
         <div className="max-w-7xl mx-auto px-4 py-3">
@@ -324,6 +347,17 @@ function App() {
 
             {/* Right Actions */}
             <div className="flex items-center gap-2 sm:gap-3">
+              {/* Command palette trigger */}
+              <button
+                onClick={() => setPaletteOpen(true)}
+                className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-zinc-800/50 border border-zinc-700/50 rounded-lg text-zinc-500 hover:text-zinc-300 hover:border-zinc-600 transition-all text-xs"
+                title="Search pages (Ctrl+K)"
+              >
+                <Search className="w-3.5 h-3.5" />
+                <span>Search</span>
+                <kbd className="bg-zinc-900 px-1 py-0.5 rounded text-zinc-600 text-xs">⌘K</kbd>
+              </button>
+
               {/* WebSocket Status */}
               <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-zinc-800/50 rounded-lg">
                 <div className={`w-2 h-2 rounded-full ${wsConnected ? 'bg-green-500' : 'bg-yellow-500 animate-pulse'}`} />
@@ -450,6 +484,9 @@ function App() {
 
         {/* Page: Intelligence */}
         {currentPage === 'intel' && <Intelligence />}
+
+        {/* Page: News Feed */}
+        {currentPage === 'news' && <NewsFeed />}
 
         {/* Page: Settings */}
         {currentPage === 'settings' && <SettingsPanel />}

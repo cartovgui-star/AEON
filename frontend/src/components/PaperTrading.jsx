@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Wallet, TrendingUp, TrendingDown, Target, RefreshCw, 
+import {
+  Wallet, TrendingUp, TrendingDown, Target, RefreshCw,
   DollarSign, BarChart3, Activity, Zap, Crown, Leaf,
+  FlaskConical, Microscope,
   X, ChevronDown, ChevronUp, AlertTriangle
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
@@ -10,6 +11,15 @@ import { Badge } from './ui/badge';
 import { ScrollArea } from './ui/scroll-area';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
+
+// Per-account display metadata
+const ACCOUNT_META = {
+  PRO:        { Icon: Crown,        iconClass: 'text-amber-500',  label: 'PRO' },
+  STARTER:    { Icon: Leaf,         iconClass: 'text-green-500',  label: 'STARTER' },
+  REAL_LIFE:  { Icon: DollarSign,   iconClass: 'text-blue-400',   label: 'REAL LIFE' },
+  THE_PROOF:  { Icon: Microscope,   iconClass: 'text-violet-400', label: 'THE PROOF' },
+  BENCHMARK:  { Icon: BarChart3,    iconClass: 'text-orange-400', label: 'BENCHMARK' },
+};
 
 // Format price based on value
 const formatPrice = (price) => {
@@ -215,11 +225,11 @@ export default function PaperTrading() {
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  {account.account_id === 'PRO' ? (
-                    <Crown className="w-5 h-5 text-amber-500" />
-                  ) : (
-                    <Leaf className="w-5 h-5 text-green-500" />
-                  )}
+                  {(() => {
+                    const meta = ACCOUNT_META[account.account_id] || ACCOUNT_META.STARTER;
+                    const { Icon, iconClass } = meta;
+                    return <Icon className={`w-5 h-5 ${iconClass}`} />;
+                  })()}
                   <CardTitle className="text-lg">{account.name}</CardTitle>
                   {/* Health badge */}
                   {isCritical && (
@@ -324,7 +334,7 @@ export default function PaperTrading() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
               {performance.strategies.map((strategy) => (
                 <div 
                   key={strategy.name}
@@ -430,7 +440,7 @@ export default function PaperTrading() {
                       </Button>
                     </div>
                     
-                    <div className="grid grid-cols-3 md:grid-cols-5 gap-3 text-sm">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 text-sm">
                       <div>
                         <p className="text-xs text-zinc-500">Entry</p>
                         <p className="text-white">${formatPrice(pos.entry_price)}</p>

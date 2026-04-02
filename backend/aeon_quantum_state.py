@@ -61,13 +61,14 @@ _ENGINE_STRATEGY_MAP: Dict = {}
 
 def _build_strategy_map(EngineType) -> Dict:
     return {
-        EngineType.ELITE_STRATEGY:      ["ELITE", "elite_strategy"],
-        EngineType.YOLO_ENGINE:         ["YOLO", "yolo_engine"],
-        EngineType.VWAP_SCALPER:        ["VWAP_SCALP", "vwap_scalper"],
-        EngineType.AUTONOMOUS_TRADER_V2:["AUTONOMOUS", "autonomous_trader"],
-        EngineType.FREE_WILL_V2:        ["FREE_WILL", "free_will"],
-        EngineType.DAY_TRADER:          ["DAY_TRADER", "day_trader"],
-        EngineType.DUAL_ENGINE:         ["DUAL", "dual_engine"],
+        EngineType.ELITE_STRATEGY:        ["ELITE", "elite_strategy"],
+        EngineType.YOLO_ENGINE:           ["YOLO", "yolo_engine"],
+        EngineType.VWAP_SCALPER:          ["VWAP_SCALP", "vwap_scalper"],
+        EngineType.AUTONOMOUS_TRADER_V2:  ["AUTONOMOUS", "autonomous_trader"],
+        EngineType.FREE_WILL_V2:          ["FREE_WILL", "free_will"],
+        EngineType.DAY_TRADER:            ["DAY_TRADER", "day_trader"],
+        EngineType.DUAL_ENGINE:           ["DUAL", "dual_engine"],
+        EngineType.INSTITUTIONAL_SCALPER: ["INSTITUTIONAL_SCALPER", "institutional_scalper"],
     }
 
 
