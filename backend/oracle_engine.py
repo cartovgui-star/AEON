@@ -379,9 +379,10 @@ class OracleEngine:
                 if m.get("type") == "swap"
                 and m.get("quote") == "USDT"
                 and m.get("active") is True
+                and m.get("linear") is True
             ]
             if not pairs:
-                raise ValueError("Empty pair list returned from MEXC")
+                raise ValueError("Empty pair list returned from OKX")
             self._all_pairs            = pairs
             self._pairs_last_refreshed = now
             logger.info(f"[ORACLE] Pair list refreshed: {len(pairs)} USDT perpetuals")

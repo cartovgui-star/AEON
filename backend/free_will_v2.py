@@ -130,7 +130,7 @@ class FreeWillEngineV2:
         self._throttler.mark_alerted(symbol, direction)
         self.total_alerts_sent += 1
     
-    async def analyze_setup_full(self, symbol: str, timeframe: str) -> Optional[Dict]:
+    async def analyze_setup_full(self, symbol: str, timeframe: str, btc_is_bearish: bool = False, btc_is_bullish: bool = False, market_wide_bearish: bool = False) -> Optional[Dict]:
         """
         Full multi-source analysis for a setup
         Returns setup only if confidence >= 80% AND 3+ confirmations
@@ -424,21 +424,34 @@ class FreeWillEngineV2:
             # ═══════════════════════════════════════════════════════════════════
             if direction == "SHORT":
                 # MOMENTUM FILTER: Block SHORTs when MACD histogram is positive
-                # Positive histogram = bullish momentum building = bad time to short
+                # Exception: BTC macro bearish means macro trend overrides local momentum lag
                 if macd_histogram > 0:
-                    logger.info(f"BLOCKED {symbol} SHORT - MACD histogram positive ({macd_histogram:.4f}), fighting bullish momentum")
-                    return None
+                    _btc_dir = "NEUTRAL"
+                    try:
+                        from regime_engine import get_regime_engine
+                        _btc_dir = get_regime_engine().get_btc_macro_direction()
+                    except Exception:
+                        pass
+                    if _btc_dir.upper() not in ("BEARISH", "BEAR") and not market_wide_bearish:
+                        logger.info(f"BLOCKED {symbol} SHORT - MACD histogram positive ({macd_histogram:.4f}), fighting bullish momentum")
+                        return None
+                    logger.debug(f"[FW] {symbol} SHORT — MACD positive but macro bearish (btc={_btc_dir}, market_wide={market_wide_bearish}), allowing through")
 
                 # QUALITY GATE: Require at least 1 high-conviction microstructure signal
                 # Based on trade data: 100% WR only when selling pressure + longs crowded + below VWAP present
+                # Exception: market-wide bearish macro counts as a key signal
                 key_signals = [c for c in bearish_reasons if any(
                     x in c.lower() for x in ["selling pressure", "longs crowded", "below vwap"]
                 )]
-                if not key_signals:
+                if not key_signals and not market_wide_bearish:
                     logger.info(f"BLOCKED {symbol} SHORT - missing key confirmation (need selling pressure, longs crowded 67%+, or below VWAP -4%+)")
                     return None
+                elif not key_signals and market_wide_bearish:
+                    logger.debug(f"[FW] {symbol} SHORT — no microstructure key signal but market-wide bearish, allowing through")
 
             # HARD FILTER: Market structure must not contradict direction
+            # Exception: when BTC macro aligns with direction, coin structure may lag —
+            # allow the trade through so quant gate can make the final call.
             structure = {}
             if self.market_intel:
                 try:
@@ -447,13 +460,18 @@ class FreeWillEngineV2:
                 except Exception:
                     pass
             structure_bias = structure.get("bias", "neutral")
-            
+
+            # Use BTC macro passed in from scan_all (same source as outer macro gate)
+            macro_bearish = btc_is_bearish
+            macro_bullish = btc_is_bullish
+
             if direction == "LONG" and structure_bias == "bearish":
-                logger.info(f"BLOCKED {symbol} LONG - bearish structure (LH/LL)")
-                return None
-            if direction == "SHORT" and structure_bias == "bullish":
-                logger.info(f"BLOCKED {symbol} SHORT - bullish structure (HH/HL)")
-                return None
+                if macro_bullish:
+                    logger.debug(f"[FW] {symbol} LONG — bearish structure but BTC macro bullish, deferring to quant gate")
+                else:
+                    logger.info(f"BLOCKED {symbol} LONG - bearish structure (LH/LL)")
+                    return None
+            # SHORT structure block removed — defers to quant gate
             
             # Boost confidence when structure aligns
             if direction == "LONG" and structure_bias == "bullish":
@@ -557,36 +575,40 @@ class FreeWillEngineV2:
         best_setups = {}  # symbol -> best setup
 
         # ═══════════════════════════════════════════════════════════════
-        # BTC MACRO TREND GATE - Check BTC 4H bias ONCE before scanning
-        # If BTC is in a downtrend, block ALL LONG entries (0% WR on data).
-        # If BTC is in an uptrend, block ALL SHORT entries.
+        # MACRO TREND GATE
+        # BTC/USDT uses BTC-specific macro (EMA20 4H+1D).
+        # All altcoins use market-wide macro (majority of BTC+ETH+SOL on 4H EMA).
         # ═══════════════════════════════════════════════════════════════
-        btc_is_bearish = False
-        btc_is_bullish = False
+        btc_macro = "NEUTRAL"
+        market_wide_macro = "NEUTRAL"
         if self.market_intel:
             try:
-                btc_scan = await self.market_intel.get_full_market_scan("BTC/USDT")
-                btc_structure = btc_scan.get("market_structure", {}) if btc_scan else {}
-                btc_bias = btc_structure.get("bias", "neutral")
-                btc_is_bearish = (btc_bias == "bearish")
-                btc_is_bullish = (btc_bias == "bullish")
-                logger.info(f"BTC macro bias: {btc_bias} | blocking {'LONG' if btc_is_bearish else 'SHORT' if btc_is_bullish else 'nothing'}")
+                from regime_engine import get_regime_engine
+                re = get_regime_engine()
+                btc_macro = await re.refresh_macro_direction(self.market_intel)
+                market_wide_macro = await re.refresh_market_wide_macro(self.market_intel)
+                logger.info(f"BTC macro: {btc_macro} | Market-wide macro: {market_wide_macro}")
             except Exception as e:
-                logger.debug(f"Could not fetch BTC macro trend: {e}")
+                logger.debug(f"Could not fetch macro trend: {e}")
+
+        # Pass BTC-specific flags to analyze_setup_full for internal use
+        btc_is_bearish = (btc_macro == "BEARISH")
+        btc_is_bullish = (btc_macro == "BULLISH")
 
         for symbol in TOP_PAIRS[:15]:  # Top 15 for speed
             for tf in PRIORITY_TIMEFRAMES:
-                setup = await self.analyze_setup_full(symbol, tf)
+                setup = await self.analyze_setup_full(symbol, tf, btc_is_bearish=btc_is_bearish, btc_is_bullish=btc_is_bullish, market_wide_bearish=(market_wide_macro == "BEARISH"))
 
                 if setup:
                     direction = setup.get("direction")
 
-                    # BTC macro trend gate
-                    if direction == "LONG" and btc_is_bearish:
-                        logger.info(f"BLOCKED {symbol} LONG - BTC macro is BEARISH")
+                    # Macro gate: BTC/USDT uses BTC macro, alts use market-wide macro
+                    macro = btc_macro if symbol == "BTC/USDT" else market_wide_macro
+                    if direction == "LONG" and macro == "BEARISH":
+                        logger.info(f"BLOCKED {symbol} LONG - {'BTC' if symbol == 'BTC/USDT' else 'market'} macro is BEARISH")
                         continue
-                    if direction == "SHORT" and btc_is_bullish:
-                        logger.info(f"BLOCKED {symbol} SHORT - BTC macro is BULLISH")
+                    if direction == "SHORT" and macro == "BULLISH":
+                        logger.info(f"BLOCKED {symbol} SHORT - {'BTC' if symbol == 'BTC/USDT' else 'market'} macro is BULLISH")
                         continue
 
                     # Check if we can alert (includes contradiction check)
@@ -631,12 +653,24 @@ class FreeWillEngineV2:
                     # Re-validate market structure with fresh data
                     fresh_structure = ta.get("market_structure", {})
                     fresh_bias = fresh_structure.get("bias", "neutral")
+                    _macro_bear = False
+                    _macro_bull = False
+                    if self.market_intel:
+                        try:
+                            _btc_scan = await self.market_intel.get_full_market_scan("BTC/USDT")
+                            _btc_bias = _btc_scan.get("market_structure", {}).get("bias", "neutral") if _btc_scan else "neutral"
+                            _macro_bear = (_btc_bias == "bearish")
+                            _macro_bull = (_btc_bias == "bullish")
+                        except Exception:
+                            pass
                     if direction == "LONG" and fresh_bias == "bearish":
-                        logger.info(f"Free Will BLOCKED at validation: {symbol} LONG vs bearish structure")
-                        return None, False
+                        if not _macro_bull:
+                            logger.info(f"Free Will BLOCKED at validation: {symbol} LONG vs bearish structure")
+                            return None, False
                     if direction == "SHORT" and fresh_bias == "bullish":
-                        logger.info(f"Free Will BLOCKED at validation: {symbol} SHORT vs bullish structure")
-                        return None, False
+                        if not _macro_bear:
+                            logger.info(f"Free Will BLOCKED at validation: {symbol} SHORT vs bullish structure")
+                            return None, False
                     
                     # Update entry to current price for more accurate alert
                     setup["entry"] = current_price
@@ -672,6 +706,29 @@ class FreeWillEngineV2:
                 final_leverage, lev_bd = await engine_manager.get_dynamic_leverage(
                     _symbol, _direction, EngineType.FREE_WILL_V2
                 )
+
+                # FIX: Leverage-aware SL compression.
+                # At high leverage, ATR-based stops may sit beyond the liquidation price.
+                # Cap stop distance to 75% of the liquidation margin (25% safety buffer).
+                import math as _math
+                _lev_safe   = max(float(final_leverage), 1.0)
+                _entry_fw   = float(setup.get("entry", 0))
+                _raw_stop_fw = float(setup.get("stop", 0))
+                if _entry_fw > 0 and _raw_stop_fw > 0:
+                    _max_stop_pct_fw = (1.0 / _lev_safe) * 0.75
+                    _raw_stop_pct_fw = abs(_entry_fw - _raw_stop_fw) / _entry_fw
+                    if _raw_stop_pct_fw > _max_stop_pct_fw:
+                        _capped_dist_fw = _entry_fw * _max_stop_pct_fw
+                        _adj_stop_fw = (
+                            _entry_fw - _capped_dist_fw if _direction == "long"
+                            else _entry_fw + _capped_dist_fw
+                        )
+                        logger.info(
+                            f"⚠️ [LEV-SL/FW] [{_symbol}] {_direction.upper()} lev={final_leverage}x "
+                            f"stop compressed: {_raw_stop_pct_fw:.2%} > max={_max_stop_pct_fw:.2%} "
+                            f"→ ${_raw_stop_fw:.4f}→${_adj_stop_fw:.4f}"
+                        )
+                        setup["stop"] = round(_adj_stop_fw, 8)
 
                 # Build signal for unified validation
                 engine_signal = {

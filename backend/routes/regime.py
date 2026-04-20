@@ -5,6 +5,60 @@ import app_state
 router = APIRouter()
 
 
+# ── GET /api/regime — current market regime summary ──────────────────────────
+# Returns a single flat object usable by the frontend dashboard.
+# Mirrors /api/regime/global but adds btc_trend from macro direction
+# and trading session context.
+# ─────────────────────────────────────────────────────────────────────────────
+
+@router.get("/api/regime")
+async def get_current_regime():
+    """
+    Single-endpoint regime summary.
+    Returns: {regime, btc_trend, session, entropy, macro_direction, ...}
+    """
+    from regime_engine import get_regime_engine
+    engine = get_regime_engine()
+
+    # Try to get full global regime (includes BTC 1H analysis)
+    global_regime = {}
+    try:
+        if app_state.market_intel:
+            global_regime = await engine.get_global_regime(app_state.market_intel)
+    except Exception:
+        pass
+
+    # Macro direction (BTC EMA20/4H trend gate)
+    btc_trend = engine.get_btc_macro_direction()
+
+    # Trading session (NY/ASIA/LONDON/OFF) — derive from UTC hour
+    hour = datetime.now(timezone.utc).hour
+    if 13 <= hour < 21:
+        session = "NY"
+    elif 7 <= hour < 16:
+        session = "LONDON"
+    elif 0 <= hour < 8:
+        session = "ASIA"
+    else:
+        session = "OFF"
+
+    regime_label = (
+        global_regime.get("regime")
+        or global_regime.get("market_regime")
+        or "UNKNOWN"
+    )
+
+    return {
+        "regime":         regime_label,
+        "btc_trend":      btc_trend,
+        "session":        session,
+        "entropy":        global_regime.get("entropy", 0.0),
+        "adx":            global_regime.get("adx", 0.0),
+        "macro_direction": btc_trend,
+        "details":        global_regime,
+    }
+
+
 @router.get("/api/regime/stats")
 async def get_regime_stats():
     from regime_engine import get_regime_engine

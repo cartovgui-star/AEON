@@ -52,9 +52,13 @@ class RegimeEngine:
         self._cache: Dict[str, dict] = {}
         self._cache_ttl = 300  # 5 minutes
 
-        # BTC macro direction (BULLISH / BEARISH / NEUTRAL) — shared state for all engines
+        # BTC macro direction (BULLISH / BEARISH / NEUTRAL) — BTC/USDT only
         self._macro_direction: str = "NEUTRAL"
         self._macro_updated_at: Optional[datetime] = None
+
+        # Market-wide macro (BTC + ETH + SOL majority vote) — used for alts
+        self._market_wide_direction: str = "NEUTRAL"
+        self._market_wide_updated_at: Optional[datetime] = None
 
     def _is_cached(self, symbol: str) -> bool:
         if symbol not in self._cache:
@@ -258,6 +262,69 @@ class RegimeEngine:
     def get_btc_macro_direction(self) -> str:
         """Return the last cached BTC macro direction synchronously. 'NEUTRAL' until first refresh."""
         return self._macro_direction
+
+    async def refresh_market_wide_macro(self, market_intel) -> str:
+        """
+        Compute whole-market macro direction from EMA20 on 4H for BTC + ETH + SOL.
+        Majority vote (≥2/3 coins) determines direction.
+
+          BEARISH — ≥2 of the 3 coins below EMA20 on 4H
+          BULLISH — ≥2 of the 3 coins above EMA20 on 4H
+          NEUTRAL — mixed
+
+        Used to gate altcoin trades (BTC/USDT uses its own BTC-specific macro).
+        """
+        now = datetime.now(timezone.utc)
+        if self._market_wide_updated_at:
+            age = (now - self._market_wide_updated_at).total_seconds()
+            if age < MACRO_CACHE_TTL:
+                return self._market_wide_direction
+
+        MARKET_COINS = ["BTC/USDT", "ETH/USDT", "SOL/USDT"]
+        above_count = 0
+        below_count = 0
+
+        try:
+            for coin in MARKET_COINS:
+                try:
+                    ta = await market_intel.get_technical_analysis(coin, "4h")
+                    if not ta:
+                        continue
+                    price  = ta.get("indicators", {}).get("price") or ta.get("price") or ta.get("close") or 0.0
+                    ema20  = ta.get("indicators", {}).get("ema_20") or ta.get("ema_20") or ta.get("ema_21") or 0.0
+                    if price > 0 and ema20 > 0:
+                        if price > ema20:
+                            above_count += 1
+                        else:
+                            below_count += 1
+                except Exception:
+                    continue
+
+            if below_count >= 2:
+                direction = "BEARISH"
+            elif above_count >= 2:
+                direction = "BULLISH"
+            else:
+                direction = "NEUTRAL"
+
+            if direction != self._market_wide_direction:
+                logger.info(
+                    f"[MARKET MACRO] Whole-market direction changed: "
+                    f"{self._market_wide_direction} → {direction} "
+                    f"(above_EMA20={above_count}/3, below_EMA20={below_count}/3)"
+                )
+
+            self._market_wide_direction = direction
+            self._market_wide_updated_at = now
+            return direction
+
+        except Exception as e:
+            logger.warning(f"[MARKET MACRO] Failed to refresh market-wide macro: {e}")
+            return self._market_wide_direction
+
+    def get_market_wide_direction(self) -> str:
+        """Return the last cached market-wide direction. 'NEUTRAL' until first refresh."""
+        return self._market_wide_direction
 
     def apply_macro_confidence_gate(self, direction: str, base_confidence: float) -> tuple:
         """

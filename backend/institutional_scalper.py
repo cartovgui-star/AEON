@@ -559,33 +559,26 @@ class InstitutionalScalper:
             },
         )
 
-        open_result = None
+        paper_signal = {
+            "symbol":        signal["symbol"],
+            "direction":     signal["direction"],
+            "entry_price":   signal["entry_price"],
+            "stop_loss":     signal["stop_loss"],
+            "take_profit":   signal["take_profit"],
+            "confidence":    signal["confidence"],
+            "leverage":      leverage,
+            "position_size": position_size,
+            "confirmations": signal.get("confirmations", []),
+        }
         try:
-            open_result = await self.paper_trading.open_position(
-                account_id="PRO", position_size=position_size, **common_kwargs
-            )
-            logger.info(
-                f"[INST] PRO: {signal['symbol']} {signal['direction']} "
-                f"@ ${signal['entry_price']:.4f} {leverage}x"
-            )
+            from paper_trading import route_engine_signal
+            results = await route_engine_signal(paper_signal, "INSTITUTIONAL_SCALPER")
+            logger.info(f"[INST] Routed to {len(results)} accounts: {signal['symbol']} {signal['direction']} @ ${signal['entry_price']:.4f} {leverage}x")
         except Exception as e:
-            logger.error(f"[INST] PRO paper trade error: {e}")
-
-        try:
-            starter_kwargs = dict(common_kwargs)
-            starter_kwargs["leverage"] = min(leverage, 10)
-            await self.paper_trading.open_position(
-                account_id="STARTER", position_size=500, **starter_kwargs
-            )
-            logger.info(
-                f"[INST] STARTER: {signal['symbol']} {signal['direction']} "
-                f"{starter_kwargs['leverage']}x"
-            )
-        except Exception as e:
-            logger.error(f"[INST] STARTER paper trade error: {e}")
+            logger.error(f"[INST] route_engine_signal error: {e}")
 
         await self._log_to_mongo(signal, leverage)
-        return open_result
+        return paper_signal
 
     # ─── MONGODB LOGGING ──────────────────────────────────────────────────────
 

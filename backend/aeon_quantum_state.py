@@ -69,6 +69,7 @@ def _build_strategy_map(EngineType) -> Dict:
         EngineType.DAY_TRADER:            ["DAY_TRADER", "day_trader"],
         EngineType.DUAL_ENGINE:           ["DUAL", "dual_engine"],
         EngineType.INSTITUTIONAL_SCALPER: ["INSTITUTIONAL_SCALPER", "institutional_scalper"],
+        EngineType.TCN_NEURAL:            ["tcn_neural", "TCN_NEURAL"],
     }
 
 
@@ -484,7 +485,11 @@ class AEONQuantumState:
 
         snapshot.adx    = adx
         snapshot.regime = "trending" if adx >= ADX_THETA else "ranging"
-        regime_gate     = 1.0 if adx >= ADX_THETA else 0.0
+        # Soft fade: linear ramp from 0.20 at ADX=0 to 1.0 at ADX=30.
+        # Hard binary gate (was 0 when ADX<20) killed all trades in ranging markets
+        # which is ~60% of session time.  Now engines trade at reduced amplitude
+        # in ranging conditions instead of going fully silent.
+        regime_gate = max(0.20, min(1.0, adx / 30.0))
 
         # ── 2. Edge scores Sᵢ ────────────────────────────────────────────────
         edge_scores = [

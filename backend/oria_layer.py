@@ -233,9 +233,24 @@ class SignalAggregator:
         composite_z    = weighted_sum / max(total_weight, 1e-6)
         composite_conf = 78.0 + composite_z * 12.0   # rescale to confidence space
 
-        # Convergence bonus: extra confidence when multiple engines agree
-        n                = len(pending)
-        convergence_bonus = 10.0 if n >= 4 else (5.0 if n >= 3 else 3.0)
+        # Convergence bonus: extra confidence when multiple engines agree.
+        # Bonus is scaled by engine diversity — correlated engines (e.g. all
+        # momentum-based) firing together don't add independent confirmation.
+        # Diversity = fraction of distinct engine "families" represented.
+        n = len(pending)
+        ENGINE_FAMILY = {
+            "elite_strategy":       "smc",
+            "free_will_v2":         "ml",
+            "dual_engine":          "trend",
+            "day_trader":           "trend",
+            "autonomous_trader_v2": "smc",
+            "vwap_scalper":         "price_action",
+            "yolo_engine":          "momentum",
+        }
+        families = {ENGINE_FAMILY.get(s["engine"], s["engine"]) for s in pending}
+        diversity = len(families) / max(n, 1)   # 1.0 = all different families
+        raw_bonus = 10.0 if n >= 4 else (5.0 if n >= 3 else 3.0)
+        convergence_bonus = round(raw_bonus * diversity, 1)
         composite_conf   = min(98.0, composite_conf + convergence_bonus)
 
         # Best stop (tightest protection) and best target (most aggressive)

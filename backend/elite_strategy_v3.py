@@ -61,7 +61,11 @@ class EliteStrategyV3:
         self.advanced_strategies = advanced_strategies
         self.smc_analyzer = smc_analyzer
         self.enhanced_intel = enhanced_intel
-        
+
+        # Telegram alert dependencies
+        self.send_telegram = None
+        self.chat_ids: set = set()
+
         # Elite Strategy - HIGH QUALITY signals only
         self.min_confidence = 90  # Matches ENGINE_CONFIGS spec
         self.min_confirmations = 5  # Need 5 confluences — matches ENGINE_CONFIGS spec
@@ -574,11 +578,52 @@ class EliteStrategyV3:
                 signals = await self.scan_all_elite()
                 if signals:
                     logger.info(f"[ELITE AUTO] {len(signals)} signal(s) this scan")
+                    if self.send_telegram and self.chat_ids:
+                        for sig in signals:
+                            try:
+                                msg = self._format_telegram_alert(sig)
+                                for chat_id in list(self.chat_ids):
+                                    await self.send_telegram(chat_id, msg)
+                            except Exception as _te:
+                                logger.error(f"[ELITE] Telegram send error: {_te}")
                 from self_healer import self_healer as _sh
                 _sh.heartbeat("elite_strategy")
             except Exception as e:
                 logger.error(f"[ELITE AUTO] Loop error: {e}")
             await asyncio.sleep(interval)
+
+    def _format_telegram_alert(self, signal: dict) -> str:
+        sym       = signal.get("symbol", "").replace("/USDT", "")
+        direction = signal.get("direction", "")
+        conf      = signal.get("confidence", 0)
+        entry     = signal.get("entry_price", 0)
+        stop      = signal.get("stop_price", 0)
+        target    = signal.get("target_price", 0)
+        rr        = signal.get("rr_ratio", 0)
+        tf        = signal.get("timeframe", "")
+        confirms  = signal.get("confirmations", [])
+        adx       = signal.get("adx", 0)
+        rsi       = signal.get("rsi", 0)
+        mtf       = signal.get("mtf_confluence", "?/3")
+        vol       = signal.get("volume_ratio", 0)
+        conf_label = "HIGH" if conf >= 85 else "MED" if conf >= 75 else "LOW"
+        dir_arrow  = "🟢 LONG" if direction == "LONG" else "🔴 SHORT"
+        conf_list  = "\n".join(f"  • {c}" for c in confirms[:5]) if confirms else "  • No confirmations"
+        sl_pct = abs(entry - stop) / entry * 100 if entry else 0
+        tp_pct = abs(target - entry) / entry * 100 if entry else 0
+        return (
+            f"🎯 ELITE STRATEGY v3 — {sym}USDT {dir_arrow}\n"
+            f"━━━━━━━━━━━━━━━\n"
+            f"⚡ Confidence: {conf_label} ({conf:.0f}%) | TF: {tf}\n"
+            f"MTF: {mtf} | ADX: {adx:.0f} | RSI: {rsi:.0f} | Vol: {vol:.1f}x\n\n"
+            f"💰 Setup:\n"
+            f"  Entry:  ${entry:,.2f}\n"
+            f"  SL:     ${stop:,.2f} (-{sl_pct:.1f}%)\n"
+            f"  TP:     ${target:,.2f} (+{tp_pct:.1f}%)\n"
+            f"  R:R     1:{rr:.1f}\n\n"
+            f"✅ Confirmations:\n{conf_list}\n\n"
+            f"⚠️ PAPER TRADE | Elite gate passed"
+        )
 
     def get_stats(self) -> Dict:
         """Get strategy statistics"""

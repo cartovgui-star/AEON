@@ -109,6 +109,7 @@ SYMBOLS = [
     "DOGE/USDT", "ADA/USDT", "AVAX/USDT", "DOT/USDT", "LINK/USDT",
     "POL/USDT", "UNI/USDT", "ATOM/USDT", "LTC/USDT",
     "OP/USDT", "APT/USDT", "INJ/USDT", "SUI/USDT", "SEI/USDT",
+    "TRX/USDT", "NEAR/USDT", "FIL/USDT", "SAND/USDT", "MANA/USDT",
     # ARB removed: 76 trades, 8% WR, -$10,255 (2026-03-22)
 ]
 
@@ -132,8 +133,8 @@ class YoloEngine:
         self.name = "YOLO Engine"
         self.emoji = "🚀"
 
-        self.min_confidence = 75
-        self.min_score = 3
+        self.min_confidence = 65
+        self.min_score = 2
 
         self.cooldown_seconds = 300
         self.recent_signals: Dict[str, datetime] = {}
@@ -396,18 +397,18 @@ class YoloEngine:
         if self.daily_signals >= self.max_daily_signals:
             return []
 
-        # BTC MACRO GATE — fetch once, block counter-macro trades
-        btc_is_bearish = False
-        btc_is_bullish = False
+        # MACRO GATE — BTC/USDT uses BTC macro, alts use market-wide macro (BTC+ETH+SOL)
+        btc_macro = "NEUTRAL"
+        market_wide_macro = "NEUTRAL"
         if self.market_intel:
             try:
-                btc_scan = await self.market_intel.get_full_market_scan("BTC/USDT")
-                btc_bias = (btc_scan.get("market_structure", {}) or {}).get("bias", "neutral") if btc_scan else "neutral"
-                btc_is_bearish = (btc_bias == "bearish")
-                btc_is_bullish = (btc_bias == "bullish")
-                logger.info(f"[YOLO] BTC macro: {btc_bias}")
+                from regime_engine import get_regime_engine
+                _re = get_regime_engine()
+                btc_macro = await _re.refresh_macro_direction(self.market_intel)
+                market_wide_macro = await _re.refresh_market_wide_macro(self.market_intel)
+                logger.info(f"[YOLO] BTC macro: {btc_macro} | Market-wide: {market_wide_macro}")
             except Exception as e:
-                logger.debug(f"[YOLO] BTC macro fetch failed: {e}")
+                logger.debug(f"[YOLO] Macro fetch failed: {e}")
 
         signals = []
         for symbol in SYMBOLS:
@@ -415,11 +416,12 @@ class YoloEngine:
                 sig = await self.analyze_symbol(symbol)
                 if sig:
                     direction = sig.get("direction", "")
-                    if direction == "LONG" and btc_is_bearish:
-                        logger.info(f"[YOLO] BLOCKED {symbol} LONG — BTC macro BEARISH")
+                    _macro = btc_macro if symbol == "BTC/USDT" else market_wide_macro
+                    if direction == "LONG" and _macro == "BEARISH":
+                        logger.info(f"[YOLO] BLOCKED {symbol} LONG — {'BTC' if symbol == 'BTC/USDT' else 'market'} macro BEARISH")
                         continue
-                    if direction == "SHORT" and btc_is_bullish:
-                        logger.info(f"[YOLO] BLOCKED {symbol} SHORT — BTC macro BULLISH")
+                    if direction == "SHORT" and _macro == "BULLISH":
+                        logger.info(f"[YOLO] BLOCKED {symbol} SHORT — {'BTC' if symbol == 'BTC/USDT' else 'market'} macro BULLISH")
                         continue
                     signals.append(sig)
                     self._set_cooldown(symbol)
@@ -496,25 +498,23 @@ class YoloEngine:
                 logger.warning(f"YOLO unified validation failed: {e}")
 
         try:
-            result = await self.paper_trading.open_position(
-                account_id="PRO",
-                symbol=signal["symbol"],
-                direction=signal["direction"],
-                entry_price=signal["entry_price"],
-                stop_loss=signal["stop_loss"],
-                take_profit=signal["take_profit"],
-                leverage=signal["leverage"],
-                confidence=signal["confidence"],
-                strategy="YOLO_v2",
-                signal_data={"unified_trade_id": signal.get("unified_trade_id"), "engine": "yolo_engine"},
-            )
-            if result and "error" not in result:
+            from paper_trading import route_engine_signal
+            paper_signal = {
+                "symbol":        signal["symbol"],
+                "direction":     signal["direction"],
+                "entry_price":   signal["entry_price"],
+                "stop_loss":     signal["stop_loss"],
+                "take_profit":   signal["take_profit"],
+                "leverage":      signal["leverage"],
+                "confidence":    signal["confidence"],
+                "position_size": 1500,
+                "confirmations": signal.get("reasons", []),
+            }
+            results = await route_engine_signal(paper_signal, "YOLO_ENGINE")
+            if results:
                 self.trades_opened += 1
-                logger.info(
-                    f"YOLO trade opened: {signal['symbol']} {signal['direction']} "
-                    f"@ ${signal['entry_price']:.4f} ({signal['leverage']}x)"
-                )
-                return result
+                logger.info(f"YOLO routed to {len(results)} accounts: {signal['symbol']} {signal['direction']} @ ${signal['entry_price']:.4f} ({signal['leverage']}x)")
+            return results[0] if results else None
         except Exception as e:
             logger.error(f"YOLO paper route error: {e}")
 

@@ -6,6 +6,7 @@ Real free APIs for comprehensive crypto data
 import aiohttp
 import asyncio
 import logging
+import os
 from datetime import datetime, timezone, timedelta
 from typing import Dict, Any, List, Optional
 import ccxt
@@ -28,6 +29,9 @@ class EnhancedMarketIntel:
         # API endpoints
         self.coingecko_base = "https://api.coingecko.com/api/v3"
         self.fear_greed_api = "https://api.alternative.me/fng"
+        self.livecoinwatch_base = "https://api.livecoinwatch.com"
+        self.livecoinwatch_key = os.environ.get("LIVECOINWATCH_API_KEY", "")
+        self.coinbase_base = "https://api.coinbase.com/v2"
         
         # Cache for rate limiting
         self._cache = {}
@@ -64,9 +68,93 @@ class EnhancedMarketIntel:
             return {"error": str(e)}
     
     # ═══════════════════════════════════════════════════════════════════════════
+    # LIVECOINWATCH - PRIMARY PRICE SOURCE
+    # ═══════════════════════════════════════════════════════════════════════════
+
+    async def get_livecoinwatch_prices(self) -> List[Dict]:
+        """Get top 50 coin prices from LiveCoinWatch API (ranked by market cap)"""
+        if not self.livecoinwatch_key:
+            logger.warning("LCW: no API key configured")
+            return []
+        try:
+            payload = {
+                "currency": "USD",
+                "sort": "rank",
+                "order": "ascending",
+                "offset": 0,
+                "limit": 50,
+                "meta": True
+            }
+            headers = {
+                "x-api-key": self.livecoinwatch_key,
+                "content-type": "application/json"
+            }
+            async with aiohttp.ClientSession() as session:
+                async with session.post(
+                    f"{self.livecoinwatch_base}/coins/list",
+                    json=payload,
+                    headers=headers,
+                    timeout=aiohttp.ClientTimeout(total=10)
+                ) as resp:
+                    if resp.status != 200:
+                        logger.error(f"LCW error {resp.status}")
+                        return []
+                    data = await resp.json()
+
+            results = []
+            for i, coin in enumerate(data):
+                delta = coin.get("delta", {})
+                results.append({
+                    "symbol": (coin.get("code") or "").lower().lstrip("_"),
+                    "name": coin.get("name", ""),
+                    "current_price": coin.get("rate", 0),
+                    "price_change_percentage_1h": round((delta.get("hour", 1) - 1) * 100, 2),
+                    "price_change_percentage_24h": round((delta.get("day", 1) - 1) * 100, 2),
+                    "price_change_percentage_7d": round((delta.get("week", 1) - 1) * 100, 2),
+                    "market_cap": coin.get("cap", 0),
+                    "market_cap_rank": coin.get("rank", i + 1),
+                    "total_volume": coin.get("volume", 0),
+                    "high_24h": 0,
+                    "low_24h": 0,
+                    "source": "livecoinwatch"
+                })
+            logger.info(f"LCW: fetched {len(results)} coins")
+            return results
+        except Exception as e:
+            logger.error(f"LCW prices error: {e}")
+            return []
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # COINBASE - PUBLIC SPOT PRICE CHECK (no auth required)
+    # ═══════════════════════════════════════════════════════════════════════════
+
+    async def get_coinbase_spot_prices(self) -> Dict[str, float]:
+        """Get spot prices for BTC/ETH/SOL from Coinbase public API (no key needed)"""
+        pairs = ["BTC-USD", "ETH-USD", "SOL-USD", "XRP-USD", "BNB-USD"]
+        prices = {}
+        try:
+            async with aiohttp.ClientSession() as session:
+                for pair in pairs:
+                    try:
+                        async with session.get(
+                            f"{self.coinbase_base}/prices/{pair}/spot",
+                            timeout=aiohttp.ClientTimeout(total=5)
+                        ) as resp:
+                            if resp.status == 200:
+                                d = await resp.json()
+                                coin = pair.split("-")[0]
+                                prices[coin] = float(d.get("data", {}).get("amount", 0))
+                    except Exception:
+                        pass
+            return prices
+        except Exception as e:
+            logger.error(f"Coinbase spot error: {e}")
+            return {}
+
+    # ═══════════════════════════════════════════════════════════════════════════
     # COINGECKO - TOP 100 COINS (with MEXC fallback)
     # ═══════════════════════════════════════════════════════════════════════════
-    
+
     async def get_mexc_prices(self) -> List[Dict]:
         """Get prices from MEXC for top coins"""
         try:
@@ -100,17 +188,20 @@ class EnhancedMarketIntel:
             return []
     
     async def get_top_100_coins(self) -> List[Dict]:
-        """Get top 100 cryptocurrencies - uses MEXC as primary (faster, no rate limits)"""
-        # Use MEXC as primary source - always available
+        """Get top coins — priority: LiveCoinWatch → MEXC → CoinGecko"""
+        # 1. LiveCoinWatch (best data: rank, market cap, 1h/24h/7d deltas)
+        coins = await self.get_livecoinwatch_prices()
+        if coins:
+            return coins
+
+        # 2. MEXC fallback (fast but no market cap data)
         coins = await self.get_mexc_prices()
         if coins:
             return coins
-        
-        # Fallback to CoinGecko if MEXC fails
+
+        # 3. CoinGecko last resort (rate-limited)
         url = f"{self.coingecko_base}/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=100&page=1&sparkline=false&price_change_percentage=1h,24h,7d"
-        
         data = await self._fetch_json(url, "top100")
-        
         if isinstance(data, list) and len(data) > 0:
             return data
         return []

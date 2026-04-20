@@ -99,7 +99,7 @@ from self_healer import self_healer, SelfHealer
 from morning_briefing import morning_briefing, MorningBriefing
 from weekly_report import weekly_report, WeeklyPerformanceReport
 from continuous_learning import continuous_learner, ContinuousLearningEngine
-from paper_trading import paper_trading, init_paper_trading, PaperTradingSystem, paper_account_health_loop, paper_price_update_loop
+from paper_trading import paper_trading, init_paper_trading, PaperTradingSystem, paper_account_health_loop, paper_price_update_loop, route_engine_signal
 from elite_strategy_v3 import get_elite_strategy, EliteStrategyV3
 from vwap_scalper import init_vwap_scalper, VWAPScalper
 from aeon_quantum_state import init_quantum_state, get_quantum_state_engine
@@ -143,6 +143,7 @@ autonomous_trader = init_autonomous_trader(db, learning_system)  # Keep for back
 autonomous_trader_v2 = init_autonomous_trader_v2(db)  # New elite trading engine
 free_will = init_free_will(db)
 free_will_v2 = init_free_will_v2(db)  # New ultra-selective engine
+free_will_v2.active = False  # Disabled: 30.7% WR, -3,437% PnL — loser engine
 strategy_engine = StrategyEngine()  # Multi-strategy engine
 memory_system = init_memory_system(db)  # Memory & journaling system
 confluence_analyzer = create_confluence_analyzer(smc_analyzer, strategy_engine)  # SMC+Strategy confluence
@@ -162,6 +163,9 @@ yolo_engine = init_yolo_engine(db)
 from institutional_scalper import init_institutional_scalper, InstitutionalScalper
 inst_scalper = init_institutional_scalper(db)
 
+# TCN Neural Engine (Engine 9 — deep learning, BTC/USDT 1h)
+from engines.tcn_neural_engine import init_tcn_engine
+
 # Signal deduplicator — suppresses duplicate/contradicting engine alerts
 _signal_dedup_inst = init_signal_deduplicator(db)
 
@@ -173,8 +177,8 @@ oracle = init_oracle(db)
 from autonomous_trader import set_derivatives_intel
 set_derivatives_intel(derivatives_intel)
 
-# MEXC for orderbook (keeping existing)
-mexc = ccxt.mexc({'apiKey': mexc_api_key, 'secret': mexc_secret_key, 'enableRateLimit': True})
+# OKX for orderbook (no API key needed for public data)
+mexc = ccxt.okx({'enableRateLimit': True})
 
 central_tz = pytz.timezone('US/Central')
 
@@ -460,40 +464,10 @@ Stop: ${analysis.get('stop_loss', 0):,.2f}
 
 
 async def freewill_proactive(chat_id: int):
-    """Aeon reaches out naturally - checking in or sharing market observations"""
-    from aeon_personality import get_proactive_message, get_proactive_market_message
-    
-    now = datetime.now()
-    # Cooldown: at least 4 hours between proactive messages
-    if chat_id in last_freewill_message and (now - last_freewill_message[chat_id]).total_seconds() < 14400:
-        return
-    
-    last_freewill_message[chat_id] = now
-    
-    # 50% chance: pure check-in, 50% chance: market observation
-    if random.random() < 0.5:
-        # Natural check-in (no market data) - pass chat_id to avoid repeats
-        msg = get_proactive_message(chat_id=chat_id)
-    else:
-        # Market observation with conversation starter
-        try:
-            btc = await market_intel.get_full_market_scan("BTC/USDT")
-            price = btc.get('price', 0)
-            change = btc.get('price_change_24h', 0)
-            rsi = btc.get('technical', {}).get('rsi', 'N/A')
-            bias = btc.get('overall_bias', 'neutral')
-            
-            if abs(change) > 3:
-                market_summary = f"BTC {'pumping' if change > 0 else 'dumping'} {abs(change):.1f}% - sitting at ${price:,.0f}"
-            else:
-                market_summary = f"BTC at ${price:,.0f}, RSI {rsi}. Looking {bias.lower()}."
-            
-            msg = get_proactive_market_message(market_summary)
-        except Exception as e:
-            logger.debug(f"Market summary fetch failed, using generic: {e}")
-            msg = get_proactive_message(chat_id=chat_id)
-    
-    await send_telegram_message(chat_id, msg)
+    """Proactive outreach — DISABLED. AEON speaks when it has signal, not for casual chat."""
+    # Disabled: old casual personality behavior removed.
+    # AEON only sends when there is a valid trade signal or system event.
+    return
 
 
 async def send_daily_report(chat_id: int):
@@ -901,6 +875,19 @@ async def dual_trading_scanner():
 
                     record_signal_alert(_sym, _dirn)
 
+                    # Route to all paper accounts
+                    try:
+                        _dual_paper = {
+                            "symbol": setup["symbol"], "direction": setup["direction"],
+                            "entry_price": setup.get("entry", setup.get("entry_price", 0)),
+                            "stop_loss": setup.get("stop_loss", 0), "take_profit": setup.get("take_profit", 0),
+                            "confidence": setup.get("confidence", 70), "leverage": setup.get("leverage", 10),
+                            "position_size": 800, "confirmations": setup.get("confirmations", []),
+                        }
+                        await route_engine_signal(_dual_paper, "DUAL_DAY_TRADER")
+                    except Exception as _de:
+                        logger.warning(f"[DUAL DAY] paper route error: {_de}")
+
                     await send_alert("SIGNAL", "DAY TRADE SETUP", alert_msg,
                         pair=_sym, engine="dual_engine_day")
                     for chat_id in list(chat_ids):
@@ -968,6 +955,19 @@ async def dual_trading_scanner():
                         continue
 
                     record_signal_alert(_sym, _dirn)
+
+                    # Route to all paper accounts
+                    try:
+                        _dual_paper = {
+                            "symbol": setup["symbol"], "direction": setup["direction"],
+                            "entry_price": setup.get("entry", setup.get("entry_price", 0)),
+                            "stop_loss": setup.get("stop_loss", 0), "take_profit": setup.get("take_profit", 0),
+                            "confidence": setup.get("confidence", 70), "leverage": setup.get("leverage", 8),
+                            "position_size": 800, "confirmations": setup.get("confirmations", []),
+                        }
+                        await route_engine_signal(_dual_paper, "DUAL_LONG_TERM")
+                    except Exception as _de:
+                        logger.warning(f"[DUAL LT] paper route error: {_de}")
 
                     await send_alert("SIGNAL", "LONG-TERM SETUP", alert_msg,
                         pair=_sym, engine="dual_engine_lt")
@@ -1041,8 +1041,14 @@ async def lifespan(app: FastAPI):
     if telegram_token and server_url:
         try:
             webhook_url = f"{server_url}/api/webhook"
+            payload: dict = {"url": webhook_url}
+            if _webhook_secret:
+                payload["secret_token"] = _webhook_secret
             async with httpx.AsyncClient(timeout=10) as hc:
-                resp = await hc.get(f"https://api.telegram.org/bot{telegram_token}/setWebhook?url={webhook_url}")
+                resp = await hc.post(
+                    f"https://api.telegram.org/bot{telegram_token}/setWebhook",
+                    json=payload,
+                )
                 result = resp.json()
                 if result.get("ok"):
                     logger.info(f"Telegram webhook auto-set: {webhook_url}")
@@ -1088,6 +1094,7 @@ async def lifespan(app: FastAPI):
     app_state.vwap_scalper = vwap_scalper
     app_state.yolo_engine = yolo_engine
     app_state.inst_scalper = inst_scalper
+    app_state.tcn_engine = None  # set after init below
     app_state.continuous_learner = continuous_learner
     app_state.paper_trading = paper_trading
     app_state.send_telegram_message = send_telegram_message
@@ -1225,12 +1232,21 @@ async def lifespan(app: FastAPI):
     inst_task = asyncio.create_task(inst_scalper.run_loop(3600))  # Scan every hour
     logger.info("🏦 INSTITUTIONAL SCALPER ACTIVATED — Pure SMC: OB/FVG/BOS/LiqSweep on 1H/4H/1D")
 
+    # ENGINE 9 — TCN Neural Engine (deep learning, BTC/USDT 1h)
+    tcn_engine = init_tcn_engine()
+    await tcn_engine.initialise(db=db, market_intel=market_intel)
+    app_state.tcn_engine = tcn_engine
+    tcn_task = asyncio.create_task(tcn_engine.run_background_loop(3600))  # Hourly inference
+    logger.info("🧠 TCN NEURAL ENGINE ACTIVATED — Engine 9, BTC/USDT 1h deep learning")
+
     # ELITE STRATEGY v3 — autonomous scan every 30 min (Fix #15)
     _elite_auto = get_elite_strategy(
         advanced_strategies=advanced_strategies,
         smc_analyzer=smc_analyzer,
         enhanced_intel=enhanced_intel,
     )
+    _elite_auto.send_telegram = send_telegram_message
+    _elite_auto.chat_ids = chat_ids
     elite_task = asyncio.create_task(_elite_auto.run_loop(1800))
     logger.info("🎯 ELITE STRATEGY v3 AUTONOMOUS ACTIVATED — scanning every 30 min")
 
@@ -1361,6 +1377,7 @@ async def lifespan(app: FastAPI):
     self_healer.register("vwap_scalper", vwap_task, lambda: vwap_scalper.run_scan_loop(300))
     self_healer.register("yolo_engine", yolo_task, lambda: yolo_engine.run_loop(180))
     self_healer.register("institutional_scalper", inst_task, lambda: inst_scalper.run_loop(3600))
+    self_healer.register("tcn_neural", tcn_task, lambda: tcn_engine.run_background_loop(3600))
     self_healer.register("elite_strategy", elite_task, lambda: _elite_auto.run_loop(1800))
     self_healer.register("oracle", oracle_task, oracle.run_loop)
     if oria_stress_task:
@@ -1409,6 +1426,36 @@ async def lifespan(app: FastAPI):
     for i, m in enumerate(_monitors):
         self_healer.register(f"monitor_{m.__class__.__name__}", monitor_tasks[i], m.run_loop)
     logger.info("🔔 UNIFIED ALERT SYSTEM + MONITORS ACTIVE")
+
+    # Regime change watcher — broadcasts WebSocket event when H-derived regime changes
+    async def _regime_change_watcher():
+        _last_regime = None
+        while True:
+            try:
+                state = app_state.quantum_state.get_state() if hasattr(app_state, "quantum_state") and app_state.quantum_state else {}
+                H = state.get("H", 0.5)
+                if H < 0.40:
+                    regime = "STRUCTURED"
+                elif H >= 0.65:
+                    regime = "CHAOTIC"
+                else:
+                    regime = "TRANSITIONAL"
+                if _last_regime is not None and regime != _last_regime:
+                    await ws_manager.broadcast({
+                        "type": "regime_change",
+                        "from_regime": _last_regime,
+                        "to_regime": regime,
+                        "H": round(H, 4),
+                        "message": f"Regime shifted: {_last_regime} → {regime} (H={H:.3f})",
+                    })
+                    logger.info(f"[REGIME] Broadcast regime change: {_last_regime} → {regime}")
+                _last_regime = regime
+            except Exception as _rce:
+                logger.debug(f"[REGIME_WATCHER] {_rce}")
+            await asyncio.sleep(60)
+
+    asyncio.create_task(_regime_change_watcher())
+    logger.info("📡 Regime change watcher active")
 
     yield
 
@@ -1734,13 +1781,39 @@ async def api_test():
 # TELEGRAM WEBHOOK
 # ═══════════════════════════════════════════════════════════════════════════════
 
+_webhook_secret = os.environ.get("TELEGRAM_WEBHOOK_SECRET", "")
+
+# update_id dedup — prevents Telegram retry storms from processing the same message twice
+_seen_update_ids: set = set()
+_SEEN_UPDATE_ID_MAX = 500  # cap memory; oldest are dropped when full
+
 @api_router.post("/webhook")
 async def webhook(request: Request):
+    if _webhook_secret:
+        incoming = request.headers.get("X-Telegram-Bot-Api-Secret-Token", "")
+        if incoming != _webhook_secret:
+            # Return 200 so Telegram stops retrying — log the auth failure
+            logger.warning(f"Webhook auth failed — incoming token mismatch")
+            return {"status": "unauthorized"}
     try:
         update = await request.json()
+
+        # Deduplicate by update_id — Telegram retries until it gets 200
+        update_id = update.get("update_id")
+        if update_id is not None:
+            if update_id in _seen_update_ids:
+                logger.info(f"Duplicate update_id {update_id} — skipping")
+                return {"status": "ok"}
+            _seen_update_ids.add(update_id)
+            if len(_seen_update_ids) > _SEEN_UPDATE_ID_MAX:
+                # Drop oldest entries — set has no order so just clear the oldest ~50
+                oldest = list(_seen_update_ids)[:50]
+                for uid in oldest:
+                    _seen_update_ids.discard(uid)
+
         if 'message' not in update:
             return {"status": "ok"}
-        
+
         msg = update['message']
         chat_id = msg['chat']['id']
         text = msg.get('text', '')
@@ -2631,7 +2704,7 @@ Status: {'🟢 ON' if status.get('active', True) else '🔴 OFF'}
                     autonomous_trader_v2.min_confidence = free_will_v2.min_confidence  # Sync both
                     await autonomous_trader_v2.save_settings()  # Persist to DB
                     response = f"✅ Min confidence set to {free_will_v2.min_confidence}%"
-                except:
+                except Exception:
                     response = "Usage: /fwconf 80 (sets 80% minimum)"
             else:
                 response = f"Current: {free_will_v2.min_confidence}%\nUsage: /fwconf 80"
@@ -2768,7 +2841,7 @@ TP: ${pos['take_profit']:,.2f} | SL: ${pos['stop_loss']:,.2f}
 
 New liquidation price: ${result['new_liq_price']:,.2f}
 Remaining balance: ${result['new_balance']:,.2f}"""
-                except:
+                except Exception:
                     response = "❌ Invalid amount"
             
             context = "trading"
@@ -3792,7 +3865,7 @@ Direction: {direction.upper()}
 ID: {result.get('alert_id', 'N/A')}
 
 You'll be notified when price goes {direction} ${target_price:,.2f}"""
-                except:
+                except Exception:
                     response = "Usage: /alert add btc above 70000"
             else:
                 response = "Usage: /alert add [symbol] [above/below] [price]\nExample: /alert add btc above 70000"
@@ -4792,14 +4865,14 @@ Entry: `${sig.get('entry', 0):,.4f}` | TP: `${sig.get('tp') or 0:,.4f}` | SL: `$
                 
                 # Get market data if trading
                 market_data = ""
-                if analysis.get("needs_market_data") and analysis.get("coins"):
-                    coin = analysis["coins"][0]
+                if analysis.get("needs_market_data"):
+                    coin = analysis["coins"][0] if analysis.get("coins") else "BTC"
                     try:
-                        ticker = mexc.fetch_ticker(f"{coin}/USDT")
-                        price = ticker.get("last", 0)
-                        change = ticker.get("percentage", 0)
-                        high = ticker.get("high", 0)
-                        low = ticker.get("low", 0)
+                        ticker = await market_intel.get_ticker(f"{coin}/USDT")
+                        price = ticker.get("price", 0)
+                        change = ticker.get("change_24h", 0)
+                        high = ticker.get("high_24h", 0)
+                        low = ticker.get("low_24h", 0)
                         market_data = f"{coin} CURRENT PRICE: ${price:,.2f} ({change:+.2f}% 24h) | High: ${high:,.2f} | Low: ${low:,.2f}"
                         logger.info(f"✅ Fetched REAL market data for {coin}: ${price:,.2f}")
                     except Exception as e:
@@ -4924,6 +4997,8 @@ from routes.analytics import router as analytics_router
 app.include_router(analytics_router)
 from routes.regime import router as regime_router
 app.include_router(regime_router)
+from routes.nexus import router as nexus_router
+app.include_router(nexus_router)
 
 # ── Institutional Scalper routes ──────────────────────────────────────────────
 from fastapi import APIRouter as _AR
@@ -4986,7 +5061,7 @@ app.add_middleware(
 _dashboard_api_key = os.environ.get("DASHBOARD_API_KEY", "")
 
 # Paths exempt from API key check (webhook uses its own Telegram token auth)
-_API_KEY_EXEMPT = {"/api/webhook", "/api/"}
+_API_KEY_EXEMPT = {"/api/webhook"}
 
 
 class APIKeyMiddleware(BaseHTTPMiddleware):

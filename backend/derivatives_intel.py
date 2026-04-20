@@ -52,15 +52,20 @@ class DerivativesIntel:
         self._cache_ttl = 60
     
     def _get_perp_symbol(self, symbol: str) -> str:
-        """Convert BTCUSDT to BTC/USDT:USDT format for any symbol"""
-        # Handle already formatted symbols
+        """Normalize any symbol variant to CCXT perpetual swap format: BTC/USDT:USDT"""
+        # Strip settle suffix first: "BTC/USDT:USDT" or "BTCUSDT:USDT" → clean base
+        if ":" in symbol:
+            symbol = symbol.split(":")[0]
+        # Slash format: "BTC/USDT" → base = "BTC"
         if "/" in symbol:
             base = symbol.split("/")[0]
             return f"{base}/USDT:USDT"
-        
-        # Convert BTCUSDT format - remove USDT suffix
-        base = symbol.replace("USDT", "")
-        return f"{base}/USDT:USDT"
+        # Concatenated format: "BTCUSDT" → strip trailing USDT once only
+        if symbol.upper().endswith("USDT"):
+            base = symbol[: -len("USDT")]
+        else:
+            base = symbol
+        return f"{base.upper()}/USDT:USDT"
     
     def _cache_get(self, key: str) -> Optional[Dict]:
         """Get from cache if not expired"""

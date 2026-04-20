@@ -44,6 +44,7 @@ yolo_engine = None   # YOLO Engine - independent aggressive trading
 continuous_learner = None  # Continuous Learning Engine
 paper_trading = None  # Paper Trading System
 engine_manager = None  # Unified Engine Manager - 7 engines
+tcn_engine = None     # TCN Neural Engine (engine 9) — deep learning, BTC/USDT 1h
 
 # Telegram helpers
 send_telegram_message = None

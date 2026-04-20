@@ -1367,16 +1367,21 @@ class AutonomousTraderV2:
                 return None
 
             # ═══════════════════════════════════════════════════════════════════
-            # BTC MACRO TREND GATE - Never trade against the macro trend.
-            # Data: 0 LONG wins in bearish BTC macro (0/32 trades).
-            # btc_bias is updated by detect_market_regime() each scan cycle.
+            # MACRO TREND GATE
+            # BTC/USDT uses BTC-specific macro; alts use market-wide macro (BTC+ETH+SOL).
             # ═══════════════════════════════════════════════════════════════════
-            if direction == "LONG" and self.btc_bias == "BEARISH":
-                logger.debug(f"Skipping {symbol} LONG - BTC macro trend is BEARISH")
+            try:
+                from regime_engine import get_regime_engine
+                _re = get_regime_engine()
+                _macro = _re.get_btc_macro_direction() if symbol == "BTC/USDT" else _re.get_market_wide_direction()
+            except Exception:
+                _macro = self.btc_bias  # fallback
+            if direction == "LONG" and _macro == "BEARISH":
+                logger.debug(f"Skipping {symbol} LONG - {'BTC' if symbol == 'BTC/USDT' else 'market'} macro is BEARISH")
                 self.filter_stats["ema_200_filtered"] += 1
                 return None
-            if direction == "SHORT" and self.btc_bias == "BULLISH":
-                logger.debug(f"Skipping {symbol} SHORT - BTC macro trend is BULLISH")
+            if direction == "SHORT" and _macro == "BULLISH":
+                logger.debug(f"Skipping {symbol} SHORT - {'BTC' if symbol == 'BTC/USDT' else 'market'} macro is BULLISH")
                 self.filter_stats["ema_200_filtered"] += 1
                 return None
 
@@ -1685,6 +1690,39 @@ class AutonomousTraderV2:
                 final_leverage, lev_bd = await engine_manager.get_dynamic_leverage(
                     _symbol, _direction, EngineType.AUTONOMOUS_TRADER_V2
                 )
+
+                # FIX: Leverage-aware SL compression.
+                # At high leverage, a wide ATR stop can sit at/beyond the liquidation price.
+                # Compress stop distance so it always stays within 75% of the liquidation
+                # margin (25% safety buffer).
+                # Formula:
+                #   effective_stop_mult = base_atr_mult / (1 + log10(max(leverage, 1)))
+                #   max_stop_pct        = (1 / leverage) * 0.75
+                #   actual stop distance capped to max_stop_pct of entry price
+                import math as _math
+                _lev_safe = max(float(final_leverage), 1.0)
+                _entry_v  = float(signal["entry"])
+                _raw_stop = float(signal["stop"])
+                _max_stop_pct = (1.0 / _lev_safe) * 0.75   # 75% of liquidation margin
+                _raw_stop_pct = abs(_entry_v - _raw_stop) / _entry_v if _entry_v > 0 else 0.0
+                if _raw_stop_pct > _max_stop_pct and _max_stop_pct > 0:
+                    _capped_dist = _entry_v * _max_stop_pct
+                    _adj_stop = (
+                        _entry_v - _capped_dist if _direction.lower() == "long"
+                        else _entry_v + _capped_dist
+                    )
+                    logger.info(
+                        f"⚠️ [LEV-SL] [{_symbol}] {_direction.upper()} lev={final_leverage}x "
+                        f"stop compressed: raw_dist={_raw_stop_pct:.2%} > max={_max_stop_pct:.2%} "
+                        f"→ stop ${_raw_stop:.4f}→${_adj_stop:.4f}"
+                    )
+                    signal["stop"] = round(_adj_stop, 8)
+                    # Recalculate target to maintain R:R ratio (preserve original reward distance)
+                    _orig_reward = abs(float(signal["target"]) - _entry_v)
+                    signal["target"] = round(
+                        _entry_v + _orig_reward if _direction.lower() == "long"
+                        else _entry_v - _orig_reward, 8
+                    )
 
                 # Build signal for unified validation
                 engine_signal = {
@@ -2048,10 +2086,16 @@ class AutonomousTraderV2:
         avg_win = sum(t["pnl_pct"] for t in wins) / len(wins) if wins else 0
         avg_loss = sum(t["pnl_pct"] for t in losses) / len(losses) if losses else 0
 
-        # Profit factor
-        gross_profit = sum(t["pnl_pct"] for t in wins) if wins else 0
-        gross_loss = abs(sum(t["pnl_pct"] for t in losses)) if losses else 1
-        profit_factor = gross_profit / gross_loss if gross_loss > 0 else 0
+        # Profit factor — gross_wins / gross_losses
+        # Use None sentinel so "no losses yet" is distinct from "broke even"
+        gross_profit = sum(t["pnl_pct"] for t in wins) if wins else 0.0
+        gross_loss   = abs(sum(t["pnl_pct"] for t in losses)) if losses else 0.0
+        if gross_loss > 0:
+            profit_factor = round(gross_profit / gross_loss, 2)
+        elif gross_profit > 0:
+            profit_factor = 999.0   # no losses recorded — signal as ∞ capped
+        else:
+            profit_factor = 0.0     # no trades or all break-even
 
         # Expectancy
         win_rate = len(wins) / len(all_closed) * 100 if all_closed else 0

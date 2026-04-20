@@ -348,3 +348,32 @@ async def test_validation(signal: SignalRequest):
             "rr_minimum": 1.5
         }
     }
+
+
+# ============================================================================
+# ENGINE TOGGLE — POST /api/engines/{name}/toggle
+# Enables or disables an individual engine without restarting.
+# The global kill switch overrides per-engine active state.
+# ============================================================================
+
+class ToggleRequest(BaseModel):
+    active: bool
+
+
+@router.post("/{engine_name}/toggle")
+async def toggle_engine(engine_name: str, request: ToggleRequest):
+    """Enable or disable a specific engine. Persists in memory until backend restarts."""
+    manager = get_engine_manager()
+    try:
+        engine_type = EngineType[engine_name.upper().replace("-", "_")]
+    except KeyError:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid engine: {engine_name}. Valid: {[e.value for e in EngineType]}"
+        )
+    manager.set_engine_active(engine_type, request.active)
+    return {
+        "name":   engine_type.value,
+        "active": request.active,
+        "status": "enabled" if request.active else "disabled",
+    }

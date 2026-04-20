@@ -73,7 +73,7 @@ class PriceAlertSystem:
         }
 
         self.alert_cooldowns: Dict[str, datetime] = {}
-        self.cooldown_seconds = 600  # 10 min default cooldown (was 5)
+        self.cooldown_seconds = 7200  # 2 hour cooldown — prevent restart spam
 
         self.send_telegram: Optional[Callable] = None
         self.chat_ids: Set[int] = set()
@@ -212,7 +212,7 @@ class PriceAlertSystem:
         logger.info(f"Batched alert sent: {alert_type}")
 
     def _get_severity(self, alert_type: str) -> str:
-        high_priority = ["breakout", "rsi_extreme", "volume_spike", "large_move"]
+        high_priority = ["breakout", "volume_spike", "large_move"]  # rsi_extreme moved to medium — less urgent
         medium_priority = ["price_target", "ma_cross", "funding_alert"]
         if alert_type in high_priority:
             return "high"

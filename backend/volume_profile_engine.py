@@ -61,13 +61,9 @@ def _to_ccxt_symbol(symbol: str) -> str:
 
 
 def _to_mexc_futures_symbol(symbol: str) -> str:
-    """Normalize to MEXC futures format: BTC_USDT"""
-    s = symbol.upper().replace("-", "").replace("/", "")
-    if "USDT" in s and not s.endswith("_USDT"):
-        s = s.replace("USDT", "_USDT")
-    elif not s.endswith("_USDT"):
-        s += "_USDT"
-    return s
+    """Normalize to OKX swap format: BTC-USDT-SWAP"""
+    base = symbol.upper().replace("_USDT", "").replace("/USDT", "").replace("-USDT", "").replace("USDT", "")
+    return f"{base}-USDT-SWAP"
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -423,24 +419,26 @@ class LiquidationHeatmap:
         self.cache[key] = (data, datetime.now())
 
     async def get_oi_data(self, symbol: str) -> Optional[Dict]:
-        """Fetch Open Interest from MEXC contract API."""
+        """Fetch Open Interest from OKX."""
         cache_key = f"oi_{symbol}"
         cached = self._cache_get(cache_key)
         if cached:
             return cached
 
         try:
-            mexc_symbol = _to_mexc_futures_symbol(symbol)
-            url = f"https://contract.mexc.com/api/v1/contract/open_interest/{mexc_symbol}"
+            inst_id = _to_mexc_futures_symbol(symbol)
+            url = "https://www.okx.com/api/v5/public/open-interest"
             async with aiohttp.ClientSession() as session:
-                async with session.get(url, timeout=aiohttp.ClientTimeout(total=10)) as resp:
+                async with session.get(url, params={"instType": "SWAP", "instId": inst_id},
+                                       timeout=aiohttp.ClientTimeout(total=10)) as resp:
                     data = await resp.json()
 
-            if data.get("code") == 0 and data.get("data"):
-                oi_value = float(data["data"].get("openInterest", 0))
+            items = data.get("data") or []
+            if items:
+                oi_value = float(items[0].get("oiCcy", 0))
                 result = {
                     "symbol": symbol,
-                    "oi_data": [data["data"]],
+                    "oi_data": items,
                     "current_oi": oi_value,
                     "timestamp": datetime.now(timezone.utc).isoformat(),
                 }
@@ -453,16 +451,17 @@ class LiquidationHeatmap:
         return None
 
     async def get_current_price(self, symbol: str) -> float:
-        """Fetch current price from MEXC contract ticker."""
+        """Fetch current price from OKX ticker."""
         try:
-            mexc_symbol = _to_mexc_futures_symbol(symbol)
-            url = "https://contract.mexc.com/api/v1/contract/ticker"
-            params = {"symbol": mexc_symbol}
+            inst_id = _to_mexc_futures_symbol(symbol)
+            url = "https://www.okx.com/api/v5/market/ticker"
             async with aiohttp.ClientSession() as session:
-                async with session.get(url, params=params, timeout=aiohttp.ClientTimeout(total=10)) as resp:
+                async with session.get(url, params={"instId": inst_id},
+                                       timeout=aiohttp.ClientTimeout(total=10)) as resp:
                     data = await resp.json()
-            if data.get("code") == 0 and data.get("data"):
-                return float(data["data"].get("lastPrice", 0))
+            items = data.get("data") or []
+            if items:
+                return float(items[0].get("last", 0))
         except Exception as e:
             logger.debug(f"LiqHeatmap price fetch error: {e}")
         return 0.0
@@ -661,14 +660,14 @@ class OrderbookAnalyzer:
     - Sweep detection (wall absorbed = momentum signal)
     - Iceberg detection (wall that keeps refilling)
 
-    Uses MEXC L2 orderbook (public, no auth).
+    Uses OKX L2 orderbook (public, no auth).
     """
 
     def __init__(self):
         self.cache: Dict[str, Tuple[Any, datetime]] = {}
         self.cache_ttl = 10  # 10s for orderbook (fast-moving)
         self.prev_books: Dict[str, Dict] = {}  # for sweep detection
-        self.mexc = ccxt.mexc()
+        self.mexc = ccxt.okx({'enableRateLimit': True})
 
     def _cache_get(self, key: str):
         if key in self.cache:
@@ -970,17 +969,18 @@ class HyperAccuracyEngine:
 
     async def _fetch_funding_rate(self, symbol: str) -> Dict:
         """
-        Fetch current funding rate from MEXC contract API.
+        Fetch current funding rate from OKX public API.
         Extreme rates = crowded trade = hard gate against that direction.
         """
         try:
-            mexc_symbol = _to_mexc_futures_symbol(symbol)
-            url = f"https://contract.mexc.com/api/v1/contract/funding_rate/{mexc_symbol}"
+            inst_id = _to_mexc_futures_symbol(symbol)  # already returns OKX SWAP format
+            url = f"https://www.okx.com/api/v5/public/funding-rate"
             async with aiohttp.ClientSession() as session:
-                async with session.get(url, timeout=aiohttp.ClientTimeout(total=10)) as resp:
+                async with session.get(url, params={"instId": inst_id}, timeout=aiohttp.ClientTimeout(total=10)) as resp:
                     data = await resp.json()
-            if data.get("code") == 0 and data.get("data"):
-                rate = float(data["data"].get("fundingRate", 0))
+            items = data.get("data") or []
+            if items:
+                rate = float(items[0].get("fundingRate", 0))
                 if rate > 0.0015:
                     bias = "EXTREME_LONG"
                 elif rate > 0.0005:
@@ -993,7 +993,7 @@ class HyperAccuracyEngine:
                     bias = "NEUTRAL"
                 return {"rate": rate, "rate_pct": round(rate * 100, 4), "bias": bias}
         except Exception as e:
-            logger.debug(f"MEXC funding rate fetch error {symbol}: {e}")
+            logger.debug(f"OKX funding rate fetch error {symbol}: {e}")
         return {"rate": 0.0, "rate_pct": 0.0, "bias": "NEUTRAL"}
 
     # ── MARKET STRUCTURE ──────────────────────────────────────────────────────
@@ -2058,6 +2058,15 @@ class HyperAccuracyEngine:
                                 "confirmations": signal.get("confirmations", []),
                                 "timeframe": "4h",
                             }
+                            # Always send Telegram alert for valid signals — gate only controls execution
+                            if self.send_telegram and self.chat_ids:
+                                try:
+                                    msg = self._format_alert(result)
+                                    for chat_id in self.chat_ids:
+                                        await self.send_telegram(chat_id, msg)
+                                except Exception as _te:
+                                    logger.warning(f"HP Telegram send failed: {_te}")
+
                             # Gate through unified risk system before routing to paper trading
                             engine_manager = get_engine_manager()
                             gate_result = await engine_manager.submit_signal_gated(
@@ -2069,14 +2078,6 @@ class HyperAccuracyEngine:
                                 paper_signal["position_size"] = round(500 * _mult, 2)
                                 if gate_result.get("marginal"):
                                     logger.info(f"[VP] Marginal gate pass — size scaled to {_mult:.2f}× ({paper_signal['position_size']})")
-                                # Only send Telegram alert when signal passes the gate
-                                if self.send_telegram and self.chat_ids:
-                                    msg = self._format_alert(result)
-                                    for chat_id in self.chat_ids:
-                                        try:
-                                            await self.send_telegram(chat_id, msg)
-                                        except Exception as e:
-                                            logger.warning(f"HP Telegram send failed: {e}")
                                 await route_engine_signal(paper_signal, "HYPER_ACCURACY")
                             else:
                                 logger.info(

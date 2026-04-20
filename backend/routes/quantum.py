@@ -52,6 +52,78 @@ async def get_quantum_state():
     return state
 
 
+@router.get("/quantum/identity")
+async def get_quantum_identity():
+    """
+    AEON identity A(t) = Ω(|Ψ⟩, ε, M, L).
+    Derives identity sub-components from the current quantum state.
+    """
+    qs = _qs()
+    if qs is None:
+        return {"error": "Quantum state engine not initialised"}
+    state = qs.get_state()
+    if state is None:
+        return {"error": "State not yet computed — wait 60s after startup"}
+
+    H   = state.get("H", 0.0)
+    C   = state.get("C", 0.0)
+    adx = state.get("adx", 0.0)
+    n_active = state.get("n_active", 0)
+    regime   = state.get("regime", "UNKNOWN")
+
+    # Derive identity sub-components from available state
+    epsilon = round(min(1.0, adx / 50.0), 4)          # ε: environment signal strength
+    M       = round(C, 4)                               # M(t): memory coherence proxy
+    L       = round(n_active / 9.0, 4)                 # L: learning breadth (engines active / max)
+    omega   = round(H * C * max(epsilon, 0.1), 4)      # Ω: master identity score
+
+    # Build alphas dict from engine_states list
+    alphas = {}
+    for es in (state.get("engine_states") or []):
+        key   = es.get("engine") or es.get("name", "unknown")
+        alpha = es.get("alpha", 0.0)
+        alphas[key] = alpha
+
+    return {
+        "H":       H,
+        "C":       C,
+        "epsilon": epsilon,
+        "M":       M,
+        "L":       L,
+        "omega":   omega,
+        "regime":  regime,
+        "n_active": n_active,
+        "alphas":  alphas,
+    }
+
+
+@router.get("/quantum/identity/gate")
+async def get_identity_gate():
+    """
+    H-Gate: reports whether AEON's health score permits trading.
+    gate_open = True when H >= threshold.
+    """
+    qs = _qs()
+    if qs is None:
+        return {"error": "Quantum state engine not initialised"}
+    state = qs.get_state()
+    if state is None:
+        return {"error": "State not yet computed"}
+
+    H         = state.get("H", 0.0)
+    THRESHOLD = 0.10   # gate OPEN whenever any positive edge exists (H≈0.25 = neutral priors)
+    gate_open = H >= THRESHOLD
+
+    return {
+        "H_value":   round(H, 4),
+        "h_value":   round(H, 4),   # alias for frontend compatibility
+        "threshold": THRESHOLD,
+        "gate_open": gate_open,
+        "decision":  "ALLOW" if gate_open else "BLOCK",
+        "reason":    "H above threshold" if gate_open else f"H={H:.3f} below threshold={THRESHOLD}",
+    }
+
+
 @router.get("/quantum/history")
 async def get_quantum_history(limit: int = Query(60, ge=1, le=500)):
     """

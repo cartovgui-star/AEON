@@ -37,6 +37,7 @@ class EngineType(Enum):
     DAY_TRADER             = "day_trader"
     VOLUME_PROFILE         = "volume_profile"
     INSTITUTIONAL_SCALPER  = "institutional_scalper"
+    TCN_NEURAL             = "tcn_neural"           # Engine 9 — Temporal Convolutional Network
 
 
 class TradeStatus(Enum):
@@ -192,6 +193,19 @@ ENGINE_CONFIGS = {
         description="Pure SMC: Order Blocks, FVG, BOS, Liq Sweeps on 1H/4H/1D",
         risk_profile="conservative"
     ),
+
+    EngineType.TCN_NEURAL: EngineConfig(
+        engine_type=EngineType.TCN_NEURAL,
+        min_confidence=55.0,
+        min_confluences=1,
+        max_leverage=15,
+        max_position_size=1000,
+        max_concurrent_trades=2,
+        max_daily_trades=8,
+        max_loss_per_day=-300,
+        description="Engine 9 — TCN deep learning, 64×12 feature window, BTC/USDT 1h",
+        risk_profile="conservative"
+    ),
 }
 
 # ── Lθ parameter overrides — restore any auto-applied learning from last run ──
@@ -214,6 +228,8 @@ _ENGINE_MIN_LEVERAGE: Dict[str, int] = {
     "yolo_engine":          5,
     "vwap_scalper":         10,
     "elite_strategy":       2,
+    "institutional_scalper": 2,
+    "tcn_neural":            2,
 }
 
 # Regime → leverage multiplier (HIGH_VOLATILITY is CHAOS, non-negotiable at 0.25×)
@@ -591,7 +607,22 @@ class EngineManager:
         # ORIA: per-engine consecutive loss counter (used by StressMonitor)
         self._consecutive_losses: Dict[str, int] = {e.value: 0 for e in EngineType}
 
+        # Per-engine active/inactive toggle.
+        # All engines start ACTIVE. Use set_engine_active() to disable individual engines.
+        # The global kill switch (_global_kill_active) overrides all of these.
+        self._engine_active: Dict[str, bool] = {e.value: True for e in EngineType}
+
         logger.info("🎯 EngineManager initialized with 7 independent engines")
+
+    def set_engine_active(self, engine_type: EngineType, active: bool):
+        """Enable or disable an individual engine. Persists in memory until restart."""
+        self._engine_active[engine_type.value] = active
+        state = "ENABLED" if active else "DISABLED"
+        logger.info(f"🔧 [EngineManager] {engine_type.value} {state} via toggle")
+
+    def is_engine_active(self, engine_type: EngineType) -> bool:
+        """Returns True if the engine is currently active (not individually disabled)."""
+        return self._engine_active.get(engine_type.value, True)
 
     def should_send_alert(self, symbol: str, direction: str, window_minutes: int = 20) -> bool:
         """
@@ -700,10 +731,138 @@ class EngineManager:
             except Exception:
                 pass
 
+        # Gate 15: MTF Confluence Pre-Scan
+        # Requires EMA20/EMA50 alignment on 5m/15m/1h/4h to exceed 55 (LONG) or below 45 (SHORT).
+        # Score is cached 5 min per symbol. Graceful degradation if market_intel unavailable.
+        if self.market_intel is not None:
+            try:
+                from mtf_confluence import get_mtf_score
+                _mtf_symbol    = signal.get("symbol", "")
+                _mtf_direction = signal.get("direction", "long")
+                _mtf_result    = await get_mtf_score(_mtf_symbol, _mtf_direction, self.market_intel)
+                if not _mtf_result.get("passes", True):
+                    self.engine_stats[engine_type].blocked_trades += 1
+                    logger.info(
+                        f"📊 [MTF GATE] [{engine_type.value}] BLOCKED — {_mtf_result['reason']}"
+                    )
+                    return {
+                        "action":  "REJECT",
+                        "engine":  engine_type.value,
+                        "symbol":  _mtf_symbol,
+                        "reason":  _mtf_result["reason"],
+                        "mtf":     _mtf_result,
+                    }
+                # Attach MTF score to signal so downstream can log/use it
+                signal = {**signal, "_mtf_score": _mtf_result.get("score"), "_mtf_breakdown": _mtf_result.get("breakdown")}
+            except Exception as _mtf_err:
+                # Non-fatal — log and continue (missing data should not stop all trades)
+                logger.debug(f"[MTF GATE] Skipped: {_mtf_err}")
+
+        # ── FEAR & GREED GATE ─────────────────────────────────────────────────
+        # Extreme Fear (<20): block longs unless 90%+ confidence (contrarian only)
+        # Extreme Greed (>80): block shorts unless 90%+ confidence
+        try:
+            import app_state as _as_fg
+            _trader_fg = getattr(_as_fg, "autonomous_trader", None) or getattr(_as_fg, "autonomous_trader_v2", None)
+            _fg = getattr(_trader_fg, "fear_greed", 50) if _trader_fg else 50
+            _sig_dir = signal.get("direction", "long").lower()
+            _sig_conf = signal.get("confidence", 0)
+            if _fg < 20 and _sig_dir == "long" and _sig_conf < 90:
+                self.engine_stats[engine_type].blocked_trades += 1
+                logger.warning(f"[FG GATE] [{engine_type.value}] {signal.get('symbol','')} LONG BLOCKED — F&G={_fg} (Extreme Fear)")
+                return {"action": "REJECT", "engine": engine_type.value, "symbol": signal.get("symbol",""), "reason": f"FEAR/GREED GATE: Extreme Fear ({_fg}) — longs suppressed", "fg_gate": True}
+            if _fg > 80 and _sig_dir == "short" and _sig_conf < 90:
+                self.engine_stats[engine_type].blocked_trades += 1
+                logger.warning(f"[FG GATE] [{engine_type.value}] {signal.get('symbol','')} SHORT BLOCKED — F&G={_fg} (Extreme Greed)")
+                return {"action": "REJECT", "engine": engine_type.value, "symbol": signal.get("symbol",""), "reason": f"FEAR/GREED GATE: Extreme Greed ({_fg}) — shorts suppressed", "fg_gate": True}
+        except Exception as _fg_err:
+            logger.debug(f"[FG GATE] Skipped: {_fg_err}")
+
+        # ── MACRO DIRECTIONAL GATE (HARD BLOCK) ───────────────────────────────
+        # Market-wide BEARISH: longs need 72%+ confidence
+        # Market-wide BULLISH: shorts need 72%+ confidence
+        MACRO_CONF_THRESHOLD = 72
+        try:
+            from regime_engine import get_regime_engine as _gre_fg
+            _rr = _gre_fg()
+            _mkt_macro = _rr.get_market_wide_direction() if hasattr(_rr, "get_market_wide_direction") else _rr.get_btc_macro_direction()
+            _sig_dir2 = signal.get("direction", "long").lower()
+            _sig_conf2 = signal.get("confidence", 0)
+            if _mkt_macro == "BEARISH" and _sig_dir2 == "long" and _sig_conf2 < MACRO_CONF_THRESHOLD:
+                self.engine_stats[engine_type].blocked_trades += 1
+                logger.warning(f"[MACRO GATE HARD] [{engine_type.value}] {signal.get('symbol','')} LONG BLOCKED — Market BEARISH, need {MACRO_CONF_THRESHOLD}%+")
+                return {"action": "REJECT", "engine": engine_type.value, "symbol": signal.get("symbol",""), "reason": f"MACRO GATE: Market BEARISH — longs need {MACRO_CONF_THRESHOLD}%+ confidence", "macro_gate": True}
+            if _mkt_macro == "BULLISH" and _sig_dir2 == "short" and _sig_conf2 < MACRO_CONF_THRESHOLD:
+                self.engine_stats[engine_type].blocked_trades += 1
+                logger.warning(f"[MACRO GATE HARD] [{engine_type.value}] {signal.get('symbol','')} SHORT BLOCKED — Market BULLISH, need {MACRO_CONF_THRESHOLD}%+")
+                return {"action": "REJECT", "engine": engine_type.value, "symbol": signal.get("symbol",""), "reason": f"MACRO GATE: Market BULLISH — shorts need {MACRO_CONF_THRESHOLD}%+ confidence", "macro_gate": True}
+            # Also refresh market-wide macro in background
+            if self.market_intel is not None:
+                try:
+                    asyncio.create_task(_rr.refresh_market_wide_macro(self.market_intel))
+                except Exception:
+                    pass
+        except Exception as _mac_err:
+            logger.debug(f"[MACRO GATE HARD] Skipped: {_mac_err}")
+
+        # ── ENTROPY GATE (H_norm > 0.65 = RANGING/NOISE → REJECT) ────────────
+        # Addresses REGIME_BLINDSPOT — #1 loss driver (42.3% of all losses).
+        # Uses Shannon entropy of recent price returns to detect ranging markets.
+        # H_norm < 0.45: strong trend (trade)
+        # H_norm 0.45-0.65: transitioning (trade with caution)
+        # H_norm > 0.65: ranging/noise (REJECT — no edge)
+        # H_norm > 0.85: pure chaos (REJECT — hard halt)
+        ENTROPY_BLOCK_THRESHOLD = 0.88
+        try:
+            import numpy as _np
+            _ent_symbol = signal.get("symbol", "BTC/USDT")
+            _ent_result = None
+            if self.market_intel is not None:
+                try:
+                    _ohlcv = await self.market_intel.get_ohlcv(_ent_symbol, "1h", 60)
+                    _closes = [c[4] for c in _ohlcv.get("candles", [])] if "candles" in _ohlcv else []
+                    if len(_closes) >= 30:
+                        _returns = _np.diff(_np.log(_closes[-51:]))
+                        _counts, _ = _np.histogram(_returns, bins=16)
+                        _probs = _counts / _counts.sum()
+                        _probs = _probs[_probs > 0]
+                        _H = -_np.sum(_probs * _np.log2(_probs))
+                        _H_norm = float(_H / _np.log2(16))
+                        signal = {**signal, "_H_norm": round(_H_norm, 4)}
+                        if _H_norm > ENTROPY_BLOCK_THRESHOLD:
+                            self.engine_stats[engine_type].blocked_trades += 1
+                            logger.info(
+                                f"[ENTROPY GATE] [{engine_type.value}] {_ent_symbol} BLOCKED — "
+                                f"H_norm={_H_norm:.3f} > {ENTROPY_BLOCK_THRESHOLD} (ranging/noisy market)"
+                            )
+                            return {
+                                "action":   "REJECT",
+                                "engine":   engine_type.value,
+                                "symbol":   _ent_symbol,
+                                "reason":   f"ENTROPY GATE: H_norm={_H_norm:.3f} — market in ranging/noisy regime, no edge",
+                                "H_norm":   _H_norm,
+                                "entropy_gate": True,
+                            }
+                except Exception as _ent_inner:
+                    logger.debug(f"[ENTROPY GATE] OHLCV fetch failed: {_ent_inner}")
+        except Exception as _ent_err:
+            logger.debug(f"[ENTROPY GATE] Skipped: {_ent_err}")
+
         if self.quant_gatekeeper is not None:
             config    = ENGINE_CONFIGS[engine_type]
             symbol    = signal.get("symbol", "")
             direction = signal.get("direction", "long")
+
+            # Inject the correct macro direction so MarketStructureScorer can
+            # apply the right penalty multiplier (macro_aligned check).
+            # BTC/USDT uses BTC-specific macro; alts use market-wide macro.
+            try:
+                from regime_engine import get_regime_engine
+                _re = get_regime_engine()
+                _inj_macro = _re.get_btc_macro_direction() if symbol == "BTC/USDT" else _re.get_market_wide_direction()
+                signal = {**signal, "btc_macro": _inj_macro, "btc_bias": _inj_macro}
+            except Exception:
+                pass
 
             gate = await self.quant_gatekeeper.check(
                 symbol      = symbol,
@@ -735,11 +894,77 @@ class EngineManager:
                 f"size×{gate.get('position_multiplier', 1.0)}"
             )
 
+            # Gate 12: ORIA Edge Filter (async check_edge — Kelly edge vs cost+uncertainty)
+            # Runs AFTER quant gate passes; only blocks when ≥20 trade history exists.
+            if _ORIA_AVAILABLE:
+                try:
+                    _ef = get_edge_filter()
+                    if _ef is not None:
+                        _edge_passes, _edge_reason, _edge_detail = await _ef.check_edge(
+                            engine=engine_type.value,
+                            symbol=symbol,
+                            leverage=float(signal.get("leverage", 1)),
+                            confidence=float(signal.get("confidence", 80)),
+                            expected_hold_hours=4.0,
+                            funding_rate=0.0001,
+                        )
+                        if not _edge_passes:
+                            self.engine_stats[engine_type].blocked_trades += 1
+                            logger.warning(
+                                f"🚫 [ORIA EDGE] [{engine_type.value}] {symbol} "
+                                f"{direction.upper()} BLOCKED — {_edge_reason} | "
+                                f"kelly={_edge_detail.get('kelly_edge', 'N/A')} "
+                                f"required={_edge_detail.get('min_required_edge', 'N/A')}"
+                            )
+                            return {
+                                "action":      "REJECT",
+                                "engine":      engine_type.value,
+                                "symbol":      symbol,
+                                "reason":      f"ORIA EDGE: {_edge_reason}",
+                                "oria_detail": _edge_detail,
+                            }
+                        logger.info(
+                            f"✅ [ORIA EDGE] [{engine_type.value}] {symbol} passed — "
+                            f"{_edge_reason}"
+                        )
+                except Exception as _oria_edge_err:
+                    # Non-fatal — degrade gracefully if ORIA edge check fails
+                    logger.debug(f"[ORIA EDGE] check_edge skipped: {_oria_edge_err}")
+
             result = self.submit_signal(signal, engine_type)
             # Propagate position_multiplier so calling engines can scale position size
             result["position_multiplier"] = gate.get("position_multiplier", 1.0)
             result["marginal"] = gate.get("marginal", False)
             return result
+
+        # No quant gatekeeper — still run ORIA edge check (async, so must be here)
+        if _ORIA_AVAILABLE:
+            try:
+                _ef2 = get_edge_filter()
+                if _ef2 is not None:
+                    _sym2      = signal.get("symbol", "")
+                    _dir2      = signal.get("direction", "long")
+                    _ep2, _er2, _ed2 = await _ef2.check_edge(
+                        engine=engine_type.value,
+                        symbol=_sym2,
+                        leverage=float(signal.get("leverage", 1)),
+                        confidence=float(signal.get("confidence", 80)),
+                    )
+                    if not _ep2:
+                        self.engine_stats[engine_type].blocked_trades += 1
+                        logger.warning(
+                            f"🚫 [ORIA EDGE] [{engine_type.value}] {_sym2} "
+                            f"{_dir2.upper()} BLOCKED (no quant gate path) — {_er2}"
+                        )
+                        return {
+                            "action":      "REJECT",
+                            "engine":      engine_type.value,
+                            "symbol":      _sym2,
+                            "reason":      f"ORIA EDGE: {_er2}",
+                            "oria_detail": _ed2,
+                        }
+            except Exception as _oria_edge_err2:
+                logger.debug(f"[ORIA EDGE] no-quant-gate path skipped: {_oria_edge_err2}")
 
         return self.submit_signal(signal, engine_type)
 
@@ -807,6 +1032,15 @@ class EngineManager:
                 "reason": f"GLOBAL KILL SWITCH ACTIVE — combined daily loss ${combined_daily_pnl:+.2f} exceeds limit ${self.global_daily_loss_limit:+.2f}. Resumes at UTC midnight."
             }
 
+        # Step 0b: Per-engine active toggle — skip if this engine was manually disabled.
+        if not self._engine_active.get(engine_type.value, True):
+            return {
+                "action": "REJECT",
+                "engine": engine_type.value,
+                "symbol": signal.get("symbol"),
+                "reason": f"{engine_type.value} is currently DISABLED — toggle via /api/engines/{engine_type.value}/toggle",
+            }
+
         # Step 1: Validate entry criteria
         is_valid, trade, issues = self.validator.validate_signal(signal, engine_type)
         
@@ -855,15 +1089,26 @@ class EngineManager:
                 "reason": f"COIN LOCK: {trade.symbol} already has {coin_open_count} open positions across engines"
             }
 
-        # Step 1d: BTC macro direction gate
+        # Step 1d: Macro direction gate
+        # BTC/USDT uses BTC-specific macro; all alts use market-wide macro (BTC+ETH+SOL).
         # BEARISH: LONG entries require min_confidence + 10%
         # BULLISH: SHORT entries require min_confidence + 10%
         # NEUTRAL: no adjustment
         try:
             from regime_engine import get_regime_engine
-            _macro_threshold, _macro_reason = get_regime_engine().apply_macro_confidence_gate(
+            _re = get_regime_engine()
+            # Select the right macro direction for this symbol
+            if trade.symbol == "BTC/USDT":
+                _active_macro = _re.get_btc_macro_direction()
+            else:
+                _active_macro = _re.get_market_wide_direction()
+            # Apply penalty using the selected macro
+            _orig_macro = _re._macro_direction
+            _re._macro_direction = _active_macro
+            _macro_threshold, _macro_reason = _re.apply_macro_confidence_gate(
                 trade.direction, config.min_confidence
             )
+            _re._macro_direction = _orig_macro  # restore
             if _macro_reason and trade.confidence < _macro_threshold:
                 self.engine_stats[engine_type].blocked_trades += 1
                 logger.info(
@@ -875,7 +1120,7 @@ class EngineManager:
                     "engine":    engine_type.value,
                     "symbol":    trade.symbol,
                     "reason":    _macro_reason,
-                    "macro_dir": get_regime_engine().get_btc_macro_direction(),
+                    "macro_dir": _active_macro,
                 }
         except Exception as _macro_err:
             logger.debug(f"[MACRO GATE] Check skipped: {_macro_err}")

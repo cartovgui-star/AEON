@@ -42,7 +42,8 @@ except ImportError:
 TRADING_PAIRS = [
     "BTC/USDT", "ETH/USDT", "SOL/USDT", "BNB/USDT", "XRP/USDT",
     "ADA/USDT", "DOGE/USDT", "AVAX/USDT", "LINK/USDT", "DOT/USDT",
-    "MATIC/USDT",
+    "MATIC/USDT", "SUI/USDT", "INJ/USDT", "APT/USDT", "OP/USDT",
+    "NEAR/USDT", "TRX/USDT", "UNI/USDT", "ATOM/USDT",
     # ARB removed: 76 trades, 8% WR, -$10,255 (2026-03-22)
 ]
 
@@ -729,7 +730,7 @@ class VWAPScalper:
         # ── Macro Direction Gate ─────────────────────────────────────────
         try:
             from regime_engine import get_regime_engine
-            eff_threshold, macro_reason = get_regime_engine().apply_macro_confidence_gate(direction, 70)
+            eff_threshold, macro_reason = get_regime_engine().apply_macro_confidence_gate(direction, 60)
             if macro_reason:
                 logger.debug(f"[MACRO GATE] {symbol}: {macro_reason}")
             if confidence < eff_threshold:
@@ -784,21 +785,19 @@ class VWAPScalper:
         if not self.active:
             return []
 
-        # ── BTC macro gate ────────────────────────────────────────────
-        btc_is_bearish = False
-        btc_is_bullish = False
+        # ── Macro gate (BTC-specific for BTC/USDT, market-wide for alts) ──────
+        btc_macro = "NEUTRAL"
+        market_wide_macro = "NEUTRAL"
         if self.market_intel:
             try:
-                btc_scan = await self.market_intel.get_full_market_scan("BTC/USDT")
-                btc_bias = (
-                    (btc_scan.get("market_structure", {}) or {}).get("bias", "neutral")
-                    if btc_scan else "neutral"
-                )
-                btc_is_bearish = btc_bias == "bearish"
-                btc_is_bullish = btc_bias == "bullish"
-                logger.info(f"[VWAP] BTC macro: {btc_bias}")
+                from regime_engine import get_regime_engine
+                _re = get_regime_engine()
+                import asyncio as _asyncio
+                btc_macro = await _re.refresh_macro_direction(self.market_intel)
+                market_wide_macro = await _re.refresh_market_wide_macro(self.market_intel)
+                logger.info(f"[VWAP] BTC macro: {btc_macro} | Market-wide: {market_wide_macro}")
             except Exception as e:
-                logger.debug(f"[VWAP] BTC macro fetch failed: {e}")
+                logger.debug(f"[VWAP] Macro fetch failed: {e}")
 
         signals: List[Dict] = []
 
@@ -813,11 +812,12 @@ class VWAPScalper:
                 if signal["confidence"] < 70:
                     continue
                 direction = signal["direction"]
-                if direction == "LONG" and btc_is_bearish:
-                    logger.info(f"[VWAP] BLOCKED {symbol} LONG — BTC macro BEARISH")
+                _macro = btc_macro if symbol == "BTC/USDT" else market_wide_macro
+                if direction == "LONG" and _macro == "BEARISH":
+                    logger.info(f"[VWAP] BLOCKED {symbol} LONG — {'BTC' if symbol == 'BTC/USDT' else 'market'} macro BEARISH")
                     continue
-                if direction == "SHORT" and btc_is_bullish:
-                    logger.info(f"[VWAP] BLOCKED {symbol} SHORT — BTC macro BULLISH")
+                if direction == "SHORT" and _macro == "BULLISH":
+                    logger.info(f"[VWAP] BLOCKED {symbol} SHORT — {'BTC' if symbol == 'BTC/USDT' else 'market'} macro BULLISH")
                     continue
                 # Apply daily loss tier leverage cap
                 if loss_status in ("tier1", "tier2"):
@@ -905,50 +905,26 @@ class VWAPScalper:
             except Exception as e:
                 logger.warning(f"[VWAP] Unified validation failed: {e}")
 
-        open_result = None
-        common_kwargs = dict(
-            symbol=signal["symbol"],
-            direction=signal["direction"],
-            entry_price=signal["entry_price"],
-            confidence=signal["confidence"],
-            leverage=leverage,
-            stop_loss=signal["stop_loss"],
-            take_profit=signal["take_profit"],
-            strategy="VWAP_SCALP_MTF",
-            signal_data={
-                "unified_trade_id": signal.get("unified_trade_id"),
-                "engine": "vwap_scalper",
-                "tf_votes": signal.get("tf_votes"),
-                "atr": signal.get("atr"),
-                "smart_money": signal.get("smart_money"),
-            },
-        )
-
-        # PRO account (primary)
+        paper_signal = {
+            "symbol":        signal["symbol"],
+            "direction":     signal["direction"],
+            "entry_price":   signal["entry_price"],
+            "stop_loss":     signal["stop_loss"],
+            "take_profit":   signal["take_profit"],
+            "confidence":    signal["confidence"],
+            "leverage":      leverage,
+            "position_size": position_size,
+            "confirmations": signal.get("confirmations", []),
+        }
         try:
-            open_result = await self.paper_trading.open_position(account_id="PRO", **common_kwargs)
-            if open_result and "error" not in open_result:
-                logger.info(
-                    f"[VWAP] PRO: {signal['symbol']} {signal['direction']} "
-                    f"@ ${signal['entry_price']:.4f} {leverage}x"
-                )
+            from paper_trading import route_engine_signal
+            results = await route_engine_signal(paper_signal, "VWAP_SCALPER")
+            logger.info(f"[VWAP] Routed to {len(results)} accounts: {signal['symbol']} {signal['direction']} @ ${signal['entry_price']:.4f} {leverage}x")
         except Exception as e:
-            logger.error(f"[VWAP] PRO paper trade error: {e}")
-
-        # STARTER account (secondary)
-        try:
-            starter_kwargs = dict(common_kwargs)
-            starter_kwargs["leverage"] = min(leverage, 25)   # conservative on starter
-            await self.paper_trading.open_position(account_id="STARTER", **starter_kwargs)
-            logger.info(
-                f"[VWAP] STARTER: {signal['symbol']} {signal['direction']} "
-                f"@ ${signal['entry_price']:.4f} {starter_kwargs['leverage']}x"
-            )
-        except Exception as e:
-            logger.error(f"[VWAP] STARTER paper trade error: {e}")
+            logger.error(f"[VWAP] route_engine_signal error: {e}")
 
         await self._log_trade_to_mongo(signal, leverage)
-        return open_result
+        return paper_signal
 
     # ─── MONGODB LOGGING ──────────────────────────────────────────────────────
 

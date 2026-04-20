@@ -66,7 +66,8 @@ class AeonMind:
     def analyze_message(self, text: str, recent_messages: List[Dict] = None) -> Dict:
         """Deeply analyze message to understand user's needs and context"""
         text_lower = text.lower().strip()
-        words = set(text_lower.split())
+        import re as _re
+        words = set(_re.sub(r"[^\w\s]", "", text_lower).split())
         
         result = {
             "topic_hints": [],        # What topics are they touching on

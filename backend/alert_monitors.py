@@ -23,8 +23,25 @@ class DrawdownMonitor:
     def __init__(self, db, alerter):
         self._db      = db
         self._alerter = alerter
-        # {account_id: {threshold: date_str}}
+        # {account_id: {threshold: date_str}} — seeded from MongoDB on init
         self._fired: dict = {}
+        # Flag: loaded from DB on first check
+        self._loaded = False
+
+    async def _load_fired_state(self) -> None:
+        """Load previously fired thresholds from MongoDB to survive restarts."""
+        try:
+            today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+            cursor = self._db.drawdown_alerts_fired.find({"date": today_str})
+            async for doc in cursor:
+                key = doc.get("key", "")
+                fired_dates = self._fired.setdefault(key, set())
+                fired_dates.add(today_str)
+            self._loaded = True
+            logger.info(f"[DrawdownMonitor] Loaded {len(self._fired)} fired states from DB")
+        except Exception as e:
+            logger.warning(f"[DrawdownMonitor] Could not load fired state: {e}")
+            self._loaded = True  # Don't retry endlessly
 
     async def run_loop(self, interval: int = 300) -> None:
         while True:
@@ -35,6 +52,8 @@ class DrawdownMonitor:
             await asyncio.sleep(interval)
 
     async def _check(self) -> None:
+        if not self._loaded:
+            await self._load_fired_state()
         today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
         # Enumerate accounts from paper_accounts collection
@@ -63,6 +82,15 @@ class DrawdownMonitor:
                                 level="RISK", title=title, body=body,
                                 engine="DrawdownMonitor"
                             )
+                            # Persist to MongoDB so restarts don't re-fire
+                            try:
+                                await self._db.drawdown_alerts_fired.update_one(
+                                    {"key": key, "date": today_str},
+                                    {"$set": {"key": key, "date": today_str, "account_id": str(account_id), "threshold": threshold}},
+                                    upsert=True
+                                )
+                            except Exception as _pe:
+                                logger.warning(f"[DrawdownMonitor] Could not persist fired state: {_pe}")
         except Exception as exc:
             logger.error(f"[DrawdownMonitor] _check failed: {exc}")
 
@@ -150,8 +178,9 @@ class WinRateMonitor:
     def __init__(self, db, alerter):
         self._db      = db
         self._alerter = alerter
-        # {engine: last_alert_ts}
+        # {engine: last_alert_ts} — seeded from MongoDB on first check
         self._cooldowns: dict = {}
+        self._loaded = False
 
     async def run_loop(self, interval: int = 1800) -> None:
         while True:
@@ -166,6 +195,17 @@ class WinRateMonitor:
         cooldown_sec = 14400  # 4 hours
         sample_size  = 20
 
+        # Load persisted cooldowns on first run
+        if not self._loaded:
+            try:
+                cursor = self._db.winrate_monitor_cooldowns.find({})
+                async for doc in cursor:
+                    self._cooldowns[doc["engine"]] = doc.get("ts", 0.0)
+                self._loaded = True
+            except Exception as _le:
+                logger.warning(f"[WinRateMonitor] Could not load cooldowns: {_le}")
+                self._loaded = True
+
         try:
             # Fetch last 20 closed trades, grouped by engine
             cursor = self._db.paper_trades.find(
@@ -176,23 +216,29 @@ class WinRateMonitor:
 
             engine_trades: dict = {}
             async for trade in cursor:
-                engine = trade.get("engine") or trade.get("strategy") or "unknown"
+                # paper_trades uses "strategy" not "engine", and "realized_pnl" not "pnl"
+                engine = trade.get("strategy") or trade.get("engine") or "unknown"
                 engine_trades.setdefault(engine, []).append(trade)
 
             for engine, trades in engine_trades.items():
+                if engine == "unknown":
+                    continue  # skip untagged trades
                 recent = trades[:sample_size]
                 if len(recent) < 5:
                     continue  # too few data points
 
-                wins   = sum(1 for t in recent if float(t.get("pnl", 0)) > 0)
-                losses = sum(1 for t in recent if float(t.get("pnl", 0)) <= 0)
+                def _get_pnl(t):
+                    return float(t.get("realized_pnl") or t.get("pnl") or 0)
+
+                wins   = sum(1 for t in recent if _get_pnl(t) > 0)
+                losses = sum(1 for t in recent if _get_pnl(t) <= 0)
                 total  = wins + losses
                 win_rate = (wins / total * 100) if total > 0 else 0.0
 
                 # Consecutive losses (most recent first)
                 consec = 0
                 for t in trades:
-                    if float(t.get("pnl", 0)) <= 0:
+                    if _get_pnl(t) <= 0:
                         consec += 1
                     else:
                         break
@@ -206,6 +252,14 @@ class WinRateMonitor:
                     continue
 
                 self._cooldowns[engine] = now_ts
+                try:
+                    await self._db.winrate_monitor_cooldowns.update_one(
+                        {"engine": engine},
+                        {"$set": {"engine": engine, "ts": now_ts}},
+                        upsert=True
+                    )
+                except Exception as _pe:
+                    logger.warning(f"[WinRateMonitor] Could not persist cooldown: {_pe}")
                 from unified_alert import AeonPersona
                 title, body = AeonPersona.win_rate_alert(engine, win_rate, total, consec)
                 await self._alerter.send(

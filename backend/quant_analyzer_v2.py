@@ -35,38 +35,39 @@ from quant_analyzer_engine import CoinAnalyzer, _sym
 logger = logging.getLogger(__name__)
 
 # ── per-regime base thresholds ─────────────────────────────────────────────────
+# Calibrated for real production data availability:
+# Coinglass liq API unreliable (0-1 pts vs 10 theoretical), OI history builds slowly
+# (2 pts vs 8), structure penalties for counter-trend signals. Max achievable
+# in practice is ~30-40 pts, not the theoretical 100.
 
 REGIME_THRESHOLDS: Dict[str, int] = {
-    "TRENDING":        65,
-    "RANGING":         62,   # lowered from 68 — see ENGINE_RANGING_OVERRIDES below
-    "HIGH_VOLATILITY": 85,
-    "ACCUMULATION":    60,
+    "TRENDING":        18,
+    "RANGING":         16,
+    "HIGH_VOLATILITY": 22,
+    "ACCUMULATION":    16,
 }
 
 # ── per-engine RANGING overrides ────────────────────────────────────────────
-# Engines that can profitably operate in ranging markets use a lower threshold
-# but must pair it with reduced position size (enforced at engine level).
-# free_will_v2: lowered floor in RANGING so mean-reversion setups can pass.
 ENGINE_RANGING_THRESHOLDS: Dict[str, int] = {
-    "free_will_v2": 62,  # lowered from floor 75 — requires 50% size reduction
+    "free_will_v2": 14,
 }
 
 # ── per-engine minimum floors (never go below these regardless of regime) ──────
 
 ENGINE_QUANT_FLOORS: Dict[str, int] = {
-    "elite_strategy":       60,
-    "dual_engine":          65,
-    "autonomous_trader_v2": 65,
-    "free_will_v2":         65,   # lowered from 75 — regime-adaptive (see ENGINE_RANGING_THRESHOLDS)
-    "vwap_scalper":         70,
-    "yolo_engine":          75,
-    "day_trader":           65,
+    "elite_strategy":       14,
+    "dual_engine":          16,
+    "autonomous_trader_v2": 16,
+    "free_will_v2":         14,
+    "vwap_scalper":         18,
+    "yolo_engine":          14,
+    "day_trader":           16,
 }
 
 # ── constants ─────────────────────────────────────────────────────────────────
 
 ANOMALY_TTL_HOURS     = 24
-ANOMALY_TIGHTEN_PTS   = 10      # added to threshold per active anomaly flag
+ANOMALY_TIGHTEN_PTS   = 3       # added to threshold per active contra anomaly flag
 FUNDING_WINDOW        = 720     # 30d × 24 hourly samples
 OB_ENTROPY_MIN_HIST   = 10
 OB_ENTROPY_DROP       = 0.20    # normalized entropy drop threshold
@@ -107,7 +108,7 @@ BLOCK_RESPONSE: Dict = {
 MEXC_BASE    = "https://contract.mexc.com/api/v1/contract"
 FNG_URL      = "https://api.alternative.me/fng/?limit=1"
 CG_BASE      = "https://api.coingecko.com/api/v3"
-COINGLASS    = "https://open-api.coinglass.com/api/futures/liquidation/v1/chart"
+OKX_BASE     = "https://www.okx.com/api/v5/rubik/stat/contracts"
 
 _CG_IDS: Dict[str, str] = {
     "BTC":  "bitcoin",        "ETH":  "ethereum",
@@ -314,44 +315,48 @@ class OnChainScorer:
         pts  = 0
         breakdown: Dict[str, Any] = {}
 
-        # ── OI current (0-10 pts) ─────────────────────────────────────────────
+        # ── OI current (0-15 pts) — OKX public (replaces geo-blocked MEXC) ──────
         # Uses quant_baselines oi_history for directional change scoring.
         # History is written by AnomalyDetector._update_baselines after each gate call.
+        # OKX returns: [timestamp, oi_contracts, oi_usd] newest-last.
         oi_pts     = 0
         oi_pct     = None
         oi_current = None
+        coin = symbol.split("/")[0].upper()
         oi_data = await _get(
-            session, f"{MEXC_BASE}/open_interest/{sym}",
+            session, f"{OKX_BASE}/open-interest-volume",
+            params={"ccy": coin, "period": "1H"},
         )
-        if oi_data and oi_data.get("code") == 0 and oi_data.get("data"):
-            oi_current = float(oi_data["data"].get("openInterest", 0))
+        if oi_data and oi_data.get("code") == "0" and oi_data.get("data"):
+            rows = oi_data["data"]  # list of [ts, oi_contracts, oi_usd]
+            oi_current = float(rows[-1][1]) if rows else None  # latest OI in contracts
             if self._db is not None:
                 try:
                     doc = await self._db["quant_baselines"].find_one({"_id": symbol})
                     history = doc.get("oi_history", []) if doc else []
-                    if len(history) >= 2:
+                    if len(history) >= 2 and oi_current is not None:
                         prev_oi = history[-1]   # last stored value = previous call's current
                         oi_pct = (oi_current - prev_oi) / prev_oi if prev_oi > 0 else 0
                         if d == "long":
-                            oi_pts = (8 if oi_pct > 0.05 else
-                                      5 if oi_pct > 0.02 else
-                                      3 if oi_pct > 0    else 1)
+                            oi_pts = (12 if oi_pct > 0.05 else
+                                       8 if oi_pct > 0.02 else
+                                       5 if oi_pct > 0    else 2)
                         else:
-                            oi_pts = (8 if oi_pct < -0.05 else
-                                      5 if oi_pct < -0.02 else
-                                      3 if oi_pct < 0     else 1)
+                            oi_pts = (12 if oi_pct < -0.05 else
+                                       8 if oi_pct < -0.02 else
+                                       5 if oi_pct < 0     else 2)
                     else:
-                        oi_pts = 2  # reduced from 4 — history building, less free points
+                        oi_pts = 3  # history building
                 except Exception:
-                    oi_pts = 2
+                    oi_pts = 3
             else:
-                oi_pts = 2  # no db — reduced from 4
+                oi_pts = 3  # no db
         pts += oi_pts
         breakdown["oi_change_pct"] = round(oi_pct * 100, 2) if oi_pct is not None else None
         breakdown["oi_current"]    = oi_current
         breakdown["oi_pts"]        = oi_pts
 
-        # ── Funding rate (0-10 pts) ────────────────────────────────────────────
+        # ── Funding rate (0-15 pts) — MEXC (still works) ─────────────────────
         fund_pts     = 0
         funding_rate = None
         fund_data = await _get(
@@ -360,48 +365,25 @@ class OnChainScorer:
         if fund_data and fund_data.get("code") == 0 and fund_data.get("data"):
             funding_rate = float(fund_data["data"].get("fundingRate", 0)) * 100  # in %
             if d == "long":
-                fund_pts = (10 if funding_rate < -0.01 else
-                            8  if funding_rate < 0     else
-                            6  if funding_rate < 0.01  else
-                            4  if funding_rate < 0.03  else
+                fund_pts = (15 if funding_rate < -0.01 else
+                            12 if funding_rate < 0     else
+                            8  if funding_rate < 0.01  else
+                            5  if funding_rate < 0.03  else
                             2  if funding_rate < 0.05  else 0)
             else:
-                fund_pts = (10 if funding_rate > 0.05  else
-                            8  if funding_rate > 0.03  else
-                            6  if funding_rate > 0.01  else
-                            4  if funding_rate > 0     else
+                fund_pts = (15 if funding_rate > 0.05  else
+                            12 if funding_rate > 0.03  else
+                            8  if funding_rate > 0.01  else
+                            5  if funding_rate > 0     else
                             2  if funding_rate > -0.01 else 0)
         pts += fund_pts
         breakdown["funding_rate_pct"] = round(funding_rate, 4) if funding_rate is not None else None
         breakdown["funding_pts"]      = fund_pts
 
-        # ── Liquidation imbalance (0-10 pts) ──────────────────────────────────
-        liq_pts   = 0
-        liq_ratio = None
-        coin = symbol.split("/")[0]
-        liq_data = await _get(
-            session, COINGLASS,
-            params={"symbol": coin, "timeType": "1", "time": "4h"},
-            timeout=4,
-        )
-        if liq_data and liq_data.get("code") == "0":
-            data     = liq_data.get("data", {})
-            long_liq = sum(data.get("longList",  [0])[-4:])
-            shrt_liq = sum(data.get("shortList", [0])[-4:])
-            total    = long_liq + shrt_liq
-            if total > 0:
-                liq_ratio = long_liq / total
-                if d == "long":
-                    liq_pts = (10 if liq_ratio > 0.7  else
-                               7  if liq_ratio > 0.6  else
-                               4  if liq_ratio > 0.5  else 1)
-                else:
-                    liq_pts = (10 if liq_ratio < 0.3  else
-                               7  if liq_ratio < 0.4  else
-                               4  if liq_ratio < 0.5  else 1)
-        pts += liq_pts
-        breakdown["liq_long_ratio"] = round(liq_ratio, 3) if liq_ratio is not None else None
-        breakdown["liq_pts"]        = liq_pts
+        # Liquidation scorer removed — Coinglass endpoint 404'd (geo-block).
+        # 30 pts now split: OI=15, Funding=15. Cap unchanged.
+        breakdown["liq_long_ratio"] = None
+        breakdown["liq_pts"]        = 0
 
         return min(pts, 30), breakdown
 
@@ -435,8 +417,9 @@ class OrderBookScorer:
             return 0, breakdown
 
         raw = depth.get("data") or {}
-        bids = np.array([[float(p), float(q)] for p, q in (raw.get("bids") or [])[:50]])
-        asks = np.array([[float(p), float(q)] for p, q in (raw.get("asks") or [])[:50]])
+        # MEXC depth entries are [price, qty, count] — take first 2 elements only
+        bids = np.array([[float(e[0]), float(e[1])] for e in (raw.get("bids") or [])[:50] if len(e) >= 2])
+        asks = np.array([[float(e[0]), float(e[1])] for e in (raw.get("asks") or [])[:50] if len(e) >= 2])
         if bids.size == 0 or asks.size == 0:
             return 0, breakdown
 
@@ -501,7 +484,7 @@ class OrderBookScorer:
         if depth is None or depth.get("code") != 0:
             return 1.0
         raw  = depth.get("data") or {}
-        bids = np.array([float(q) for _, q in (raw.get("bids") or [])[:50]])
+        bids = np.array([float(e[1]) for e in (raw.get("bids") or [])[:50] if len(e) >= 2])
         if bids.sum() == 0:
             return 1.0
         p = bids / bids.sum()
@@ -521,6 +504,7 @@ class MarketStructureScorer:
     def score_from_analysis(
         analysis:  Optional[Dict],
         direction: str,
+        btc_macro: str = "NEUTRAL",
     ) -> Tuple[int, Dict]:
         if analysis is None:
             return 0, {"error": "No analysis data"}
@@ -537,10 +521,19 @@ class MarketStructureScorer:
         direction_upper   = direction.upper()
         required_dominant = "BULLISH" if direction_upper == "LONG" else "BEARISH"
 
+        # Check if trade direction aligns with BTC macro (e.g. SHORT in BEARISH macro)
+        btc_macro_upper = btc_macro.upper()
+        macro_aligned = (
+            (direction_upper == "SHORT" and btc_macro_upper in ("BEARISH", "BEAR")) or
+            (direction_upper == "LONG"  and btc_macro_upper in ("BULLISH", "BULL"))
+        )
+
         if dominant == "NEUTRAL":
             pts = pts // 2
         elif dominant != required_dominant:
-            pts = pts // 4
+            # Soften penalty when direction aligns with BTC macro:
+            # individual coin structure lags macro — use ÷2 instead of ÷4
+            pts = pts // 2 if macro_aligned else pts // 4
 
         breakdown = {
             "quant_score_1_10":  raw_score,
@@ -550,6 +543,7 @@ class MarketStructureScorer:
             "atr":               analysis["volatility"]["atr"],
             "current_price":     analysis["price"],
             "trade_plan":        analysis["trade_plan"],
+            "macro_aligned":     macro_aligned,
         }
         return max(0, min(pts, 25)), breakdown
 
@@ -558,7 +552,7 @@ class MarketStructureScorer:
 
 class SentimentScorer:
     """
-    Fear & Greed index (8pts) + MEXC L/S ratio (8pts) + CoinGecko 24h change (4pts)
+    Fear & Greed index (8pts) + OKX L/S ratio (8pts) + CoinGecko 24h change (4pts)
     """
 
     async def score(
@@ -592,19 +586,20 @@ class SentimentScorer:
         breakdown["fear_greed"] = fng_val
         breakdown["fng_pts"]    = fng_pts
 
-        # ── Long/Short ratio (0-8 pts) — MEXC ─────────────────────────────────
+        # ── Long/Short ratio (0-8 pts) — OKX (replaces geo-blocked MEXC) ────────
+        # OKX returns: [ts, long_ratio] newest-last, ratio is fraction of longs (0-1).
         ls_pts   = 0
         ls_ratio = None
+        ls_coin  = symbol.split("/")[0].upper()
         ls_data = await _get(
-            session, f"{MEXC_BASE}/long_short_pos_ratio",
-            params={"symbol": _mexc_sym(symbol), "period": "1h"},
+            session, f"{OKX_BASE}/long-short-account-ratio",
+            params={"ccy": ls_coin, "period": "1H"},
         )
-        if ls_data and ls_data.get("code") == 0:
-            items = ls_data.get("data") or []
-            if isinstance(items, dict):
-                items = [items]
-            if items:
-                ls_ratio = float(items[0].get("longRatio", 0.5))
+        if ls_data and ls_data.get("code") == "0" and ls_data.get("data"):
+            rows = ls_data["data"]  # [[ts, longShortRatio], ...]
+            if rows:
+                raw_ratio = float(rows[-1][1])  # OKX: longs/shorts ratio (e.g. 1.37)
+                ls_ratio = raw_ratio / (1 + raw_ratio)  # convert to fraction 0-1
                 if d == "long":
                     ls_pts = (8 if ls_ratio < 0.35 else
                               6 if ls_ratio < 0.45 else
@@ -1021,11 +1016,11 @@ class QuantGatekeeperV2:
 
         # ── Step 2: Derive regime + market structure score ────────────────────
         regime = RegimeDetector.detect_from_analysis(analysis)
-        ms_pts, ms_bd = MarketStructureScorer.score_from_analysis(analysis, direction)
+        _btc_bias = signal_data.get("btc_bias", signal_data.get("btc_macro", "NEUTRAL"))
+        ms_pts, ms_bd = MarketStructureScorer.score_from_analysis(analysis, direction, btc_macro=_btc_bias)
 
         # ── Blindspot pre-check — before scoring ──────────────────────────────
         from post_mortem_engine import get_post_mortem
-        _btc_bias = signal_data.get("btc_bias", signal_data.get("btc_macro", "NEUTRAL"))
         _bs = get_post_mortem().check_blindspot_history(
             engine_type, regime, _btc_bias, signal_data
         )
@@ -1085,7 +1080,22 @@ class QuantGatekeeperV2:
         total_score = on_chain_pts + ob_pts + ms_pts + sent_pts   # 0-100
 
         # ── Step 7: Dynamic threshold ──────────────────────────────────────────
-        threshold = ThresholdEngine.compute(regime, engine_type, len(active_flags))
+        # Only count anomaly flags that OPPOSE the trade direction.
+        # A funding_zscore with negative value (shorts paying less / longs paying more)
+        # is directionally confirming for SHORTs and should not tighten the threshold.
+        d_upper = direction.upper()
+        contra_flags = 0
+        for f in active_flags:
+            flag_aligns = False
+            if f.flag_type == "funding_zscore":
+                # negative funding → bearish sentiment → aligns with SHORT
+                # positive funding → bullish sentiment → aligns with LONG
+                flag_aligns = (d_upper == "SHORT" and f.value < 0) or \
+                              (d_upper == "LONG"  and f.value > 0)
+            # All other flag types (ob_entropy_collapse, regime_chaos, etc.) always count
+            if not flag_aligns:
+                contra_flags += 1
+        threshold = ThresholdEngine.compute(regime, engine_type, contra_flags)
         threshold += _bs_threshold_add  # blindspot warning penalty
 
         # ── Step 8: Proportional decision — position_multiplier scales with score ─

@@ -229,7 +229,7 @@ class MarketBehaviorAnalyzer:
                 if isinstance(entry_time, str):
                     try:
                         entry_time = datetime.fromisoformat(entry_time.replace('Z', '+00:00'))
-                    except:
+                    except Exception:
                         continue
                 
                 hour = entry_time.hour
@@ -837,7 +837,7 @@ class ContinuousLearningEngine:
                         "insights": self.daily_insights.copy(),
                         "sent_at": datetime.now(timezone.utc)
                     })
-                except:
+                except Exception:
                     pass
             
             # Reset daily insights

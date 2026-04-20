@@ -1087,7 +1087,25 @@ class PostMortemEngine:
             f"Learning mode: ACTIVE"
         )
 
-        await self._send_telegram(msg)
+        # Only send audit to Telegram once per day — suppress on restart spam
+        try:
+            from datetime import timezone as _tz
+            today_str = datetime.now(_tz.utc).strftime("%Y-%m-%d")
+            last_doc = await self.db.postmortem_audit_log.find_one({"date": today_str})
+            if last_doc is None:
+                await self._send_telegram(msg)
+                await self.db.postmortem_audit_log.update_one(
+                    {"date": today_str},
+                    {"$set": {"date": today_str, "ts": datetime.now(_tz.utc).isoformat(), "blindspots": total_bs}},
+                    upsert=True
+                )
+                logger.info(f"[PostMortem] Startup audit sent — {total_bs} blindspots, {filters_active} filters active")
+            else:
+                logger.info(f"[PostMortem] Startup audit already sent today ({today_str}) — suppressing Telegram repeat")
+        except Exception as _pm_err:
+            logger.warning(f"[PostMortem] Audit send error: {_pm_err}")
+            await self._send_telegram(msg)
+
         logger.info(
             f"[PostMortem] Startup audit complete — {total_bs} blindspots, "
             f"{filters_active} pre-trade filters active"

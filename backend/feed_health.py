@@ -4,6 +4,7 @@ Tracks external data feed availability and provides graceful degradation.
 """
 import asyncio
 import logging
+import os
 import time
 from typing import Dict, Optional
 
@@ -17,11 +18,16 @@ OFFLINE_MESSAGE = (
     "We'll be back shortly."
 )
 
-# Lightweight ping endpoints for each critical data source
+# Lightweight ping endpoints for each critical data source (GET-based)
 _PROBE_TARGETS = [
-    ("MEXC",      "https://api.mexc.com/api/v3/ping"),
-    ("CoinGecko", "https://api.coingecko.com/api/v3/ping"),
+    ("OKX",           "https://www.okx.com/api/v5/public/time"),
+    ("CoinGecko",     "https://api.coingecko.com/api/v3/ping"),
+    ("Coinbase",      "https://api.coinbase.com/v2/time"),
 ]
+
+# POST-based probes (need auth headers) — checked separately
+_LCW_PROBE_URL = "https://api.livecoinwatch.com/credits"
+
 _PROBE_TIMEOUT   = 5.0   # seconds per probe
 _RECOVERY_INTERVAL = 30  # seconds between retries when degraded
 _KEEPALIVE_INTERVAL = 300  # seconds between checks when healthy
@@ -39,10 +45,12 @@ class FeedHealthMonitor:
 
     def __init__(self):
         self._feed_status: Dict[str, bool] = {name: True for name, _ in _PROBE_TARGETS}
+        self._feed_status["LiveCoinWatch"] = True
         self._healthy: bool = True
         self._last_probe: float = 0.0
         self._recovery_task: Optional[asyncio.Task] = None
         self._stopped: bool = False
+        self._lcw_key: str = os.environ.get("LIVECOINWATCH_API_KEY", "")
 
     # ── Public API ───────────────────────────────────────────────────────────
 
@@ -78,6 +86,22 @@ class FeedHealthMonitor:
                         reachable = False
                     self._feed_status[name] = reachable
                     if reachable:
+                        ok_count += 1
+
+                # LiveCoinWatch — POST probe (needs API key)
+                if self._lcw_key:
+                    try:
+                        resp = await client.post(
+                            _LCW_PROBE_URL,
+                            headers={"x-api-key": self._lcw_key, "content-type": "application/json"},
+                            json={},
+                        )
+                        lcw_ok = resp.status_code < 500
+                    except Exception as e:
+                        logger.debug("FeedHealthMonitor: LCW probe failed: %s", e)
+                        lcw_ok = False
+                    self._feed_status["LiveCoinWatch"] = lcw_ok
+                    if lcw_ok:
                         ok_count += 1
         except Exception as e:
             logger.error("FeedHealthMonitor: probe client error: %s", e)

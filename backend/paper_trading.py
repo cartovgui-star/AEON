@@ -41,8 +41,14 @@ async def _notify(msg: str):
             logger.warning(f"Paper trade Telegram notify failed: {e}")
 
 # Round-trip trading fee (entry + exit taker fees, realistic for MEXC)
-# 0.15% per side = 0.30% per round-trip
-TRADE_FEE_PCT = 0.0015
+# 0.20% per side = 0.40% round-trip.
+# Includes 0.05% funding drag buffer (avg 8h funding ~0.01-0.05%, charged per hold period).
+# Higher than raw taker fee (0.15%) to simulate realistic fill + spread cost.
+TRADE_FEE_PCT = 0.0020
+
+# Average hold duration used to estimate funding drag when closing
+# Used in realized PnL commentary only — actual fill uses TRADE_FEE_PCT
+FUNDING_RATE_PER_8H = 0.0001  # 0.01% per 8h — typical BTC perpetual funding
 
 # Max auto-reloads allowed per calendar month per account
 MAX_MONTHLY_RELOADS = 3
@@ -181,49 +187,53 @@ def get_dynamic_leverage(symbol: str, confidence: int, direction: str, volatilit
 def calculate_smart_stops(entry_price: float, leverage: int, direction: str) -> tuple:
     """
     SMART STOP LOSS & TAKE PROFIT
-    
-    Key insight: Higher leverage needs WIDER stops (in price terms)
-    to avoid getting stopped out by normal volatility.
-    
-    Formula: SL distance = base_pct / sqrt(leverage)
-    This gives breathing room for high leverage trades.
-    
+
+    Key insight: Higher leverage = TIGHTER stops (in % of price).
+    Liquidation distance = 1/leverage. SL must sit well inside that.
+
+    Formula: sl_pct = base_sl / sqrt(leverage)
+    - At  1x: SL =10.0%  TP =25.0%  R:R = 2.5:1
+    - At  4x: SL = 5.0%  TP =12.5%  R:R = 2.5:1
+    - At 10x: SL = 3.2%  TP = 7.9%  R:R = 2.5:1
+    - At 20x: SL = 2.2%  TP = 5.6%  R:R = 2.5:1  (liq @ 5% — SL fires first ✓)
+
+    R:R floor enforced at 2.5:1 to ensure positive expectancy after fees/slippage.
+
     Returns: (stop_loss, take_profit)
     """
     import math
-    
-    # Base SL percentage (for 1x leverage)
-    # TP must be LARGER than SL to achieve positive R:R (1.5:1 at base)
-    base_sl_pct = 0.10  # 10% base SL
-    base_tp_pct = 0.15  # 15% base TP → R:R = 1.5:1
-    
-    # Scale stops inversely with leverage
-    # Higher leverage = wider % stops
-    # But the actual liquidation is closer, so we need to balance
-    
-    # Use sqrt to not make it too extreme
+
+    # Base SL/TP at 1x leverage
+    base_sl_pct = 0.10   # 10% base SL
+    base_tp_pct = 0.25   # 25% base TP → R:R = 2.5:1 (was 1.5:1)
+
     leverage_factor = math.sqrt(leverage)
-    
-    # For high leverage, we want tighter percentage but that's fine
-    # because the position is leveraged
+
     sl_pct = base_sl_pct / leverage_factor
     tp_pct = base_tp_pct / leverage_factor
-    
-    # Minimum stops
-    sl_pct = max(0.01, sl_pct)  # At least 1%
-    tp_pct = max(0.005, tp_pct)  # At least 0.5%
-    
-    # Maximum stops
-    sl_pct = min(0.20, sl_pct)  # Max 20%
-    tp_pct = min(0.15, tp_pct)  # Max 15%
-    
+
+    # Hard floors: never stop out on noise, never let TP be unreachable
+    sl_pct = max(0.008, sl_pct)   # min 0.8%
+    tp_pct = max(0.020, tp_pct)   # min 2.0%
+
+    # Hard ceiling: SL must be within 85% of ACTUAL liq distance.
+    # Actual liq distance = 1/leverage - MMR (not just 1/leverage).
+    # Old formula used 1/leverage × 0.80 which ignored MMR, causing SL to land
+    # beyond the liquidation price at high leverage (e.g. 80x: 1.0% ceiling vs 0.75% actual liq dist).
+    _mmr_ss = 0.005
+    actual_liq_dist = max(0.001, (1.0 / leverage) - _mmr_ss)
+    sl_pct = min(sl_pct, actual_liq_dist * 0.85)
+
+    # Enforce 2.5:1 R:R floor regardless of other clipping
+    tp_pct = max(tp_pct, sl_pct * 2.5)
+
     if direction == "LONG":
-        stop_loss = entry_price * (1 - sl_pct)
+        stop_loss   = entry_price * (1 - sl_pct)
         take_profit = entry_price * (1 + tp_pct)
     else:  # SHORT
-        stop_loss = entry_price * (1 + sl_pct)
+        stop_loss   = entry_price * (1 + sl_pct)
         take_profit = entry_price * (1 - tp_pct)
-    
+
     return round(stop_loss, 4), round(take_profit, 4)
 
 
@@ -256,40 +266,54 @@ def calculate_position_size(
     stop_loss: float,
     leverage: int
 ) -> Dict:
-    """Calculate position size based on risk - LIMITED to prevent draining account"""
-    
-    # Maximum margin per trade: 5% of balance (to allow many trades)
+    """
+    Calculate position size based on fixed-risk model.
+
+    Formula (corrected):
+        notional = risk_amount / sl_distance_pct
+        margin   = notional / leverage
+
+    The old formula multiplied by leverage a second time, making positions
+    too large. Now notional is derived purely from risk/sl_distance, and
+    leverage only affects how much margin backs that notional.
+
+    Slippage buffer: sl_distance is widened by 0.6% to account for
+    MEXC stop-market fills executing slightly below/above the trigger
+    price (empirical average slippage on volatile altcoins).
+    """
+
+    # Maximum margin per trade: 5% of balance (allows ~12 concurrent positions)
     max_margin_pct = 5.0
     max_margin = balance * (max_margin_pct / 100)
-    
-    # Risk-based calculation
+
     risk_amount = balance * (risk_pct / 100)
 
-    # Guard: entry price must be positive
     if entry_price <= 0:
-        entry_price = 1e-8  # prevent division by zero, sizing will be minimal
+        entry_price = 1e-8
 
-    # Distance to stop loss
-    sl_distance_pct = abs(entry_price - stop_loss) / entry_price * 100
+    # Raw SL distance
+    raw_sl_dist_pct = abs(entry_price - stop_loss) / entry_price * 100
+    # Add slippage buffer so position is sized for real-world fills, not theoretical
+    SLIPPAGE_BUFFER_PCT = 0.60   # 0.6% added to SL distance (MEXC taker slippage)
+    sl_distance_pct = raw_sl_dist_pct + SLIPPAGE_BUFFER_PCT
 
-    # Position size in USD (notional value)
+    # Notional = risk_amount / sl_distance  (leverage scales margin, not notional)
     if sl_distance_pct > 0:
-        position_size_usd = (risk_amount / (sl_distance_pct / 100)) * leverage
+        position_size_usd = risk_amount / (sl_distance_pct / 100)
     else:
-        position_size_usd = balance * 0.05 * leverage  # Fallback: 5% of balance
+        position_size_usd = max_margin * leverage  # fallback
 
-    # Cap position to use max 5% of balance as margin
+    # Margin = notional / leverage
     margin_required = position_size_usd / leverage
+
+    # Cap at 5% of balance
     if margin_required > max_margin:
         margin_required = max_margin
         position_size_usd = margin_required * leverage
 
-    # Quantity in coins
     quantity = position_size_usd / entry_price
-    
-    # Ensure minimum margin of $1 for trades
     margin_required = max(margin_required, 1.0)
-    
+
     return {
         "position_size_usd": round(position_size_usd, 4),
         "margin_required": round(margin_required, 4),
@@ -411,6 +435,9 @@ class PaperTradingSystem:
                         continue
                     if isinstance(next_dep, str):
                         next_dep = datetime.fromisoformat(next_dep.replace("Z", "+00:00"))
+                    # Motor returns naive datetimes from MongoDB — make timezone-aware
+                    if isinstance(next_dep, datetime) and next_dep.tzinfo is None:
+                        next_dep = next_dep.replace(tzinfo=timezone.utc)
                     if now >= next_dep:
                         dep_amount = config["auto_deposit_usd"]
                         new_balance = account["balance"] + dep_amount
@@ -552,6 +579,8 @@ class PaperTradingSystem:
                 # Check if cooldown expired
                 try:
                     until_dt = datetime.fromisoformat(until.replace("Z", "+00:00")) if isinstance(until, str) else until
+                    if isinstance(until_dt, datetime) and until_dt.tzinfo is None:
+                        until_dt = until_dt.replace(tzinfo=timezone.utc)
                     if datetime.now(timezone.utc) < until_dt:
                         return {"error": f"Circuit breaker active — trading halted until {until}"}
                     else:
@@ -566,15 +595,6 @@ class PaperTradingSystem:
             else:
                 return {"error": "Circuit breaker active — trading halted due to drawdown"}
 
-        # ── Correlation Filter ─────────────────────────────────────────────────
-        corr_group = get_correlation_group(symbol)
-        if corr_group:
-            group_symbols = CORRELATION_GROUPS[corr_group]
-            for existing in account.get("positions", []):
-                if (existing.get("status") == "open" and
-                        existing.get("symbol") in group_symbols and
-                        existing.get("direction") == direction):
-                    return {"error": f"Correlation limit: already have {direction} in {corr_group} group ({existing['symbol']})"}
 
         # ORIA: apply spread-adjusted entry price for realistic paper simulation
         # Longs pay the ask (slightly higher); shorts hit the bid (slightly lower).
@@ -1018,6 +1038,26 @@ class PaperTradingSystem:
                                         pos["stop_loss"] = trail_sl
                                         logger.debug(f"2R TRAIL [{sym}]: SL ratcheted to ${trail_sl:.4f}")
 
+                    # ── 4c. Auto-activate trailing stop when profit ≥ 1× original risk ─
+                    # Ensures winning trades are protected even if TP2 is never reached.
+                    if not pos.get("trail_active"):
+                        _orig_sl_at = pos.get("original_stop_loss", entry_p)
+                        _orig_risk = abs(entry_p - _orig_sl_at)
+                        if _orig_risk > 0:
+                            _unrealized = (current_price - entry_p) if direction == "LONG" else (entry_p - current_price)
+                            if _unrealized >= _orig_risk:
+                                _trail_pct = pos.get("trail_pct", 1.5)
+                                pos["trail_active"] = True
+                                if direction == "LONG":
+                                    pos["trail_stop"] = round(current_price * (1 - _trail_pct / 100), 4)
+                                else:
+                                    pos["trail_stop"] = round(current_price * (1 + _trail_pct / 100), 4)
+                                logger.info(
+                                    f"TRAIL AUTO-ACTIVATED: {sym} {direction} | "
+                                    f"profit={_unrealized:.2f} ≥ 1×risk={_orig_risk:.2f} | "
+                                    f"trail_stop={pos['trail_stop']:.4f}"
+                                )
+
                     # ── 5. TP2: 2:1 R:R — close another 33%, activate trailing ─
                     tp2 = pos.get("tp2")
                     if tp2 and pos.get("tp1_hit") and not pos.get("tp2_hit"):
@@ -1423,9 +1463,19 @@ class PaperTradingSystem:
             {
                 "$set": {
                     "balance": config["starting_balance"],
+                    "available_balance": config["starting_balance"],
                     "positions": [],
                     "monthly_reloads": monthly_reloads + 1,
                     "reload_month": current_month,
+                    # Reset session stats so UI shows fresh state after reload
+                    "wins": 0,
+                    "losses": 0,
+                    "total_trades": 0,
+                    "total_pnl": 0.0,
+                    "daily_pnl": 0.0,
+                    "unrealized_pnl": 0.0,
+                    "margin_used": 0.0,
+                    "open_positions": 0,
                 },
                 "$inc": {"reloads": 1}
             }

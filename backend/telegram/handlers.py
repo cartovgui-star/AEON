@@ -612,7 +612,7 @@ Worst Trade: {stats.get('worst_trade', 'N/A')}"""
                     new_conf = int(parts[1])
                     self.free_will.min_confidence = max(50, min(95, new_conf))
                     return f"✅ Free Will confidence set to {self.free_will.min_confidence}%"
-                except:
+                except Exception:
                     return "Usage: /fwconf [50-95]\nExample: /fwconf 70"
         
         stats = await self.free_will.get_stats()

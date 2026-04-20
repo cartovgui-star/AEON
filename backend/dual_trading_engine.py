@@ -293,9 +293,7 @@ class TradingStyleEngine:
             if direction == "LONG" and structure_bias == "bearish":
                 logger.info(f"[{self.name}] BLOCKED {symbol} LONG - bearish structure (LH/LL)")
                 return None
-            if direction == "SHORT" and structure_bias == "bullish":
-                logger.info(f"[{self.name}] BLOCKED {symbol} SHORT - bullish structure (HH/HL)")
-                return None
+            # Structure-vs-SHORT block removed — structure check misfires on short timeframes
             
             # Boost confidence when structure aligns with direction
             if direction == "LONG" and structure_bias == "bullish":
@@ -354,18 +352,19 @@ class TradingStyleEngine:
         """Scan all pairs on configured timeframes"""
         best_setups = {}
 
-        # BTC MACRO GATE — fetch once before scan loop
-        btc_is_bearish = False
-        btc_is_bullish = False
+        # MACRO GATE — fetch once before scan loop
+        # BTC/USDT uses BTC-specific macro; all alts use market-wide macro (BTC+ETH+SOL)
+        btc_macro = "NEUTRAL"
+        market_wide_macro = "NEUTRAL"
         if self.market_intel:
             try:
-                btc_scan = await self.market_intel.get_full_market_scan("BTC/USDT")
-                btc_bias = (btc_scan.get("market_structure", {}) or {}).get("bias", "neutral") if btc_scan else "neutral"
-                btc_is_bearish = (btc_bias == "bearish")
-                btc_is_bullish = (btc_bias == "bullish")
-                logger.info(f"[{self.name}] BTC macro: {btc_bias}")
+                from regime_engine import get_regime_engine
+                re = get_regime_engine()
+                btc_macro = await re.refresh_macro_direction(self.market_intel)
+                market_wide_macro = await re.refresh_market_wide_macro(self.market_intel)
+                logger.info(f"[{self.name}] BTC macro: {btc_macro} | Market-wide macro: {market_wide_macro}")
             except Exception as e:
-                logger.debug(f"[{self.name}] BTC macro fetch failed: {e}")
+                logger.debug(f"[{self.name}] Macro fetch failed: {e}")
 
         for symbol in TOP_PAIRS[:15]:
             for tf in self.timeframes:
@@ -374,12 +373,13 @@ class TradingStyleEngine:
                 if setup:
                     direction = setup.get("direction")
 
-                    # BTC macro gate
-                    if direction == "LONG" and btc_is_bearish:
-                        logger.info(f"[{self.name}] BLOCKED {symbol} LONG — BTC macro BEARISH")
+                    # Macro gate: BTC/USDT uses BTC macro, alts use market-wide macro
+                    macro = btc_macro if symbol == "BTC/USDT" else market_wide_macro
+                    if direction == "LONG" and macro == "BEARISH":
+                        logger.info(f"[{self.name}] BLOCKED {symbol} LONG — {'BTC' if symbol == 'BTC/USDT' else 'market'} macro BEARISH")
                         continue
-                    if direction == "SHORT" and btc_is_bullish:
-                        logger.info(f"[{self.name}] BLOCKED {symbol} SHORT — BTC macro BULLISH")
+                    if direction == "SHORT" and macro == "BULLISH":
+                        logger.info(f"[{self.name}] BLOCKED {symbol} SHORT — {'BTC' if symbol == 'BTC/USDT' else 'market'} macro BULLISH")
                         continue
 
                     if not self._can_alert(symbol, direction):

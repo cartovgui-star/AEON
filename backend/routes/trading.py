@@ -406,7 +406,7 @@ async def api_trading_v2_closed():
             raw = await state.db.paper_trades.find(
                 {"status": "closed"},
                 sort=[("closed_at", -1)]
-            ).limit(100).to_list(100)
+            ).limit(2000).to_list(2000)
             for t in raw:
                 t.pop("_id", None)
                 # Normalize realized_pnl -> pnl_pct so Trading history tab renders correctly
@@ -459,7 +459,7 @@ async def api_trades_closed():
             raw = await state.db.paper_trades.find(
                 {"status": "closed"},
                 sort=[("closed_at", -1)]
-            ).limit(200).to_list(200)
+            ).limit(2000).to_list(2000)
             for t in raw:
                 pnl = t.get("pnl_pct") or t.get("realized_pnl_pct") or 0
                 # Some records store realized_pnl in dollars, convert to pct via margin
@@ -1528,6 +1528,65 @@ async def api_paper_performance():
     }
 
 
+@router.post("/paper/trade")
+async def api_paper_manual_trade(data: dict):
+    """
+    Manually open a paper trade.
+    Body: { account_id, symbol, direction, confidence?, leverage?, risk_pct? }
+    Fetches live price from market intelligence and calculates SL/TP automatically.
+    """
+    if not state.paper_trading:
+        return {"error": "Paper trading not initialized"}
+
+    account_id = data.get("account_id", "PRO").upper()
+    symbol     = data.get("symbol", "BTC/USDT").upper()
+    if not symbol.endswith("/USDT"):
+        symbol = symbol.replace("USDT", "") + "/USDT"
+    direction  = data.get("direction", "LONG").upper()
+    confidence = int(data.get("confidence", 75))
+    risk_pct   = float(data.get("risk_pct", 2.0))
+
+    # Fetch live price from MEXC (async wrapper)
+    try:
+        ticker = await state.market_intel.get_ticker(symbol)
+        entry_price = float(ticker.get("last") or ticker.get("close") or ticker.get("price") or 0)
+    except Exception:
+        entry_price = 0.0
+
+    if entry_price <= 0:
+        return {"error": f"Could not fetch live price for {symbol}"}
+
+    # Determine leverage from confidence
+    from paper_trading import get_dynamic_leverage, calculate_smart_stops
+    leverage = int(data.get("leverage", 0)) or get_dynamic_leverage(symbol, confidence, direction)
+    stop_loss, take_profit = calculate_smart_stops(entry_price, leverage, direction)
+
+    result = await state.paper_trading.open_position(
+        account_id=account_id,
+        symbol=symbol,
+        direction=direction,
+        entry_price=entry_price,
+        stop_loss=stop_loss,
+        take_profit=take_profit,
+        leverage=leverage,
+        risk_pct=risk_pct,
+        confidence=confidence,
+        strategy="manual",
+    )
+    return {
+        "result": result,
+        "trade_details": {
+            "symbol": symbol,
+            "direction": direction,
+            "entry_price": entry_price,
+            "stop_loss": stop_loss,
+            "take_profit": take_profit,
+            "leverage": leverage,
+            "rr_ratio": round((abs(take_profit - entry_price) / abs(stop_loss - entry_price)), 2) if stop_loss != entry_price else 0,
+        }
+    }
+
+
 @router.post("/paper/reset/{account_id}")
 async def api_paper_reset(account_id: str):
     """Reset a paper trading account"""
@@ -1547,19 +1606,24 @@ async def api_paper_close_position(account_id: str, symbol: str):
     if not state.paper_trading:
         return {"error": "Paper trading not initialized"}
     
+    # Normalise symbol: BTC / BTCUSDT / BTC_USDT / BTC/USDT → BTC/USDT
+    sym = symbol.upper().replace("_", "/")
+    if "/" not in sym:
+        sym = sym.replace("USDT", "") + "/USDT"
+
     # Get current price
     try:
-        ticker = await state.market_intel.get_ticker(symbol + "/USDT" if "/" not in symbol else symbol)
-        current_price = ticker.get("price", 0)
+        ticker = await state.market_intel.get_ticker(sym)
+        current_price = float(ticker.get("last") or ticker.get("price") or ticker.get("close") or 0)
         if not current_price:
             return {"error": "Could not fetch current price"}
     except Exception as e:
-        logger.warning(f"Price fetch error for {symbol}: {e}")
+        logger.warning(f"Price fetch error for {sym}: {e}")
         return {"error": "Could not fetch current price"}
-    
+
     result = await state.paper_trading.close_position(
         account_id.upper(),
-        symbol + "/USDT" if "/" not in symbol else symbol,
+        sym,
         current_price
     )
     return result

@@ -228,7 +228,7 @@ class FreeWillEngine:
                     elif avg_rate < -0.0003:  # Negative
                         score += 1.0 * self.feedback_weights["funding_extreme"]
                         signals.append(f"Negative funding ({avg_rate*100:.3f}%) - shorts crowded")
-                except:
+                except Exception:
                     pass
             
             # ═══════════════════════════════════════════════════════════════════
@@ -245,7 +245,7 @@ class FreeWillEngine:
                     elif fg_value >= 80:
                         score -= 1.0 * self.feedback_weights["fear_greed_extreme"]
                         signals.append(f"Extreme greed ({fg_value}) - contrarian sell")
-                except:
+                except Exception:
                     pass
             
             # ═══════════════════════════════════════════════════════════════════
