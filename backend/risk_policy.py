@@ -126,18 +126,19 @@ class RiskPolicy:
             else:
                 advisory_notes.append(f"[ADVISORY] {msg}")
 
-        # ── 4. Account max leverage (advisory only, never hard-blocks in Phase 1) ──
+        # ── 4. Account max leverage cap (enforced — approved_leverage is capped here) ─
         max_leverage = config.get("max_leverage", 20)
+        approved_leverage = min(candidate.requested_leverage, max_leverage)
         if candidate.requested_leverage > max_leverage:
             advisory_notes.append(
-                f"[ADVISORY] Requested leverage {candidate.requested_leverage}x "
-                f"exceeds account profile max {max_leverage}x for {account_id}"
+                f"Leverage capped: {candidate.requested_leverage}x → {max_leverage}x "
+                f"(account profile max for {account_id})"
             )
 
         # ── 5. Duplicate symbol in heat report ────────────────────────────────
         if candidate.symbol in heat.duplicate_symbols:
             advisory_notes.append(
-                f"[ADVISORY] {candidate.symbol} already has >1 open position on {account_id}"
+                f"{candidate.symbol} already has >1 open position on {account_id}"
             )
 
         # Determine verdict
@@ -169,7 +170,7 @@ class RiskPolicy:
             advisory_notes=advisory_notes,
             rejection_reasons=rejection_reasons,
             requested_leverage=candidate.requested_leverage,
-            approved_leverage=candidate.requested_leverage,  # Phase 1: no leverage reduction
+            approved_leverage=approved_leverage,      # Phase 2: actually capped
             requested_size_multiplier=size_mult,
             approved_size_multiplier=size_mult,
             heat_score=heat.total_heat,

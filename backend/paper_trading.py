@@ -1594,15 +1594,18 @@ class PaperTradingSystem:
         """
         Route a trading signal to ALL paper accounts.
 
-        Flow (Phase 1):
+        Flow (Phase 2):
           1. Build TradeCandidate from signal + StressMonitor state
-          2. Pre-fetch all accounts; run RiskPolicy per account
+          2. Pre-fetch all accounts; RiskPolicy evaluates per-account decisions
+             — approved_leverage is capped to account profile max_leverage
           3. For each account: check policy decision, then existing dedup/conflict
-          4. open_position for approved accounts; record executed values
+             — all skip reasons recorded with outcome_type in results
+          4. open_position called with enforced leverage; executed_size_multiplier
+             computed from actual filled margin vs full-risk sizing
           5. Fire-and-forget TradeJournal log with full candidate + results
 
         Risk % per account is determined by ACCOUNTS config + quantum state multiplier.
-        Existing dedup/conflict logic is authoritative and unchanged.
+        Existing dedup/conflict logic is authoritative and runs after RiskPolicy.
         """
         results = []
 
@@ -1677,7 +1680,7 @@ class PaperTradingSystem:
             if not account:
                 continue
 
-            # ── Phase 1: RiskPolicy hard gate (REJECT → skip, advisory → proceed) ──
+            # ── Phase 2: RiskPolicy hard gate (REJECT → skip, advisory → proceed) ──
             _decision = _policy_decisions.get(acc_id)
             if _decision and _decision.verdict == "REJECT":
                 logger.info(
@@ -1687,7 +1690,7 @@ class PaperTradingSystem:
                 results.append({
                     "account": acc_id,
                     "success": False,
-                    "policy_rejected": True,
+                    "outcome_type": "policy_reject",
                     "reasons": _decision.rejection_reasons,
                 })
                 continue
@@ -1695,11 +1698,10 @@ class PaperTradingSystem:
             # Skip if already have this symbol open (same direction)
             if any(p["symbol"] == symbol and p["status"] == "open" for p in account.get("positions", [])):
                 logger.info(f"[{acc_id}] Already have {symbol} open — skipping")
+                results.append({"account": acc_id, "success": False, "outcome_type": "same_symbol_skip"})
                 continue
 
             # ── FIX #12: Signal conflict resolution (opposite direction check) ─
-            # Blocks new trade if an opposing direction is already open on same symbol.
-            # DB-level check handles race conditions between concurrent engine signals.
             _opposite_dir = "SHORT" if direction == "LONG" else "LONG"
             _conflict = await self.db.paper_trades.find_one({
                 "account_id": acc_id,
@@ -1712,12 +1714,15 @@ class PaperTradingSystem:
                     f"CONFLICT BLOCKED: {symbol} {direction} on {acc_id} "
                     f"— opposite {_opposite_dir} already open (engine: {_conflict.get('engine', 'unknown')})"
                 )
+                results.append({
+                    "account": acc_id,
+                    "success": False,
+                    "outcome_type": "conflict_skip",
+                    "conflicting_engine": _conflict.get("engine", "unknown"),
+                })
                 continue
 
             # ── FIX #3: Deduplication lock (10-second window) ────────────────
-            # Prevents the same signal firing twice on the same account within
-            # a 10-second window (e.g., if scan loop overlaps or signal is
-            # re-emitted within the same interval).
             _dedup_since = datetime.now(timezone.utc) - timedelta(seconds=10)
             _dup = await self.db.paper_trades.find_one({
                 "account_id": acc_id,
@@ -1730,11 +1735,10 @@ class PaperTradingSystem:
                     f"DEDUP BLOCKED: {symbol} {direction} on {acc_id} "
                     f"— duplicate within 10s window"
                 )
+                results.append({"account": acc_id, "success": False, "outcome_type": "dedup_skip"})
                 continue
 
-            # ── FIX #4: Daily trade cap (8 trades per account per day) ───────
-            # Prevents burst clustering where 40+ trades fire in a single day,
-            # concentrating losses on correlated signals.
+            # ── FIX #4: Daily trade cap ───────────────────────────────────────
             _today_count = await self.db.paper_trades.count_documents({
                 "account_id": acc_id,
                 "opened_at": {"$gte": _today_start}
@@ -1745,6 +1749,13 @@ class PaperTradingSystem:
                     f"DAILY CAP: {acc_id} at {_today_count}/{_daily_cap} trades today "
                     f"— {symbol} {direction} signal skipped"
                 )
+                results.append({
+                    "account": acc_id,
+                    "success": False,
+                    "outcome_type": "daily_cap_skip",
+                    "count": _today_count,
+                    "cap": _daily_cap,
+                })
                 continue
 
             # Compute risk % for this account
@@ -1753,11 +1764,18 @@ class PaperTradingSystem:
                 q_mult = self._get_quantum_multiplier(acc_id)
                 adj_risk = base_risk * q_mult
             else:
-                # PRO gets 1.5× signal risk (capped 5%), others use base_risk
                 if acc_id == "PRO":
                     adj_risk = min(signal_risk_pct * 1.5, 5.0)
                 else:
                     adj_risk = base_risk
+
+            # Phase 2: use approved_leverage from RiskPolicy (capped per account profile)
+            # Falls back to signal leverage if no decision available.
+            _enforced_leverage = (
+                _decision.approved_leverage
+                if _decision is not None and _decision.approved_leverage > 0
+                else int(signal.get("leverage", 10))
+            )
 
             result = await self.open_position(
                 account_id=acc_id,
@@ -1766,6 +1784,7 @@ class PaperTradingSystem:
                 entry_price=entry_price,
                 stop_loss=stop_loss,
                 take_profit=take_profit,
+                leverage=_enforced_leverage,
                 margin_type="cross",
                 risk_pct=adj_risk,
                 confidence=confidence,
@@ -1784,14 +1803,43 @@ class PaperTradingSystem:
                 pos = result.get("position", {})
                 logger.info(f"📊 [{acc_id}] {direction} {symbol} @ ${entry_price:,.2f} | "
                             f"{pos.get('leverage')}x | Margin ${pos.get('margin', 0):,.2f} | Engine {engine_name}")
-                results.append({"account": acc_id, "success": True, "position": pos})
-                # Record executed values into candidate for journal tracking
+
+                # Phase 2: compute true executed_size_multiplier from actual filled margin
+                _actual_margin = float(pos.get("margin") or 0.0)
+                _exec_size_mult = _decision.approved_size_multiplier if _decision else 1.0
+                if _actual_margin > 0:
+                    try:
+                        _full_sz = calculate_position_size(
+                            balance=account["balance"],
+                            risk_pct=adj_risk,
+                            entry_price=float(entry_price),
+                            stop_loss=float(stop_loss),
+                            leverage=int(pos.get("leverage") or _enforced_leverage),
+                        )
+                        _full_margin = float(_full_sz.get("margin_required") or 0.0)
+                        if _full_margin > 0:
+                            _exec_size_mult = round(_actual_margin / _full_margin, 4)
+                    except Exception:
+                        pass
+
                 if _decision is not None:
                     _decision.executed_leverage = pos.get("leverage")
-                    _decision.executed_size_multiplier = _decision.approved_size_multiplier
+                    _decision.executed_size_multiplier = _exec_size_mult
+
+                results.append({
+                    "account": acc_id,
+                    "success": True,
+                    "outcome_type": "opened",
+                    "position": pos,
+                })
             else:
                 logger.warning(f"[{acc_id}] Failed {symbol}: {result['error']}")
-                results.append({"account": acc_id, "success": False, "error": result["error"]})
+                results.append({
+                    "account": acc_id,
+                    "success": False,
+                    "outcome_type": "open_failed",
+                    "error": result["error"],
+                })
 
         # ── Phase 1: Journal log (fire-and-forget, never blocks routing) ─────
         try:

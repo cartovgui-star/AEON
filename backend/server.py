@@ -5012,6 +5012,8 @@ from routes.regime import router as regime_router
 app.include_router(regime_router)
 from routes.nexus import router as nexus_router
 app.include_router(nexus_router)
+from routes.risk_report import router as risk_report_router
+app.include_router(risk_report_router)
 
 # ── Institutional Scalper routes ──────────────────────────────────────────────
 from fastapi import APIRouter as _AR
