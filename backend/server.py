@@ -1180,7 +1180,20 @@ async def lifespan(app: FastAPI):
     app_state.paper_trading = pt
     from paper_trading import set_telegram_notifier
     set_telegram_notifier(send_telegram_message, chat_ids)
-    logger.info("📊 PAPER TRADING SYSTEM INITIALIZED - PRO ($50K) + STARTER ($1.5K) + REAL_LIFE ($700) + THE_PROOF ($40) + BENCHMARK ($50K)")
+    logger.info("📊 PAPER TRADING SYSTEM INITIALIZED - PRO ($50K) + STARTER ($1.5K) + REAL_LIFE ($700) + THE_PROOF ($40) + BENCHMARK ($50K) + TIER_5K + TIER_1K + TIER_500")
+
+    # Phase 1 — Risk policy layer
+    try:
+        from portfolio_heat import PortfolioHeat
+        from risk_policy import RiskPolicy
+        from trade_journal import TradeJournal
+        app_state.portfolio_heat = PortfolioHeat()
+        app_state.risk_policy = RiskPolicy(mode="advisory")
+        app_state.trade_journal = TradeJournal(db)
+        await app_state.trade_journal.ensure_indexes()
+        logger.info("🛡️ PHASE 1 RISK LAYER INITIALIZED — RiskPolicy(advisory), PortfolioHeat, TradeJournal")
+    except Exception as _e:
+        logger.error(f"Phase 1 risk layer init failed (non-fatal): {_e}")
     
     # Initialize VWAP Scalper
     vwap_scalper.set_dependencies(

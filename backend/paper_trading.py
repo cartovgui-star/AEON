@@ -65,6 +65,8 @@ ACCOUNTS = {
         "auto_deposit_usd": 0.0,
         "auto_deposit_days": None,
         "target_balance": None,
+        "max_leverage": 20,
+        "daily_trade_cap": 8,
     },
     "STARTER": {
         "name": "Starter Account",
@@ -76,6 +78,8 @@ ACCOUNTS = {
         "auto_deposit_usd": 0.0,
         "auto_deposit_days": None,
         "target_balance": None,
+        "max_leverage": 20,
+        "daily_trade_cap": 8,
     },
     "REAL_LIFE": {
         "name": "Real Life",
@@ -88,6 +92,8 @@ ACCOUNTS = {
         "auto_deposit_usd": 700.0,
         "auto_deposit_days": 7,
         "target_balance": None,
+        "max_leverage": 20,
+        "daily_trade_cap": 8,
     },
     "THE_PROOF": {
         "name": "The Proof",
@@ -101,6 +107,8 @@ ACCOUNTS = {
         "auto_deposit_days": None,
         "target_balance": 680.0,
         "target_multiplier": 17.0,
+        "max_leverage": 20,
+        "daily_trade_cap": 8,
     },
     "BENCHMARK": {
         "name": "Benchmark",
@@ -112,6 +120,51 @@ ACCOUNTS = {
         "auto_deposit_usd": 0.0,
         "auto_deposit_days": None,
         "target_balance": None,
+        "max_leverage": 20,
+        "daily_trade_cap": 8,
+    },
+    # ── Phase 1: Tiered paper accounts ───────────────────────────────────────
+    # Conservative profiles for testing risk policy behavior at different
+    # balance tiers. Tighter leverage and concurrent position limits as
+    # balance decreases. Telegram disabled — observation only for Phase 1.
+    "TIER_5K": {
+        "name": "Tier 5K",
+        "starting_balance": 5000.0,
+        "emoji": "🔵",
+        "base_risk_pct": 2.0,
+        "use_quantum_sizing": False,
+        "notify_telegram": False,
+        "auto_deposit_usd": 0.0,
+        "auto_deposit_days": None,
+        "target_balance": None,
+        "max_leverage": 15,
+        "daily_trade_cap": 8,
+    },
+    "TIER_1K": {
+        "name": "Tier 1K",
+        "starting_balance": 1000.0,
+        "emoji": "🟡",
+        "base_risk_pct": 2.0,
+        "use_quantum_sizing": False,
+        "notify_telegram": False,
+        "auto_deposit_usd": 0.0,
+        "auto_deposit_days": None,
+        "target_balance": None,
+        "max_leverage": 10,
+        "daily_trade_cap": 6,
+    },
+    "TIER_500": {
+        "name": "Tier 500",
+        "starting_balance": 500.0,
+        "emoji": "🟠",
+        "base_risk_pct": 1.5,
+        "use_quantum_sizing": False,
+        "notify_telegram": False,
+        "auto_deposit_usd": 0.0,
+        "auto_deposit_days": None,
+        "target_balance": None,
+        "max_leverage": 5,
+        "daily_trade_cap": 5,
     },
 }
 
@@ -1540,7 +1593,16 @@ class PaperTradingSystem:
     ) -> List[Dict]:
         """
         Route a trading signal to ALL paper accounts.
+
+        Flow (Phase 1):
+          1. Build TradeCandidate from signal + StressMonitor state
+          2. Pre-fetch all accounts; run RiskPolicy per account
+          3. For each account: check policy decision, then existing dedup/conflict
+          4. open_position for approved accounts; record executed values
+          5. Fire-and-forget TradeJournal log with full candidate + results
+
         Risk % per account is determined by ACCOUNTS config + quantum state multiplier.
+        Existing dedup/conflict logic is authoritative and unchanged.
         """
         results = []
 
@@ -1556,11 +1618,78 @@ class PaperTradingSystem:
             logger.warning(f"Invalid signal from {engine_name}: missing required fields")
             return results
 
+        # ── Phase 1: Build TradeCandidate ─────────────────────────────────────
+        try:
+            from candidate_trade import TradeCandidate
+            from oria_layer import get_stress_monitor
+            import app_state as _state
+
+            stress_level = 0.0
+            stress_multiplier = 1.0
+            _sm = get_stress_monitor()
+            if _sm is not None:
+                stress_level = float(_sm.stress_score)
+                stress_multiplier, _ = _sm.get_size_multiplier()
+
+            candidate = TradeCandidate(
+                symbol=symbol,
+                direction=str(direction).upper(),
+                engine=engine_name,
+                confidence=float(confidence),
+                confluences=int(signal.get("confirmations_count", 0)),
+                requested_leverage=int(signal.get("leverage", 10)),
+                entry_price=float(entry_price),
+                stop_loss=float(stop_loss),
+                take_profit=float(take_profit),
+                strategy=signal.get("strategy", engine_name),
+                stress_level=stress_level,
+                stress_multiplier=stress_multiplier,
+                gate_passed=True,
+            )
+
+            # Pre-fetch all accounts for RiskPolicy evaluation
+            _all_accounts = {}
+            for _aid in ACCOUNTS:
+                _acc = await self.get_account(_aid)
+                if _acc:
+                    _all_accounts[_aid] = {**_acc, "_config": ACCOUNTS[_aid]}
+
+            # Evaluate RiskPolicy if wired up (advisory mode in Phase 1)
+            _policy_decisions = {}
+            if hasattr(_state, "risk_policy") and _state.risk_policy is not None:
+                try:
+                    _policy_decisions = _state.risk_policy.evaluate(
+                        candidate, _all_accounts, stress_level, stress_multiplier
+                    )
+                    candidate.account_decisions = _policy_decisions
+                except Exception as _pe:
+                    logger.warning(f"[route_signal] RiskPolicy.evaluate error: {_pe}")
+
+        except Exception as _ce:
+            candidate = None
+            _policy_decisions = {}
+            logger.warning(f"[route_signal] TradeCandidate build error: {_ce}")
+
         _today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
 
         for acc_id, config in ACCOUNTS.items():
             account = await self.get_account(acc_id)
             if not account:
+                continue
+
+            # ── Phase 1: RiskPolicy hard gate (REJECT → skip, advisory → proceed) ──
+            _decision = _policy_decisions.get(acc_id)
+            if _decision and _decision.verdict == "REJECT":
+                logger.info(
+                    f"[RiskPolicy] {acc_id} REJECTED {symbol} {direction}: "
+                    + "; ".join(_decision.rejection_reasons)
+                )
+                results.append({
+                    "account": acc_id,
+                    "success": False,
+                    "policy_rejected": True,
+                    "reasons": _decision.rejection_reasons,
+                })
                 continue
 
             # Skip if already have this symbol open (same direction)
@@ -1610,9 +1739,10 @@ class PaperTradingSystem:
                 "account_id": acc_id,
                 "opened_at": {"$gte": _today_start}
             })
-            if _today_count >= 8:
+            _daily_cap = config.get("daily_trade_cap", 8)
+            if _today_count >= _daily_cap:
                 logger.info(
-                    f"DAILY CAP: {acc_id} at {_today_count}/8 trades today "
+                    f"DAILY CAP: {acc_id} at {_today_count}/{_daily_cap} trades today "
                     f"— {symbol} {direction} signal skipped"
                 )
                 continue
@@ -1655,9 +1785,23 @@ class PaperTradingSystem:
                 logger.info(f"📊 [{acc_id}] {direction} {symbol} @ ${entry_price:,.2f} | "
                             f"{pos.get('leverage')}x | Margin ${pos.get('margin', 0):,.2f} | Engine {engine_name}")
                 results.append({"account": acc_id, "success": True, "position": pos})
+                # Record executed values into candidate for journal tracking
+                if _decision is not None:
+                    _decision.executed_leverage = pos.get("leverage")
+                    _decision.executed_size_multiplier = _decision.approved_size_multiplier
             else:
                 logger.warning(f"[{acc_id}] Failed {symbol}: {result['error']}")
                 results.append({"account": acc_id, "success": False, "error": result["error"]})
+
+        # ── Phase 1: Journal log (fire-and-forget, never blocks routing) ─────
+        try:
+            import app_state as _state
+            if candidate is not None and hasattr(_state, "trade_journal") and _state.trade_journal is not None:
+                candidate.routed_at = datetime.now(timezone.utc)
+                candidate.route_results = results
+                _state.trade_journal.log(candidate)
+        except Exception as _je:
+            logger.debug(f"[route_signal] TradeJournal log error: {_je}")
 
         return results
     
