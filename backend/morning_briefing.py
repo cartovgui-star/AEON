@@ -18,15 +18,16 @@ from datetime import datetime, timezone, timedelta
 from typing import Dict, List, Optional, Callable, Set
 import pytz
 import ccxt
+from okx_rate_limiter import OKX_SEM
 
 logger = logging.getLogger(__name__)
 
-# Initialize MEXC
+# Initialize OKX
 try:
-    mexc = ccxt.mexc({'enableRateLimit': True})
+    okx = ccxt.okx({'enableRateLimit': True})
 except Exception as e:
-    logger.error(f"Failed to init MEXC for briefing: {e}")
-    mexc = None
+    logger.error(f"Failed to init OKX for briefing: {e}")
+    okx = None
 
 # All tracked cryptos
 TRACKED_CRYPTOS = [
@@ -97,11 +98,12 @@ class MorningBriefing:
         """Get the biggest movers from overnight (8 PM to 6 AM)"""
         movers = {"gainers": [], "losers": [], "high_volume": []}
         
-        if not mexc:
+        if not okx:
             return movers
         
         try:
-            tickers = mexc.fetch_tickers(TRACKED_CRYPTOS)
+            with OKX_SEM:
+                tickers = okx.fetch_tickers(TRACKED_CRYPTOS)
             
             for symbol in TRACKED_CRYPTOS:
                 ticker = tickers.get(symbol, {})

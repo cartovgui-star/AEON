@@ -114,42 +114,43 @@ Use /auto on to resume trading"""
 
 
 async def handle_riskcheck(text: str, chat_id: int, context: dict) -> Tuple[str, str]:
-    """Handle /riskcheck command - Run risk assessment"""
+    """Handle /riskcheck command — reads live paper positions"""
     try:
         import app_state
-        
-        # Get current positions and calculate risk metrics
+
         positions = []
-        if hasattr(app_state, 'live_positions'):
-            positions = app_state.live_positions or []
-        
-        total_exposure = 0
+        if app_state.paper_trading is not None:
+            accounts = await app_state.paper_trading.get_all_accounts()
+            for acc in accounts:
+                for pos in acc.get('positions', []) or []:
+                    if pos.get('status') == 'open':
+                        positions.append(pos)
+
+        total_exposure = 0.0
         total_leverage = 0
-        max_drawdown_risk = 0
-        
+        max_drawdown_risk = 0.0
+
         for pos in positions:
-            size = pos.get('position_size', 0)
-            leverage = pos.get('leverage', 10)
+            size = pos.get('size_usd', 0) or pos.get('position_size', 0) or 0
+            leverage = pos.get('leverage', 1) or 1
+            entry = pos.get('entry_price', 0) or 1
+            stop = pos.get('stop_loss', 0) or pos.get('stop_price', 0) or 0
             total_exposure += size
             total_leverage += leverage
-            
-            # Calculate potential loss if all hit stop loss
-            sl_distance = abs(pos.get('entry_price', 0) - pos.get('stop_price', 0)) / pos.get('entry_price', 1) * 100
-            max_drawdown_risk += sl_distance * leverage
-        
+            if stop and entry:
+                sl_dist = abs(entry - stop) / entry * 100
+                max_drawdown_risk += sl_dist * leverage
+
         avg_leverage = total_leverage / len(positions) if positions else 0
-        
-        # Risk assessment
-        risk_level = "LOW"
-        risk_emoji = "🟢"
+
         if max_drawdown_risk > 20 or avg_leverage > 30:
-            risk_level = "HIGH"
-            risk_emoji = "🔴"
+            risk_level, risk_emoji = "HIGH", "🔴"
         elif max_drawdown_risk > 10 or avg_leverage > 15:
-            risk_level = "MEDIUM"
-            risk_emoji = "🟡"
-        
-        response = f"""⚠️ RISK ASSESSMENT
+            risk_level, risk_emoji = "MEDIUM", "🟡"
+        else:
+            risk_level, risk_emoji = "LOW", "🟢"
+
+        response = f"""⚠️ RISK ASSESSMENT (Paper)
 
 {risk_emoji} Risk Level: {risk_level}
 
@@ -183,7 +184,7 @@ async def handle_riskcheck(text: str, chat_id: int, context: dict) -> Tuple[str,
     except Exception as e:
         logger.error(f"Riskcheck error: {e}")
         response = f"❌ Error: {str(e)}"
-    
+
     return response, "risk"
 
 

@@ -45,6 +45,7 @@ from datetime import datetime, timezone, timedelta
 from typing import Dict, List, Optional, Tuple, Any
 from collections import defaultdict
 import ccxt
+from okx_rate_limiter import OKX_SEM
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +61,7 @@ def _to_ccxt_symbol(symbol: str) -> str:
     return f"{s}/USDT"
 
 
-def _to_mexc_futures_symbol(symbol: str) -> str:
+def _to_okx_futures_symbol(symbol: str) -> str:
     """Normalize to OKX swap format: BTC-USDT-SWAP"""
     base = symbol.upper().replace("_USDT", "").replace("/USDT", "").replace("-USDT", "").replace("USDT", "")
     return f"{base}-USDT-SWAP"
@@ -426,7 +427,7 @@ class LiquidationHeatmap:
             return cached
 
         try:
-            inst_id = _to_mexc_futures_symbol(symbol)
+            inst_id = _to_okx_futures_symbol(symbol)
             url = "https://www.okx.com/api/v5/public/open-interest"
             async with aiohttp.ClientSession() as session:
                 async with session.get(url, params={"instType": "SWAP", "instId": inst_id},
@@ -453,7 +454,7 @@ class LiquidationHeatmap:
     async def get_current_price(self, symbol: str) -> float:
         """Fetch current price from OKX ticker."""
         try:
-            inst_id = _to_mexc_futures_symbol(symbol)
+            inst_id = _to_okx_futures_symbol(symbol)
             url = "https://www.okx.com/api/v5/market/ticker"
             async with aiohttp.ClientSession() as session:
                 async with session.get(url, params={"instId": inst_id},
@@ -642,7 +643,7 @@ class LiquidationHeatmap:
         oi_data = await self.get_oi_data(symbol)
         if oi_data:
             heatmap["open_interest"] = oi_data.get("current_oi", 0)
-            heatmap["oi_source"] = "mexc"
+            heatmap["oi_source"] = "okx"
 
         self._cache_set(cache_key, heatmap)
         return heatmap
@@ -667,7 +668,7 @@ class OrderbookAnalyzer:
         self.cache: Dict[str, Tuple[Any, datetime]] = {}
         self.cache_ttl = 10  # 10s for orderbook (fast-moving)
         self.prev_books: Dict[str, Dict] = {}  # for sweep detection
-        self.mexc = ccxt.okx({'enableRateLimit': True})
+        self.okx = ccxt.okx({'enableRateLimit': True})
 
     def _cache_get(self, key: str):
         if key in self.cache:
@@ -689,10 +690,10 @@ class OrderbookAnalyzer:
         try:
             full_symbol = _to_ccxt_symbol(symbol)
             loop = asyncio.get_running_loop()
-            book = await loop.run_in_executor(
-                None,
-                lambda: self.mexc.fetch_order_book(full_symbol, limit=depth)
-            )
+            def _fetch_book():
+                with OKX_SEM:
+                    return self.okx.fetch_order_book(full_symbol, limit=depth)
+            book = await loop.run_in_executor(None, _fetch_book)
             self._cache_set(cache_key, book)
             return book
         except Exception as e:
@@ -909,7 +910,7 @@ class HyperAccuracyEngine:
         self.vsp = VolumeSessionProfile()
         self.liq = LiquidationHeatmap()
         self.ob = OrderbookAnalyzer()
-        self.mexc = ccxt.mexc()
+        self.okx = ccxt.okx({'enableRateLimit': True})
 
         # Dependencies (set via set_dependencies)
         self.order_flow = None
@@ -959,10 +960,10 @@ class HyperAccuracyEngine:
         try:
             full_symbol = _to_ccxt_symbol(symbol)
             loop = asyncio.get_running_loop()
-            return await loop.run_in_executor(
-                None,
-                lambda: self.mexc.fetch_ohlcv(full_symbol, timeframe, limit=limit)
-            )
+            def _fetch_ohlcv():
+                with OKX_SEM:
+                    return self.okx.fetch_ohlcv(full_symbol, timeframe, limit=limit)
+            return await loop.run_in_executor(None, _fetch_ohlcv)
         except Exception as e:
             logger.error(f"OHLCV fetch error {symbol} {timeframe}: {e}")
             return []
@@ -973,7 +974,7 @@ class HyperAccuracyEngine:
         Extreme rates = crowded trade = hard gate against that direction.
         """
         try:
-            inst_id = _to_mexc_futures_symbol(symbol)  # already returns OKX SWAP format
+            inst_id = _to_okx_futures_symbol(symbol)  # already returns OKX SWAP format
             url = f"https://www.okx.com/api/v5/public/funding-rate"
             async with aiohttp.ClientSession() as session:
                 async with session.get(url, params={"instId": inst_id}, timeout=aiohttp.ClientTimeout(total=10)) as resp:

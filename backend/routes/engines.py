@@ -377,3 +377,87 @@ async def toggle_engine(engine_name: str, request: ToggleRequest):
         "active": request.active,
         "status": "enabled" if request.active else "disabled",
     }
+
+
+# ============================================================================
+# ENGINE COIN CONFIG ROUTES
+# ============================================================================
+
+@router.get("/coins/{engine_name}")
+async def get_engine_coins(engine_name: str):
+    """Get current coins for engine"""
+    from engine_coin_config import get_coin_config
+    config = get_coin_config()
+    if not config:
+        raise HTTPException(status_code=503, detail="Config not initialized")
+    status = await config.get_status(engine_name)
+    return status
+
+
+@router.post("/coins/{engine_name}/set")
+async def set_engine_coins(engine_name: str, coins: List[str]):
+    """Replace engine's coin list"""
+    from engine_coin_config import get_coin_config
+    config = get_coin_config()
+    if not config:
+        raise HTTPException(status_code=503, detail="Config not initialized")
+    valid_coins = [c for c in coins if "/USDT" in c]
+    if not valid_coins:
+        raise HTTPException(status_code=400, detail="Coins must be in BTC/USDT format")
+    await config.set_coins(engine_name, valid_coins)
+    return {"status": "ok", "engine": engine_name, "coins": valid_coins, "count": len(valid_coins)}
+
+
+@router.post("/coins/{engine_name}/add/{coin}")
+async def add_coin_to_engine(engine_name: str, coin: str):
+    """Add single coin to engine"""
+    from engine_coin_config import get_coin_config
+    config = get_coin_config()
+    if not config:
+        raise HTTPException(status_code=503, detail="Config not initialized")
+    if not coin.endswith("/USDT"):
+        coin = f"{coin}/USDT"
+    success = await config.add_coin(engine_name, coin)
+    if not success:
+        return {"status": "already_present", "coin": coin}
+    status = await config.get_status(engine_name)
+    return {"status": "added", "coin": coin, "total_coins": status["count"]}
+
+
+@router.post("/coins/{engine_name}/remove/{coin}")
+async def remove_coin_from_engine(engine_name: str, coin: str):
+    """Remove single coin from engine"""
+    from engine_coin_config import get_coin_config
+    config = get_coin_config()
+    if not config:
+        raise HTTPException(status_code=503, detail="Config not initialized")
+    if not coin.endswith("/USDT"):
+        coin = f"{coin}/USDT"
+    success = await config.remove_coin(engine_name, coin)
+    if not success:
+        return {"status": "not_found", "coin": coin}
+    status = await config.get_status(engine_name)
+    return {"status": "removed", "coin": coin, "total_coins": status["count"]}
+
+
+@router.post("/coins/{engine_name}/reset")
+async def reset_engine_coins(engine_name: str):
+    """Reset engine to default top 20"""
+    from engine_coin_config import get_coin_config
+    config = get_coin_config()
+    if not config:
+        raise HTTPException(status_code=503, detail="Config not initialized")
+    await config.reset_to_default(engine_name)
+    status = await config.get_status(engine_name)
+    return {"status": "reset", "coins": status["coins"]}
+
+
+@router.get("/coins/all")
+async def get_all_engine_coins():
+    """Get coin config for all engines"""
+    from engine_coin_config import get_coin_config
+    config = get_coin_config()
+    if not config:
+        raise HTTPException(status_code=503, detail="Config not initialized")
+    all_status = await config.get_all_status()
+    return all_status

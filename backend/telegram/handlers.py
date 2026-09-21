@@ -163,13 +163,13 @@ class TelegramHandlers:
         import ccxt
         
         executor = ThreadPoolExecutor(max_workers=3)
-        mexc = ccxt.mexc()
-        
+        okx = ccxt.okx({'enableRateLimit': True})
+
         import asyncio
         loop = asyncio.get_running_loop()
         tickers = await loop.run_in_executor(
-            executor, 
-            mexc.fetch_tickers, 
+            executor,
+            okx.fetch_tickers,
             ["BTC/USDT", "ETH/USDT", "SOL/USDT"]
         )
         

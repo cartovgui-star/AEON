@@ -159,7 +159,7 @@ class CoinAnalyzer:
     TF_LIMIT   = {"1h": 200, "4h": 200, "1d": 200, "1w": 104}
 
     def __init__(self):
-        self._exchange = ccxt.mexc({"enableRateLimit": True})
+        self._exchange = ccxt.okx({"enableRateLimit": True})
 
     # ── data ──────────────────────────────────────────────────────────────────
 
@@ -901,6 +901,7 @@ class QuantAnalyzerEngine:
 
     def __init__(self):
         self._analyzer = CoinAnalyzer()
+        self.active = True
 
     async def analyze_coins(self, symbols: List[str]) -> Dict:
         """Analyze list of coins, return ranked results + watchlist table."""

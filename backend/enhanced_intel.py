@@ -23,8 +23,8 @@ class EnhancedMarketIntel:
     """
     
     def __init__(self):
-        # MEXC for spot data
-        self.mexc = ccxt.mexc({'enableRateLimit': True})
+        # OKX for spot data
+        self.okx = ccxt.okx({'enableRateLimit': True})
         
         # API endpoints
         self.coingecko_base = "https://api.coingecko.com/api/v3"
@@ -152,11 +152,11 @@ class EnhancedMarketIntel:
             return {}
 
     # ═══════════════════════════════════════════════════════════════════════════
-    # COINGECKO - TOP 100 COINS (with MEXC fallback)
+    # COINGECKO - TOP 100 COINS (with OKX fallback)
     # ═══════════════════════════════════════════════════════════════════════════
 
     async def get_mexc_prices(self) -> List[Dict]:
-        """Get prices from MEXC for top coins"""
+        """Get prices from OKX for top coins"""
         try:
             # Top 20 for quick loading (full 44 would be slow)
             primary_symbols = [
@@ -165,7 +165,7 @@ class EnhancedMarketIntel:
                 "TRX/USDT", "LTC/USDT", "NEAR/USDT", "UNI/USDT", "APT/USDT",
                 "ATOM/USDT", "ARB/USDT", "OP/USDT", "INJ/USDT", "AAVE/USDT"
             ]
-            tickers = self.mexc.fetch_tickers(primary_symbols)
+            tickers = self.okx.fetch_tickers(primary_symbols)
             
             results = []
             for i, symbol in enumerate(primary_symbols):
@@ -238,7 +238,7 @@ class EnhancedMarketIntel:
         
         # Fallback: try to get BTC price at minimum
         try:
-            btc_ticker = self.mexc.fetch_ticker("BTC/USDT")
+            btc_ticker = self.okx.fetch_ticker("BTC/USDT")
             btc_price = btc_ticker.get("last", 0)
             # Estimate market cap based on BTC price (rough approximation)
             # BTC typically represents ~50% of crypto market
@@ -298,25 +298,25 @@ class EnhancedMarketIntel:
     async def get_funding_rate(self, symbol: str = "BTCUSDT") -> Dict:
         """Get funding rate from available sources"""
         try:
-            # Try MEXC first (via ccxt)
+            # Try OKX first (via ccxt)
             base = symbol.replace("USDT", "")
-            
-            # MEXC uses swap format
+
+            # OKX uses swap format
             try:
-                mexc = ccxt.mexc({'enableRateLimit': True})
-                funding = mexc.fetch_funding_rate(f"{base}/USDT:USDT")
-                
+                okx_ex = ccxt.okx({'enableRateLimit': True})
+                funding = okx_ex.fetch_funding_rate(f"{base}/USDT:USDT")
+
                 rate = funding.get("fundingRate", 0) or 0
                 return {
                     "symbol": symbol,
-                    "source": "MEXC",
+                    "source": "OKX",
                     "funding_rate": rate,
                     "funding_rate_pct": f"{rate * 100:.4f}%",
                     "is_positive": rate > 0,
                     "interpretation": "Longs pay shorts" if rate > 0 else "Shorts pay longs"
                 }
-            except Exception as mexc_err:
-                logger.warning(f"MEXC funding error: {mexc_err}")
+            except Exception as okx_err:
+                logger.warning(f"OKX funding error: {okx_err}")
             
             # Fallback: use estimate based on market conditions
             fng = await self.get_fear_greed_index()
@@ -363,43 +363,46 @@ class EnhancedMarketIntel:
         except Exception as e:
             return {"symbol": symbol, "error": str(e)}
     
-    async def get_mexc_recent_trades(self, symbol: str = "BTC_USDT", limit: int = 50) -> List[Dict]:
-        """Get recent trades from MEXC contract ticker."""
-        mexc_sym = symbol.replace("/", "_").replace("-", "_").upper()
-        if not mexc_sym.endswith("_USDT"):
-            mexc_sym = mexc_sym.replace("USDT", "_USDT") if "USDT" in mexc_sym else mexc_sym + "_USDT"
-        url = f"https://contract.mexc.com/api/v1/contract/ticker?symbol={mexc_sym}"
-        data = await self._fetch_json(url, f"mexc_ticker_{mexc_sym}")
-        if data.get("code") == 0 and data.get("data"):
-            d = data["data"]
+    async def get_mexc_recent_trades(self, symbol: str = "BTC-USDT", limit: int = 50) -> List[Dict]:
+        """Get recent ticker from OKX (replaces MEXC contract ticker)."""
+        okx_inst = symbol.replace("/", "-").replace("_", "-").upper()
+        if not okx_inst.endswith("-USDT"):
+            okx_inst = okx_inst.replace("USDT", "-USDT") if "USDT" in okx_inst else okx_inst + "-USDT"
+        url = f"https://www.okx.com/api/v5/market/ticker?instId={okx_inst}-SWAP"
+        data = await self._fetch_json(url, f"okx_ticker_{okx_inst}")
+        items = data.get("data", [])
+        if items:
+            d = items[0]
             return [{
-                "symbol": mexc_sym,
-                "price": float(d.get("lastPrice", 0)),
-                "volume": float(d.get("volume24", 0)),
-                "timestamp": str(d.get("timestamp", "")),
+                "symbol": okx_inst,
+                "price": float(d.get("last", 0)),
+                "volume": float(d.get("vol24h", 0)),
+                "timestamp": str(d.get("ts", "")),
             }]
         return []
 
     async def get_mexc_tickers(self, symbols: List[str] = None) -> Dict[str, Dict]:
-        """Get tickers for multiple symbols from MEXC contract API."""
+        """Get tickers for multiple symbols from OKX (replaces MEXC contract API)."""
         if not symbols:
             symbols = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "DOGEUSDT", "XRPUSDT", "AVAXUSDT"]
 
         results = {}
         for symbol in symbols:
-            mexc_sym = symbol.replace("USDT", "_USDT")
-            url = f"https://contract.mexc.com/api/v1/contract/ticker?symbol={mexc_sym}"
-            data = await self._fetch_json(url, f"mexc_cticker_{mexc_sym}")
-            if data.get("code") == 0 and data.get("data"):
-                item = data["data"]
+            base = symbol.replace("USDT", "")
+            okx_inst = f"{base}-USDT-SWAP"
+            url = f"https://www.okx.com/api/v5/market/ticker?instId={okx_inst}"
+            data = await self._fetch_json(url, f"okx_cticker_{okx_inst}")
+            items = data.get("data", [])
+            if items:
+                item = items[0]
                 results[symbol] = {
-                    "price": float(item.get("lastPrice", 0)),
-                    "change_24h": float(item.get("priceChangeRate", 0)) * 100,
-                    "volume_24h": float(item.get("volume24", 0)),
-                    "high_24h": float(item.get("higher24Price", 0)),
-                    "low_24h": float(item.get("lower24Price", 0)),
-                    "funding_rate": float(item.get("fundingRate", 0)),
-                    "open_interest": float(item.get("holdVol", 0)),
+                    "price": float(item.get("last", 0)),
+                    "change_24h": 0.0,  # OKX doesn't return % change in this endpoint
+                    "volume_24h": float(item.get("volCcy24h", 0)),
+                    "high_24h": float(item.get("high24h", 0)),
+                    "low_24h": float(item.get("low24h", 0)),
+                    "funding_rate": 0.0,
+                    "open_interest": float(item.get("oi", 0)),
                 }
         return results
     
@@ -490,7 +493,7 @@ class EnhancedMarketIntel:
             # If prices still zero, fetch from MEXC directly
             if btc_price == 0:
                 try:
-                    ticker = self.mexc.fetch_ticker("BTC/USDT")
+                    ticker = self.okx.fetch_ticker("BTC/USDT")
                     btc_price = ticker.get("last", 0)
                     btc_chg = ticker.get("percentage", 0) or 0
                 except Exception as e:
@@ -498,7 +501,7 @@ class EnhancedMarketIntel:
 
             if eth_price == 0:
                 try:
-                    ticker = self.mexc.fetch_ticker("ETH/USDT")
+                    ticker = self.okx.fetch_ticker("ETH/USDT")
                     eth_price = ticker.get("last", 0)
                     eth_chg = ticker.get("percentage", 0) or 0
                 except Exception as e:
@@ -506,7 +509,7 @@ class EnhancedMarketIntel:
 
             if sol_price == 0:
                 try:
-                    ticker = self.mexc.fetch_ticker("SOL/USDT")
+                    ticker = self.okx.fetch_ticker("SOL/USDT")
                     sol_price = ticker.get("last", 0)
                     sol_chg = ticker.get("percentage", 0) or 0
                 except Exception as e:

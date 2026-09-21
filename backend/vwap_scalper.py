@@ -17,7 +17,7 @@ Risk management:
       > $5,000  → hard stop (engine paused until UTC midnight)
   - Consecutive loss cooldown: 3 losses → 25x for next 5 trades
 
-Data source : MEXC via market_intel only (yfinance removed)
+Data source : OKX via market_intel only (yfinance removed)
 Routes to   : PRO account (primary) + STARTER account (secondary)
 MongoDB     : vwap_scalper_trades collection
 =============================================================
@@ -42,7 +42,7 @@ except ImportError:
 TRADING_PAIRS = [
     "BTC/USDT", "ETH/USDT", "SOL/USDT", "BNB/USDT", "XRP/USDT",
     "ADA/USDT", "DOGE/USDT", "AVAX/USDT", "LINK/USDT", "DOT/USDT",
-    "MATIC/USDT", "SUI/USDT", "INJ/USDT", "APT/USDT", "OP/USDT",
+    "POL/USDT", "SUI/USDT", "INJ/USDT", "APT/USDT", "OP/USDT",
     "NEAR/USDT", "TRX/USDT", "UNI/USDT", "ATOM/USDT",
     # ARB removed: 76 trades, 8% WR, -$10,255 (2026-03-22)
 ]
@@ -468,9 +468,9 @@ class VWAPScalper:
 
     # ─── DATA FETCHING ────────────────────────────────────────────────────────
 
-    async def fetch_ohlcv_mexc(self, symbol: str, timeframe: str = "5m",
+    async def fetch_ohlcv_okx(self, symbol: str, timeframe: str = "5m",
                                limit: int = 200) -> Optional[Dict]:
-        """Fetch OHLCV data from MEXC via market_intel."""
+        """Fetch OHLCV data from OKX via market_intel."""
         if not self.market_intel:
             return None
         try:
@@ -501,7 +501,7 @@ class VWAPScalper:
             age = (datetime.now(timezone.utc) - cached["timestamp"]).total_seconds()
             if age < self._cache_ttl:
                 return cached["data"]
-        data = await self.fetch_ohlcv_mexc(symbol, timeframe)
+        data = await self.fetch_ohlcv_okx(symbol, timeframe)
         if data:
             self._data_cache[cache_key] = {
                 "data": data,

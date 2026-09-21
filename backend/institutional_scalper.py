@@ -703,6 +703,11 @@ class InstitutionalScalper:
         logger.info("[INST] Institutional Scalper started — SMC scan every %ds", interval_seconds)
         while self.active:
             try:
+                try:
+                    from self_healer import self_healer
+                    self_healer.heartbeat("institutional_scalper")
+                except Exception:
+                    pass
                 signals = await self.scan_all_symbols()
                 for signal in signals:
                     await self.route_to_paper_trading(signal)
@@ -717,7 +722,15 @@ class InstitutionalScalper:
                     pass
             except Exception as e:
                 logger.error(f"[INST] Loop error: {e}")
-            await asyncio.sleep(interval_seconds)
+            elapsed = 0
+            while elapsed < interval_seconds:
+                await asyncio.sleep(min(60, interval_seconds - elapsed))
+                elapsed += min(60, interval_seconds - elapsed)
+                try:
+                    from self_healer import self_healer
+                    self_healer.heartbeat("institutional_scalper")
+                except Exception:
+                    pass
 
 
 # ─── SINGLETON ────────────────────────────────────────────────────────────────

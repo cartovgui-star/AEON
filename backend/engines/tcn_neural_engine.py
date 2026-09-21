@@ -336,7 +336,7 @@ class TCNNeuralEngine:
 
                 raw = await loop.run_in_executor(
                     None,
-                    lambda kw=kwargs: self._market_intel.mexc_public.fetch_ohlcv(**kw),
+                    lambda kw=kwargs: self._market_intel.okx_public.fetch_ohlcv(**kw),
                 )
                 if not raw:
                     break
@@ -376,7 +376,7 @@ class TCNNeuralEngine:
             loop = asyncio.get_running_loop()
             funding_data = await loop.run_in_executor(
                 None,
-                lambda: self._market_intel.mexc.fetch_funding_rate("BTC/USDT:USDT"),
+                lambda: self._market_intel.okx.fetch_funding_rate("BTC/USDT:USDT"),
             )
             rate = funding_data.get("fundingRate", 0.0) if isinstance(funding_data, dict) else 0.0
             return float(rate) if rate is not None else 0.0
@@ -814,6 +814,45 @@ class TCNNeuralEngine:
             and self._model is not None
             and (time.time() - self._last_inference_ts) < 7200
         )
+
+    def get_vote(self, symbol: str = "BTC/USDT") -> Dict:
+        """
+        Return binary ensemble vote for a symbol.
+        TCN is trained on BTC/USDT only — other symbols return NEUTRAL.
+        This is the proper ensemble-voter interface: a clear directional vote
+        rather than diluting α₉ into the quantum state vector.
+        """
+        if symbol not in ("BTC/USDT", "BTCUSDT"):
+            return {"vote": "NEUTRAL", "confidence": 0.0, "p_hat": 0.5, "live": False}
+
+        if not self.is_live():
+            return {"vote": "NEUTRAL", "confidence": 0.0, "p_hat": self._p_hat, "live": False}
+
+        conf = self.get_confidence()
+        if self._direction == "LONG":
+            vote = "BULLISH"
+        elif self._direction == "SHORT":
+            vote = "BEARISH"
+        else:
+            vote = "NEUTRAL"
+
+        return {
+            "vote": vote,
+            "confidence": round(conf, 2),
+            "p_hat": round(self._p_hat, 4),
+            "sharpe": round(self._s9_sharpe, 4),
+            "alpha9": round(self._alpha9, 4),
+            "live": True,
+        }
+
+    def get_all_votes(self) -> Dict[str, Dict]:
+        """
+        Return vote dict for all symbols this engine covers.
+        Currently BTC-only; other symbols return NEUTRAL placeholder.
+        """
+        return {
+            "BTC/USDT": self.get_vote("BTC/USDT"),
+        }
 
     # ── Background loop ───────────────────────────────────────────────────────
 

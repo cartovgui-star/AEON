@@ -114,7 +114,7 @@ class AeonPersona:
         """Returns (title, body) for drawdown breach."""
         title = "DRAWDOWN THRESHOLD BREACHED"
         body = (
-            f"Account {account_id} · {current_pnl_pct:+.1f}% today\n"
+            f"Account {account_id} · {current_pnl_pct:+.1f}% all-time\n"
             f"Threshold: {threshold_pct:+.1f}%\n"
             f"Consider reducing exposure."
         )

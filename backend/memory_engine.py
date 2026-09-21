@@ -301,7 +301,9 @@ class MemoryEngine:
             return
 
         cursor_ts = await self._get_processing_cursor()
-        query: Dict = {"status": "closed"}
+        # Paper trades use "stopped", "profit", "liquidated" — not "closed".
+        # Including "closed" for forward-compat if any engine uses it.
+        query: Dict = {"status": {"$in": ["stopped", "profit", "liquidated", "closed"]}}
         if cursor_ts:
             query["closed_at"] = {"$gt": cursor_ts}
 
@@ -498,6 +500,41 @@ class MemoryEngine:
         if written:
             logger.info(f"[M] Recorded {written} new open positions to trade_memories.")
             self._memory_count += written
+
+    async def _reconcile_open_memories(self):
+        """
+        Close any trade_memories OPEN records whose paper_trade has already closed.
+        Runs after _process_open_positions to prevent Omega Cycle overcounting.
+        """
+        if self.db is None:
+            return
+        try:
+            open_mems = await self.db["trade_memories"].find(
+                {"status": "OPEN"},
+                {"_id": 1, "paper_trade_id": 1},
+            ).to_list(length=OPEN_SCAN_LIMIT)
+            if not open_mems:
+                return
+
+            # Get the set of currently open paper_trade _ids
+            open_pts = await self.db["paper_trades"].find(
+                {"status": "open"}, {"_id": 1}
+            ).to_list(length=OPEN_SCAN_LIMIT)
+            open_pt_ids = {str(t["_id"]) for t in open_pts}
+
+            stale_ids = [
+                m["_id"] for m in open_mems
+                if m.get("paper_trade_id") not in open_pt_ids
+            ]
+            if stale_ids:
+                await self.db["trade_memories"].update_many(
+                    {"_id": {"$in": stale_ids}, "status": "OPEN"},
+                    {"$set": {"status": "CLOSED", "outcome": "reconciled",
+                              "closed_at": datetime.now(timezone.utc)}},
+                )
+                logger.info(f"[M] Reconciled {len(stale_ids)} stale OPEN memory records.")
+        except Exception as e:
+            logger.error(f"[M] _reconcile_open_memories failed: {e}")
 
     async def _close_open_memory_record(self, trade: Dict, reward: Dict) -> bool:
         """
@@ -821,6 +858,7 @@ class MemoryEngine:
             try:
                 await self._process_open_positions()   # write OPEN records first
                 await self._process_new_closures()     # then close / update them
+                await self._reconcile_open_memories()  # purge any orphaned OPEN records
             except Exception as e:
                 logger.error(f"[M] Loop error: {e}", exc_info=True)
             await asyncio.sleep(interval)

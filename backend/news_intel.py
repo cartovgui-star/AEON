@@ -80,61 +80,122 @@ class NewsIntel:
     # CRYPTO NEWS (CryptoPanic RSS - Free, no API key needed)
     # ═══════════════════════════════════════════════════════════════════════════
     
-    async def get_latest_news(self, limit: int = 10, filter_coin: str = None) -> List[Dict]:
-        """Get latest crypto news from multiple sources"""
+    # RSS feed registry: (url, source_name, category, max_items)
+    FEED_REGISTRY = [
+        # ── Crypto ─────────────────────────────────────────────────────────
+        ("https://cointelegraph.com/rss",                       "CoinTelegraph",  "CRYPTO",      3),
+        ("https://blockworks.co/feed/",                          "Blockworks",     "CRYPTO",      3),
+        ("https://decrypt.co/feed",                              "Decrypt",        "CRYPTO",      2),
+        ("https://www.coindesk.com/arc/outboundfeeds/rss/",      "CoinDesk",       "CRYPTO",      2),
+        ("https://bitcoinist.com/feed/",                         "Bitcoinist",     "CRYPTO",      2),
+        # ── Macro / Traditional markets ────────────────────────────────────
+        ("https://feeds.reuters.com/reuters/businessNews",        "Reuters",        "MACRO",       3),
+        ("https://feeds.reuters.com/reuters/technologyNews",      "Reuters Tech",   "MACRO",       2),
+        ("https://www.cnbc.com/id/100003114/device/rss/rss.html", "CNBC Markets",   "EQUITIES",    2),
+        ("https://www.cnbc.com/id/10001147/device/rss/rss.html",  "CNBC Economy",   "MACRO",       2),
+        ("https://feeds.marketwatch.com/marketwatch/topstories/", "MarketWatch",    "EQUITIES",    2),
+        ("https://feeds.marketwatch.com/marketwatch/marketpulse/","MarketWatch",    "EQUITIES",    2),
+        ("https://rss.app/feeds/cNWRQ4qEPLkpPkYB.xml",           "Yahoo Finance",  "EQUITIES",    2),
+        ("https://www.investing.com/rss/news.rss",                "Investing.com",  "MARKETS",     2),
+        # ── Fed / Central Banks ────────────────────────────────────────────
+        ("https://feeds.reuters.com/reuters/financialservicesNews","Reuters Finance","FED",         2),
+        # ── Commodities / Energy ───────────────────────────────────────────
+        ("https://oilprice.com/rss/main",                         "OilPrice",       "COMMODITIES", 2),
+        # ── Geopolitical ───────────────────────────────────────────────────
+        ("https://feeds.reuters.com/reuters/worldNews",           "Reuters World",  "GEO",         2),
+    ]
+
+    # Keywords that force override to MACRO/FED/GEO category
+    _MACRO_KW   = ["fed", "fomc", "rate hike", "rate cut", "powell", "inflation", "cpi", "gdp",
+                   "recession", "treasury", "yield", "ecb", "boj", "federal reserve", "interest rate",
+                   "jobs report", "nonfarm", "payroll", "unemployment"]
+    _FED_KW     = ["fed", "fomc", "powell", "federal reserve", "rate hike", "rate cut",
+                   "interest rate", "ecb", "lagarde", "boj", "ueda", "central bank"]
+    _GEO_KW     = ["war", "sanction", "geopolitical", "conflict", "military", "nato", "tariff",
+                   "trade war", "china us", "us china", "middle east", "opec", "iran", "russia"]
+    _EQUITY_KW  = ["nasdaq", "s&p", "dow jones", "nyse", "ipo", "earnings", "stock market",
+                   "wall street", "sp500", "equities", "shares", "market cap"]
+    _COMMODITY_KW=["oil", "gold", "silver", "copper", "wheat", "crude", "natural gas", "commodity"]
+
+    def _categorize_news(self, title: str, default_cat: str) -> str:
+        tl = title.lower()
+        if any(k in tl for k in self._FED_KW):      return "FED"
+        if any(k in tl for k in self._GEO_KW):      return "GEO"
+        if any(k in tl for k in self._COMMODITY_KW):return "COMMODITIES"
+        if any(k in tl for k in self._EQUITY_KW):   return "EQUITIES"
+        if any(k in tl for k in self._MACRO_KW):    return "MACRO"
+        return default_cat
+
+    def _impact_score(self, title: str, category: str) -> int:
+        """0-100 market impact score based on keywords"""
+        tl = title.lower()
+        score = 30  # base
+        high_impact = ["crash", "collapse", "emergency", "ban", "hack", "war", "surge", "plunge",
+                       "fomc", "fed", "rate", "cpi", "etf approval", "sec", "sanctions", "opec"]
+        med_impact  = ["regulation", "adoption", "partnership", "lawsuit", "rally", "dump",
+                       "earnings", "ipo", "inflation", "jobs", "yield", "payroll"]
+        score += sum(15 for k in high_impact if k in tl)
+        score += sum(8  for k in med_impact  if k in tl)
+        if category in ("FED", "MACRO", "GEO"):  score += 20
+        return min(score, 100)
+
+    async def get_latest_news(self, limit: int = 20, filter_coin: str = None) -> List[Dict]:
+        """Get latest news from crypto + traditional market sources"""
         try:
             news = []
-            
-            # Use multiple RSS feeds for fresh content
-            rss_urls = [
-                "https://cointelegraph.com/rss",
-                "https://blockworks.co/feed/",
-                "https://decrypt.co/feed",
-            ]
-            
-            for url in rss_urls:
+
+            async def _fetch_feed(url, source_name, default_cat, max_items):
                 try:
-                    content = await self._fetch(url, f"news_{url[:30]}", timeout=5)
-                    if content and "<?xml" in content[:100]:
-                        soup = BeautifulSoup(content, 'xml')
-                        items = soup.find_all('item')
-                        
-                        for item in items[:3]:  # Only top 3 from each source
-                            title = item.find('title')
-                            link = item.find('link')
-                            pub_date = item.find('pubDate')
-                            
-                            if title:
-                                title_text = title.text.strip()
-                                sentiment = self._analyze_sentiment(title_text)
-                                
-                                # Filter by coin if specified
-                                if filter_coin:
-                                    if filter_coin.lower() not in title_text.lower():
-                                        continue
-                                
-                                news.append({
-                                    "title": title_text[:80] + "..." if len(title_text) > 80 else title_text,
-                                    "url": link.text if link else "",
-                                    "published": pub_date.text if pub_date else "",
-                                    "sentiment": sentiment,
-                                    "source": "news"
-                                })
+                    content = await self._fetch(url, f"news_{url[:35]}", timeout=6)
+                    if not content:
+                        return []
+                    soup = BeautifulSoup(content, 'xml')
+                    items = soup.find_all('item')
+                    result = []
+                    for item in items[:max_items]:
+                        title_tag = item.find('title')
+                        link_tag  = item.find('link')
+                        pub_tag   = item.find('pubDate')
+                        if not title_tag:
+                            continue
+                        title_text = title_tag.get_text(strip=True)
+                        if not title_text or len(title_text) < 10:
+                            continue
+                        if filter_coin and filter_coin.lower() not in title_text.lower():
+                            continue
+                        cat = self._categorize_news(title_text, default_cat)
+                        result.append({
+                            "title": title_text[:120] + "…" if len(title_text) > 120 else title_text,
+                            "url": link_tag.get_text(strip=True) if link_tag else "",
+                            "published": pub_tag.get_text(strip=True) if pub_tag else "",
+                            "sentiment": self._analyze_sentiment(title_text),
+                            "source": source_name,
+                            "category": cat,
+                            "impact": self._impact_score(title_text, cat),
+                        })
+                    return result
                 except Exception as e:
-                    logger.warning(f"RSS fetch error: {e}")
-                    continue
-            
-            # Deduplicate by title similarity
-            seen_titles = set()
-            unique_news = []
+                    logger.warning(f"Feed error {source_name}: {e}")
+                    return []
+
+            tasks = [_fetch_feed(url, src, cat, mx) for url, src, cat, mx in self.FEED_REGISTRY]
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+            for r in results:
+                if isinstance(r, list):
+                    news.extend(r)
+
+            # Deduplicate by first 45 chars of title
+            seen, unique_news = set(), []
             for n in news:
-                title_key = n["title"][:40].lower()
-                if title_key not in seen_titles:
-                    seen_titles.add(title_key)
+                key = n["title"][:45].lower()
+                if key not in seen:
+                    seen.add(key)
                     unique_news.append(n)
-            
+
+            # Sort: high-impact first, then by recency proxy (insertion order from fresh feeds)
+            unique_news.sort(key=lambda x: x.get("impact", 0), reverse=True)
             return unique_news[:limit]
-            
+
         except Exception as e:
             logger.error(f"News fetch error: {e}")
             return []

@@ -7,14 +7,30 @@ import pytest
 import requests
 import os
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/')
+BASE_URL = (
+    os.environ.get('REACT_APP_BACKEND_URL')
+    or os.environ.get('BACKEND_URL')
+    or 'http://127.0.0.1:8000'
+).rstrip('/')
+API_KEY = (
+    os.environ.get('DASHBOARD_API_KEY')
+    or os.environ.get('REACT_APP_API_KEY')
+    or ''
+)
+
+
+def _request(method, path, **kwargs):
+    headers = dict(kwargs.pop("headers", {}))
+    if API_KEY:
+        headers.setdefault("X-API-Key", API_KEY)
+    return requests.request(method, f"{BASE_URL}{path}", headers=headers, **kwargs)
 
 class TestBacktestV21:
     """Test V2.1 Backtest API endpoints"""
     
     def test_settings_endpoint(self):
         """Test /api/backtest/v21/settings returns correct V2.1 strategy settings"""
-        response = requests.get(f"{BASE_URL}/api/backtest/v21/settings", timeout=30)
+        response = _request("GET", "/api/backtest/v21/settings", timeout=30)
         
         assert response.status_code == 200, f"Expected 200, got {response.status_code}"
         
@@ -36,7 +52,7 @@ class TestBacktestV21:
     
     def test_status_endpoint(self):
         """Test /api/backtest/v21/status returns current backtest status"""
-        response = requests.get(f"{BASE_URL}/api/backtest/v21/status", timeout=30)
+        response = _request("GET", "/api/backtest/v21/status", timeout=30)
         
         assert response.status_code == 200, f"Expected 200, got {response.status_code}"
         
@@ -49,7 +65,7 @@ class TestBacktestV21:
     
     def test_result_endpoint(self):
         """Test /api/backtest/v21/result returns last backtest result"""
-        response = requests.get(f"{BASE_URL}/api/backtest/v21/result", timeout=30)
+        response = _request("GET", "/api/backtest/v21/result", timeout=30)
         
         assert response.status_code == 200, f"Expected 200, got {response.status_code}"
         
@@ -68,8 +84,9 @@ class TestBacktestV21:
     
     def test_run_endpoint(self):
         """Test POST /api/backtest/v21/run starts a backtest"""
-        response = requests.post(
-            f"{BASE_URL}/api/backtest/v21/run",
+        response = _request(
+            "POST",
+            "/api/backtest/v21/run",
             json={"symbols": ["BTC/USDT"], "interval": "1h", "days": 7},
             timeout=30
         )

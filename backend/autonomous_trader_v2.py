@@ -72,7 +72,7 @@ except ImportError:
 TRADING_PAIRS = [
     "BTC/USDT", "ETH/USDT", "SOL/USDT", "BNB/USDT", "XRP/USDT",
     "ADA/USDT", "DOGE/USDT", "AVAX/USDT", "LINK/USDT", "DOT/USDT",
-    "MATIC/USDT"
+    "POL/USDT"
     # ARB removed: 76 trades, 8% WR, -$10,255 (2026-03-22)
 ]
 
@@ -2066,40 +2066,67 @@ class AutonomousTraderV2:
     
     async def get_stats(self) -> Dict:
         """Get comprehensive trading statistics (includes paper trades)"""
-        # Pull closed paper trades from DB to include in stats
+        _WIN_REASONS  = {"take_profit", "trailing_stop"}
+        _LOSS_REASONS = {"stop_loss", "liquidation"}
+
+        # Pull ALL closed paper trades. Use close_reason for win/loss classification
+        # and realized_pnl / initial_margin for the PnL percentage.
+        # Bug-fixed from prior version which: (a) capped at 500 trades and
+        # (b) used unrealized_pnl_pct (stale price snapshot) for classification.
+        # Only count trades from active accounts (retired accounts like PRO/BENCHMARK
+        # accumulated large early-config losses that skew all stats)
+        _ACTIVE_ACCOUNTS = ["REAL_LIFE", "TIER_5K", "TIER_1K", "TIER_500"]
+
         paper_closed = []
         try:
             if self.db is not None:
-                raw = await self.db.paper_trades.find({"status": "closed"}).to_list(500)
+                raw = await self.db.paper_trades.find(
+                    {"status": "closed", "account_id": {"$in": _ACTIVE_ACCOUNTS}},
+                    {"realized_pnl": 1, "initial_margin": 1, "close_reason": 1}
+                ).to_list(20000)
                 for t in raw:
-                    pnl = t.get("pnl_pct") or t.get("unrealized_pnl_pct") or t.get("pnl", 0) or 0
-                    paper_closed.append({"pnl_pct": float(pnl)})
+                    cr = t.get("close_reason", "")
+                    im = t.get("initial_margin") or 0
+                    rp = t.get("realized_pnl", 0) or 0
+                    pnl_pct = (rp / im * 100) if im > 0 else (1.0 if cr in _WIN_REASONS else -1.0)
+                    paper_closed.append({
+                        "pnl_pct":     pnl_pct,
+                        "close_reason": cr,
+                        "realized_pnl": rp,
+                    })
         except Exception as e:
             logger.warning(f"Could not load paper trades for stats: {e}")
 
-        all_closed = self.closed_trades + paper_closed
+        # In-memory v2 trades (autonomous trader engine, legacy)
+        # These use pnl_pct directly — correct as originally stored.
+        all_closed = list(self.closed_trades) + paper_closed
 
-        wins = [t for t in all_closed if t["pnl_pct"] > 0]
-        losses = [t for t in all_closed if t["pnl_pct"] <= 0]
+        # Classify using close_reason for paper trades; pnl_pct sign for legacy v2 trades
+        wins   = [t for t in all_closed if t.get("close_reason") in _WIN_REASONS
+                  or (t.get("close_reason") not in _WIN_REASONS | _LOSS_REASONS and t["pnl_pct"] > 0)]
+        losses = [t for t in all_closed if t.get("close_reason") in _LOSS_REASONS
+                  or (t.get("close_reason") not in _WIN_REASONS | _LOSS_REASONS and t["pnl_pct"] <= 0)]
 
-        total_pnl = sum(t["pnl_pct"] for t in all_closed)
-        avg_win = sum(t["pnl_pct"] for t in wins) / len(wins) if wins else 0
-        avg_loss = sum(t["pnl_pct"] for t in losses) / len(losses) if losses else 0
+        # Dollar PnL from paper trades (realized_pnl already stored in USD)
+        total_pnl_usd = sum(t.get("realized_pnl", 0) or 0 for t in paper_closed)
 
-        # Profit factor — gross_wins / gross_losses
-        # Use None sentinel so "no losses yet" is distinct from "broke even"
-        gross_profit = sum(t["pnl_pct"] for t in wins) if wins else 0.0
-        gross_loss   = abs(sum(t["pnl_pct"] for t in losses)) if losses else 0.0
+        avg_win   = sum(t["pnl_pct"] for t in wins)   / len(wins)   if wins   else 0
+        avg_loss  = sum(t["pnl_pct"] for t in losses) / len(losses) if losses else 0
+
+        gross_profit = sum(t["pnl_pct"] for t in wins)          if wins   else 0.0
+        gross_loss   = abs(sum(t["pnl_pct"] for t in losses))   if losses else 0.0
         if gross_loss > 0:
             profit_factor = round(gross_profit / gross_loss, 2)
         elif gross_profit > 0:
-            profit_factor = 999.0   # no losses recorded — signal as ∞ capped
+            profit_factor = 999.0
         else:
-            profit_factor = 0.0     # no trades or all break-even
+            profit_factor = 0.0
 
-        # Expectancy
-        win_rate = len(wins) / len(all_closed) * 100 if all_closed else 0
-        expectancy = (win_rate/100 * avg_win) - ((100-win_rate)/100 * abs(avg_loss))
+        clean = len(wins) + len(losses)
+        win_rate   = len(wins) / clean * 100 if clean else 0
+        expectancy = (win_rate/100 * avg_win) - ((100 - win_rate)/100 * abs(avg_loss))
+        # total_pnl_pct = avg per-trade margin return (expectancy), NOT raw sum
+        total_pnl = expectancy
 
         # Current open PnL
         open_pnl = 0
@@ -2127,6 +2154,7 @@ class AutonomousTraderV2:
             "wins": len(wins),
             "losses": len(losses),
             "win_rate": round(win_rate, 1),
+            "total_pnl_usd": round(total_pnl_usd, 2),
             "total_pnl_pct": round(total_pnl, 2),
             "open_pnl_pct": round(open_pnl, 2),
             "avg_win_pct": round(avg_win, 2),

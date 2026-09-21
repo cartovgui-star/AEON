@@ -211,3 +211,58 @@ async def control_resume():
         return {"success": True, "message": "Crisis mode cleared — trading resumed"}
     except Exception as e:
         return {"error": str(e)}
+
+
+@router.get("/api/nexus/status")
+async def get_nexus_status():
+    """
+    Unified NEXUS status for the Lab page — config + heartbeat + recent heals + recent adaptations.
+    Single call that surfaces everything the UI needs to show NEXUS health.
+    """
+    if app_state.db is None:
+        return {"error": "db not ready", "live": False}
+
+    try:
+        config_doc = await app_state.db["nexus_config"].find_one({"_id": "live"}, {"_id": 0})
+        heartbeat_doc = await app_state.db["nexus_heartbeat"].find_one({}, {"_id": 0}, sort=[("timestamp", -1)])
+        heals = await app_state.db["nexus_heals"].find({}, {"_id": 0}, sort=[("timestamp", -1)]).limit(5).to_list(5)
+        adaptations = await app_state.db["nexus_adaptations"].find({}, {"_id": 0}, sort=[("timestamp", -1)]).limit(5).to_list(5)
+
+        # Determine if NEXUS process is alive (heartbeat within last 90s)
+        nexus_alive = False
+        last_beat = None
+        if heartbeat_doc and heartbeat_doc.get("timestamp"):
+            ts = heartbeat_doc["timestamp"]
+            if hasattr(ts, "timestamp"):
+                age_s = (datetime.now(timezone.utc) - ts.replace(tzinfo=timezone.utc) if ts.tzinfo is None else datetime.now(timezone.utc) - ts).total_seconds()
+                nexus_alive = age_s < 90
+                last_beat = ts.isoformat()
+            elif isinstance(ts, str):
+                nexus_alive = True
+                last_beat = ts
+
+        # Convert datetime objects in heals/adaptations for JSON
+        def _clean(docs):
+            result = []
+            for d in docs:
+                cleaned = {}
+                for k, v in d.items():
+                    cleaned[k] = v.isoformat() if hasattr(v, "isoformat") else v
+                result.append(cleaned)
+            return result
+
+        config = {}
+        if config_doc:
+            for k, v in config_doc.items():
+                config[k] = v.isoformat() if hasattr(v, "isoformat") else v
+
+        return {
+            "live": nexus_alive,
+            "last_heartbeat": last_beat,
+            "config": config,
+            "recent_heals": _clean(heals),
+            "recent_adaptations": _clean(adaptations),
+            "loop_errors": heartbeat_doc.get("loop_errors", 0) if heartbeat_doc else 0,
+        }
+    except Exception as e:
+        return {"error": str(e), "live": False}

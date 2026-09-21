@@ -29,7 +29,7 @@ class OrderFlowAnalyzer:
     def __init__(self):
         self.cache = {}
         self.cache_ttl = 30  # 30 second cache
-        self.mexc = ccxt.mexc()
+        self.okx = ccxt.okx({'enableRateLimit': True})
     
     def _cache_get(self, key: str):
         if key in self.cache:
@@ -58,7 +58,7 @@ class OrderFlowAnalyzer:
             loop = asyncio.get_running_loop()
             trades = await loop.run_in_executor(
                 executor,
-                lambda: self.mexc.fetch_trades(full_symbol, limit=limit)
+                lambda: self.okx.fetch_trades(full_symbol, limit=limit)
             )
             
             self._cache_set(cache_key, trades)

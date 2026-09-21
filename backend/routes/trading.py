@@ -404,16 +404,16 @@ async def api_trading_v2_closed():
     try:
         if state.db is not None:
             raw = await state.db.paper_trades.find(
-                {"status": "closed"},
+                {"status": {"$in": ["stopped", "profit", "liquidated", "closed"]}},
                 sort=[("closed_at", -1)]
             ).limit(2000).to_list(2000)
             for t in raw:
                 t.pop("_id", None)
-                # Normalize realized_pnl -> pnl_pct so Trading history tab renders correctly
-                if "pnl_pct" not in t or t.get("pnl_pct") is None:
-                    realized = t.get("realized_pnl", 0) or 0
-                    margin = t.get("margin", 1) or 1
-                    t["pnl_pct"] = round((realized / margin) * 100, 2)
+                # Normalize realized_pnl -> pnl_pct using initial_margin (what was
+                # originally risked), not margin (which shrinks with partial closes).
+                realized = t.get("realized_pnl", 0) or 0
+                im = t.get("initial_margin") or t.get("margin") or 1
+                t["pnl_pct"] = round((realized / im) * 100, 2)
                 # Normalize exit_reason field
                 if "exit_reason" not in t:
                     t["exit_reason"] = t.get("close_reason", "CLOSED")
@@ -457,7 +457,7 @@ async def api_trades_closed():
     try:
         if state.db is not None:
             raw = await state.db.paper_trades.find(
-                {"status": "closed"},
+                {"status": {"$in": ["stopped", "profit", "liquidated", "closed"]}},
                 sort=[("closed_at", -1)]
             ).limit(2000).to_list(2000)
             for t in raw:
@@ -517,7 +517,7 @@ async def api_trades_export():
     # Paper trades from DB
     try:
         if state.db is not None:
-            raw = await state.db.paper_trades.find({"status": "closed"}).to_list(500)
+            raw = await state.db.paper_trades.find({"status": {"$in": ["stopped", "profit", "liquidated", "closed"]}}).to_list(500)
             for t in raw:
                 pnl = t.get("pnl_pct") or 0
                 if not pnl and t.get("realized_pnl") and t.get("margin"):
@@ -549,7 +549,7 @@ async def api_trading_v2_pnl_history():
     try:
         if state.db is not None:
             closed = await state.db.paper_trades.find(
-                {"status": "closed", "realized_pnl": {"$exists": True, "$ne": None}},
+                {"status": {"$in": ["stopped", "profit", "liquidated", "closed"]}, "realized_pnl": {"$exists": True, "$ne": None}},
                 {"symbol": 1, "direction": 1, "realized_pnl": 1, "closed_at": 1, "close_reason": 1}
             ).sort("closed_at", 1).limit(200).to_list(200)
             for trade in closed:
@@ -722,22 +722,21 @@ async def api_positions():
     if not raw:
         return {"positions": [], "total": 0, "total_pnl": 0}
 
-    # ── Fetch all prices in ONE MEXC public REST request ─────────────────────
+    # ── Fetch all prices in ONE OKX public REST request ──────────────────────
     live_prices: dict = {}
     try:
         import httpx
         unique_symbols = list({t.get("symbol", "") for t in raw if t.get("symbol")})
-        mexc_to_internal: dict = {}
-        for sym in unique_symbols:
-            mexc_to_internal[sym.replace("/", "")] = sym
         async with httpx.AsyncClient(timeout=4.0) as client:
-            resp = await client.get("https://api.mexc.com/api/v3/ticker/price")
+            resp = await client.get("https://www.okx.com/api/v5/market/tickers", params={"instType": "SPOT"})
             if resp.status_code == 200:
-                for item in resp.json():
-                    mexc_sym = item.get("symbol", "")
-                    if mexc_sym in mexc_to_internal:
+                data = resp.json().get("data", [])
+                for item in data:
+                    inst_id = item.get("instId", "")  # e.g. BTC-USDT
+                    internal = inst_id.replace("-", "/")  # BTC/USDT
+                    if internal in unique_symbols:
                         try:
-                            live_prices[mexc_to_internal[mexc_sym]] = float(item["price"])
+                            live_prices[internal] = float(item["last"])
                         except (KeyError, ValueError):
                             pass
     except Exception:
@@ -822,18 +821,19 @@ async def api_positions_close(request: Request):
     if not state.paper_trading:
         return {"error": "Paper trading not initialized"}
     clean_symbol = symbol if "/" in symbol else f"{symbol}/USDT"
-    # Fetch price via MEXC public REST (no API key required — avoids ccxt executor timeout)
+    # Fetch price via OKX public REST (no API key required — avoids ccxt executor timeout)
     current_price = 0.0
     try:
         import httpx
-        mexc_sym = clean_symbol.replace("/", "")
+        okx_inst = clean_symbol.replace("/", "-")  # BTC/USDT → BTC-USDT
         async with httpx.AsyncClient(timeout=4.0) as client:
             resp = await client.get(
-                "https://api.mexc.com/api/v3/ticker/price",
-                params={"symbol": mexc_sym},
+                "https://www.okx.com/api/v5/market/ticker",
+                params={"instId": okx_inst},
             )
             if resp.status_code == 200:
-                current_price = float(resp.json().get("price", 0) or 0)
+                data = resp.json().get("data", [{}])
+                current_price = float(data[0].get("last", 0) or 0) if data else 0.0
     except Exception:
         pass
     if not current_price:
@@ -1257,8 +1257,8 @@ async def api_alerts_threshold(request: Request):
 
 
 # MEXC & Bot
-# MEXC & Bot
-# Note: /api/mexc/live remains in server.py to avoid circular import with get_mexc_orderbook
+# OKX & Bot
+# Note: /api/okx/live is in server.py to avoid circular import with get_okx_orderbook
 
 @router.get("/bot/stats")
 async def api_stats():
@@ -1285,7 +1285,7 @@ async def api_test():
     try:
         btc = await state.market_intel.get_technical_analysis("BTC/USDT", "1h")
         binance_ok = "error" not in btc
-        return {"status": "success", "binance": binance_ok, "mexc": bool(os.environ.get('MEXC_API_KEY')), "telegram": bool(os.environ.get('TELEGRAM_TOKEN')), "users": len(state.chat_ids)}
+        return {"status": "success", "binance": binance_ok, "okx": True, "telegram": bool(os.environ.get('TELEGRAM_TOKEN')), "users": len(state.chat_ids)}
     except Exception as e:
         return {"status": "error", "error": str(e)}
 

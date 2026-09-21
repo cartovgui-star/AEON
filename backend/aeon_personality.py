@@ -59,7 +59,7 @@ class AeonMind:
             'btc': 'BTC', 'bitcoin': 'BTC', 'eth': 'ETH', 'ethereum': 'ETH',
             'sol': 'SOL', 'solana': 'SOL', 'doge': 'DOGE', 'xrp': 'XRP',
             'bnb': 'BNB', 'avax': 'AVAX', 'ada': 'ADA', 'link': 'LINK',
-            'dot': 'DOT', 'matic': 'MATIC', 'atom': 'ATOM', 'near': 'NEAR',
+            'dot': 'DOT', 'matic': 'POL', 'pol': 'POL', 'polygon': 'POL', 'atom': 'ATOM', 'near': 'NEAR',
             'apt': 'APT', 'arb': 'ARB', 'op': 'OP', 'inj': 'INJ'
         }
     

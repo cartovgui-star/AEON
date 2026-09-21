@@ -14,11 +14,12 @@ from datetime import datetime, timezone, timedelta
 from typing import Dict, List, Set, Callable, Any, Optional
 from concurrent.futures import ThreadPoolExecutor
 import ccxt
+from okx_rate_limiter import OKX_SEM
 
 logger = logging.getLogger(__name__)
 executor = ThreadPoolExecutor(max_workers=3)
 
-mexc = ccxt.mexc()
+okx = ccxt.okx({'enableRateLimit': True})
 
 
 class PriceAlert:
@@ -127,7 +128,10 @@ class PriceAlertSystem:
     async def fetch_price(self, symbol: str) -> Optional[float]:
         try:
             loop = asyncio.get_running_loop()
-            ticker = await loop.run_in_executor(executor, lambda: mexc.fetch_ticker(symbol))
+            def _fetch():
+                with OKX_SEM:
+                    return okx.fetch_ticker(symbol)
+            ticker = await loop.run_in_executor(executor, _fetch)
             return ticker.get("last", 0)
         except Exception as e:
             logger.error(f"Price fetch error {symbol}: {e}")
@@ -136,7 +140,10 @@ class PriceAlertSystem:
     async def fetch_ohlcv(self, symbol: str, timeframe: str = "5m", limit: int = 20) -> List:
         try:
             loop = asyncio.get_running_loop()
-            return await loop.run_in_executor(executor, lambda: mexc.fetch_ohlcv(symbol, timeframe, limit=limit))
+            def _fetch():
+                with OKX_SEM:
+                    return okx.fetch_ohlcv(symbol, timeframe, limit=limit)
+            return await loop.run_in_executor(executor, _fetch)
         except Exception as e:
             logger.error(f"OHLCV fetch error {symbol}: {e}")
             return []

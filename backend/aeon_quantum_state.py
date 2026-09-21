@@ -32,6 +32,7 @@
 import asyncio
 import logging
 import math
+import time
 from datetime import datetime, timezone, timedelta
 from typing import Dict, List, Optional, Tuple
 
@@ -654,13 +655,23 @@ class AEONQuantumState:
                     state.adx,
                 )
 
-                # Warn when health is below 1 — the system is spending more than it earns
+                # Warn when health crosses below 1 — the system is spending more than it earns.
+                # Log only on transition (healthy→unhealthy) or once per hour while unhealthy,
+                # instead of every LOOP_INTERVAL seconds. Ω-cycle (6h loop) handles the action.
                 if state.H < 1.0:
-                    logger.warning(
-                        "[Ψ] H=%.3f < 1.0 — AEON is spending more edge than it earns. "
-                        "Ω-cycle should trigger.",
-                        state.H,
-                    )
+                    was_ok = getattr(self, "_last_H_ok", True)
+                    last_warn = getattr(self, "_last_H_warn_ts", 0)
+                    now_ts = time.time()
+                    if was_ok or (now_ts - last_warn) >= 3600:
+                        logger.warning(
+                            "[Ψ] H=%.3f < 1.0 — AEON is spending more edge than it earns. "
+                            "Ω-cycle will act on next 6h tick.",
+                            state.H,
+                        )
+                        self._last_H_warn_ts = now_ts
+                    self._last_H_ok = False
+                else:
+                    self._last_H_ok = True
 
                 # Warn when coherence is below 0.4 — engines are diverging
                 if state.C < 0.4 and state.n_active > 1:

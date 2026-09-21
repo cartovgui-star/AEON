@@ -16,6 +16,7 @@ import os
 import httpx
 
 from mexc_utils import format_mexc_symbol  # normalizes any format → BTC/USDT (valid for OKX too)
+from okx_rate_limiter import OKX_SEM
 
 logger = logging.getLogger(__name__)
 
@@ -48,15 +49,19 @@ class MarketIntelligence:
         self._deriv_cache_ttl = 30  # seconds
 
         # OKX — no API key needed for public market data
-        self.mexc = ccxt.okx({'enableRateLimit': True})
-        self.mexc_public = ccxt.okx({'enableRateLimit': True})
-        self.primary = self.mexc
+        self.okx = ccxt.okx({'enableRateLimit': True})
+        self.okx_public = ccxt.okx({'enableRateLimit': True})
+        self.primary = self.okx
+
+        # Semaphore: cap concurrent OKX async paths. Matches OKX_SEM (threading)
+        # at 4 concurrent — ≈13 req/s at 300ms RTT, safely under 20 req/s limit.
+        self._okx_sem: asyncio.Semaphore = asyncio.Semaphore(4)
 
         # Circuit breaker (kept for compatibility, OKX rarely fails)
         self._lsr_fail_count: int = 0
         self._lsr_disabled_until: float = 0.0  # epoch seconds
 
-        # Symbol error cache: skip symbols that MEXC says don't exist for 24h
+        # Symbol error cache: skip symbols that OKX says don't exist for 24h
         # Prevents log spam for gold/silver/stock tokens LCW returns but MEXC doesn't list
         self._bad_symbols: dict = {}   # symbol -> expiry epoch
         self.symbols = [
@@ -78,30 +83,41 @@ class MarketIntelligence:
         # Skip symbols MEXC has already rejected — re-check after 24h
         if symbol in self._bad_symbols and _time.time() < self._bad_symbols[symbol]:
             return pd.DataFrame()
-        try:
-            ohlcv = self.mexc_public.fetch_ohlcv(symbol, timeframe, limit=limit)
-            df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
-            df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
-            return df
-        except Exception as e:
-            if "does not have market symbol" in str(e):
-                self._bad_symbols[symbol] = _time.time() + 86400  # silence for 24h
-            else:
+        for attempt in range(2):
+            try:
+                with OKX_SEM:
+                    ohlcv = self.okx_public.fetch_ohlcv(symbol, timeframe, limit=limit)
+                df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
+                df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
+                return df
+            except Exception as e:
+                err = str(e)
+                if "does not have market symbol" in err:
+                    self._bad_symbols[symbol] = _time.time() + 86400  # silence for 24h
+                    return pd.DataFrame()
+                if "50011" in err or "Too Many Requests" in err:
+                    if attempt == 0:
+                        _time.sleep(1.5)  # brief backoff before retry
+                        continue
                 logger.error(f"Klines error: {e}")
-            return pd.DataFrame()
+                return pd.DataFrame()
+        return pd.DataFrame()
     
     async def get_klines(self, symbol: str, timeframe: str = "1h", limit: int = 100) -> pd.DataFrame:
         loop = asyncio.get_running_loop()
-        return await loop.run_in_executor(None, self.get_klines_sync, symbol, timeframe, limit)
+        async with self._okx_sem:
+            return await loop.run_in_executor(None, self.get_klines_sync, symbol, timeframe, limit)
 
     async def get_ohlcv(self, symbol: str, timeframe: str = "5m", limit: int = 200) -> Dict:
         """Return OHLCV as candles list [[ts, o, h, l, c, v], ...] for vwap_scalper compatibility."""
         symbol = format_mexc_symbol(symbol)
         try:
             loop = asyncio.get_running_loop()
-            raw = await loop.run_in_executor(
-                None, lambda: self.mexc_public.fetch_ohlcv(symbol, timeframe, limit=limit)
-            )
+            async with self._okx_sem:
+                def _fetch():
+                    with OKX_SEM:
+                        return self.okx_public.fetch_ohlcv(symbol, timeframe, limit=limit)
+                raw = await loop.run_in_executor(None, _fetch)
             if not raw:
                 raise ValueError("empty")
             return {"candles": raw, "symbol": symbol, "timeframe": timeframe}
@@ -116,7 +132,8 @@ class MarketIntelligence:
         if symbol in self._bad_symbols and _time.time() < self._bad_symbols[symbol]:
             return {"error": "symbol not on MEXC"}
         try:
-            ticker = self.mexc_public.fetch_ticker(symbol)
+            with OKX_SEM:
+                ticker = self.okx_public.fetch_ticker(symbol)
             return {
                 "symbol": symbol,
                 "price": ticker['last'],
@@ -138,7 +155,8 @@ class MarketIntelligence:
         if cached and (now - cached[1]) < self._ticker_cache_ttl:
             return cached[0]
         loop = asyncio.get_running_loop()
-        result = await loop.run_in_executor(None, self.get_ticker_sync, symbol)
+        async with self._okx_sem:
+            result = await loop.run_in_executor(None, self.get_ticker_sync, symbol)
         if "error" not in result:
             self._ticker_cache[symbol] = (result, now)
         return result
@@ -147,7 +165,8 @@ class MarketIntelligence:
         """Get orderbook analysis"""
         symbol = format_mexc_symbol(symbol)
         try:
-            book = self.mexc_public.fetch_order_book(symbol, limit)
+            with OKX_SEM:
+                book = self.okx_public.fetch_order_book(symbol, limit)
             bid_depth = sum([b[1] * b[0] for b in book['bids'][:10]])
             ask_depth = sum([a[1] * a[0] for a in book['asks'][:10]])
             total = bid_depth + ask_depth
@@ -165,7 +184,8 @@ class MarketIntelligence:
     
     async def get_orderbook(self, symbol: str) -> Dict[str, Any]:
         loop = asyncio.get_running_loop()
-        return await loop.run_in_executor(None, self.get_orderbook_sync, symbol)
+        async with self._okx_sem:
+            return await loop.run_in_executor(None, self.get_orderbook_sync, symbol)
     
     async def get_technical_analysis(self, symbol: str = "BTC/USDT", interval: str = "1h") -> Dict[str, Any]:
         """Full technical analysis"""
@@ -502,7 +522,7 @@ class MarketIntelligence:
         else:
             self._deriv_cache[key] = (value, time.time())
 
-    def _mexc_futures_symbol(self, symbol: str) -> str:
+    def _okx_futures_symbol(self, symbol: str) -> str:
         """Convert 'BTC/USDT' -> 'BTC-USDT-SWAP' for OKX futures endpoints."""
         return _to_okx_inst(symbol)
 
@@ -620,7 +640,7 @@ class MarketIntelligence:
         if cached is not None:
             return cached
 
-        inst_id = self._mexc_futures_symbol(symbol)
+        inst_id = self._okx_futures_symbol(symbol)
         url = f"{_OKX_BASE}/public/funding-rate-history"
         params = {"instId": inst_id, "limit": limit}
         try:
@@ -713,7 +733,7 @@ class MarketIntelligence:
         if cached is not None:
             return cached
 
-        inst_id = self._mexc_futures_symbol(symbol)
+        inst_id = self._okx_futures_symbol(symbol)
         url = f"{_OKX_BASE}/public/open-interest"
         try:
             async with httpx.AsyncClient(timeout=10.0) as client:

@@ -634,7 +634,7 @@ class StressMonitor:
     LAMBDA           = 2.5  # sizing sensitivity
 
     # BTC-ecosystem coins (from paper_trading.py CORRELATION_GROUPS)
-    BTC_ECO = {"BTC", "ETH", "BNB", "SOL", "AVAX", "MATIC", "OP"}
+    BTC_ECO = {"BTC", "ETH", "BNB", "SOL", "AVAX", "POL", "OP"}
 
     def __init__(self):
         self.stress_score:  float = 0.10   # start calm

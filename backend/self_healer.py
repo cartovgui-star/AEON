@@ -157,11 +157,15 @@ class SelfHealer:
                             self._log_healing(name, "THROTTLED", f"{monitor.errors_this_hour} errors/hr")
                             monitor.status = "throttled"
 
-                    # Check for stale heartbeat
-                    elif monitor.is_stale and monitor.task and not monitor.task.done():
-                        self._log_healing(name, "STALE_HEARTBEAT",
-                                          f"Last: {monitor.last_heartbeat}")
-                        monitor.status = "stale"
+                    # Task alive: auto-heartbeat for services that don't explicitly heartbeat.
+                    # An asyncio task being non-done is implicit proof the service is running.
+                    elif monitor.task and not monitor.task.done():
+                        if monitor.is_stale:
+                            self._log_healing(name, "STALE_HEARTBEAT",
+                                              f"Last: {monitor.last_heartbeat}")
+                            monitor.status = "stale"
+                        else:
+                            monitor.heartbeat()
 
                 await asyncio.sleep(60)
             except Exception as e:

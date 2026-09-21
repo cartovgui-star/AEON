@@ -446,14 +446,14 @@ class StrategyEngine:
         import ccxt
         from concurrent.futures import ThreadPoolExecutor
         
-        mexc = ccxt.mexc()
+        okx = ccxt.okx({'enableRateLimit': True})
         executor = ThreadPoolExecutor(max_workers=2)
-        
+
         try:
             loop = asyncio.get_running_loop()
             ohlcv = await loop.run_in_executor(
                 executor,
-                lambda: mexc.fetch_ohlcv(symbol, timeframe, limit=limit)
+                lambda: okx.fetch_ohlcv(symbol, timeframe, limit=limit)
             )
             return ohlcv
         except Exception as e:

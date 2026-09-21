@@ -20,7 +20,7 @@ async def api_volume_profile(
     """
     from volume_profile_engine import vsp_analyzer
     import ccxt
-    exchange = ccxt.mexc()
+    exchange = ccxt.okx({'enableRateLimit': True})
     return await vsp_analyzer.get_session_profile(symbol.upper(), exchange, timeframe, limit)
 
 
@@ -32,7 +32,7 @@ async def api_liq_heatmap(symbol: str):
     """
     from volume_profile_engine import liq_heatmap
     import ccxt
-    exchange = ccxt.mexc()
+    exchange = ccxt.okx({'enableRateLimit': True})
     loop = __import__("asyncio").get_running_loop()
     formatted = symbol.upper().replace("/", "")
     if not formatted.endswith("USDT"):

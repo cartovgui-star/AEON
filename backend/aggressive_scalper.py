@@ -16,6 +16,7 @@ from datetime import datetime, timezone, timedelta
 from typing import Dict, List, Optional, Tuple
 from concurrent.futures import ThreadPoolExecutor
 import ccxt
+from okx_rate_limiter import OKX_SEM
 import numpy as np
 
 # Import learning and reversal systems
@@ -32,12 +33,12 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
-# Initialize MEXC
+# Initialize OKX
 try:
-    mexc = ccxt.mexc({'enableRateLimit': True})
+    okx = ccxt.okx({'enableRateLimit': True})
 except Exception as e:
-    logger.error(f"Failed to init MEXC for scalper: {e}")
-    mexc = None
+    logger.error(f"Failed to init OKX for scalper: {e}")
+    okx = None
 
 executor = ThreadPoolExecutor(max_workers=5)
 
@@ -127,16 +128,16 @@ class AggressiveScalper:
             logger.info("Auto-optimization completed")
         
     async def fetch_ohlcv(self, symbol: str, timeframe: str = '5m', limit: int = 100) -> List:
-        """Fetch OHLCV data from MEXC"""
-        if not mexc:
+        """Fetch OHLCV data from OKX"""
+        if not okx:
             return []
-        
+
         try:
             loop = asyncio.get_running_loop()
-            ohlcv = await loop.run_in_executor(
-                executor,
-                lambda: mexc.fetch_ohlcv(symbol, timeframe, limit=limit)
-            )
+            def _fetch():
+                with OKX_SEM:
+                    return okx.fetch_ohlcv(symbol, timeframe, limit=limit)
+            ohlcv = await loop.run_in_executor(executor, _fetch)
             return ohlcv
         except Exception as e:
             logger.error(f"Scalper OHLCV fetch error {symbol}: {e}")

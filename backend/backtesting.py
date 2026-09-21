@@ -9,12 +9,13 @@ from datetime import datetime, timezone, timedelta
 from typing import Dict, List, Optional, Tuple
 from concurrent.futures import ThreadPoolExecutor
 import ccxt
+from okx_rate_limiter import OKX_SEM
 
 logger = logging.getLogger(__name__)
 executor = ThreadPoolExecutor(max_workers=3)
 
 # Initialize exchange
-mexc = ccxt.mexc()
+okx = ccxt.okx({'enableRateLimit': True})
 
 
 class BacktestEngine:
@@ -36,10 +37,10 @@ class BacktestEngine:
         """Fetch historical OHLCV data"""
         try:
             loop = asyncio.get_running_loop()
-            ohlcv = await loop.run_in_executor(
-                executor,
-                lambda: mexc.fetch_ohlcv(symbol, timeframe, limit=limit)
-            )
+            def _fetch():
+                with OKX_SEM:
+                    return okx.fetch_ohlcv(symbol, timeframe, limit=limit)
+            ohlcv = await loop.run_in_executor(executor, _fetch)
             return ohlcv
         except Exception as e:
             logger.error(f"Historical data error: {e}")

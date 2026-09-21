@@ -69,8 +69,8 @@ async def get_performance_breakdown():
 
     try:
         closed = await app_state.db.paper_trades.find(
-            {"status": "closed"},
-            {"engine": 1, "realized_pnl": 1, "closed_at": 1, "direction": 1}
+            {"status": {"$in": ["stopped", "profit", "liquidated", "closed"]}},
+            {"engine": 1, "strategy": 1, "realized_pnl": 1, "closed_at": 1, "direction": 1}
         ).sort("closed_at", -1).limit(2000).to_list(2000)
     except Exception as e:
         return {"by_engine": [], "by_hour": [], "error": str(e)}

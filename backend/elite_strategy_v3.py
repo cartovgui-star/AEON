@@ -575,6 +575,11 @@ class EliteStrategyV3:
         logger.info("🎯 ELITE STRATEGY v3 AUTONOMOUS LOOP STARTED — scanning every 30 min")
         while self.enabled:
             try:
+                try:
+                    from self_healer import self_healer as _sh
+                    _sh.heartbeat("elite_strategy")
+                except Exception:
+                    pass
                 signals = await self.scan_all_elite()
                 if signals:
                     logger.info(f"[ELITE AUTO] {len(signals)} signal(s) this scan")
@@ -590,7 +595,15 @@ class EliteStrategyV3:
                 _sh.heartbeat("elite_strategy")
             except Exception as e:
                 logger.error(f"[ELITE AUTO] Loop error: {e}")
-            await asyncio.sleep(interval)
+            elapsed = 0
+            while elapsed < interval:
+                await asyncio.sleep(min(60, interval - elapsed))
+                elapsed += min(60, interval - elapsed)
+                try:
+                    from self_healer import self_healer as _sh
+                    _sh.heartbeat("elite_strategy")
+                except Exception:
+                    pass
 
     def _format_telegram_alert(self, signal: dict) -> str:
         sym       = signal.get("symbol", "").replace("/USDT", "")

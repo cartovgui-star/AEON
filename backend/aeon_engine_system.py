@@ -25,6 +25,59 @@ except ImportError:
     _ORIA_AVAILABLE = False
     logger.warning("[ORIA] oria_layer.py not found — ORIA features disabled")
 
+# ── Hurst Regime Gate (Gate 16) ───────────────────────────────────────────────
+try:
+    from hurst_gate import check_hurst_gate as _check_hurst_gate, get_hurst_cache_snapshot
+    _HURST_AVAILABLE = True
+except ImportError:
+    _HURST_AVAILABLE = False
+    logger.warning("[HURST] hurst_gate.py not found — Gate 16 disabled")
+
+# ── Ensemble Voter ────────────────────────────────────────────────────────────
+try:
+    from ensemble_voter import record_vote as _record_ensemble_vote, get_consensus as _get_ensemble_consensus
+    _ENSEMBLE_AVAILABLE = True
+except ImportError:
+    _ENSEMBLE_AVAILABLE = False
+    logger.warning("[ENSEMBLE] ensemble_voter.py not found — consensus tracking disabled")
+
+# ── Von Neumann Entropy Gate (Gate 17) ────────────────────────────────────────
+try:
+    from von_neumann_gate import check_von_neumann_gate as _check_vn_gate, get_vn_cache_snapshot
+    _VN_AVAILABLE = True
+except ImportError:
+    _VN_AVAILABLE = False
+    logger.warning("[VN GATE] von_neumann_gate.py not found — Gate 17 disabled")
+
+# ── QUBO Position Sizer ───────────────────────────────────────────────────────
+try:
+    from qubo_sizer import compute_qubo_multiplier as _compute_qubo_multiplier
+    _QUBO_AVAILABLE = True
+except ImportError:
+    _QUBO_AVAILABLE = False
+    logger.warning("[QUBO] qubo_sizer.py not found — QUBO sizing disabled")
+
+# ── NEXUS Config Cache ────────────────────────────────────────────────────────
+# NEXUS writes nexus_config every 60s; we cache it for 30s to avoid per-trade DB reads.
+import time as _time_mod
+_NEXUS_CACHE: dict = {}
+_NEXUS_CACHE_TS: float = 0.0
+_NEXUS_CACHE_TTL: float = 30.0
+
+async def _get_nexus_config(db) -> dict:
+    global _NEXUS_CACHE, _NEXUS_CACHE_TS
+    now = _time_mod.time()
+    if now - _NEXUS_CACHE_TS < _NEXUS_CACHE_TTL and _NEXUS_CACHE:
+        return _NEXUS_CACHE
+    try:
+        doc = await db["nexus_config"].find_one({"_id": "live"})
+        if doc:
+            _NEXUS_CACHE = doc
+            _NEXUS_CACHE_TS = now
+    except Exception:
+        pass
+    return _NEXUS_CACHE
+
 
 class EngineType(Enum):
     """All 9 independent engines"""
@@ -731,6 +784,150 @@ class EngineManager:
             except Exception:
                 pass
 
+        # ── NEXUS CONFIG GATE ─────────────────────────────────────────────────
+        # NEXUS is AEON's autonomous nervous system running in a separate process.
+        # It writes nexus_config to MongoDB every 60s with regime-derived modifiers.
+        # This gate enforces whatever NEXUS has decided about the current market state.
+        _nexus_pos_modifier: float = 1.0
+        # Accumulator for size penalties from soft-pass gates (e.g. Von Neumann
+        # elevated-correlation half-size). Folded into the final position_multiplier.
+        _gate_size_mult: float = 1.0
+        try:
+            import app_state as _app_state_nx
+            if _app_state_nx.db is not None:
+                _nc = await _get_nexus_config(_app_state_nx.db)
+                if _nc:
+                    # Hard stop: crisis correlation spike or manual pause
+                    if _nc.get("crisis") or _nc.get("pause"):
+                        _nc_reason = _nc.get("reason", "NEXUS crisis/pause mode")
+                        self.engine_stats[engine_type].blocked_trades += 1
+                        logger.warning(
+                            f"🛑 [NEXUS GATE] [{engine_type.value}] "
+                            f"{signal.get('symbol','')} BLOCKED — {_nc_reason}"
+                        )
+                        return {
+                            "action":     "REJECT",
+                            "engine":     engine_type.value,
+                            "symbol":     signal.get("symbol", ""),
+                            "reason":     f"NEXUS: {_nc_reason}",
+                            "nexus_gate": True,
+                        }
+                    # Engine allowlist: Morpheus can suspend individual engines
+                    _nc_engines = _nc.get("active_engines", [])
+                    if _nc_engines and engine_type.value not in _nc_engines:
+                        self.engine_stats[engine_type].blocked_trades += 1
+                        logger.warning(
+                            f"🛑 [NEXUS GATE] [{engine_type.value}] suspended — "
+                            f"not in active_engines (regime={_nc.get('regime','?')})"
+                        )
+                        return {
+                            "action":     "REJECT",
+                            "engine":     engine_type.value,
+                            "symbol":     signal.get("symbol", ""),
+                            "reason":     f"NEXUS: {engine_type.value} suspended by Morpheus (regime={_nc.get('regime','?')})",
+                            "nexus_gate": True,
+                        }
+                    # Position modifier: NEXUS scales size based on market regime
+                    _nexus_pos_modifier = float(_nc.get("position_modifier", 1.0))
+                    if _nexus_pos_modifier != 1.0:
+                        logger.debug(
+                            f"[NEXUS] Position modifier {_nexus_pos_modifier:.2f}× applied "
+                            f"({_nc.get('regime','?')}+{_nc.get('trend_regime','?')})"
+                        )
+        except Exception as _nc_err:
+            logger.debug(f"[NEXUS GATE] skipped: {_nc_err}")
+
+        # ── REVERSING REGIME DIRECTIONAL GATE ────────────────────────────────
+        # When NEXUS trend_regime is REVERSING, LONG signals need 15pp extra
+        # confidence because the trend is against them. This makes SHORT setups
+        # relatively easier to approve — corrects the 100%-LONG directional prison.
+        try:
+            if _NEXUS_CACHE.get("trend_regime") == "REVERSING":
+                _sig_dir_rev = signal.get("direction", "long").lower()
+                _sig_conf_rev = float(signal.get("confidence", 0))
+                if _sig_dir_rev == "long" and _sig_conf_rev < 85:
+                    self.engine_stats[engine_type].blocked_trades += 1
+                    logger.info(
+                        f"🔄 [REVERSING GATE] [{engine_type.value}] "
+                        f"{signal.get('symbol','')} LONG BLOCKED — "
+                        f"trend_regime=REVERSING, need 85%+ confidence (got {_sig_conf_rev:.0f}%)"
+                    )
+                    return {
+                        "action":         "REJECT",
+                        "engine":         engine_type.value,
+                        "symbol":         signal.get("symbol", ""),
+                        "reason":         f"REVERSING GATE: trend is reversing — LONG needs 85%+ confidence",
+                        "reversing_gate": True,
+                    }
+        except Exception as _rev_err:
+            logger.debug(f"[REVERSING GATE] skipped: {_rev_err}")
+
+        # ── H-GATE: Quantum System Health Check ──────────────────────────────
+        # H < H_BLOCK (0.30) → BLOCK all entries — system degrading faster than earning.
+        # H < H_SCALE (1.00) → Scale position size down proportionally by H.
+        # The Ω-cycle is responsible for recovering H; new positions make it worse.
+        _H_BLOCK = 0.30
+        _H_SCALE = 1.00
+        try:
+            import app_state as _app_state_hg
+            _qs = getattr(_app_state_hg, "quantum_state", None)
+            if _qs is not None:
+                _H_live = (
+                    _qs.get_h_value()
+                    if hasattr(_qs, "get_h_value")
+                    else (_qs.get_state() or {}).get("H", 1.0)
+                )
+                if isinstance(_H_live, (int, float)) and _H_live > 0:
+                    if _H_live < _H_BLOCK:
+                        self.engine_stats[engine_type].blocked_trades += 1
+                        logger.warning(
+                            f"🧠 [H-GATE] [{engine_type.value}] "
+                            f"{signal.get('symbol','')} BLOCKED — "
+                            f"H={_H_live:.3f} < {_H_BLOCK} (system critically degraded)"
+                        )
+                        return {
+                            "action":  "REJECT",
+                            "engine":  engine_type.value,
+                            "symbol":  signal.get("symbol", ""),
+                            "reason":  f"H-GATE: H={_H_live:.3f} — system below health threshold, Ω fixing",
+                            "h_gate":  True,
+                            "H":       _H_live,
+                        }
+                    if _H_live < _H_SCALE:
+                        _h_scale_factor  = round(_H_live / _H_SCALE, 4)
+                        _nexus_pos_modifier = round(_nexus_pos_modifier * _h_scale_factor, 4)
+                        logger.debug(
+                            f"🧠 [H-GATE] H={_H_live:.3f} < 1.0 — "
+                            f"scaling position ×{_h_scale_factor:.4f}"
+                        )
+        except Exception as _hg_err:
+            logger.debug(f"[H-GATE] skipped: {_hg_err}")
+
+        # ── TEAM GATE (proactive — runs for ALL signals before quant/ORIA) ───
+        # Checks specialist recommendations that have been approved, OR any
+        # high-confidence CAUTION signals that should auto-apply without approval.
+        try:
+            from team_engine import check_team_gate as _ctg
+            _tg_early = await _ctg(signal, engine_type.value)
+            if _tg_early.get("blocked"):
+                self.engine_stats[engine_type].blocked_trades += 1
+                logger.info(
+                    f"🧠 [TEAM GATE] [{engine_type.value}] "
+                    f"{signal.get('symbol','')} {signal.get('direction','').upper()} "
+                    f"BLOCKED by {_tg_early.get('specialist','TEAM')} — "
+                    f"{_tg_early.get('reason','')[:100]}"
+                )
+                return {
+                    "action":     "REJECT",
+                    "engine":     engine_type.value,
+                    "symbol":     signal.get("symbol", ""),
+                    "reason":     _tg_early.get("reason", "Team gate block"),
+                    "team_gate":  True,
+                    "specialist": _tg_early.get("specialist"),
+                }
+        except Exception as _tg_early_err:
+            logger.debug(f"[TEAM GATE early] skipped: {_tg_early_err}")
+
         # Gate 15: MTF Confluence Pre-Scan
         # Requires EMA20/EMA50 alignment on 5m/15m/1h/4h to exceed 55 (LONG) or below 45 (SHORT).
         # Score is cached 5 min per symbol. Graceful degradation if market_intel unavailable.
@@ -848,6 +1045,119 @@ class EngineManager:
         except Exception as _ent_err:
             logger.debug(f"[ENTROPY GATE] Skipped: {_ent_err}")
 
+        # Gate 16: Hurst Regime Gate
+        # Rejects signals when market is in random-walk regime (H ≈ 0.5).
+        # H < 0.45 = mean-reversion; H > 0.55 = momentum; 0.45-0.55 = no edge.
+        if _HURST_AVAILABLE and self.market_intel is not None:
+            try:
+                _h_sym = signal.get("symbol", "")
+                _h_dir = signal.get("direction", "long")
+                _h_passes, _h_reason, _h_detail = await _check_hurst_gate(
+                    _h_sym, _h_dir, self.market_intel
+                )
+                signal = {**signal, "_hurst": _h_detail.get("hurst"), "_hurst_regime": _h_detail.get("regime")}
+                if not _h_passes:
+                    self.engine_stats[engine_type].blocked_trades += 1
+                    logger.info(
+                        f"📐 [HURST GATE] [{engine_type.value}] {_h_sym} BLOCKED — {_h_reason}"
+                    )
+                    return {
+                        "action":      "REJECT",
+                        "engine":      engine_type.value,
+                        "symbol":      _h_sym,
+                        "reason":      _h_reason,
+                        "hurst_detail": _h_detail,
+                        "hurst_gate":  True,
+                    }
+                logger.debug(f"📐 [HURST GATE] [{engine_type.value}] {_h_sym} PASSED — {_h_reason}")
+            except Exception as _hurst_err:
+                logger.debug(f"[HURST GATE] Skipped: {_hurst_err}")
+
+        # Gate 17: Von Neumann Entropy Gate (market-wide correlation regime)
+        # Blocks when the cross-asset correlation matrix collapses to a single
+        # dominant eigenvalue (lockstep crisis) — idiosyncratic engine edge is gone.
+        # Soft-pass at half size in the elevated-correlation band (0.45–0.55).
+        if _VN_AVAILABLE and self.market_intel is not None:
+            try:
+                _vn_passes, _vn_reason, _vn_detail, _vn_size = await _check_vn_gate(self.market_intel)
+                if _vn_detail:
+                    signal = {**signal, "_vn_snorm": _vn_detail.get("S_norm"), "_vn_regime": _vn_detail.get("regime")}
+                if not _vn_passes:
+                    self.engine_stats[engine_type].blocked_trades += 1
+                    logger.info(
+                        f"🌐 [VN GATE] [{engine_type.value}] {signal.get('symbol','')} BLOCKED — {_vn_reason}"
+                    )
+                    return {
+                        "action":   "REJECT",
+                        "engine":   engine_type.value,
+                        "symbol":   signal.get("symbol", ""),
+                        "reason":   _vn_reason,
+                        "vn_detail": _vn_detail,
+                        "vn_gate":  True,
+                    }
+                if _vn_size < 1.0:
+                    _gate_size_mult *= _vn_size
+                    logger.info(
+                        f"🌐 [VN GATE] [{engine_type.value}] elevated correlation — size ×{_vn_size:.2f}"
+                    )
+                else:
+                    logger.debug(f"🌐 [VN GATE] [{engine_type.value}] PASSED — {_vn_reason}")
+            except Exception as _vn_err:
+                logger.debug(f"[VN GATE] Skipped: {_vn_err}")
+
+        # TCN Ensemble Direction Gate (BTC/USDT only)
+        # The TCN neural engine (Engine 9) is trained on BTC 1h. When it is live
+        # and votes with conviction AGAINST the signal's direction, block the
+        # trade — a confident neural disagreement on BTC is a hard veto. Other
+        # symbols, neutral votes, low-confidence votes, and offline TCN all pass.
+        _tcn_sym = signal.get("symbol", "")
+        if _tcn_sym in ("BTC/USDT", "BTCUSDT"):
+            try:
+                import app_state as _app_state_tcn
+                _tcn = getattr(_app_state_tcn, "tcn_engine", None)
+                if _tcn is not None and _tcn.is_live():
+                    _tcn_vote = _tcn.get_vote("BTC/USDT")
+                    _tcn_dir = signal.get("direction", "long").lower()
+                    _signal_bull = _tcn_dir in ("long", "buy")
+                    _vote = _tcn_vote.get("vote", "NEUTRAL")
+                    _vote_conf = float(_tcn_vote.get("confidence", 0.0))
+                    _disagree = (
+                        (_signal_bull and _vote == "BEARISH")
+                        or (not _signal_bull and _vote == "BULLISH")
+                    )
+                    # Only veto on a *confident* disagreement (conf ≥ 40 → p_hat past ~0.70).
+                    if _disagree and _vote_conf >= 40.0:
+                        self.engine_stats[engine_type].blocked_trades += 1
+                        logger.info(
+                            f"🧠 [TCN GATE] [{engine_type.value}] BTC {_tcn_dir.upper()} BLOCKED — "
+                            f"neural vote {_vote} @ conf {_vote_conf:.0f} (p̂={_tcn_vote.get('p_hat')})"
+                        )
+                        return {
+                            "action":    "REJECT",
+                            "engine":    engine_type.value,
+                            "symbol":    _tcn_sym,
+                            "reason":    f"TCN ENSEMBLE: neural votes {_vote} @ conf {_vote_conf:.0f} "
+                                         f"against {_tcn_dir.upper()} — confident disagreement",
+                            "tcn_vote":  _tcn_vote,
+                            "tcn_gate":  True,
+                        }
+                    signal = {**signal, "_tcn_vote": _vote, "_tcn_conf": _vote_conf}
+                    logger.debug(f"🧠 [TCN GATE] [{engine_type.value}] BTC {_tcn_dir} agrees/neutral with {_vote}")
+            except Exception as _tcn_err:
+                logger.debug(f"[TCN GATE] Skipped: {_tcn_err}")
+
+        # Ensemble vote tracking — record this signal before quant gating
+        if _ENSEMBLE_AVAILABLE:
+            try:
+                asyncio.create_task(_record_ensemble_vote(
+                    engine=engine_type.value,
+                    symbol=signal.get("symbol", ""),
+                    direction=signal.get("direction", "long"),
+                    confidence=float(signal.get("confidence", 0)),
+                ))
+            except Exception:
+                pass
+
         if self.quant_gatekeeper is not None:
             config    = ENGINE_CONFIGS[engine_type]
             symbol    = signal.get("symbol", "")
@@ -932,9 +1242,21 @@ class EngineManager:
                     logger.debug(f"[ORIA EDGE] check_edge skipped: {_oria_edge_err}")
 
             result = self.submit_signal(signal, engine_type)
-            # Propagate position_multiplier so calling engines can scale position size
-            result["position_multiplier"] = gate.get("position_multiplier", 1.0)
+            # Propagate position_multiplier so calling engines can scale position size.
+            # Chain: quant size × NEXUS regime × soft-gate penalties × QUBO sizing.
+            _qubo_mult, _qubo_bd = self._qubo_size(signal, quant_score=gate.get("score", 50))
+            result["position_multiplier"] = round(
+                gate.get("position_multiplier", 1.0)
+                * _nexus_pos_modifier
+                * _gate_size_mult
+                * _qubo_mult,
+                3,
+            )
             result["marginal"] = gate.get("marginal", False)
+            result["nexus_modifier"] = _nexus_pos_modifier
+            result["gate_size_mult"] = round(_gate_size_mult, 3)
+            result["qubo_multiplier"] = _qubo_mult
+            result["qubo"] = _qubo_bd
             return result
 
         # No quant gatekeeper — still run ORIA edge check (async, so must be here)
@@ -966,7 +1288,66 @@ class EngineManager:
             except Exception as _oria_edge_err2:
                 logger.debug(f"[ORIA EDGE] no-quant-gate path skipped: {_oria_edge_err2}")
 
-        return self.submit_signal(signal, engine_type)
+        # ── Team Gate (approved specialist recommendations) ──────────────────
+        try:
+            from team_engine import check_team_gate
+            _tg = await check_team_gate(signal, engine_type.value)
+            if _tg.get("blocked"):
+                self.engine_stats[engine_type].blocked_trades += 1
+                logger.info(
+                    f"🧠 [TEAM GATE] [{engine_type.value}] "
+                    f"{signal.get('symbol','')} {signal.get('direction','').upper()} "
+                    f"BLOCKED by {_tg.get('specialist','TEAM')} — {_tg.get('reason','')[:100]}"
+                )
+                return {
+                    "action":     "REJECT",
+                    "engine":     engine_type.value,
+                    "symbol":     signal.get("symbol", ""),
+                    "reason":     _tg.get("reason", "Team gate block"),
+                    "team_gate":  True,
+                    "specialist": _tg.get("specialist"),
+                }
+        except Exception as _tg_err:
+            logger.debug(f"[TEAM GATE] check skipped: {_tg_err}")
+
+        result = self.submit_signal(signal, engine_type)
+        # No quant gatekeeper — score unknown, so QUBO leans on confidence only.
+        _qubo_mult2, _qubo_bd2 = self._qubo_size(signal, quant_score=float(signal.get("confidence", 60)))
+        _combined_mult = _nexus_pos_modifier * _gate_size_mult * _qubo_mult2
+        if _combined_mult != 1.0:
+            result["position_multiplier"] = round(result.get("position_multiplier", 1.0) * _combined_mult, 3)
+            result["nexus_modifier"] = _nexus_pos_modifier
+            result["gate_size_mult"] = round(_gate_size_mult, 3)
+            result["qubo_multiplier"] = _qubo_mult2
+            result["qubo"] = _qubo_bd2
+        return result
+
+    def _qubo_size(self, signal: Dict, *, quant_score: float = 50.0) -> Tuple[float, Dict]:
+        """
+        Compute the QUBO position-size multiplier for a signal. Pulls volatility,
+        leverage and confidence off the signal dict; returns (1.0, {}) if the
+        QUBO sizer is unavailable or anything goes wrong (never blocks sizing).
+        """
+        if not _QUBO_AVAILABLE:
+            return 1.0, {}
+        try:
+            atr_pct = signal.get("_atr_pct")
+            if atr_pct is None:
+                _atr = signal.get("atr")
+                _entry = signal.get("entry_price") or signal.get("entry")
+                if _atr and _entry:
+                    atr_pct = float(_atr) / float(_entry) * 100.0
+            atr_pct = float(atr_pct) if atr_pct is not None else 1.5
+            return _compute_qubo_multiplier(
+                quant_score=float(quant_score),
+                confidence=float(signal.get("confidence", 70)),
+                atr_pct=atr_pct,
+                leverage=float(signal.get("leverage", 5)),
+                portfolio_heat=float(signal.get("_portfolio_heat", 0.0)),
+            )
+        except Exception as _q_err:
+            logger.debug(f"[QUBO] _qubo_size failed: {_q_err}")
+            return 1.0, {}
 
     async def get_dynamic_leverage(
         self,

@@ -22,7 +22,7 @@ Score → confidence label:
   86–100: EXTREME   — maximum alignment
 
 Scan modes:
-  Full scan    (every 4h)  — all active USDT perpetuals on MEXC
+  Full scan    (every 4h)  — all active USDT perpetuals on OKX
   Priority     (every 1h)  — only pairs that scored ≥60 in last full scan
   Instant      (on-demand) — any pair at any time via analyze()
 
@@ -75,9 +75,9 @@ TELEGRAM_REPORT_MIN_SCORE = 65   # include in report only if above this
 PRIORITY_ALERT_THRESHOLD  = 80   # send immediate alert if any priority pair crosses this
 
 # Full scan rate limiting
-SCAN_BATCH_SIZE   = 5     # pairs analyzed in parallel per batch
-SCAN_BATCH_DELAY  = 0.5   # seconds between batches
-RATE_LIMIT_PAUSE  = 5.0   # seconds pause if MEXC rate-limits us
+SCAN_BATCH_SIZE   = 3     # pairs analyzed in parallel per batch (reduced to ease OKX rate limits)
+SCAN_BATCH_DELAY  = 1.0   # seconds between batches (increased to stay under OKX 40 req/2s limit)
+RATE_LIMIT_PAUSE  = 5.0   # seconds pause if OKX rate-limits us
 
 # MongoDB
 ORACLE_HISTORY_COLLECTION = "oracle_history"
@@ -328,7 +328,7 @@ class OracleEngine:
         # Priority symbols from last full scan (score >= threshold)
         self._priority_symbols: List[str] = []
 
-        # Full pair list from MEXC (refreshed every 24h)
+        # Full pair list from OKX (refreshed every 24h)
         self._all_pairs: List[str]               = []
         self._pairs_last_refreshed: Optional[datetime] = None
 
@@ -356,9 +356,9 @@ class OracleEngine:
 
     # ─── ORACLE ENGINE STEP 10: PAIR DISCOVERY ───────────────────────────────
 
-    async def _get_all_mexc_pairs(self) -> List[str]:
+    async def _get_all_okx_pairs(self) -> List[str]:
         """
-        Fetch all active USDT perpetual futures from MEXC.
+        Fetch all active USDT perpetual futures from OKX.
         Cached for 24 hours. Falls back to static DEFAULT_WATCHLIST on failure.
         """
         now = datetime.now(timezone.utc)
@@ -372,7 +372,7 @@ class OracleEngine:
         try:
             loop   = asyncio.get_event_loop()
             markets = await loop.run_in_executor(
-                None, self.market_intel.mexc.fetch_markets
+                None, self.market_intel.okx.fetch_markets
             )
             pairs = [
                 m["symbol"] for m in markets
@@ -1162,7 +1162,7 @@ class OracleEngine:
 
     async def scan_all(self, pairs: Optional[List[str]] = None) -> List[Dict]:
         """
-        # ORACLE FULL SCAN: Analyze all available USDT perpetuals on MEXC.
+        # ORACLE FULL SCAN: Analyze all available USDT perpetuals on OKX.
         Batched in groups of SCAN_BATCH_SIZE with SCAN_BATCH_DELAY between batches.
         Rate-limit safe: pauses RATE_LIMIT_PAUSE seconds on any rate limit error.
         Sends Telegram summary after completion.
@@ -1177,7 +1177,7 @@ class OracleEngine:
 
         try:
             if pairs is None:
-                pairs = await self._get_all_mexc_pairs()
+                pairs = await self._get_all_okx_pairs()
 
             total = len(pairs)
             self._scan_progress = {"scanned": 0, "total": total, "scan_id": scan_id}
@@ -1360,6 +1360,7 @@ class OracleEngine:
         Full scan every 4h + priority scan every 1h + 4h Telegram report.
         """
         logger.info("[ORACLE] Run loop started.")
+        await asyncio.sleep(30)  # let other engines settle before first scan burst
         last_full_scan     = datetime.min.replace(tzinfo=timezone.utc)
         last_priority_scan = datetime.min.replace(tzinfo=timezone.utc)
 

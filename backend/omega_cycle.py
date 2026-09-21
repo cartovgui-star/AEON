@@ -109,12 +109,19 @@ class OmegaCycle:
 
     def set_dependencies(self, send_alert=None, chat_ids=None,
                          quantum_state=None, memory_engine=None,
-                         engine_manager=None):
-        self.send_alert   = send_alert
-        self.chat_ids     = chat_ids or set()
-        self._quantum     = quantum_state
-        self._memory      = memory_engine
-        self._engine_mgr  = engine_manager
+                         engine_manager=None, oria_edge_filter=None):
+        self.send_alert        = send_alert
+        self.chat_ids          = chat_ids or set()
+        self._quantum          = quantum_state
+        self._memory           = memory_engine
+        self._engine_mgr       = engine_manager
+        self._oria_edge_filter = oria_edge_filter  # ORIA EdgeFilter for per-engine Kelly data
+
+        # Last cycle summary for API exposure
+        self._last_cycle_summary: Dict = {}
+        self._last_trigger_reasons: List[str] = []
+        self._last_proposals: List[Dict] = []
+        self._last_fixes_applied: List[Dict] = []
 
     # ── Trigger evaluation ────────────────────────────────────────────────────
 
@@ -718,12 +725,12 @@ class OmegaCycle:
         msg += (
             f"\n\n"
             f"🌐 DATA SOURCES\n"
-            f"Primary:    MEXC ✅\n"
+            f"Primary:    OKX + LiveCoinWatch ✅\n"
             f"Fear&Greed: Alternative.me ✅\n"
             f"Options:    Deribit ✅\n"
             f"TVL:        DefiLlama ✅\n"
             f"News:       CryptoPanic ✅\n"
-            f"Bybit:      ❌ REMOVED\n"
+            f"MEXC:       ❌ REMOVED\n"
             f"yfinance:   ❌ REMOVED\n"
             f"\n"
             f"🧠 SYSTEM STATUS\n"
@@ -833,12 +840,12 @@ class OmegaCycle:
         msg += (
             f"\n"
             f"🌐 DATA SOURCES\n"
-            f"Primary:    MEXC ✅\n"
+            f"Primary:    OKX + LiveCoinWatch ✅\n"
             f"Fear&Greed: Alternative.me ✅\n"
             f"Options:    Deribit ✅\n"
             f"TVL:        DefiLlama ✅\n"
             f"News:       CryptoPanic ✅\n"
-            f"Bybit:      ❌ REMOVED\n"
+            f"MEXC:       ❌ REMOVED\n"
             f"yfinance:   ❌ REMOVED\n"
             f"\n"
             f"🧠 SYSTEM STATUS\n"
@@ -884,8 +891,58 @@ class OmegaCycle:
             except Exception as e:
                 logger.debug(f"[Ω] get_open_exposure failed: {e}")
 
+        # ── Read ORIA edge decay data ─────────────────────────────────────────
+        oria_edge_findings: List[Dict] = []
+        if self._oria_edge_filter is not None and self.db is not None:
+            try:
+                edge_docs = await self.db.edge_stats.find(
+                    {"trade_count": {"$gte": 20}}  # only trust data with enough samples
+                ).to_list(length=200)
+                for doc in edge_docs:
+                    engine   = doc.get("engine", "")
+                    symbol   = doc.get("symbol", "")
+                    wr_7d    = float(doc.get("win_rate_7d", 0.5))
+                    wr_30d   = float(doc.get("win_rate_30d", 0.5))
+                    count    = int(doc.get("trade_count", 0))
+                    # Edge decay: 7d win rate dropped >10pp below 30d baseline
+                    if wr_30d > 0.45 and wr_7d < wr_30d - 0.10:
+                        oria_edge_findings.append({
+                            "engine":  engine,
+                            "symbol":  symbol,
+                            "wr_7d":   round(wr_7d, 3),
+                            "wr_30d":  round(wr_30d, 3),
+                            "decay":   round(wr_30d - wr_7d, 3),
+                            "count":   count,
+                        })
+                if oria_edge_findings:
+                    logger.info(
+                        f"[Ω] ORIA found {len(oria_edge_findings)} edge-decaying engine/symbol pairs"
+                    )
+            except Exception as e:
+                logger.debug(f"[Ω] ORIA edge read failed: {e}")
+
+        # Inject ORIA findings into quantum state so _detect() can see them
+        if oria_edge_findings:
+            state = {**state, "_oria_decaying": oria_edge_findings}
+            # Add trigger reason if multiple pairs are decaying
+            if len(oria_edge_findings) >= 3 and not any("ORIA" in r for r in []):
+                reasons_from_oria = [
+                    f"ORIA edge decay: {f['engine']} {f['symbol']} "
+                    f"7d WR={f['wr_7d']:.0%} vs 30d WR={f['wr_30d']:.0%}"
+                    for f in oria_edge_findings[:3]
+                ]
+                state = {**state, "_oria_reasons": reasons_from_oria}
+
         # ── DETECT ────────────────────────────────────────────────────────────
         triggered, reasons = self._should_trigger(state)
+
+        # ORIA decay triggers
+        for f in oria_edge_findings[:3]:
+            reasons.append(
+                f"ORIA edge decay: {f['engine']} {f['symbol']} "
+                f"WR 7d={f['wr_7d']:.0%} vs 30d={f['wr_30d']:.0%} (−{f['decay']:.0%})"
+            )
+            triggered = True
 
         # Bias alert from memory engine — too many LONGs or SHORTs open
         if exposure.get("bias_alert"):
@@ -957,12 +1014,73 @@ class OmegaCycle:
                         f"[Ω] LΣ skipped: ΔH={delta_H_pct:.1%} < {L_SIGMA_THRESHOLD:.0%} threshold."
                     )
 
+        # ── Write applied fixes back to governance ────────────────────────────
+        # This is the missing link: Omega's Lθ decisions now appear in governance UI
+        if applied and self.db is not None:
+            for fix in applied:
+                try:
+                    gov_doc = {
+                        "engine":                fix["engine"],
+                        "source":                "omega_cycle",
+                        "omega_cycle":           self._cycle_count,
+                        "current_recommendation": f"OMEGA Lθ: {fix.get('param','')} → {fix.get('direction','')}",
+                        "reason":                fix.get("fix_desc", ""),
+                        "diagnosis":             fix.get("diagnosis", ""),
+                        "fix_type":              "Lθ",
+                        "auto_applied":          True,
+                        "updated_at":            datetime.now(timezone.utc),
+                    }
+                    await self.db.engine_governance.update_one(
+                        {"engine": fix["engine"], "source": "omega_cycle"},
+                        {"$set": gov_doc},
+                        upsert=True,
+                    )
+                except Exception as _ge:
+                    logger.debug(f"[Ω] Governance write failed: {_ge}")
+
+        # ── Store cycle summary for API exposure ───────────────────────────────
+        self._last_trigger_reasons = reasons
+        self._last_proposals       = actionable
+        self._last_fixes_applied   = applied
+        self._last_cycle_summary   = {
+            "cycle":           self._cycle_count,
+            "timestamp":       self._last_cycle_at.isoformat() if self._last_cycle_at else None,
+            "triggered":       triggered,
+            "reasons":         reasons,
+            "findings_count":  len(findings),
+            "proposals_count": len(actionable),
+            "applied":         [{"engine": p["engine"], "param": p.get("param"), "fix_type": p["fix_type"]} for p in applied],
+            "escalated":       [{"engine": p["engine"], "fix_type": p["fix_type"]} for p in escalated],
+            "oria_decaying":   oria_edge_findings,
+            "H":               H,
+            "C":               C,
+        }
+
         # Final cycle report
         await self._telegram_cycle_report(state, triggered, reasons, findings, exposure)
         logger.info(
             f"[Ω] Cycle #{self._cycle_count} complete. "
             f"Applied: {len(applied)}, Escalated: {len(escalated)}."
         )
+
+    # ── Status for API ────────────────────────────────────────────────────────
+
+    def get_status(self) -> Dict:
+        """Return current Ω cycle state for the researcher/governance API."""
+        next_cycle_in: Optional[float] = None
+        if self._last_cycle_at is not None:
+            elapsed = (datetime.now(timezone.utc) - self._last_cycle_at).total_seconds()
+            next_cycle_in = max(0.0, CYCLE_INTERVAL - elapsed)
+
+        return {
+            "cycle_count":       self._cycle_count,
+            "last_cycle_at":     self._last_cycle_at.isoformat() if self._last_cycle_at else None,
+            "next_cycle_in_s":   round(next_cycle_in) if next_cycle_in is not None else None,
+            "oria_connected":    self._oria_edge_filter is not None,
+            "governance_writes": True,
+            "last_summary":      getattr(self, "_last_cycle_summary", {}),
+            "interval_h":        CYCLE_INTERVAL // 3600,
+        }
 
     # ── Background loop ───────────────────────────────────────────────────────
 

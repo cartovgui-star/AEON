@@ -696,6 +696,7 @@ class FreeWillEngineV2:
         # ═══════════════════════════════════════════════════════════════
         # UNIFIED ENGINE VALIDATION - Validate before routing to paper
         # ═══════════════════════════════════════════════════════════════
+        final_leverage = 10  # fallback; overwritten by get_dynamic_leverage below
         if get_engine_manager and EngineType:
             try:
                 engine_manager = get_engine_manager()
@@ -811,15 +812,19 @@ class FreeWillEngineV2:
                     )
 
                 paper_signal = {
-                    "symbol": setup.get("symbol"),
-                    "direction": setup.get("direction"),
-                    "entry_price": setup.get("entry"),
-                    "stop_loss": setup.get("stop"),
-                    "take_profit": setup.get("target"),
-                    "confidence": setup.get("confidence", 80),
+                    "symbol":        setup.get("symbol"),
+                    "direction":     setup.get("direction"),
+                    "entry_price":   setup.get("entry"),
+                    "stop_loss":     setup.get("stop"),
+                    "take_profit":   setup.get("target"),
+                    "confidence":    setup.get("confidence", 80),
                     "confirmations": setup.get("confirmations", []),
-                    "timeframe": setup.get("timeframe", "4h"),
-                    "risk_pct": _risk_pct
+                    "timeframe":     setup.get("timeframe", "4h"),
+                    "risk_pct":      _risk_pct,
+                    # Pass the leverage computed by get_dynamic_leverage so
+                    # TradeCandidate.requested_leverage and RiskPolicy capping
+                    # reflect the actual intended leverage, not a hardcoded default.
+                    "leverage":      int(final_leverage),
                 }
                 await route_engine_signal(paper_signal, "FREE_WILL_V2")
                 logger.info(f"📊 Free Will alert routed to paper accounts: {setup.get('symbol')} {setup.get('direction')}")

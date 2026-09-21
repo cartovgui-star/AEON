@@ -86,6 +86,8 @@ from routes.elite import router as elite_router
 from routes.signals import router as signals_router
 from routes.engines import router as engines_router
 from routes.engine_compare import router as engine_compare_router
+from routes.calendar import router as calendar_router
+from routes.orderbook import router as orderbook_router
 from engine_data_collector import run_engine_data_collector
 from signal_tracker import signal_tracker, init_signal_tracker
 from voice_tts import generate_speech, VOICES
@@ -112,6 +114,7 @@ from volume_profile_engine import init_vp_engine, HyperAccuracyEngine
 from aeon_engine_system import init_engine_manager, get_engine_manager, EngineManager
 from quant_analyzer_v2 import get_quant_gatekeeper_v2
 import app_state
+from telegram.commands.router import route_command as _tg_route_command
 
 from signal_deduplicator import init_signal_deduplicator, signal_deduplicator as _signal_dedup
 from unified_alert import init_alerter, send_alert, AeonPersona, alerter
@@ -133,8 +136,8 @@ db = client[os.environ['DB_NAME']]
 
 # API Keys
 telegram_token = os.environ.get('TELEGRAM_TOKEN', '')
-mexc_api_key = os.environ.get('MEXC_API_KEY', '')
-mexc_secret_key = os.environ.get('MEXC_SECRET_KEY', '')
+mexc_api_key = os.environ.get('MEXC_API_KEY', '')  # legacy env var, unused
+mexc_secret_key = os.environ.get('MEXC_SECRET_KEY', '')  # legacy env var, unused
 
 # Initialize systems
 learning_system = AeonLearningSystem(db)
@@ -143,7 +146,7 @@ autonomous_trader = init_autonomous_trader(db, learning_system)  # Keep for back
 autonomous_trader_v2 = init_autonomous_trader_v2(db)  # New elite trading engine
 free_will = init_free_will(db)
 free_will_v2 = init_free_will_v2(db)  # New ultra-selective engine
-free_will_v2.active = False  # Disabled: 30.7% WR, -3,437% PnL — loser engine
+free_will_v2.active = True  # Re-enabled after cohort fix, malformed SL gate, leverage pipeline fix
 strategy_engine = StrategyEngine()  # Multi-strategy engine
 memory_system = init_memory_system(db)  # Memory & journaling system
 confluence_analyzer = create_confluence_analyzer(smc_analyzer, strategy_engine)  # SMC+Strategy confluence
@@ -155,6 +158,10 @@ dual_engine = init_dual_engine(db)
 
 # VWAP Scalper (VWAP + EMA Cross + RSI)
 vwap_scalper = init_vwap_scalper(db)
+
+# Engine Coin Configuration (dynamic coin lists per engine)
+from engine_coin_config import init_coin_config
+coin_config = init_coin_config(db)
 
 # YOLO Engine (Independent aggressive trading)
 yolo_engine = init_yolo_engine(db)
@@ -178,7 +185,7 @@ from autonomous_trader import set_derivatives_intel
 set_derivatives_intel(derivatives_intel)
 
 # OKX for orderbook (no API key needed for public data)
-mexc = ccxt.okx({'enableRateLimit': True})
+okx = ccxt.okx({'enableRateLimit': True})
 
 central_tz = pytz.timezone('US/Central')
 
@@ -306,8 +313,8 @@ from telegram_sender import (
 )
 
 
-def get_mexc_orderbook() -> Dict[str, Any]:
-    """Get MEXC orderbook data for main tracked symbols (dashboard)"""
+def get_okx_orderbook() -> Dict[str, Any]:
+    """Get OKX orderbook data for 15 main tracked symbols (dashboard)"""
     try:
         # All tracked coins
         symbols_to_fetch = [
@@ -315,11 +322,11 @@ def get_mexc_orderbook() -> Dict[str, Any]:
             'DOGE/USDT', 'ADA/USDT', 'AVAX/USDT', 'DOT/USDT', 'LINK/USDT',
             'UNI/USDT', 'ATOM/USDT', 'LTC/USDT', 'ARB/USDT', 'OP/USDT'
         ]
-        tickers = mexc.fetch_tickers(symbols_to_fetch)
+        tickers = okx.fetch_tickers(symbols_to_fetch)
         symbols = []
         for symbol in symbols_to_fetch:
             try:
-                book = mexc.fetch_order_book(symbol, limit=20)
+                book = okx.fetch_order_book(symbol, limit=20)
                 bid_depth = sum([b[1] for b in book['bids'][:10]])
                 ask_depth = sum([a[1] for a in book['asks'][:10]])
                 imbalance = ((bid_depth - ask_depth) / (bid_depth + ask_depth) * 100) if (bid_depth + ask_depth) > 0 else 0
@@ -1095,6 +1102,8 @@ async def lifespan(app: FastAPI):
     app_state.yolo_engine = yolo_engine
     app_state.inst_scalper = inst_scalper
     app_state.tcn_engine = None  # set after init below
+    from quant_analyzer_engine import get_quant_engine as _get_qe
+    app_state.quant_analyzer = _get_qe()
     app_state.continuous_learner = continuous_learner
     app_state.paper_trading = paper_trading
     app_state.send_telegram_message = send_telegram_message
@@ -1194,6 +1203,22 @@ async def lifespan(app: FastAPI):
         logger.info("🛡️ PHASE 1 RISK LAYER INITIALIZED — RiskPolicy(advisory), PortfolioHeat, TradeJournal")
     except Exception as _e:
         logger.error(f"Phase 1 risk layer init failed (non-fatal): {_e}")
+
+    # Phase 3 — Engine intelligence indexes + governance
+    try:
+        await db.paper_trades.create_index("strategy")
+        await db.paper_trades.create_index("opened_at")
+        await db.paper_trades.create_index("account_id")
+        await db.paper_trades.create_index("status")
+        await db.paper_trades.create_index("close_reason")
+        await db.paper_trades.create_index([("strategy", 1), ("opened_at", -1)])
+        await db.paper_trades.create_index([("strategy", 1), ("status", 1), ("opened_at", -1)])
+        from engine_governance import EngineGovernance
+        app_state.engine_governance = EngineGovernance()
+        await app_state.engine_governance.ensure_indexes(db)
+        logger.info("📈 PHASE 3 ENGINE INTELLIGENCE INITIALIZED — indexes + EngineGovernance")
+    except Exception as _e:
+        logger.error(f"Phase 3 engine intelligence init failed (non-fatal): {_e}")
     
     # Initialize VWAP Scalper
     vwap_scalper.set_dependencies(
@@ -1247,10 +1272,13 @@ async def lifespan(app: FastAPI):
 
     # ENGINE 9 — TCN Neural Engine (deep learning, BTC/USDT 1h)
     tcn_engine = init_tcn_engine()
-    await tcn_engine.initialise(db=db, market_intel=market_intel)
     app_state.tcn_engine = tcn_engine
+    async def _init_tcn_bg():
+        await tcn_engine.initialise(db=db, market_intel=market_intel)
+        logger.info("🧠 TCN NEURAL ENGINE READY — Engine 9 fully initialised")
+    asyncio.ensure_future(_init_tcn_bg())
     tcn_task = asyncio.create_task(tcn_engine.run_background_loop(3600))  # Hourly inference
-    logger.info("🧠 TCN NEURAL ENGINE ACTIVATED — Engine 9, BTC/USDT 1h deep learning")
+    logger.info("🧠 TCN NEURAL ENGINE ACTIVATED — Engine 9, BTC/USDT 1h deep learning (init in background)")
 
     # ELITE STRATEGY v3 — autonomous scan every 30 min (Fix #15)
     _elite_auto = get_elite_strategy(
@@ -1274,6 +1302,15 @@ async def lifespan(app: FastAPI):
 
     # ORIA layer — SignalAggregator + EdgeFilter + StressMonitor
     oria_stress_task = None
+    _oria_ef = None  # captured for omega wiring below
+
+    def _get_edge_filter_safe():
+        try:
+            from oria_layer import get_edge_filter as _gef
+            return _gef()
+        except Exception:
+            return None
+
     try:
         from oria_layer import init_oria
         _oria_agg, _oria_ef, _oria_sm = init_oria(db)
@@ -1345,6 +1382,7 @@ async def lifespan(app: FastAPI):
         quantum_state=quantum_state,
         memory_engine=memory_eng,
         engine_manager=get_engine_manager(),
+        oria_edge_filter=_get_edge_filter_safe(),
     )
     omega_task = asyncio.create_task(omega.run_loop())
 
@@ -1371,8 +1409,20 @@ async def lifespan(app: FastAPI):
     # Paper account health monitor - auto-reload when balance too low
     paper_health_task = asyncio.create_task(paper_account_health_loop(300))  # Check every 5 mins
 
-    # Paper trading price update loop - updates positions and triggers TP/SL closes
-    paper_price_task = asyncio.create_task(paper_price_update_loop(market_intel, 30))  # Every 30 seconds
+    # Tick engine or polling — set TICK_MODE=1 in .env to enable tick-accurate fills
+    from tick_paper_engine import TICK_MODE_ENABLED, init_tick_engine
+    if TICK_MODE_ENABLED:
+        _tick_eng = init_tick_engine(db, market_intel)
+        app_state.tick_paper_engine = _tick_eng
+        tick_paper_task = asyncio.create_task(_tick_eng.run_forever())
+        # Polling loop stays as 120s safety net for symbols not yet in tick feed
+        paper_price_task = asyncio.create_task(paper_price_update_loop(market_intel, 120))
+        logger.info("📡 Tick paper engine ENABLED — OKX WS fills active (polling fallback 120s)")
+    else:
+        app_state.tick_paper_engine = None
+        tick_paper_task = None
+        paper_price_task = asyncio.create_task(paper_price_update_loop(market_intel, 30))
+        logger.info("📊 Tick paper engine DISABLED — REST polling every 30s")
 
     # Engine data collector - hourly snapshots, outcome tracking, confirmation accuracy
     engine_collector_task = asyncio.create_task(run_engine_data_collector(db, app_state, market_intel))
@@ -1404,10 +1454,23 @@ async def lifespan(app: FastAPI):
     self_healer.register("omega_cycle", omega_task, omega.run_loop)
     self_healer.register("web_intelligence", web_intel_task, web_intel_eng.run_loop)
     self_healer.register("paper_health", paper_health_task, lambda: paper_account_health_loop(300))
-    self_healer.register("paper_price_update", paper_price_task, lambda: paper_price_update_loop(market_intel, 30))
+    _poll_interval = 120 if TICK_MODE_ENABLED else 30
+    self_healer.register("paper_price_update", paper_price_task, lambda: paper_price_update_loop(market_intel, _poll_interval))
+    if TICK_MODE_ENABLED and tick_paper_task:
+        self_healer.register("tick_paper", tick_paper_task, lambda: app_state.tick_paper_engine.run_forever())
     self_healer.register("paper_auto_deposit", paper_deposit_task, pt.auto_deposit_loop)
     self_healer.register("paper_weekly_report", paper_weekly_rpt_task, paper_weekly_rpt.run_scheduler)
     self_healer.register("engine_data_collector", engine_collector_task, lambda: run_engine_data_collector(db, app_state, market_intel))
+
+    # ── AEON Research Team ────────────────────────────────────────────────────
+    try:
+        from team_engine import init_team_engine, run_loop as _team_loop
+        init_team_engine(db, market_intel, coinglass_intel)
+        team_task = asyncio.create_task(_team_loop(2))
+        self_healer.register("team_engine", team_task, lambda: _team_loop(2))
+        logger.info("🧠 AEON Research Team activated — all 10 specialists online")
+    except Exception as _te_err:
+        logger.warning(f"Team engine failed to start: {_te_err}")
     healer_task = asyncio.create_task(self_healer.monitor_loop())
     
     logger.info(f"AEON PAPER TRADING ACTIVATED - {autonomous_trader_v2.min_confidence}%+ conf, {autonomous_trader_v2.min_confirmations}+ confirmations")
@@ -1424,7 +1487,7 @@ async def lifespan(app: FastAPI):
     logger.info("📊 PAPER PRICE UPDATE LOOP - TP/SL monitoring every 30s")
 
     # ── Feed health monitor ──────────────────────────────────────────────────
-    await feed_health.initial_probe()  # initial check before accepting traffic (retries 3x)
+    asyncio.ensure_future(feed_health.initial_probe())  # non-blocking — starts healthy, updates in background
     feed_health.start_recovery_loop()  # auto-retry every 30 s when degraded
     logger.info("📡 FEED HEALTH MONITOR STARTED — auto-recovery every 30s when degraded")
     # ─────────────────────────────────────────────────────────────────────────
@@ -1439,6 +1502,13 @@ async def lifespan(app: FastAPI):
     for i, m in enumerate(_monitors):
         self_healer.register(f"monitor_{m.__class__.__name__}", monitor_tasks[i], m.run_loop)
     logger.info("🔔 UNIFIED ALERT SYSTEM + MONITORS ACTIVE")
+
+    # Start chart watch monitor (proactive TA push to Telegram)
+    from chart_monitor import ChartWatchMonitor
+    _chart_monitor = ChartWatchMonitor(send_fn=send_telegram_message)
+    _chart_task = asyncio.create_task(_chart_monitor.run_loop())
+    self_healer.register("chart_monitor", _chart_task, _chart_monitor.run_loop)
+    logger.info("📊 CHART MONITOR ACTIVE — scanning %d coins", 20)
 
     # Regime change watcher — broadcasts WebSocket event when H-derived regime changes
     async def _regime_change_watcher():
@@ -1738,9 +1808,9 @@ async def api_quick_trade(request: Request):
 
 
 
-@api_router.get("/mexc/live")
-async def api_mexc():
-    return get_mexc_orderbook()
+@api_router.get("/okx/live")
+async def api_okx():
+    return get_okx_orderbook()
 
 
 @api_router.get("/bot/stats")
@@ -1846,6 +1916,13 @@ async def webhook(request: Request):
         _FEED_FREE_CMDS = {
             '/help', '/start', '/ping', '/status',
             '/settings', '/menu', '/commands', '/model',
+            # operator / governance commands — read from DB, not live feeds
+            '/accounts', '/pro', '/starter', '/reallife', '/real_life',
+            '/theproof', '/the_proof', '/proof', '/benchmark', '/bm',
+            '/tier5k', '/tier1k', '/tier500',
+            '/fw', '/fwv2', '/governance', '/gov',
+            '/engines', '/engine',
+            '/stats', '/accuracy', '/acc', '/leaderboard', '/lb',
         }
         _base_cmd = text_lower.split()[0] if text_lower else ""
         if _base_cmd.startswith('/') and _base_cmd not in _FEED_FREE_CMDS and not feed_health.is_healthy:
@@ -1854,8 +1931,20 @@ async def webhook(request: Request):
         # ─────────────────────────────────────────────────────────────────────
 
         # ═══════════════════════════════════════════════════════════════════
-        # COMMANDS
+        # COMMANDS — new router first, legacy chain as fallback
         # ═══════════════════════════════════════════════════════════════════
+
+        _routed = await _tg_route_command(text, chat_id, {"settings": settings})
+        if _routed:
+            response, context = _routed
+            parse_mode = "Markdown" if context == "news" else None
+            await send_telegram_message(chat_id, response, parse_mode=parse_mode)
+            await db.chat_messages.insert_one({
+                "chat_id": chat_id, "text": text, "response": response,
+                "context": context, "timestamp": datetime.now(timezone.utc),
+                "username": username
+            })
+            return {"status": "ok"}
 
         if text_lower == "free off":
             await update_user_settings(chat_id, {"free_will": False})
@@ -4134,6 +4223,88 @@ Signals: {analysis.get('signals_breakdown', {}).get('buy_signals', 0)} Buy / {an
             response = await generate_quantum_probe(chat_id, ctx, mode)
             context = "probe"
             
+        elif text_lower == '/team_run':
+            try:
+                from team_engine import run_now as _team_run_now
+                asyncio.create_task(_team_run_now())
+                response = (
+                    "⚡ Team cycle triggered!\n"
+                    "All 10 specialists running now.\n"
+                    "You'll receive recommendation pings if any flags are raised.\n"
+                    "(Takes ~1-2 minutes)"
+                )
+            except Exception as _tre:
+                response = f"Team run failed: {_tre}"
+
+        elif text_lower.startswith('/team_approve ') or text_lower.startswith('/team_reject '):
+            parts  = text.strip().split(None, 1)
+            action = parts[0].lower()
+            rec_id = parts[1].strip() if len(parts) > 1 else ""
+            if not rec_id:
+                response = "Usage: /team_approve <id> or /team_reject <id>\nGet IDs from recommendation pings."
+            else:
+                try:
+                    from team_engine import approve_recommendation, reject_recommendation
+                    if action == '/team_approve':
+                        result = await approve_recommendation(rec_id)
+                        if result.get("error"):
+                            response = f"❌ {result['error']}"
+                        else:
+                            name  = result.get("specialist", "TEAM")
+                            until = result.get("active_until", "")[:16].replace("T", " ")
+                            response = (
+                                f"✅ {name} recommendation APPROVED\n"
+                                f"Gate active until {until} UTC\n"
+                                f"Type: {result.get('type','')}"
+                            )
+                    else:
+                        result = await reject_recommendation(rec_id)
+                        if result.get("error"):
+                            response = f"❌ {result['error']}"
+                        else:
+                            response = f"❌ Recommendation {rec_id[:12]} REJECTED"
+                except Exception as _te:
+                    response = f"Team engine error: {_te}"
+
+        elif text_lower == '/team':
+            try:
+                from team_engine import SPECIALISTS
+                import app_state as _as
+                db_ = _as.db
+                lines = ["🧠 AEON RESEARCH TEAM\n"]
+                for name, info in SPECIALISTS.items():
+                    phase  = info.get("phase", 2)
+                    status = "🟢 ACTIVE" if phase == 1 else "🔵 Phase 2"
+                    emoji  = info.get("emoji", "•")
+                    title  = info.get("title", "")
+                    latest = ""
+                    if db_ and phase == 1:
+                        try:
+                            doc = await db_.team_research.find_one(
+                                {"specialist": name}, sort=[("created_at", -1)]
+                            )
+                            if doc:
+                                sig  = doc.get("signal","?")
+                                conf = doc.get("confidence","?")
+                                latest = f" — {sig} {conf}%"
+                        except Exception:
+                            pass
+                    lines.append(f"{emoji} {name} · {title} · {status}{latest}")
+                # Active gates
+                if db_:
+                    from datetime import datetime, timezone as tz
+                    active = await db_.team_recommendations.count_documents(
+                        {"status":"approved","active_until":{"$gt":datetime.now(tz.utc)}}
+                    )
+                    pending = await db_.team_recommendations.count_documents({"status":"pending"})
+                    lines.append(f"\n🔒 Active gates: {active}")
+                    lines.append(f"⏳ Pending approval: {pending}")
+                    if pending > 0:
+                        lines.append("Use /team_approve <id> or /team_reject <id>")
+                response = "\n".join(lines)
+            except Exception as _te2:
+                response = f"Team status error: {_te2}"
+
         elif text_lower == '/stats':
             # Simple dashboard stats
             stats = await autonomous_trader_v2.get_stats()
@@ -4669,9 +4840,9 @@ R:R: 1:{rr:.1f}
             context = "trading"
             
         elif text_lower == '/price':
-            orderbook = get_mexc_orderbook()
+            orderbook = get_okx_orderbook()
             if "error" not in orderbook:
-                response = "📊 LIVE PRICES (MEXC)\n\n"
+                response = "📊 LIVE PRICES (OKX)\n\n"
                 symbols = orderbook.get("symbols", [])
                 for data in symbols:
                     symbol = data.get('symbol', 'N/A').replace('/USDT', '')
@@ -4995,6 +5166,8 @@ app.include_router(scalper_router, prefix="/api")
 app.include_router(briefing_router, prefix="/api")
 app.include_router(weekly_report_router, prefix="/api")
 app.include_router(elite_router, prefix="/api")
+app.include_router(calendar_router, prefix="/api")
+app.include_router(orderbook_router, prefix="/api")
 app.include_router(signals_router, prefix="/api")
 app.include_router(engines_router, prefix="/api/engines")
 app.include_router(engine_compare_router, prefix="/api/engines")
@@ -5014,6 +5187,12 @@ from routes.nexus import router as nexus_router
 app.include_router(nexus_router)
 from routes.risk_report import router as risk_report_router
 app.include_router(risk_report_router)
+from routes.dashboard import router as dashboard_router
+app.include_router(dashboard_router)
+from routes.team import router as team_router
+app.include_router(team_router, prefix="/api")
+from routes.researcher import router as researcher_router
+app.include_router(researcher_router)
 
 # ── Institutional Scalper routes ──────────────────────────────────────────────
 from fastapi import APIRouter as _AR
@@ -5082,6 +5261,10 @@ _API_KEY_EXEMPT = {"/api/webhook"}
 class APIKeyMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         path = request.url.path
+        # Let CORS middleware answer browser preflights. Unauthorized OPTIONS
+        # requests should fail at CORS policy, not at API-key auth.
+        if request.method == "OPTIONS":
+            return await call_next(request)
         if path.startswith("/api") and path not in _API_KEY_EXEMPT:
             key = request.headers.get("X-API-Key", "")
             if not _dashboard_api_key or key != _dashboard_api_key:

@@ -72,9 +72,12 @@ send_daily_report = None
 trade_outcome_tracker = None
 
 # Phase 1 — Risk policy layer
-portfolio_heat = None   # PortfolioHeat — reads open positions, computes heat metrics
-risk_policy = None      # RiskPolicy    — per-account advisory/enforce decisions
-trade_journal = None    # TradeJournal  — persists every TradeCandidate to MongoDB
+portfolio_heat = None      # PortfolioHeat    — reads open positions, computes heat metrics
+risk_policy = None         # RiskPolicy       — per-account advisory/enforce decisions
+trade_journal = None       # TradeJournal     — persists every TradeCandidate to MongoDB
+
+# Phase 3 — Engine intelligence
+engine_governance = None   # EngineGovernance — governance state + event log
 
 # Other
 last_market_alert: Dict[int, datetime] = {}

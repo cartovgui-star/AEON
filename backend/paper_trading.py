@@ -54,33 +54,31 @@ FUNDING_RATE_PER_8H = 0.0001  # 0.01% per 8h — typical BTC perpetual funding
 MAX_MONTHLY_RELOADS = 3
 
 # Account configurations
-ACCOUNTS = {
+# Retired accounts — kept for historical reference only, receive no new signals
+RETIRED_ACCOUNTS = {
     "PRO": {
         "name": "PRO Account",
         "starting_balance": 50000.0,
         "emoji": "👑",
-        "base_risk_pct": 2.0,
-        "use_quantum_sizing": False,
-        "notify_telegram": True,
-        "auto_deposit_usd": 0.0,
-        "auto_deposit_days": None,
-        "target_balance": None,
-        "max_leverage": 20,
-        "daily_trade_cap": 8,
     },
     "STARTER": {
         "name": "Starter Account",
         "starting_balance": 1500.0,
         "emoji": "🌱",
-        "base_risk_pct": 2.0,
-        "use_quantum_sizing": False,
-        "notify_telegram": False,
-        "auto_deposit_usd": 0.0,
-        "auto_deposit_days": None,
-        "target_balance": None,
-        "max_leverage": 20,
-        "daily_trade_cap": 8,
     },
+    "THE_PROOF": {
+        "name": "The Proof",
+        "starting_balance": 40.0,
+        "emoji": "🎯",
+    },
+    "BENCHMARK": {
+        "name": "Benchmark",
+        "starting_balance": 50000.0,
+        "emoji": "📊",
+    },
+}
+
+ACCOUNTS = {
     "REAL_LIFE": {
         "name": "Real Life",
         "starting_balance": 700.0,
@@ -95,38 +93,7 @@ ACCOUNTS = {
         "max_leverage": 20,
         "daily_trade_cap": 8,
     },
-    "THE_PROOF": {
-        "name": "The Proof",
-        "starting_balance": 40.0,
-        "emoji": "🎯",
-        "base_risk_pct": 5.0,
-        "use_quantum_sizing": True,
-        "quantum_floor": 0.35,
-        "notify_telegram": True,
-        "auto_deposit_usd": 0.0,
-        "auto_deposit_days": None,
-        "target_balance": 680.0,
-        "target_multiplier": 17.0,
-        "max_leverage": 20,
-        "daily_trade_cap": 8,
-    },
-    "BENCHMARK": {
-        "name": "Benchmark",
-        "starting_balance": 50000.0,
-        "emoji": "📊",
-        "base_risk_pct": 2.0,
-        "use_quantum_sizing": False,
-        "notify_telegram": False,
-        "auto_deposit_usd": 0.0,
-        "auto_deposit_days": None,
-        "target_balance": None,
-        "max_leverage": 20,
-        "daily_trade_cap": 8,
-    },
-    # ── Phase 1: Tiered paper accounts ───────────────────────────────────────
-    # Conservative profiles for testing risk policy behavior at different
-    # balance tiers. Tighter leverage and concurrent position limits as
-    # balance decreases. Telegram disabled — observation only for Phase 1.
+    # ── Tiered paper accounts ───────────────────────────────────────────────
     "TIER_5K": {
         "name": "Tier 5K",
         "starting_balance": 5000.0,
@@ -166,6 +133,21 @@ ACCOUNTS = {
         "max_leverage": 5,
         "daily_trade_cap": 5,
     },
+    # ── Personal account — monitored exclusively by AEGIS ──────────────────
+    "PERSONAL": {
+        "name": "Personal",
+        "starting_balance": 10000.0,
+        "emoji": "👤",
+        "base_risk_pct": 2.0,
+        "use_quantum_sizing": True,
+        "quantum_floor": 0.4,
+        "notify_telegram": True,
+        "auto_deposit_usd": 0.0,
+        "auto_deposit_days": None,
+        "target_balance": None,
+        "max_leverage": 20,
+        "daily_trade_cap": 5,
+    },
 }
 
 # Accounts that receive engine signals (all except none)
@@ -173,7 +155,7 @@ _TRADING_ACCOUNTS = list(ACCOUNTS.keys())
 
 # Correlation groups — max 1 LONG and 1 SHORT open per group at a time
 CORRELATION_GROUPS = {
-    "btc_eco": ["BTC/USDT", "ETH/USDT", "BNB/USDT", "SOL/USDT", "AVAX/USDT", "MATIC/USDT", "ARB/USDT", "OP/USDT"],
+    "btc_eco": ["BTC/USDT", "ETH/USDT", "BNB/USDT", "SOL/USDT", "AVAX/USDT", "POL/USDT", "ARB/USDT", "OP/USDT"],
     "defi":    ["UNI/USDT", "AAVE/USDT", "CRV/USDT", "MKR/USDT", "COMP/USDT", "SNX/USDT", "SUSHI/USDT"],
     "layer1":  ["ADA/USDT", "DOT/USDT", "ATOM/USDT", "NEAR/USDT", "FTM/USDT", "ALGO/USDT"],
     "meme":    ["DOGE/USDT", "SHIB/USDT", "PEPE/USDT", "FLOKI/USDT", "BONK/USDT"],
@@ -797,6 +779,16 @@ class PaperTradingSystem:
             tp2 = round(effective_entry - risk_per_unit * 2.0, 4)
         tp3 = take_profit
 
+        # Phase 3: tag regime at open (forward-only; pre-Phase-3 trades will have null)
+        _regime_at_open = None
+        try:
+            import app_state as _app_s
+            _qs = getattr(_app_s, "quantum_state", None)
+            if _qs is not None:
+                _regime_at_open = getattr(_qs, "regime", None)
+        except Exception:
+            pass
+
         # Create position
         position = {
             "id": f"{symbol}_{datetime.now().timestamp()}",
@@ -830,7 +822,8 @@ class PaperTradingSystem:
             "status": "open",
             "opened_at": datetime.now(timezone.utc),
             "signal_data": signal_data or {},
-            "strategy": strategy
+            "strategy": strategy,
+            "regime_at_open": _regime_at_open,
         }
         
         # Atomically deduct margin and add position only if:
@@ -920,8 +913,9 @@ class PaperTradingSystem:
             "close_pct": close_pct,
         }
 
-    async def update_position_price(self, account_id: str, symbol: str, current_price: float) -> Optional[Dict]:
-        """Update position with current price and check for liquidation/TP/SL/partials/trailing"""
+    async def update_position_price(self, account_id: str, symbol: str, current_price: float, slippage_bps: int = 0) -> Optional[Dict]:
+        """Update position with current price and check for liquidation/TP/SL/partials/trailing.
+        slippage_bps: extra bps applied on SL/trail-stop fills (tick engine passes 5, polling passes 0)."""
 
         account = await self.get_account(account_id)
         if not account:
@@ -952,6 +946,7 @@ class PaperTradingSystem:
                 entry_p = pos["entry_price"]
                 lev = pos["leverage"]
                 sym = pos["symbol"]
+                slip = slippage_bps / 10000  # extra fill-worse factor on stop/trail fills
 
                 # ── 1. STOP LOSS CHECK ─────────────────────────────────────────
                 # SL is checked FIRST. In paper trading the price poll is every
@@ -959,8 +954,10 @@ class PaperTradingSystem:
                 # The correct behaviour is to honour the SL price (as an exchange
                 # would fill a stop market order) rather than marking the trade as
                 # a liquidation just because the polled price is at or below liq.
+                # slippage_bps (default 0 for polling, 5 for tick engine) is applied
+                # on top of fee — stop-market orders fill slightly worse than trigger.
                 if direction == "LONG" and current_price <= pos["stop_loss"]:
-                    eff_exit = pos["stop_loss"] * (1 - TRADE_FEE_PCT)
+                    eff_exit = pos["stop_loss"] * (1 - TRADE_FEE_PCT - slip)
                     sl_pnl_pct = ((eff_exit - entry_p) / entry_p) * 100 * lev
                     pos["status"] = "stopped"
                     pos["exit_price"] = round(eff_exit, 8)
@@ -970,7 +967,7 @@ class PaperTradingSystem:
                     closed_position = pos
 
                 elif direction == "SHORT" and current_price >= pos["stop_loss"]:
-                    eff_exit = pos["stop_loss"] * (1 + TRADE_FEE_PCT)
+                    eff_exit = pos["stop_loss"] * (1 + TRADE_FEE_PCT + slip)
                     sl_pnl_pct = ((entry_p - eff_exit) / entry_p) * 100 * lev
                     pos["status"] = "stopped"
                     pos["exit_price"] = round(eff_exit, 8)
@@ -1024,10 +1021,10 @@ class PaperTradingSystem:
 
                     if trail_hit:
                         if direction == "LONG":
-                            eff_exit = trail_stop * (1 - TRADE_FEE_PCT)
+                            eff_exit = trail_stop * (1 - TRADE_FEE_PCT - slip)
                             final_pnl_pct = ((eff_exit - entry_p) / entry_p) * 100 * lev
                         else:
-                            eff_exit = trail_stop * (1 + TRADE_FEE_PCT)
+                            eff_exit = trail_stop * (1 + TRADE_FEE_PCT + slip)
                             final_pnl_pct = ((entry_p - eff_exit) / entry_p) * 100 * lev
                         partial_cumulative = pos.get("cumulative_partial_pnl", 0)
                         remaining_pnl = round(pos["margin"] * (final_pnl_pct / 100), 2)
@@ -1620,6 +1617,29 @@ class PaperTradingSystem:
         if not all([symbol, direction, entry_price, stop_loss, take_profit]):
             logger.warning(f"Invalid signal from {engine_name}: missing required fields")
             return results
+
+        # ── Stop-placement validation (hard reject) ────────────────────────────
+        # LONG: SL must be strictly below entry. SHORT: SL must be strictly above entry.
+        # Malformed stops are rejected here before any account routing or journaling.
+        _dir_upper = str(direction).upper()
+        _ep = float(entry_price)
+        _sl = float(stop_loss)
+        if _dir_upper == "LONG" and _sl >= _ep:
+            logger.warning(
+                f"[SL-GATE] {engine_name} {symbol} LONG rejected — "
+                f"stop_loss {_sl} is at or above entry {_ep} (malformed)"
+            )
+            return [{"outcome_type": "malformed_stop", "engine": engine_name,
+                     "symbol": symbol, "direction": _dir_upper,
+                     "reason": f"LONG stop_loss {_sl:.4f} >= entry {_ep:.4f}"}]
+        if _dir_upper == "SHORT" and _sl <= _ep:
+            logger.warning(
+                f"[SL-GATE] {engine_name} {symbol} SHORT rejected — "
+                f"stop_loss {_sl} is at or below entry {_ep} (malformed)"
+            )
+            return [{"outcome_type": "malformed_stop", "engine": engine_name,
+                     "symbol": symbol, "direction": _dir_upper,
+                     "reason": f"SHORT stop_loss {_sl:.4f} <= entry {_ep:.4f}"}]
 
         # ── Phase 1: Build TradeCandidate ─────────────────────────────────────
         try:

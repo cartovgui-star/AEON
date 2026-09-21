@@ -15,7 +15,9 @@ logger = logging.getLogger(__name__)
 class DrawdownMonitor:
     """
     Checks paper trading account PnL every 5 minutes.
-    Fires RISK alerts at -2%, -5%, -10% thresholds once per threshold per day.
+    Fires RISK alerts at -2%, -5%, -10% thresholds using milestone dedup:
+    fires once when first breached, silenced until account recovers above
+    that threshold and then falls back below it (cross-based, not daily).
     """
 
     THRESHOLDS = [-2.0, -5.0, -10.0]
@@ -23,25 +25,23 @@ class DrawdownMonitor:
     def __init__(self, db, alerter):
         self._db      = db
         self._alerter = alerter
-        # {account_id: {threshold: date_str}} — seeded from MongoDB on init
-        self._fired: dict = {}
-        # Flag: loaded from DB on first check
+        # set of "account_id:threshold" keys currently in breached state
+        self._fired: set = set()
         self._loaded = False
 
     async def _load_fired_state(self) -> None:
-        """Load previously fired thresholds from MongoDB to survive restarts."""
+        """Load currently-breached milestones from MongoDB to survive restarts."""
         try:
-            today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-            cursor = self._db.drawdown_alerts_fired.find({"date": today_str})
+            cursor = self._db.drawdown_alerts_fired.find({"breached": True})
             async for doc in cursor:
                 key = doc.get("key", "")
-                fired_dates = self._fired.setdefault(key, set())
-                fired_dates.add(today_str)
+                if key:
+                    self._fired.add(key)
             self._loaded = True
-            logger.info(f"[DrawdownMonitor] Loaded {len(self._fired)} fired states from DB")
+            logger.info(f"[DrawdownMonitor] Loaded {len(self._fired)} breached milestones from DB")
         except Exception as e:
             logger.warning(f"[DrawdownMonitor] Could not load fired state: {e}")
-            self._loaded = True  # Don't retry endlessly
+            self._loaded = True
 
     async def run_loop(self, interval: int = 300) -> None:
         while True:
@@ -54,9 +54,7 @@ class DrawdownMonitor:
     async def _check(self) -> None:
         if not self._loaded:
             await self._load_fired_state()
-        today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
-        # Enumerate accounts from paper_accounts collection
         try:
             cursor = self._db.paper_accounts.find({})
             async for account in cursor:
@@ -69,11 +67,11 @@ class DrawdownMonitor:
                 pnl_pct = ((balance - initial) / initial) * 100.0
 
                 for threshold in self.THRESHOLDS:
+                    key = f"{account_id}:{threshold}"
                     if pnl_pct <= threshold:
-                        key = f"{account_id}:{threshold}"
-                        fired_dates = self._fired.setdefault(key, set())
-                        if today_str not in fired_dates:
-                            fired_dates.add(today_str)
+                        # Breached — fire only if not already in breached state
+                        if key not in self._fired:
+                            self._fired.add(key)
                             from unified_alert import AeonPersona
                             title, body = AeonPersona.risk_drawdown(
                                 str(account_id), pnl_pct, threshold
@@ -82,15 +80,26 @@ class DrawdownMonitor:
                                 level="RISK", title=title, body=body,
                                 engine="DrawdownMonitor"
                             )
-                            # Persist to MongoDB so restarts don't re-fire
                             try:
                                 await self._db.drawdown_alerts_fired.update_one(
-                                    {"key": key, "date": today_str},
-                                    {"$set": {"key": key, "date": today_str, "account_id": str(account_id), "threshold": threshold}},
+                                    {"key": key},
+                                    {"$set": {"key": key, "breached": True, "account_id": str(account_id), "threshold": threshold, "first_breached": datetime.now(timezone.utc).isoformat()}},
                                     upsert=True
                                 )
                             except Exception as _pe:
                                 logger.warning(f"[DrawdownMonitor] Could not persist fired state: {_pe}")
+                    else:
+                        # Recovered above threshold — clear so it can fire again on next breach
+                        if key in self._fired:
+                            self._fired.discard(key)
+                            try:
+                                await self._db.drawdown_alerts_fired.update_one(
+                                    {"key": key},
+                                    {"$set": {"breached": False}},
+                                    upsert=False
+                                )
+                            except Exception:
+                                pass
         except Exception as exc:
             logger.error(f"[DrawdownMonitor] _check failed: {exc}")
 

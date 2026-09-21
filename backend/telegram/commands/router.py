@@ -26,6 +26,8 @@ from .vwap_commands import route_vwap_command
 from .yolo_commands import route_yolo_command
 from .learning_commands import route_learning_command
 from .quant_commands import route_quant_command
+from .chart_commands import route_chart_command
+from .manual_trade_commands import handle as route_manual_trade_command
 
 
 async def route_command(text: str, chat_id: int, context: dict) -> Optional[Tuple[str, str]]:
@@ -41,9 +43,12 @@ async def route_command(text: str, chat_id: int, context: dict) -> Optional[Tupl
     
     # Try each command router in order of priority
     routers = [
+        # Highest priority — manual trade placement (Carlos's direct commands)
+        route_manual_trade_command, # /trade SYMBOL DIRECTION [lev] [acc], /close SYMBOL
+
         # High priority - frequently used
         route_general_command,      # /start, /help
-        route_trading_command,      # /positions, /close
+        route_trading_command,      # /positions
         route_elite_command,        # /elite commands
         
         # Market data
@@ -51,8 +56,8 @@ async def route_command(text: str, chat_id: int, context: dict) -> Optional[Tupl
         route_market_command,       # /market, /fear, /summary
         
         # Trading features
-        route_paper_command,        # /accounts, /pro, /starter
-        route_engine_command,       # /engines
+        route_paper_command,        # /accounts, /pro, /starter, /tier5k, /tier1k, /tier500, /reallife, /proof, /benchmark
+        route_engine_command,       # /engines, /engine, /governance, /gov
         route_scan_command,         # /scan, /opps
         route_mtf_command,          # /mtf, /confluence
         route_auto_command,         # /auto, /riskcheck
@@ -64,6 +69,7 @@ async def route_command(text: str, chat_id: int, context: dict) -> Optional[Tupl
         # Analytics
         route_stats_command,        # /stats, /accuracy, /leaderboard
         route_alert_command,        # /alerts
+        route_chart_command,        # /chart, /watch
         
         # Intel
         route_news_command,         # /news, /whales, /intel
@@ -75,12 +81,13 @@ async def route_command(text: str, chat_id: int, context: dict) -> Optional[Tupl
     for router in routers:
         try:
             result = await router(text, chat_id, context)
-            if result:
+            # Treat (None, None) the same as None — no match
+            if result and isinstance(result, tuple) and result[0] is not None:
                 return result
         except Exception as e:
             logger.error(f"Router error in {router.__name__}: {e}")
             continue
-    
+
     return None
 
 

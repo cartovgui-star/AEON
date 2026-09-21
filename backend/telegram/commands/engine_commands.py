@@ -1,285 +1,208 @@
 """
 Engine Management Command Handlers
-Commands: /engines, /engines compare, /engine <id> on/off, /engine <id> set
+Commands: /engines, /engine <name> on|off, /governance
+Reflects the real 9-engine AEON roster with live governance data.
 """
+import inspect
 import logging
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)
 
-# Engine configurations
-ENGINE_CONFIG = {
-    "1": {
-        "id": "autonomous_v2",
-        "name": "Autonomous Trader V2.1",
-        "emoji": "🤖",
-        "description": "Smart Money Concepts + Multi-timeframe",
-        "settings_keys": ["min_confidence", "max_daily_trades", "use_smc"]
-    },
-    "2": {
-        "id": "free_will_v2", 
-        "name": "Free Will Engine",
-        "emoji": "🧠",
-        "description": "High-confidence alerts with reasoning",
-        "settings_keys": ["confidence_threshold", "min_confirmations", "cooldown_minutes"]
-    },
-    "3": {
-        "id": "scalper",
-        "name": "Aggressive Scalper",
-        "emoji": "⚡",
-        "description": "Quick scalp signals with auto-learning",
-        "settings_keys": ["profit_target", "stop_loss", "volume_threshold"]
-    },
-    "4": {
-        "id": "day_trader",
-        "name": "Day Trader",
-        "emoji": "📈",
-        "description": "Intraday opportunities",
-        "settings_keys": ["risk_per_trade", "max_positions"]
-    },
-    "5": {
-        "id": "long_term",
-        "name": "Long Term Advisor",
-        "emoji": "🏦",
-        "description": "Weekly/Monthly position ideas",
-        "settings_keys": ["min_holding_days", "portfolio_allocation"]
-    },
-    "6": {
-        "id": "paper_trading",
-        "name": "Paper Trading",
-        "emoji": "📝",
-        "description": "Demo trading accounts (Pro + Starter)",
-        "settings_keys": ["pro_balance", "starter_balance", "default_leverage"]
-    }
+# Real engine roster — IDs match EngineType values in aeon_engine_system.py
+REAL_ENGINES = [
+    {"id": "autonomous_trader_v2",  "name": "Autonomous Trader V2",  "emoji": "🤖", "state_attr": "autonomous_trader_v2"},
+    {"id": "free_will_v2",          "name": "Free Will V2",          "emoji": "🧠", "state_attr": "free_will_v2"},
+    {"id": "dual_engine",           "name": "Dual Engine",           "emoji": "⚡", "state_attr": "dual_engine"},
+    {"id": "yolo_engine",           "name": "YOLO Engine",           "emoji": "🚀", "state_attr": "yolo_engine"},
+    {"id": "vwap_scalper",          "name": "VWAP Scalper",          "emoji": "📊", "state_attr": "vwap_scalper"},
+    {"id": "elite_strategy",        "name": "Elite Strategy V3",     "emoji": "🎯", "state_attr": None},
+    {"id": "institutional_scalper", "name": "Institutional Scalper", "emoji": "🏛️", "state_attr": "inst_scalper"},
+    {"id": "tcn_neural",            "name": "TCN Neural (E9)",       "emoji": "🔮", "state_attr": "tcn_engine"},
+    {"id": "quant_analyzer",        "name": "Quant Analyzer",        "emoji": "🔬", "state_attr": "quant_analyzer"},
+]
+
+_GOV_EMOJI = {
+    "promote_candidate": "⬆️",
+    "monitor":           "👁️",
+    "restricted":        "⚠️",
+    "sandbox_only":      "🧪",
+    "disable_candidate": "🛑",
+    "insufficient_data": "📉",
 }
 
 
-async def get_engine_status(engine_id: str) -> dict:
-    """Get the current status of an engine"""
+def _get_engine_obj(engine):
     import app_state
-    config = ENGINE_CONFIG.get(engine_id, {})
-    internal_id = config.get("id", "")
-    
+    attr = engine.get("state_attr")
+    if not attr:
+        return None
+    return getattr(app_state, attr, None)
+
+
+def _is_active(engine):
+    obj = _get_engine_obj(engine)
+    if obj is None:
+        return None
+    return getattr(obj, "active", None)
+
+
+async def _persist_engine_state(engine, obj):
+    save_settings = getattr(obj, "save_settings", None)
+    if callable(save_settings):
+        result = save_settings()
+        if inspect.isawaitable(result):
+            await result
+        return "persisted"
+
+    # Some engines currently expose runtime flags only. Keep the toggle, but
+    # make it explicit to operators that this one is session-scoped.
+    return "session_only"
+
+
+async def _get_governance_map(db):
+    if db is None:
+        return {}
     try:
-        if internal_id == "autonomous_v2":
-            trader = app_state.autonomous_trader_v2
-            return {
-                "enabled": trader.active,
-                "settings": {
-                    "min_confidence": trader.min_confidence,
-                    "max_daily_trades": getattr(trader, 'max_daily_trades', 10),
-                    "use_smc": getattr(trader, 'use_smc', True)
-                }
-            }
-        elif internal_id == "free_will_v2":
-            fw = app_state.free_will_v2
-            return {
-                "enabled": fw.active,
-                "settings": {
-                    "confidence_threshold": fw.min_confidence,
-                    "min_confirmations": getattr(fw, 'min_confirmations', 3),
-                    "cooldown_minutes": getattr(fw, 'cooldown_minutes', 30)
-                }
-            }
-        elif internal_id == "scalper":
-            from aggressive_scalper import scalper
-            settings = scalper.get_settings()
-            return {
-                "enabled": settings.get("enabled", True),
-                "settings": settings
-            }
-        elif internal_id == "paper_trading":
-            from paper_trading import paper_trading
-            accounts = paper_trading.get_accounts_summary()
-            return {
-                "enabled": True,
-                "settings": {
-                    "pro_balance": accounts.get("pro", {}).get("balance", 50000),
-                    "starter_balance": accounts.get("starter", {}).get("balance", 1500),
-                    "total_trades": accounts.get("total_trades", 0)
-                }
-            }
-        else:
-            return {"enabled": False, "settings": {}}
-    except Exception as e:
-        logger.error(f"Error getting engine status {engine_id}: {e}")
-        return {"enabled": False, "settings": {}, "error": str(e)}
+        docs = await db.engine_governance.find(
+            {},
+            {"_id": 0, "engine": 1, "recommendation": 1, "current_tier": 1,
+             "current_score": 1, "consecutive_d_weeks": 1}
+        ).to_list(length=50)
+        return {d["engine"]: d for d in docs}
+    except Exception:
+        return {}
 
 
-async def toggle_engine(engine_id: str, enabled: bool) -> dict:
-    """Toggle an engine on/off"""
+async def handle_engines_list(text, chat_id, context):
     import app_state
-    config = ENGINE_CONFIG.get(engine_id, {})
-    internal_id = config.get("id", "")
-    
     try:
-        if internal_id == "autonomous_v2":
-            app_state.autonomous_trader_v2.active = enabled
-            await app_state.autonomous_trader_v2.save_settings()
-            return {"success": True, "engine": config.get("name"), "enabled": enabled}
-        elif internal_id == "free_will_v2":
-            app_state.free_will_v2.active = enabled
-            return {"success": True, "engine": config.get("name"), "enabled": enabled}
-        elif internal_id == "scalper":
-            from aggressive_scalper import scalper
-            scalper.settings["enabled"] = enabled
-            return {"success": True, "engine": config.get("name"), "enabled": enabled}
-        else:
-            return {"success": False, "error": "Engine cannot be toggled"}
+        gov_map = await _get_governance_map(app_state.db)
+        lines = ["🔧 AEON ENGINES (9)", ""]
+        for eng in REAL_ENGINES:
+            active = _is_active(eng)
+            if active is True:
+                status = "🟢"
+            elif active is False:
+                status = "🔴"
+            else:
+                status = "⚫"
+            gov = gov_map.get(eng["id"], {})
+            rec = gov.get("recommendation", "")
+            tier = gov.get("current_tier", "")
+            score = gov.get("current_score")
+            gov_part = ""
+            if rec:
+                rec_emoji = _GOV_EMOJI.get(rec, "❓")
+                gov_part = " | {} {}".format(rec_emoji, rec.replace("_", " "))
+                if tier and tier not in ("insufficient_data", ""):
+                    gov_part += " [{}]".format(tier)
+                    if score is not None:
+                        gov_part += " {:.0f}".format(score)
+            lines.append("{} {} {}{}".format(status, eng["emoji"], eng["name"], gov_part))
+        lines.extend(["", "Toggle: /engine <name> on|off", "Governance: /governance"])
+        return "\n".join(lines), "engines"
     except Exception as e:
-        logger.error(f"Error toggling engine {engine_id}: {e}")
-        return {"success": False, "error": str(e)}
+        logger.error("engines list error: %s", e)
+        return "❌ Error: {}".format(str(e)), "engines"
 
 
-async def update_engine_setting(engine_id: str, key: str, value: any) -> dict:
-    """Update a specific engine setting"""
-    import app_state
-    config = ENGINE_CONFIG.get(engine_id, {})
-    internal_id = config.get("id", "")
-    
-    try:
-        if internal_id == "autonomous_v2":
-            trader = app_state.autonomous_trader_v2
-            if key == "min_confidence":
-                trader.min_confidence = int(value)
-            elif key == "max_daily_trades":
-                trader.max_daily_trades = int(value)
-            await trader.save_settings()
-            return {"success": True, "key": key, "value": value}
-            
-        elif internal_id == "free_will_v2":
-            fw = app_state.free_will_v2
-            if key == "confidence_threshold":
-                fw.min_confidence = int(value)
-            elif key == "min_confirmations":
-                fw.min_confirmations = int(value)
-            elif key == "cooldown_minutes":
-                fw.cooldown_minutes = int(value)
-            return {"success": True, "key": key, "value": value}
-            
-        elif internal_id == "scalper":
-            from aggressive_scalper import scalper
-            if key in scalper.settings:
-                # Type conversion
-                if isinstance(scalper.settings[key], float):
-                    scalper.settings[key] = float(value)
-                elif isinstance(scalper.settings[key], int):
-                    scalper.settings[key] = int(value)
-                else:
-                    scalper.settings[key] = value
-                return {"success": True, "key": key, "value": value}
-            return {"success": False, "error": f"Unknown setting: {key}"}
-        else:
-            return {"success": False, "error": "Engine settings not configurable"}
-    except Exception as e:
-        logger.error(f"Error updating engine setting {engine_id}.{key}: {e}")
-        return {"success": False, "error": str(e)}
-
-
-async def handle_engines_list(text: str, chat_id: int, context: dict) -> tuple:
-    """Handle /engines command - list all engines"""
-    response = "🔧 TRADING ENGINES\n\n"
-    
-    for num, config in ENGINE_CONFIG.items():
-        status = await get_engine_status(num)
-        enabled = status.get("enabled", False)
-        status_emoji = "🟢" if enabled else "🔴"
-        
-        response += f"{config['emoji']} [{num}] {config['name']}\n"
-        response += f"   Status: {status_emoji} {'ON' if enabled else 'OFF'}\n"
-        response += f"   {config['description']}\n\n"
-    
-    response += """Commands:
-• /engine <id> - View engine details
-• /engine <id> on/off - Toggle engine
-• /engine <id> set <param> <value>"""
-    
-    return response, "engines"
-
-
-async def handle_engine_command(text: str, chat_id: int, context: dict) -> tuple:
-    """Handle /engine <id> [on/off/set] commands"""
+async def handle_engine_command(text, chat_id, context):
     parts = text.lower().split()
-    
     if len(parts) < 2:
         return await handle_engines_list(text, chat_id, context)
-    
-    engine_id = parts[1]
-    
-    if engine_id not in ENGINE_CONFIG:
-        return f"❌ Unknown engine ID: {engine_id}\n\nValid IDs: 1-6", "engines"
-    
-    config = ENGINE_CONFIG[engine_id]
-    
-    # Just /engine <id> - show details
+
+    name_frag = parts[1]
+    match = next((e for e in REAL_ENGINES if name_frag in e["id"]), None)
+    if not match:
+        valid = ", ".join(e["id"] for e in REAL_ENGINES)
+        return "❌ Unknown engine: {}\n\nValid names:\n{}".format(name_frag, valid), "engines"
+
     if len(parts) == 2:
-        status = await get_engine_status(engine_id)
-        enabled = status.get("enabled", False)
-        settings = status.get("settings", {})
-        
-        response = f"""{config['emoji']} {config['name']}
+        import app_state
+        active = _is_active(match)
+        gov_map = await _get_governance_map(app_state.db)
+        gov = gov_map.get(match["id"], {})
+        lines = [
+            "{} {} {}".format("🟢" if active else ("🔴" if active is False else "⚫"), match["emoji"], match["name"]),
+            "Status: {}".format("active" if active else ("inactive" if active is False else "unknown")),
+        ]
+        if gov:
+            rec = gov.get("recommendation", "n/a")
+            tier = gov.get("current_tier", "n/a")
+            score = gov.get("current_score") or 0
+            d_weeks = gov.get("consecutive_d_weeks", 0)
+            lines.extend([
+                "Governance: {} [{}] score {:.1f}".format(rec, tier, score),
+                "D-weeks: {}".format(d_weeks),
+            ])
+        lines.append("\nToggle: /engine {} on|off".format(match["id"]))
+        return "\n".join(lines), "engines"
 
-Status: {'🟢 ACTIVE' if enabled else '🔴 PAUSED'}
-{config['description']}
+    action = parts[2] if len(parts) > 2 else ""
+    if action not in ("on", "off"):
+        return "❓ Use: /engine <name> on|off", "engines"
 
-⚙️ SETTINGS:"""
-        
-        for key, value in settings.items():
-            response += f"\n• {key}: {value}"
-        
-        response += f"\n\nToggle: /engine {engine_id} on/off"
-        response += f"\nConfigure: /engine {engine_id} set <param> <value>"
-        
-        return response, "engines"
-    
-    # /engine <id> on/off
-    if parts[2] in ['on', 'off']:
-        enabled = parts[2] == 'on'
-        result = await toggle_engine(engine_id, enabled)
-        
-        if result.get("success"):
-            return f"{'🟢' if enabled else '🔴'} {config['name']} is now {'ON' if enabled else 'OFF'}", "engines"
-        else:
-            return f"❌ Failed: {result.get('error', 'Unknown error')}", "engines"
-    
-    # /engine <id> set <key> <value>
-    if parts[2] == 'set' and len(parts) >= 5:
-        key = parts[3]
-        value = parts[4]
-        
-        result = await update_engine_setting(engine_id, key, value)
-        
-        if result.get("success"):
-            return f"✅ {config['name']}: {key} = {value}", "engines"
-        else:
-            return f"❌ Failed: {result.get('error', 'Unknown error')}", "engines"
-    
-    return "❓ Unknown command. Use:\n• /engine <id> on/off\n• /engine <id> set <param> <value>", "engines"
+    enabled = action == "on"
+    obj = _get_engine_obj(match)
+    if obj is None:
+        return "❌ {} cannot be toggled via Telegram (no state handle).".format(match["name"]), "engines"
+    try:
+        obj.active = enabled
+        icon = "🟢" if enabled else "🔴"
+        state = "ON" if enabled else "OFF"
+        persist_state = await _persist_engine_state(match, obj)
+        if persist_state == "persisted":
+            return "{} {} is now {} and persisted.".format(icon, match["name"], state), "engines"
+        return "{} {} is now {} for this session only.".format(icon, match["name"], state), "engines"
+    except Exception as e:
+        return "❌ Toggle failed: {}".format(str(e)), "engines"
 
 
-async def handle_engines_compare(text: str, chat_id: int, context: dict) -> tuple:
-    """Handle /engines compare - side-by-side performance of all engines"""
+async def handle_governance(text, chat_id, context):
     import app_state
+    try:
+        if app_state.db is None:
+            return "❌ DB not ready", "engines"
+        gov_map = await _get_governance_map(app_state.db)
+        if not gov_map:
+            return "📋 GOVERNANCE\n\nNo governance data yet. Runs weekly after sufficient trade volume.", "engines"
+        lines = ["📋 ENGINE GOVERNANCE", ""]
+        for eng in REAL_ENGINES:
+            gov = gov_map.get(eng["id"])
+            if not gov:
+                lines.append("⚫ {} — no data".format(eng["name"]))
+                continue
+            rec = gov.get("recommendation", "n/a")
+            tier = gov.get("current_tier", "?")
+            score = gov.get("current_score") or 0
+            d_weeks = gov.get("consecutive_d_weeks", 0)
+            rec_emoji = _GOV_EMOJI.get(rec, "❓")
+            line = "{} {} — {} [{}] {:.0f}".format(rec_emoji, eng["name"], rec.replace("_", " "), tier, score)
+            if d_weeks > 0:
+                line += " | D×{}".format(d_weeks)
+            lines.append(line)
+        return "\n".join(lines), "engines"
+    except Exception as e:
+        logger.error("governance error: %s", e)
+        return "❌ Error: {}".format(str(e)), "engines"
 
+
+async def handle_engines_compare(text, chat_id, context):
+    """Legacy compare from engine_snapshots."""
+    import app_state
     try:
         db = app_state.db
         if db is None:
             return "❌ Database not available", "engines"
-
         latest = await db.engine_snapshots.find_one(sort=[("timestamp", -1)])
         if not latest:
-            return (
-                "📊 No engine data yet.\n\nThe data collector saves hourly snapshots — "
-                "check back in ~60 minutes!",
-                "engines"
-            )
-
+            return "📊 No engine snapshot data yet.", "engines"
         engines = latest.get("engines", {})
         ts = latest.get("timestamp")
         if ts and ts.tzinfo is None:
             ts = ts.replace(tzinfo=timezone.utc)
         age_min = int((datetime.now(timezone.utc) - ts).total_seconds() // 60) if ts else 0
-
         engine_display = {
             "autonomous_v2":   "🤖 Autonomous V2",
             "free_will_v2":    "🧠 Free Will V2",
@@ -289,107 +212,137 @@ async def handle_engines_compare(text: str, chat_id: int, context: dict) -> tupl
             "vwap_scalper":    "📊 VWAP Scalper",
             "yolo":            "🚀 YOLO",
         }
-
-        response = f"📊 ENGINE COMPARISON (updated {age_min}m ago)\n\n"
-
+        response = "📊 ENGINE SNAPSHOT ({}m ago)\n\n".format(age_min)
         for engine_id, display_name in engine_display.items():
             stats = engines.get(engine_id)
             if not stats or "error" in stats:
                 continue
-
             active = stats.get("active", False)
-            status = "🟢" if active else "🔴"
             win_rate = stats.get("win_rate")
-            total = (
-                stats.get("total_trades")
-                or stats.get("total_alerts")
-                or stats.get("total_signals")
-                or 0
-            )
+            total = (stats.get("total_trades") or stats.get("total_alerts")
+                     or stats.get("total_signals") or 0)
             pnl = stats.get("total_pnl_pct")
-            signals_today = (
-                stats.get("daily_alerts")
-                or stats.get("signals_today")
-                or stats.get("daily_signals")
-                or 0
-            )
-            profit_factor = stats.get("profit_factor")
-
-            response += f"{status} {display_name}\n"
+            status = "🟢" if active else "🔴"
+            response += "{} {}\n".format(status, display_name)
             if win_rate is not None:
-                response += f"   WR: {win_rate}%  Trades: {total}"
-                if profit_factor:
-                    response += f"  PF: {profit_factor}"
+                response += "   WR: {}%  Trades: {}".format(win_rate, total)
             else:
-                response += f"   Signals today: {signals_today}  Total: {total}"
+                response += "   Signals today: {}  Total: {}".format(
+                    stats.get("daily_alerts") or 0, total)
             if pnl is not None:
                 sign = "+" if pnl >= 0 else ""
-                response += f"  PnL: {sign}{pnl:.1f}%"
+                response += "  PnL: {}{:.1f}%".format(sign, pnl)
             response += "\n\n"
-
-        # Alert outcomes (7 day)
-        try:
-            cutoff = datetime.now(timezone.utc) - timedelta(days=7)
-            fw_wins = await db.free_will_alerts.count_documents({"outcome": "WIN", "timestamp": {"$gte": cutoff}})
-            fw_losses = await db.free_will_alerts.count_documents({"outcome": "LOSS", "timestamp": {"$gte": cutoff}})
-            du_wins = await db.dual_alerts.count_documents({"outcome": "WIN", "timestamp": {"$gte": cutoff}})
-            du_losses = await db.dual_alerts.count_documents({"outcome": "LOSS", "timestamp": {"$gte": cutoff}})
-
-            fw_total = fw_wins + fw_losses
-            du_total = du_wins + du_losses
-
-            if fw_total > 0 or du_total > 0:
-                response += "🎯 ALERT OUTCOMES (7d)\n"
-                if fw_total > 0:
-                    fw_wr = round(fw_wins / fw_total * 100, 1)
-                    response += f"Free Will: {fw_wr}% WR ({fw_wins}W/{fw_losses}L)\n"
-                if du_total > 0:
-                    du_wr = round(du_wins / du_total * 100, 1)
-                    response += f"Dual Engine: {du_wr}% WR ({du_wins}W/{du_losses}L)\n"
-                response += "\n"
-        except Exception:
-            pass
-
-        # Top confirmations
-        try:
-            top_confs = await db.confirmation_accuracy.find(
-                {"total": {"$gte": 3}},
-                sort=[("win_rate", -1)]
-            ).limit(5).to_list(5)
-            if top_confs:
-                response += "🏆 TOP CONFIRMATIONS\n"
-                for c in top_confs:
-                    name = c.get("confirmation", "?")[:35]
-                    wr = c.get("win_rate", 0)
-                    total = c.get("total", 0)
-                    response += f"• {name}: {wr}% ({total} samples)\n"
-        except Exception:
-            pass
-
-        response += "\n/engines - Full engine list"
+        response += "/engines — Full engine list\n/governance — Governance states"
         return response, "engines"
-
     except Exception as e:
-        logger.error(f"engines compare error: {e}")
-        return f"❌ Error: {str(e)}", "engines"
+        logger.error("engines compare error: %s", e)
+        return "❌ Error: {}".format(str(e)), "engines"
 
 
-# Export handlers
 ENGINE_HANDLERS = {
-    '/engines': handle_engines_list,
+    '/engines':    handle_engines_list,
     '/engines compare': handle_engines_compare,
-    '/engine': handle_engine_command,
+    '/engine':     handle_engine_command,
+    '/governance': handle_governance,
+    '/gov':        handle_governance,
 }
 
-async def route_engine_command(text: str, chat_id: int, context: dict) -> tuple:
-    """Route engine commands"""
-    text_lower = text.lower().strip()
 
+async def route_engine_command(text, chat_id, context):
+    text_lower = text.lower().strip()
     if text_lower == '/engines compare':
         return await handle_engines_compare(text, chat_id, context)
-    elif text_lower == '/engines' or text_lower == '/engine':
+    if text_lower in ('/engines', '/engine'):
         return await handle_engines_list(text, chat_id, context)
-    elif text_lower.startswith('/engine '):
+    if text_lower.startswith('/engine '):
         return await handle_engine_command(text, chat_id, context)
-
+    if text_lower in ('/governance', '/gov'):
+        return await handle_governance(text, chat_id, context)
+    if text_lower.startswith('/engine_coins'):
+        return await handle_engine_coins(text, chat_id, context)
     return None, None
+
+
+async def handle_engine_coins(text: str, chat_id: int, context: dict) -> tuple:
+    """
+    /engine_coins {engine} {action} {coin}
+
+    Actions:
+    view       → show current coins
+    add {coin} → add coin to engine
+    remove {coin} → remove coin from engine
+    reset      → reset to default top 20
+    all        → show all engines
+    """
+    from engine_coin_config import get_coin_config
+
+    config = get_coin_config()
+    if not config:
+        return "❌ Config not initialized", None
+
+    parts = text.strip().split()
+
+    if len(parts) < 2 or parts[1] == "all":
+        # Show all engines
+        all_status = await config.get_all_status()
+        msg = "📊 **ENGINE COIN CONFIG**\n\n"
+        for engine, status in all_status.items():
+            msg += f"🔧 {engine}\n"
+            msg += f"   Coins: {status['count']} "
+            msg += "✅ (default)" if status['is_default'] else "⚙️ (custom)"
+            coin_names = [c.split('/')[0] for c in status['coins'][:5]]
+            msg += f"\n   {', '.join(coin_names)}"
+            if status['count'] > 5:
+                msg += f", +{status['count']-5} more\n\n"
+            else:
+                msg += "\n\n"
+        return msg, None
+
+    engine = parts[1]
+    action = parts[2] if len(parts) > 2 else "view"
+    coin = parts[3] if len(parts) > 3 else None
+
+    if action == "view":
+        status = await config.get_status(engine)
+        msg = f"📊 **{engine}**\n\n"
+        msg += f"Coins ({status['count']}):\n"
+        coins_str = ", ".join([c.split("/")[0] for c in status['coins']])
+        msg += f"`{coins_str}`\n\n"
+        msg += f"Status: {'✅ Default (top 20)' if status['is_default'] else '⚙️ Custom'}"
+        return msg, None
+
+    elif action == "add" and coin:
+        if not coin.endswith("/USDT"):
+            coin = f"{coin}/USDT"
+        success = await config.add_coin(engine, coin)
+        if success:
+            status = await config.get_status(engine)
+            return f"✅ Added {coin} to {engine}\nTotal coins: {status['count']}", None
+        else:
+            return f"⚠️ {coin} already in {engine}", None
+
+    elif action == "remove" and coin:
+        if not coin.endswith("/USDT"):
+            coin = f"{coin}/USDT"
+        success = await config.remove_coin(engine, coin)
+        if success:
+            status = await config.get_status(engine)
+            return f"✅ Removed {coin} from {engine}\nTotal coins: {status['count']}", None
+        else:
+            return f"❌ {coin} not in {engine}", None
+
+    elif action == "reset":
+        await config.reset_to_default(engine)
+        return f"🔄 {engine} reset to default top 20 coins", None
+
+    else:
+        msg = """
+Usage:
+/engine_coins autonomous_trader view
+/engine_coins free_will_v2 add NEAR
+/engine_coins yolo_engine remove SUI
+/engine_coins elite_strategy reset
+/engine_coins all
+        """.strip()
+        return msg, None

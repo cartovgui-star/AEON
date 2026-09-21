@@ -10,6 +10,7 @@ import statistics
 import logging
 from concurrent.futures import ThreadPoolExecutor
 import ccxt
+from okx_rate_limiter import OKX_SEM
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -17,12 +18,12 @@ logger = logging.getLogger(__name__)
 # Thread executor for MEXC API calls
 executor = ThreadPoolExecutor(max_workers=3)
 
-# Initialize MEXC exchange
+# Initialize OKX exchange
 try:
-    mexc = ccxt.mexc({'enableRateLimit': True})
+    okx = ccxt.okx({'enableRateLimit': True})
 except Exception as e:
-    logger.error(f"Failed to init MEXC: {e}")
-    mexc = None
+    logger.error(f"Failed to init OKX: {e}")
+    okx = None
 
 # V2.1 Filter Settings (Default - can be overridden in backtest)
 V21_SETTINGS = {
@@ -70,14 +71,14 @@ class BacktestV21Engine:
         self.current_symbol = ""
     
     async def fetch_klines(self, symbol: str, interval: str = "1h", days: int = 30) -> List[Dict]:
-        """Fetch historical klines from MEXC"""
-        if not mexc:
-            logger.error("MEXC not initialized")
+        """Fetch historical klines from OKX"""
+        if not okx:
+            logger.error("OKX not initialized")
             return []
-        
+
         try:
             loop = asyncio.get_running_loop()
-            
+
             # Calculate limit based on days and interval
             interval_minutes = {
                 "1m": 1, "5m": 5, "15m": 15, "30m": 30,
@@ -85,12 +86,12 @@ class BacktestV21Engine:
             }
             mins_per_candle = interval_minutes.get(interval, 60)
             candles_needed = min(1000, (days * 24 * 60) // mins_per_candle)
-            
-            # Fetch OHLCV data from MEXC
-            ohlcv = await loop.run_in_executor(
-                executor,
-                lambda: mexc.fetch_ohlcv(symbol, interval, limit=int(candles_needed))
-            )
+
+            # Fetch OHLCV data from OKX
+            def _fetch():
+                with OKX_SEM:
+                    return okx.fetch_ohlcv(symbol, interval, limit=int(candles_needed))
+            ohlcv = await loop.run_in_executor(executor, _fetch)
             
             if not ohlcv:
                 return []

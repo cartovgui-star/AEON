@@ -19,7 +19,7 @@ from typing import Dict, List, Set
 # Mirrors paper_trading.CORRELATION_GROUPS["btc_eco"]
 BTC_ECOSYSTEM: Set[str] = {
     "BTC/USDT", "ETH/USDT", "BNB/USDT", "SOL/USDT",
-    "AVAX/USDT", "MATIC/USDT", "ARB/USDT", "OP/USDT",
+    "AVAX/USDT", "POL/USDT", "ARB/USDT", "OP/USDT",
 }
 
 # DeFi correlation cluster (mirrors CORRELATION_GROUPS["defi"])

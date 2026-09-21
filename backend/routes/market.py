@@ -183,8 +183,8 @@ async def api_arbitrage_recent(limit: int = 20):
 # MEXC OHLCV DATA FOR TRADING CHARTS
 # ═══════════════════════════════════════════════════════════════════════════════
 
-@router.get("/mexc/ohlcv/{symbol}")
-async def api_mexc_ohlcv(symbol: str, timeframe: str = "4h", limit: int = 200):
+@router.get("/okx/ohlcv/{symbol}")
+async def api_okx_ohlcv(symbol: str, timeframe: str = "4h", limit: int = 200):
     """
     Get OHLCV candle data for TradingView-style charts.
     Returns formatted candle data with timestamp, open, high, low, close, volume.

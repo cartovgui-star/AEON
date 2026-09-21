@@ -43,6 +43,16 @@ async def ws_stats():
     return ws_manager.get_stats()
 
 
+@router.get("/tick/stats")
+async def api_tick_stats():
+    """Tick paper engine status — connection state, subscribed symbols, fill count, funding."""
+    import app_state
+    engine = getattr(app_state, "tick_paper_engine", None)
+    if engine is None:
+        return {"enabled": False, "connected": False, "mode": "polling"}
+    return {"enabled": True, **engine.get_stats()}
+
+
 @router.get("/pairs")
 async def api_list_pairs():
     """List all supported trading pairs"""

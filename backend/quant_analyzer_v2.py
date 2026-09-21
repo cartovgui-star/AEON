@@ -2,8 +2,8 @@
 QUANT ANALYZER V2 — SYSTEM-WIDE GATEKEEPER
 ==========================================
 100-point scoring system across 4 pillars:
-  On-Chain Data      : 30 pts  (MEXC OI + funding + Coinglass liquidations)
-  Order Book Intel   : 25 pts  (MEXC futures depth — reference market)
+  On-Chain Data      : 30 pts  (OKX OI + funding + OKX liquidation orders)
+  Order Book Intel   : 25 pts  (OKX futures depth — reference market)
   Market Structure   : 25 pts  (existing 9-factor CoinAnalyzer, rescaled)
   Sentiment/OI/Funding: 20 pts (Fear & Greed + Long/Short ratio + CoinGecko)
 
@@ -36,7 +36,7 @@ logger = logging.getLogger(__name__)
 
 # ── per-regime base thresholds ─────────────────────────────────────────────────
 # Calibrated for real production data availability:
-# Coinglass liq API unreliable (0-1 pts vs 10 theoretical), OI history builds slowly
+# OKX liq orders now live (replaces removed Coinglass). OI history builds slowly
 # (2 pts vs 8), structure penalties for counter-trend signals. Max achievable
 # in practice is ~30-40 pts, not the theoretical 100.
 
@@ -297,7 +297,7 @@ class AnomalyFlagStore:
 class OnChainScorer:
     """
     OI change 24h (10pts) + Funding rate alignment (10pts) + Liq imbalance (10pts)
-    Sources: MEXC contract public API + Coinglass open API
+    Sources: OKX public API (OI, liquidations) + MEXC funding rate
     Returns breakdown including raw funding_rate_pct and oi_current for anomaly detector.
     """
 
@@ -380,10 +380,40 @@ class OnChainScorer:
         breakdown["funding_rate_pct"] = round(funding_rate, 4) if funding_rate is not None else None
         breakdown["funding_pts"]      = fund_pts
 
-        # Liquidation scorer removed — Coinglass endpoint 404'd (geo-block).
-        # 30 pts now split: OI=15, Funding=15. Cap unchanged.
-        breakdown["liq_long_ratio"] = None
-        breakdown["liq_pts"]        = 0
+        # ── Liquidation imbalance (0-10 pts) — OKX public liquidation orders ────
+        # posSide=long means a long position was forcibly closed (bearish signal).
+        # posSide=short means a short was liquidated (short squeeze = bullish).
+        liq_pts        = 0
+        liq_long_ratio = None
+        try:
+            uly      = f"{coin}-USD"   # OKX SWAP underlying format: BTC-USD, ETH-USD
+            liq_data = await _get(
+                session,
+                "https://www.okx.com/api/v5/public/liquidation-orders",
+                params={"instType": "SWAP", "uly": uly, "state": "filled", "limit": "100"},
+            )
+            if liq_data and liq_data.get("code") == "0" and liq_data.get("data"):
+                details  = liq_data["data"][0].get("details", []) if liq_data["data"] else []
+                long_sz  = sum(float(o.get("sz", 0)) for o in details if o.get("posSide") == "long")
+                short_sz = sum(float(o.get("sz", 0)) for o in details if o.get("posSide") == "short")
+                total    = long_sz + short_sz
+                if total > 0:
+                    liq_long_ratio = long_sz / total  # high = longs wiped (bearish)
+                    if d == "long":
+                        liq_pts = (10 if liq_long_ratio < 0.35 else
+                                    7 if liq_long_ratio < 0.45 else
+                                    5 if liq_long_ratio < 0.55 else
+                                    2 if liq_long_ratio < 0.65 else 0)
+                    else:
+                        liq_pts = (10 if liq_long_ratio > 0.65 else
+                                    7 if liq_long_ratio > 0.55 else
+                                    5 if liq_long_ratio > 0.45 else
+                                    2 if liq_long_ratio > 0.35 else 0)
+        except Exception:
+            pass  # stays 0 — same graceful fallback as before
+        pts += liq_pts
+        breakdown["liq_long_ratio"] = round(liq_long_ratio, 4) if liq_long_ratio is not None else None
+        breakdown["liq_pts"]        = liq_pts
 
         return min(pts, 30), breakdown
 
@@ -393,7 +423,7 @@ class OnChainScorer:
 class OrderBookScorer:
     """
     Bid/ask imbalance (10pts) + Wall presence (8pts) + Spread quality (7pts)
-    Source: MEXC futures public depth
+    Source: OKX futures public depth (reference market)
     Also exposes entropy() for anomaly detector.
     """
 
