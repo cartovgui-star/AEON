@@ -1,0 +1,21 @@
+name: Repo Visualizer
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "images/diagram.svg"
+  workflow_dispatch:
+
+jobs:
+  diagram:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generate repository diagram
+        uses: githubocto/repo-visualizer@0.9.1
+        with:
+          output_file: "images/diagram.svg"
+          should_push: true
