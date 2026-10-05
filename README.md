@@ -32,6 +32,12 @@ Ten subsystems, each with a single responsibility:
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for the full breakdown, and `docs/` for deep dives into the strategy lab, data pipeline, risk framework, and understanding layer.
 
+## Repository map
+
+![AEON repository structure](images/diagram.svg)
+
+_Auto-generated diagram — refreshes on every push to main._
+
 ## Philosophy
 
 Data is noise until it becomes words. The end goal isn't a black box that trades — it's a system that *understands*: why a level broke, what the order book is saying, which narratives have teeth and which don't, and the discipline to say "no edge here" when there's no edge.
